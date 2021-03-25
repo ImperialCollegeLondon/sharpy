@@ -80,9 +80,9 @@ class StraightWake(generator_interface.BaseGenerator):
             elif 'StaticCoupled' in data.settings:
                 aero_solver_name = data.settings['StaticCoupled']['aero_solver']
                 aero_solver_settings = data.settings['StaticCoupled']['aero_solver_settings']
-            elif 'StaticCoupledRBM' in data.settings:
-                aero_solver_name = data.settings['StaticCoupledRBM']['aero_solver']
-                aero_solver_settings = data.settings['StaticCoupledRBM']['aero_solver_settings']
+            elif 'StaticCoupled' in data.settings:
+                aero_solver_name = data.settings['StaticCoupled']['aero_solver']
+                aero_solver_settings = data.settings['StaticCoupled']['aero_solver_settings']
             elif 'DynamicCoupled' in data.settings:
                 aero_solver_name = data.settings['DynamicCoupled']['aero_solver']
                 aero_solver_settings = data.settings['DynamicCoupled']['aero_solver_settings']
@@ -99,12 +99,12 @@ class StraightWake(generator_interface.BaseGenerator):
                                      aero_solver.settings_default)
 
             if 'dt' in aero_solver_settings.keys():
-                dt = aero_solver_settings['dt'].value
+                dt = aero_solver_settings['dt']
             elif 'rollup_dt' in aero_solver_settings.keys():
-                dt = aero_solver_settings['rollup_dt'].value
+                dt = aero_solver_settings['rollup_dt']
             else:
                 # print(aero_solver['velocity_field_input']['u_inf'])
-                dt = 1./aero_solver_settings['velocity_field_input']['u_inf'].value
+                dt = 1./aero_solver_settings['velocity_field_input']['u_inf']
             self.in_dict = {'u_inf': aero_solver_settings['velocity_field_input']['u_inf'],
                             'u_inf_direction': aero_solver_settings['velocity_field_input']['u_inf_direction'],
                             'dt': dt}

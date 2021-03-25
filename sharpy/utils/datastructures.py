@@ -51,12 +51,12 @@ class AeroTimeStepInfo(object):
           ``[n_surf][3 x streamwise nodes x spanwise nodes]``
         gamma_dot (list(np.ndarray)): Time derivative of ``gamma``
 
-        inertial_total_forces (list(np.ndarray)): Total aerodynamic forces in ``G`` FoR ``[n_surf x 6]``
-        body_total_forces (list(np.ndarray)): Total aerodynamic forces in ``A`` FoR ``[n_surf x 6]``
-        inertial_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``G`` FoR ``[n_surf x 6]``
-        body_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``A`` FoR ``[n_surf x 6]``
-        inertial_unsteady_forces (list(np.ndarray)): Total aerodynamic unsteady forces in ``G`` FoR ``[n_surf x 6]``
-        body_unsteady_forces (list(np.ndarray)): Total aerodynamic unsteady forces in ``A`` FoR ``[n_surf x 6]``
+        inertial_total_forces (list(np.ndarray)): Total aerodynamic forces in ``G`` FoR ``[n_surf x 6]``, written by ``AeroForcesCalculator``.
+        body_total_forces (list(np.ndarray)): Total aerodynamic forces in ``A`` FoR ``[n_surf x 6]``, written by ``AeroForcesCalculator``.
+        inertial_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``G`` FoR ``[n_surf x 6]``, written by ``AeroForcesCalculator``.
+        body_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``A`` FoR ``[n_surf x 6]``, written by ``AeroForcesCalculator``.
+        inertial_unsteady_forces (list(np.ndarray)): Total aerodynamic unsteady forces in ``G`` FoR ``[n_surf x 6]``, written by ``AeroForcesCalculator``.
+        body_unsteady_forces (list(np.ndarray)): Total aerodynamic unsteady forces in ``A`` FoR ``[n_surf x 6]``, written by ``AeroForcesCalculator``.
 
         postproc_cell (dict): Variables associated to cells to be postprocessed
         postproc_node (dict): Variables associated to nodes to be postprocessed
@@ -165,13 +165,15 @@ class AeroTimeStepInfo(object):
                                                dimensions_star[i_surf, 1] + 1),
                                                dtype=ct.c_double))
 
-        # total forces
+        # total forces - written by AeroForcesCalculator
         self.inertial_total_forces = np.zeros((self.n_surf, 6))
         self.body_total_forces = np.zeros((self.n_surf, 6))
         self.inertial_steady_forces = np.zeros((self.n_surf, 6))
         self.body_steady_forces = np.zeros((self.n_surf, 6))
         self.inertial_unsteady_forces = np.zeros((self.n_surf, 6))
         self.body_unsteady_forces = np.zeros((self.n_surf, 6))
+        self.total_inertial_forces = np.zeros((6,))  # G Frame
+        self.total_body_forces = np.zeros((6,))  # A Frame
 
         self.postproc_cell = dict()
         self.postproc_node = dict()
@@ -236,6 +238,8 @@ class AeroTimeStepInfo(object):
         copied.body_steady_forces = self.body_steady_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.inertial_unsteady_forces = self.inertial_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.body_unsteady_forces = self.body_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
+        copied.total_inertial_forces = self.total_inertial_forces.astype(dtype=ct.c_double, copy=True, order='C')
+        copied.total_body_forces = self.total_body_forces.astype(dtype=ct.c_double, copy=True, order='C')
 
         copied.postproc_cell = copy.deepcopy(self.postproc_cell)
         copied.postproc_node = copy.deepcopy(self.postproc_node)
@@ -907,6 +911,69 @@ class StructTimeStepInfo(object):
             self.psi_dot[ibody_elems,:,:] = MB_tstep[ibody].psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
 
 
+    def nodal_b_for_2_a_for(self, nodal, beam, filter=np.array([True]*6), ibody=None):
+        """
+        Projects a nodal variable from the local, body-attached frame (B) to the reference A frame.
+
+        Args:
+            nodal (np.array): Nodal variable of size ``(num_node, 6)``
+            beam (sharpy.datastructures.StructTimeStepInfo): beam info.
+            filter (np.array): optional argument that filters and does not convert a specific degree of
+              freedom. Defaults to ``np.array([True, True, True, True, True, True])``.
+
+        Returns:
+            np.array: the ``nodal`` argument projected onto the reference ``A`` frame.
+        """
+        nodal_a = np.zeros_like(nodal)
+        for i_node in range(self.num_node):
+            # get master elem and i_local_node
+            i_master_elem, i_local_node = beam.node_master_elem[i_node, :]
+            if ((ibody is None) or (beam.body_number[i_master_elem] == ibody)):
+                crv = self.psi[i_master_elem, i_local_node, :]
+                cab = algebra.crv2rotation(crv)
+                nodal_a[i_node, 0:3] = np.dot(cab, nodal[i_node, 0:3])
+                nodal_a[i_node, 3:6] = np.dot(cab, nodal[i_node, 3:6])
+                nodal_a *= filter    
+
+        return nodal_a
+    
+    def nodal_type_b_for_2_a_for(self, beam,
+                            force_type=['steady', 'unsteady'],
+                            filter=np.array([True]*6),
+                            ibody=None):
+        forces_output = []
+        for ft in force_type:
+            if ft == 'steady':
+                fb = self.steady_applied_forces
+            elif ft == 'unsteady':
+                fb = self.unsteady_applied_forces
+
+            forces_output.append(self.nodal_b_for_2_a_for(fb, beam, filter=filter, ibody=ibody))
+
+        return forces_output
+
+
+    def extract_resultants(self, beam, force_type=['steady', 'unsteady', 'grav'], ibody=None):
+
+        forces_output = []
+        for ft in force_type:
+            totals = np.zeros((6))
+            if ft == 'steady':
+                fa = self.nodal_type_b_for_2_a_for(beam, force_type=['steady'], ibody=ibody)[0]
+            elif ft == 'grav':
+                fa = self.gravity_forces.copy()
+            elif ft == 'unsteady':
+                fa = self.nodal_type_b_for_2_a_for(beam, force_type=['unsteady'], ibody=ibody)[0]
+ 
+            for i_node in range(beam.num_node):
+                totals += fa[i_node, :]
+                totals[3:6] += algebra.cross3(self.pos[i_node, :],
+                                              fa[i_node, 0:3])
+
+            forces_output.append(totals)
+
+        return forces_output
+
 class LinearTimeStepInfo(object):
     """
     Linear timestep info containing the state, input and output variables for a given timestep
@@ -933,7 +1000,7 @@ class Linear(object):
     as class attributes the following classes that describe the linearised problem.
 
     Attributes:
-        ss (sharpy.linear.src.libss.ss): State-space system
+        ss (sharpy.linear.src.libss.StateSpace): State-space system
         linear_system (sharpy.linear.utils.ss_interface.BaseElement): Assemble system properties
         tsaero0 (sharpy.utils.datastructures.AeroTimeStepInfo): Linearisation aerodynamic timestep
         tsstruct0 (sharpy.utils.datastructures.StructTimeStepInfo): Linearisation structural timestep

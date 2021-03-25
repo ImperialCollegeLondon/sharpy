@@ -181,21 +181,18 @@ def get_mode_zeta(data, eigvect):
 
 
 def write_zeta_vtk(zeta, zeta_ref, filename_root):
-    '''
+    """
     Given a list of arrays representing the coordinates of a set of n_surf UVLM
     lattices and organised as:
         zeta[n_surf][3,M+1,N=1]
     this function writes a vtk for each of the n_surf surfaces.
 
-    Input:
-        - zeta: lattice coordinates to plot
-        - zeta_ref: reference lattice used to compute the magnitude of displacements
-        - filename_root: initial part of filename (full path) without file
-        extension (.vtk)
-    '''
+    Args:
+        zeta (np.array): lattice coordinates to plot
+        zeta_ref (np.array): reference lattice used to compute the magnitude of displacements
+        filename_root (str): initial part of filename (full path) without file extension (.vtk)
+    """
 
-    # from IPython import embed
-    # embed()
     for i_surf in range(len(zeta)):
 
         filename = filename_root + "_%02u.vtu" % (i_surf,)
@@ -281,7 +278,7 @@ def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
 
     # Check whether rigid body motion is selected
     # Skip rigid body modes
-    if data.settings['Modal']['rigid_body_modes'].value:
+    if data.settings['Modal']['rigid_body_modes']:
         num_rigid_body = 10
     else:
         num_rigid_body = 0
@@ -295,11 +292,23 @@ def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
         write_zeta_vtk(zeta_mode, tsaero.zeta, filename_root + "_%06u" % (mode,))
 
 
-def free_modes_principal_axes(phi, mass_matrix, use_euler=False):
+def free_modes_principal_axes(phi, mass_matrix, use_euler=False, **kwargs):
     """
     Transforms the rigid body modes defined at with the A frame as reference to the centre of mass position and aligned
     with the principal axes of inertia.
 
+    Args:
+        phi (np.array): Eigenvectors defined at the ``A`` frame.
+        mass_matrix (np.array): System mass matrix
+        use_euler (bool): Use Euler rotation parametrisation rather than quaternions.
+
+    Keyword Args:
+        return_transform (bool): Return tuple containing transformed modes and the transformation from the ``A`` frame
+          to the ``P`` frame.
+
+    Returns:
+        np.array: Mass normalised modes with rigid modes defined at the centre of gravity and aligned with the
+          principal axes of inertia.
 
     References:
         Marc Artola, 2020
@@ -314,7 +323,7 @@ def free_modes_principal_axes(phi, mass_matrix, use_euler=False):
     m = mrr[0, 0]  # mass
 
     # principal axes of inertia matrix and transformation matrix
-    j_cm, t_rb = np.linalg.eig(mrr[-3:, -3:] + algebra.multiply_matrices(algebra.skew(r_cg), algebra.skew(r_cg)) * m)
+    j_cm, t_rb = principal_axes_inertia(mrr[-3:, -3:], r_cg, m)
 
     # rigid body mass matrix about CM and inertia in principal axes
     m_cm = np.eye(6) * m
@@ -335,7 +344,43 @@ def free_modes_principal_axes(phi, mass_matrix, use_euler=False):
 
     phit[-num_rigid_modes + 6:, 6:num_rigid_modes] = np.eye(num_rigid_modes - 6)  # euler or quaternion modes
 
-    return phit
+    if kwargs.get('return_transform', False):
+        return phit, t_rb, np.block([[np.eye(3), algebra.skew(r_cg)], [np.zeros((3, 3)), np.eye(3)]]).dot(trb_diag)
+    else:
+        return phit
+
+
+def principal_axes_inertia(j_a, r_cg, m):
+    r"""
+    Transform the inertia tensor :math:`\boldsymbol{j}_a` defined about the ``A`` frame of reference to the centre of
+    gravity and aligned with the principal axes of inertia.
+
+    The inertia tensor about the centre of gravity is obtained using the parallel axes theorem
+
+    .. math:: \boldsymbol{j}_{cm}  = \boldsymbol{j}_a + \tilde{r}_{cg}\tilde{r}_{cg}m
+
+    and rotated such that it is aligned with its eigenvectors and thus represents the inertia tensor about the principal
+    axes of inertia
+
+    .. math:: \boldsymbol{j}_p = T_{pa}^\top \boldsymbol{j}_{cm} T^{pa}
+
+    where :math:`T^{pa}` is the transformation matrix from the ``A`` frame to the principal axes ``P`` frame.
+
+    Args:
+        j_a (np.array): Inertia tensor defined about the ``A`` frame.
+        r_cg (np.array): Centre of gravity position defined in ``A`` coordinates.
+        m (float): Mass.
+
+    Returns:
+        tuple: Containing :math:`\boldsymbol{j}_p` and :math:`T^{pa}`
+
+    """
+
+    j_p, t_pa = np.linalg.eig(j_a + algebra.multiply_matrices(algebra.skew(r_cg), algebra.skew(r_cg)) * m)
+
+    t_pa, j_p = order_eigenvectors(t_pa, j_p)
+
+    return j_p, t_pa
 
 
 def mode_sign_convention(bocos, eigenvectors, rigid_body_motion=False, use_euler=False):
@@ -428,6 +473,24 @@ def order_rigid_body_modes(eigenvectors, use_euler):
     return eigenvectors
 
 
+def order_eigenvectors(eigenvectors, eigenvalues):
+    ordered_eigenvectors = np.zeros_like(eigenvectors)
+    new_order = []
+    for i in range(eigenvectors.shape[1]):
+        index_max_node = np.where(np.abs(eigenvectors[:, i]) == np.max(np.abs(eigenvectors[:, i])))[0][0]
+        ordered_eigenvectors[:, index_max_node] = eigenvectors[:, i] * np.sign(eigenvectors[index_max_node, i])
+        new_order.append(index_max_node)
+
+    try:
+        eigenvalues.shape[1]
+    except IndexError:
+        new_eigenvalues = eigenvalues[new_order]
+    else:
+        new_eigenvalues = eigenvalues[:, new_order]
+
+    return ordered_eigenvectors, new_eigenvalues
+
+
 def scale_mass_normalised_modes(eigenvectors, mass_matrix):
     r"""
     Scales eigenvector matrix such that the modes are mass normalised:
@@ -500,4 +563,3 @@ def assert_modes_mass_normalised(phi, m, tolerance, raise_error=False):
             raise e
         else:
             cout.cout_wrap('Eigenvectors are not mass normalised', 3)
-

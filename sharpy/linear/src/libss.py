@@ -9,7 +9,7 @@ the sparse arrays types defined in libsparse.
 The module includes:
 
 Classes:
-- ss: provides a class to build DLTI/LTI systems with full and/or sparse
+- StateSpace: provides a class to build DLTI/LTI systems with full and/or sparse
 	matrices and wraps many of the methods in these library. Methods include:
 	- freqresp: wraps the freqresp function
 	- addGain: adds gains in input/output. This is not a wrapper of addGain, as
@@ -57,7 +57,7 @@ import warnings
 import numpy as np
 import scipy.signal as scsig
 import scipy.linalg as scalg
-import scipy.interpolate as scint
+from sharpy.linear.utils.ss_interface import LinearVector, StateVariable, InputVariable, OutputVariable
 
 # dependency
 import sharpy.linear.src.libsparse as libsp
@@ -65,7 +65,7 @@ import sharpy.linear.src.libsparse as libsp
 
 # ------------------------------------------------------------- Dedicated class
 
-class ss():
+class StateSpace():
     """
     Wrap state-space models allocation into a single class and support both
     full and sparse matrices. The class emulates
@@ -103,6 +103,11 @@ class ss():
             (self.states, self.inputs) = self.B.shape
 
         self.outputs = self.C.shape[0]
+
+        # vector variable tracking
+        self._input_variables = None  # type: LinearVector
+        self._state_variables = None
+        self._output_variables = None
 
         # verify dimensions
         assert self.A.shape == (self.states, self.states), 'A and B rows not matching'
@@ -148,6 +153,89 @@ class ss():
     def states(self, value):
         self._states = value
 
+    @property
+    def input_variables(self):
+        return self._input_variables
+
+    @input_variables.setter
+    def input_variables(self, variables):
+        if variables.variable_class is not InputVariable:
+            raise TypeError('LinearVector does not include InputVariable s')
+        if variables.size != self.inputs:
+            raise IndexError('Size of LinearVector of InputVariable s ({:g}) is not the same as the number of '
+                             'inputs in the '
+                             'system ({:g})'.format(variables.size, self.inputs))
+        self._input_variables = variables
+
+    @property
+    def output_variables(self):
+        return self._output_variables
+
+    @output_variables.setter
+    def output_variables(self, variables):
+        if variables.variable_class is not OutputVariable:
+            raise TypeError('LinearVector does not include OutputVariable s')
+        if variables.size != self.outputs:
+            raise IndexError('Size of LinearVector of OutputVariable s ({:g}) is not the same as the number of '
+                             'outputs in the '
+                             'system ({:g})'.format(variables.size, self.outputs))
+        self._output_variables = variables
+
+    @property
+    def state_variables(self):
+        return self._state_variables
+
+    @state_variables.setter
+    def state_variables(self, variables):
+        if variables.variable_class is not StateVariable:
+            raise TypeError('LinearVector does not include StateVariable s')
+        if variables.size != self.states:
+            raise IndexError('Size of LinearVector of StateVariable s ({:g}) is not the same as the number '
+                             'of states in the '
+                             'system ({:g})'.format(variables.size, self.states))
+        self._state_variables = variables
+
+    def initialise_variables(self, *variable_tuple, var_type='in'):
+        if var_type == 'in' or var_type == 'input':
+            var_class = InputVariable
+        elif var_type == 'out' or var_type == 'output':
+            var_class = OutputVariable
+        elif var_type == 'state':
+            var_class = StateVariable
+        else:
+            raise TypeError('Unknown variable type')
+
+        list_of_variables = []
+        for ith, var_dict in enumerate(variable_tuple):
+            list_of_variables.append(var_class(name=var_dict['name'],
+                                               size=var_dict['size'],
+                                               index=var_dict.get('index', ith)))
+
+        if var_type == 'in' or var_type == 'input':
+            self._input_variables = LinearVector(list_of_variables)
+        elif var_type == 'out' or var_type == 'output':
+            self._output_variables = LinearVector(list_of_variables)
+        elif var_type == 'state':
+            self._state_variables = LinearVector(list_of_variables)
+
+    def __repr__(self):
+        str_out = ''
+        str_out += 'State-space object\n'
+        str_out += 'States: {:g}\n'.format(self.states)
+        str_out += 'Inputs: {:g}\n'.format(self.inputs)
+        str_out += 'Outputs: {:g}\n'.format(self.outputs)
+        if self.dt is not None:
+            str_out += 'dt: {:g}'.format(self.dt)
+
+        if self.input_variables is not None:
+            str_out += '\nInput Variables:\n' + str(self.input_variables)
+        if self.state_variables is not None:
+            str_out += 'State Variables:\n' + str(self.state_variables)
+        if self.output_variables is not None:
+            str_out += 'Output Variables:\n' + str(self.output_variables)
+
+        return str_out
+
     def check_types(self):
         assert type(self.A) in libsp.SupportedTypes, \
             'Type of A matrix (%s) not supported' % type(self.A)
@@ -168,7 +256,8 @@ class ss():
         Note: this wraps frequency response function.
         """
         dlti = True
-        if self.dt == None: dlti = False
+        if self.dt is None:
+            dlti = False
         return freqresp(self, wv, dlti=dlti)
 
     def addGain(self, K, where):
@@ -181,25 +270,35 @@ class ss():
             - where='out': outputs are projected such that:
                  u -> SS -> y -> y_new=K*y => u -> SSnew -> ynew
 
-        Warning: this is not a wrapper of the addGain method in this module, as
-        the state-space matrices are directly overwritten.
+        Args:
+            K (np.array or Gain): gain matrix or Gain object
+            where (str): ``in`` or ``out``
+
+        Warning:
+            This is not a wrapper of the addGain method in this module, as
+            the state-space matrices are directly overwritten.
         """
 
         assert where in ['in', 'out'], \
             'Specify whether gains are added to input or output'
 
+        with_vars = False
+        if isinstance(K, Gain):
+            gain = K
+            K = K.value
+            with_vars = True
+
         if where == 'in':
             self.B = libsp.dot(self.B, K)
             self.D = libsp.dot(self.D, K)
-            # try:     # No need to update inputs/outputs as they are now properties accessed on demand NG 26/3/19
-            #     self._inputs = K.shape[1]
-            # except IndexError:
-            #     self._inputs = 1
+            if with_vars:
+                self._input_variables = gain.input_variables
 
         if where == 'out':
             self.C = libsp.dot(K, self.C)
             self.D = libsp.dot(K, self.D)
-            # self.outputs = K.shape[0]
+            if with_vars:
+                self._output_variables = gain.output_variables
 
     def scale(self, input_scal=1., output_scal=1., state_scal=1.):
         """
@@ -222,9 +321,8 @@ class ss():
         """
         scale_SS(self, input_scal, output_scal, state_scal, byref=True)
 
-
-    def project(self,WT,V):
-        '''
+    def project(self, WT, V):
+        """
         Given 2 transformation matrices, (WT,V) of shapes (Nk,self.states) and
         (self.states,Nk) respectively, this routine projects the state space
         model states according to:
@@ -236,16 +334,15 @@ class ss():
 
         The projected model has the same number of inputs/outputs as the original
         one, but Nk states.
-        '''
+        """
 
-        self.A = libsp.dot( WT, libsp.dot(self.A, V) )
-        self.B = libsp.dot( WT, self.B)
-        self.C = libsp.dot( self.C, V)
-        self.states=V.shape[1]
-
+        self.A = libsp.dot(WT, libsp.dot(self.A, V))
+        self.B = libsp.dot(WT, self.B)
+        self.C = libsp.dot(self.C, V)
+        self.states = V.shape[1]
 
     def truncate(self, N):
-        ''' Retains only the first N states. '''
+        """ Retains only the first N states. """
 
         assert N > 0 and N <= self.states, 'N must be in [1,self.states]'
 
@@ -255,9 +352,9 @@ class ss():
         # self.states = N  # No need to update, states is now a property. NG 26/3/19
 
     def max_eig(self):
-        '''
+        """
         Returns most unstable eigenvalue
-        '''
+        """
 
         ev = np.linalg.eigvals(self.A)
 
@@ -272,7 +369,7 @@ class ss():
             np.ndarray: Eigenvalues of the system
 
         """
-        if ss.dt:
+        if self.dt:
             return eigvals(self.A, dlti=True)
         else:
             return eigvals(self.A, dlti=False)
@@ -310,10 +407,197 @@ class ss():
 
         return c.dot(scalg.inv(s * np.eye(n) - a)).dot(b) + d
 
+    def remove_inputs(self, *input_remove_list):
+        """
+        Removes inputs through their variable names.
+
+        Needs that the ``StateSpace`` attribute ``input_variables`` is defined.
+
+        Args:
+            input_remove_list (list(str)): List of inputs to remove
+
+        """
+        if self.input_variables is None:
+            raise AttributeError('No input variables have been defined for the current state-space object. Define '
+                                 'some variables prior to using the remove_inputs() method.')
+
+        self.input_variables.remove(*input_remove_list)
+
+        i = 0
+        retain_input_array = None
+        for variable in self.input_variables:
+            if i == 0:
+                retain_input_array = variable.cols_loc
+            else:
+                retain_input_array = np.hstack((retain_input_array, variable.cols_loc))
+            i += 1
+
+        if retain_input_array is not None:
+            if type(self.B) is libsp.csc_matrix:
+                self.B = libsp.csc_matrix(self.B[:, retain_input_array])
+                self.D = libsp.csc_matrix(self.D[:, retain_input_array])
+            else:
+                self.B = self.B[:, retain_input_array]
+                self.D = self.D[:, retain_input_array]
+
+        self.input_variables.update_locations()
+
+    def remove_outputs(self, *output_remove_list):
+        """
+        Removes outputs through their variable names.
+
+        Needs that the ``StateSpace`` attribute ``output_variables`` is defined.
+
+        Args:
+            output_remove_list (list(str)): List of outputs to remove
+
+        """
+        if self.output_variables is None:
+            raise AttributeError('No output variables have been defined for the current state-space object. Define '
+                                 'some variables prior to using the remove_outputs() method.')
+
+        self.output_variables.remove(*output_remove_list)
+
+        i = 0
+        retain_output_array = None
+        for variable in self.output_variables:
+            if i == 0:
+                retain_output_array = variable.rows_loc
+            else:
+                retain_output_array = np.vstack((retain_output_array, variable.rows_loc))
+            i += 1
+
+        if retain_output_array is not None:
+            if type(self.B) is libsp.csc_matrix:
+                self.C = libsp.csc_matrix(self.C[retain_output_array, :])
+                self.D = libsp.csc_matrix(self.D[retain_output_array, :])
+            else:
+                self.C = self.C[retain_output_array, :]
+                self.D = self.D[retain_output_array, :]
+
+        self.output_variables.update_locations()
+
+    @classmethod
+    def from_scipy(cls, scipy_ss):
+        """
+        Transforms a ``scipy.signal.lti`` or dlti into a StateSpace class
+
+        Args:
+            scipy_ss (scipy.signal.ltisys.StateSpaceContinous or scipy.signal.ltisys.StateSpaceDiscrete): Scipy
+              State Space object.
+
+        Returns:
+            StateSpace: SHARPy state space object
+        """
+        a = scipy_ss.A
+        b = scipy_ss.B
+        c = scipy_ss.C
+        d = scipy_ss.D
+
+        return cls(a, b, c, d, dt=scipy_ss.dt)
+
+
+class Gain:
+
+    def __init__(self, value, input_vars=None, output_vars=None):
+        self.value = value
+        self._input_variables = None
+        self._output_variables = None
+
+        self._inputs = None
+        self._outputs = None
+
+        if input_vars is not None:
+            self.input_variables = input_vars
+        if output_vars is not None:
+            self.output_variables = output_vars
+
+    @property
+    def input_variables(self):
+        return self._input_variables
+
+    @input_variables.setter
+    def input_variables(self, variables):
+        if variables.variable_class is not InputVariable:
+            raise TypeError('LinearVector does not include InputVariable s')
+        if variables.size != self.inputs:
+            raise IndexError('Size of LinearVector of InputVariable s ({:g}) is not the same as the number of '
+                             'inputs in the '
+                             'system ({:g})'.format(variables.size, self.inputs))
+        self._input_variables = variables
+
+    @property
+    def output_variables(self):
+        return self._output_variables
+
+    @output_variables.setter
+    def output_variables(self, variables):
+        if variables.variable_class is not OutputVariable:
+            raise TypeError('LinearVector does not include OutputVariable s')
+        if variables.size != self.outputs:
+            raise IndexError('Size of LinearVector of OutputVariable s ({:g}) is not the same as the number of '
+                             'outputs in the '
+                             'system ({:g})'.format(variables.size, self.outputs))
+        self._output_variables = variables
+
+    @property
+    def inputs(self):
+        """Number of inputs :math:`m` to the system."""
+        if self.value.shape.__len__() == 1:
+            self.inputs = 1
+        else:
+            self.inputs = self.value.shape[1]
+
+        return self._inputs
+
+    @inputs.setter
+    def inputs(self, value):
+        self._inputs = value
+
+    @property
+    def outputs(self):
+        """Number of outputs :math:`p` of the gain."""
+        self.outputs = self.value.shape[0]
+        return self._outputs
+
+    @outputs.setter
+    def outputs(self, value):
+        self._outputs = value
+
+    def dot(self, elem):
+        return self.value.dot(elem)
+
+    def __repr__(self):
+        str_out = ''
+        str_out += 'Gain object\n'
+        str_out += 'Inputs: {:g}\n'.format(self.inputs)
+        str_out += 'Outputs: {:g}\n'.format(self.outputs)
+
+        if self.input_variables is not None:
+            str_out += '\nInput Variables:\n' + str(self.input_variables)
+        if self.output_variables is not None:
+            str_out += 'Output Variables:\n' + str(self.output_variables)
+
+        return str_out
+
+    def transpose(self):
+        """
+        Transposes the gain, such that the inputs become the outputs and vice-versa.
+        """
+
+        temp_input_var = self.input_variables.copy()
+        input_variables = LinearVector.transform(self.output_variables,
+                                                 to_type=InputVariable)
+        output_variables = LinearVector.transform(temp_input_var,
+                                                  to_type=OutputVariable)
+
+        return Gain(self.value.T,
+                    input_vars=input_variables,
+                    output_vars=output_variables)
 
 class ss_block():
-    '''
-    State-space model in block form. This class has the same purpose as "ss",
+    """
+    State-space model in block form. This class has the same purpose as "StateSpace",
     but the A, B, C, D are allocated in the form of nested lists. The format is
     similar to the one used in numpy.block but:
         1. Block matrices can contain both dense and sparse matrices
@@ -323,10 +607,10 @@ class ss_block():
     - remove_block: drop one of the blocks from the s-s model
     - addGain: project inputs/outputs
     - project: project state
-    '''
+    """
 
     def __init__(self, A, B, C, D, S_states, S_inputs, S_outputs, dt=None):
-        '''
+        """
         Allocate state-space model (A,B,C,D) in block form starting from nested
         lists of full/sparse matrices (as per numpy.block).
 
@@ -335,7 +619,7 @@ class ss_block():
         - S_states, S_inputs, S_outputs: lists with dimensions of of each block
         representing the states, inputs and outputs of the model.
         - dt: time-step. In None, a continuous-time system is assumed.
-        '''
+        """
 
         self.A = A
         self.B = B
@@ -363,13 +647,13 @@ class ss_block():
         pass
 
     def remove_block(self, where, index):
-        '''
+        """
         Remove a block from either inputs or outputs.
 
         Inputs:
         - where = {'in', 'out'}: determined whether to remove inputs or outputs
         - index: index of block to remove
-        '''
+        """
 
         assert where in ['in', 'out'], "'where' must be equal to {'in', 'out'}"
 
@@ -385,7 +669,7 @@ class ss_block():
                 del self.D[ii]
 
     def addGain(self, K, where):
-        '''
+        """
         Projects input u or output y the state-space system through the gain
         block matrix K. The input 'where' determines whether inputs or outputs
         are projected as:
@@ -396,7 +680,7 @@ class ss_block():
 
         Input: K must be a list of list of matrices. The size of K must be
         compatible with either B or C for block matrix product.
-        '''
+        """
 
         assert where in ['in', 'out'], \
             'Specify whether gains are added to input or output'
@@ -418,9 +702,9 @@ class ss_block():
             self.outputs = sum(rows)
 
     def get_sizes(self, M):
-        '''
+        """
         Get the size of each block in M.
-        '''
+        """
 
         rM, cM = len(M), len(M[0])
         rows = rM * [None]
@@ -446,7 +730,7 @@ class ss_block():
         return rows, cols
 
     def project(self, WT, V, by_arrays=True, overwrite=False):
-        '''
+        """
         Given 2 transformation matrices, (W,V) of shape (Nk,self.states), this
         routine projects the state space model states according to:
 
@@ -464,7 +748,7 @@ class ss_block():
         - by_arrays: if True, W, V are either numpy.array or sparse matrices. If
           False, they are block matrices.
         - overwrite: if True, overwrites the A, B, C matrices
-        '''
+        """
 
         if by_arrays:  # transform to block structures
 
@@ -489,7 +773,6 @@ class ss_block():
                     libsp.block_dot(WTblock, self.B),
                     libsp.block_dot(self.C, Vblock))
 
-
     def solve_step(self, xn, un):
 
         # TODO: add options about predictor ...
@@ -499,9 +782,68 @@ class ss_block():
         return xn1, yn
 
 
+    def get_mats(self):
+        
+        A = np.zeros((self.states, self.states))
+        B = np.zeros((self.states, self.inputs))
+        C = np.zeros((self.outputs, self.states))
+        D = np.zeros((self.outputs, self.inputs))
+        
+        iloc = 0
+        for i in range(self.blocks_x):
+            jloc = 0
+            for j in range(self.blocks_x):
+                if not self.A[i][j] is None:
+                    if type(self.A[i][j]) == libsp.csc_matrix:
+                        A[iloc:iloc+self.S_x[i], jloc:jloc+self.S_x[j]] = self.A[i][j].todense()
+                    else:
+                        A[iloc:iloc+self.S_x[i], jloc:jloc+self.S_x[j]] = self.A[i][j].copy()
+                jloc += self.S_x[j]
+            iloc += self.S_x[i]
+        
+        iloc = 0
+        for i in range(self.blocks_x):
+            jloc = 0
+            for j in range(self.blocks_u):
+                if not self.B[i][j] is None:
+                    # print(i, j, iloc, jloc, self.S_x[i], self.S_u[j], self.B[i][j].shape)
+                    # print(iloc, iloc+self.S_x[i], jloc, jloc+self.S_u[j])
+                    if type(self.B[i][j]) == libsp.csc_matrix:
+                        B[iloc:iloc+self.S_x[i], jloc:jloc+self.S_u[j]] = self.B[i][j].todense()
+                    else:
+                        B[iloc:iloc+self.S_x[i], jloc:jloc+self.S_u[j]] = self.B[i][j].copy()
+                jloc += self.S_u[j]
+            iloc += self.S_x[i]
+
+        iloc = 0
+        for i in range(self.blocks_y):
+            jloc = 0
+            for j in range(self.blocks_x):
+                if not self.C[i][j] is None:
+                    if type(self.C[i][j]) == libsp.csc_matrix:
+                        C[iloc:iloc+self.S_y[i], jloc:jloc+self.S_x[j]] = self.C[i][j].todense()
+                    else:
+                        C[iloc:iloc+self.S_y[i], jloc:jloc+self.S_x[j]] = self.C[i][j].copy()
+                jloc += self.S_x[j]
+            iloc += self.S_y[i]
+        
+        iloc = 0
+        for i in range(self.blocks_y):
+            jloc = 0
+            for j in range(self.blocks_u):
+                if not self.D[i][j] is None:
+                    if type(self.D[i][j]) == libsp.csc_matrix:
+                        D[iloc:iloc+self.S_y[i], jloc:jloc+self.S_u[j]] = self.D[i][j].todense()
+                    else:
+                        D[iloc:iloc+self.S_y[i], jloc:jloc+self.S_u[j]] = self.D[i][j].copy()
+                jloc += self.S_u[j]
+            iloc += self.S_y[i]
+
+        return A, B, C, D
+
 # ---------------------------------------- Methods for state-space manipulation
-def project(ss_here,WT,V):
-    '''
+def project(ss_here, WT, V):
+    """
     Given 2 transformation matrices, (WT,V) of shapes (Nk,self.states) and
     (self.states,Nk) respectively, this routine returns a projection of the
     state space ss_here according to:
@@ -513,13 +855,14 @@ def project(ss_here,WT,V):
 
     The projected model has the same number of inputs/outputs as the original
     one, but Nk states.
-    '''
+    """
 
-    Ap = libsp.dot( WT, libsp.dot(ss_here.A, V) )
-    Bp = libsp.dot( WT, ss_here.B)
-    Cp = libsp.dot( ss_here.C, V)
+    Ap = libsp.dot(WT, libsp.dot(ss_here.A, V))
+    Bp = libsp.dot(WT, ss_here.B)
+    Cp = libsp.dot(ss_here.C, V)
 
-    return ss(Ap,Bp,Cp,ss_here.D,ss_here.dt)
+    return StateSpace(Ap, Bp, Cp, ss_here.D, ss_here.dt)
+
 
 def couple(ss01, ss02, K12, K21, out_sparse=False):
     """
@@ -527,14 +870,32 @@ def couple(ss01, ss02, K12, K21, out_sparse=False):
     K12 transforms the output of ss02 into an input of ss01.
 
     Other inputs:
-    - out_sparse: if True, the output system is stored as sparse (not recommended)
+        - out_sparse: if True, the output system is stored as sparse (not recommended)
     """
+    if ss01.dt is None and ss02.dt is None:
+        pass
+    else:
+        try:
+            assert np.abs(ss01.dt - ss02.dt) < 1e-10 * ss01.dt, 'Time-steps not matching!'
+        except TypeError:
+            raise TypeError('One of the systems to couple is discrete and the other continuous')
 
-    assert np.abs(ss01.dt - ss02.dt) < 1e-10 * ss01.dt, 'Time-steps not matching!'
-    assert K12.shape == (ss01.inputs, ss02.outputs), \
-        'Gain K12 shape not matching with systems number of inputs/outputs'
-    assert K21.shape == (ss02.inputs, ss01.outputs), \
-        'Gain K21 shape not matching with systems number of inputs/outputs'
+    if ss01.input_variables is not None and ss02.input_variables is not None \
+            and isinstance(K12, Gain) and isinstance(K21, Gain):
+        with_enhanced_vars = True
+        LinearVector.check_connection(K12.output_variables, ss01.input_variables)
+        LinearVector.check_connection(ss02.output_variables, K12.input_variables)
+
+        LinearVector.check_connection(K21.output_variables, ss02.input_variables)
+        LinearVector.check_connection(ss01.output_variables, K21.input_variables)
+        K21 = K21.value
+        K12 = K12.value
+    else:
+        with_enhanced_vars = False
+        assert K12.shape == (ss01.inputs, ss02.outputs), \
+            'Gain K12 shape not matching with systems number of inputs/outputs'
+        assert K21.shape == (ss02.inputs, ss01.outputs), \
+            'Gain K21 shape not matching with systems number of inputs/outputs'
 
     A1, B1, C1, D1 = ss01.get_mats()
     A2, B2, C2, D2 = ss02.get_mats()
@@ -594,7 +955,14 @@ def couple(ss01, ss02, K12, K21, out_sparse=False):
             [libsp.dense(libsp.dot(libsp.dot(D2, cpl_21), D1)),
              libsp.dense(D2 + libsp.dot(libsp.dot(D2, cpl_22), D2))]])
 
-    return ss(A, B, C, D, dt=ss01.dt)
+    coupled_ss = StateSpace(A, B, C, D, dt=ss01.dt)
+    if with_enhanced_vars:
+        coupled_ss.state_variables = LinearVector.merge(ss01.state_variables, ss02.state_variables)
+        coupled_ss.input_variables = LinearVector.merge(ss01.input_variables, ss02.input_variables)
+        coupled_ss.output_variables = LinearVector.merge(ss01.output_variables, ss02.output_variables)
+
+    return coupled_ss
+
 
 def disc2cont(sys):
     r"""
@@ -615,10 +983,10 @@ def disc2cont(sys):
         MIT OCW 6.245
 
     Args:
-        sys (libss.ss): SHARPy discrete-time state-space object.
+        sys (libss.StateSpace): SHARPy discrete-time state-space object.
 
     Returns:
-        libss.ss: Converted continuous-time state-space object.
+        libss.StateSpace: Converted continuous-time state-space object.
     """
 
     assert sys.dt is not None, 'System to transform is not a discrete-time system.'
@@ -633,11 +1001,17 @@ def disc2cont(sys):
     c = np.sqrt(2 * omega_0) * sys.C.dot(eye_a_inv)
     d = sys.D - sys.C.dot(eye_a_inv.dot(sys.B))
 
-    return ss(a, b, c, d)
+    sys_ct = StateSpace(a, b, c, d)
+
+    if sys.input_variables is not None:
+        sys_ct.input_variables = sys.input_variables
+        sys_ct.state_variables = sys.state_variables
+        sys_ct.output_variables = sys.output_variables
+
+    return sys_ct
 
 
 def remove_inout_channels(sys, retain_channels, where):
-
     retain_m = len(retain_channels)  # new number of in/out
 
     if where == 'in':
@@ -661,158 +1035,12 @@ def remove_inout_channels(sys, retain_channels, where):
     return sys
 
 
-
-
-# def couple_wrong02(ss01, ss02, K12, K21):
-#     """
-#     Couples 2 dlti systems ss01 and ss02 through the gains K12 and K21, where
-#     K12 transforms the output of ss02 into an input of ss01.
-#     """
-
-#     assert ss01.dt == ss02.dt, 'Time-steps not matching!'
-#     assert K12.shape == (ss01.inputs, ss02.outputs), \
-#         'Gain K12 shape not matching with systems number of inputs/outputs'
-#     assert K21.shape == (ss02.inputs, ss01.outputs), \
-#         'Gain K21 shape not matching with systems number of inputs/outputs'
-
-#     A1, B1, C1, D1 = ss01.A, ss01.B, ss01.C, ss01.D
-#     A2, B2, C2, D2 = ss02.A, ss02.B, ss02.C, ss02.D
-
-#     # extract size
-#     Nx1, Nu1 = B1.shape
-#     Ny1 = C1.shape[0]
-#     Nx2, Nu2 = B2.shape
-#     Ny2 = C2.shape[0]
-
-#     #  terms to invert
-#     maxD1 = np.max(np.abs(D1))
-#     maxD2 = np.max(np.abs(D2))
-#     if maxD1 < 1e-32:
-#         pass
-#     if maxD2 < 1e-32:
-#         pass
-
-#     # terms solving for u21 (input of ss02 due to ss01)
-#     K11 = np.dot(K12, np.dot(D2, K21))
-#     # L1=np.eye(Nu1)-np.dot(K11,D1)
-#     L1inv = np.linalg.inv(np.eye(Nu1) - np.dot(K11, D1))
-
-#     # coupling terms for u21
-#     cpl_11 = np.dot(L1inv, K11)
-#     cpl_12 = np.dot(L1inv, K12)
-
-#     # terms solving for u12 (input of ss01 due to ss02)
-#     T = np.dot(np.dot(K21, D1), L1inv)
-
-#     # coupling terms for u21
-#     cpl_21 = K21 + np.dot(T, K11)
-#     cpl_22 = np.dot(T, K12)
-
-#     # Build coupled system
-#     A = np.block([
-#         [A1 + np.dot(np.dot(B1, cpl_11), C1), np.dot(np.dot(B1, cpl_12), C2)],
-#         [np.dot(np.dot(B2, cpl_21), C1), A2 + np.dot(np.dot(B2, cpl_22), C2)]])
-
-#     C = np.block([
-#         [C1 + np.dot(np.dot(D1, cpl_11), C1), np.dot(np.dot(D1, cpl_12), C2)],
-#         [np.dot(np.dot(D2, cpl_21), C1), C2 + np.dot(np.dot(D2, cpl_22), C2)]])
-
-#     B = np.block([
-#         [B1 + np.dot(np.dot(B1, cpl_11), D1), np.dot(np.dot(B1, cpl_12), D2)],
-#         [np.dot(np.dot(B2, cpl_21), D1), B2 + np.dot(np.dot(B2, cpl_22), D2)]])
-
-#     D = np.block([
-#         [D1 + np.dot(np.dot(D1, cpl_11), D1), np.dot(np.dot(D1, cpl_12), D2)],
-#         [np.dot(np.dot(D2, cpl_21), D1), D2 + np.dot(np.dot(D2, cpl_22), D2)]])
-
-#     if ss01.dt is None:
-#         sstot = scsig.lti(A, B, C, D)
-#     else:
-#         sstot = scsig.dlti(A, B, C, D, dt=ss01.dt)
-#     return sstot
-
-
-# def couple_wrong(ss01, ss02, K12, K21):
-#     """
-#     Couples 2 dlti systems ss01 and ss02 through the gains K12 and K21, where
-#     K12 transforms the output of ss02 into an input of ss01.
-#     """
-
-#     assert ss01.dt == ss02.dt, 'Time-steps not matching!'
-#     assert K12.shape == (ss01.inputs, ss02.outputs), \
-#         'Gain K12 shape not matching with systems number of inputs/outputs'
-#     assert K21.shape == (ss02.inputs, ss01.outputs), \
-#         'Gain K21 shape not matching with systems number of inputs/outputs'
-
-#     A1, B1, C1, D1 = ss01.A, ss01.B, ss01.C, ss01.D
-#     A2, B2, C2, D2 = ss02.A, ss02.B, ss02.C, ss02.D
-
-#     # extract size
-#     Nx1, Nu1 = B1.shape
-#     Ny1 = C1.shape[0]
-#     Nx2, Nu2 = B2.shape
-#     Ny2 = C2.shape[0]
-
-#     #  terms to invert
-#     maxD1 = np.max(np.abs(D1))
-#     maxD2 = np.max(np.abs(D2))
-#     if maxD1 < 1e-32:
-#         pass
-#     if maxD2 < 1e-32:
-#         pass
-
-#     # compute self-coupling terms
-#     S1 = np.dot(K12, np.dot(D2, K21))
-#     S2 = np.dot(K21, np.dot(D1, K12))
-
-#     # left hand side terms
-#     L1 = np.eye(Nu1) - np.dot(S1, D1)
-#     L2 = np.eye(Nu2) - np.dot(S2, D2)
-
-#     # invert left hand side terms
-#     L1inv = np.linalg.inv(L1)
-#     L2inv = np.linalg.inv(L2)
-
-#     # recurrent terms
-#     L1invS1 = np.dot(L1inv, S1)
-#     L2invS2 = np.dot(L2inv, S2)
-
-#     L1invK12 = np.dot(L1inv, K12)
-#     L2invK21 = np.dot(L2inv, K21)
-
-#     # Build coupled system
-#     A = np.block([
-#         [A1 + np.dot(np.dot(B1, L1invS1), C1), np.dot(np.dot(B1, L1invK12), C2)],
-#         [np.dot(np.dot(B2, L2invK21), C1), A2 + np.dot(np.dot(B2, L2invS2), C2)]])
-
-#     C = np.block([
-#         [C1 + np.dot(np.dot(D1, L1invS1), C1), np.dot(np.dot(D1, L1invK12), C2)],
-#         [np.dot(np.dot(D2, L2invK21), C1), C2 + np.dot(np.dot(D2, L2invS2), C2)]])
-
-#     B = np.block([
-#         [B1 + np.dot(np.dot(B1, L1invS1), D1), np.dot(np.dot(B1, L1invK12), D2)],
-#         [np.dot(np.dot(B2, L2invK21), D1), B2 + np.dot(np.dot(B2, L2invS2), D2)]])
-
-#     D = np.block([
-#         [D1 + np.dot(np.dot(D1, L1invS1), D1), np.dot(np.dot(D1, L1invK12), D2)],
-#         [np.dot(np.dot(D2, L2invK21), D1), D2 + np.dot(np.dot(D2, L2invS2), D2)]])
-
-#     if ss01.dt is None:
-#         sstot = scsig.lti(A, B, C, D)
-#     else:
-#         sstot = scsig.dlti(A, B, C, D, dt=ss01.dt)
-#     return sstot
-
-
-
-
-
 def freqresp(SS, wv, dlti=True):
     """
     In-house frequency response function supporting dense/sparse types
 
     Inputs:
-    - SS: instance of ss class, or scipy.signal.StateSpace*
+    - SS: instance of StateSpace class, or scipy.signal.StateSpace*
     - wv: frequency range
     - dlti: True if discrete-time system is considered.
 
@@ -825,8 +1053,8 @@ def freqresp(SS, wv, dlti=True):
     matrices.
     """
 
-    assert type(SS) == ss, \
-        'Type %s of state-space model not supported. Use libss.ss instead!' % type(SS)
+    assert type(SS) == StateSpace, \
+        'Type %s of state-space model not supported. Use libss.StateSpace instead!' % type(SS)
     SS.check_types()
 
     if hasattr(SS, 'dt') and dlti:
@@ -867,24 +1095,41 @@ def series(SS01, SS02):
         u \rightarrow \mathsf{SS01} \rightarrow \mathsf{SS02} \rightarrow y \Longrightarrow
         u \rightarrow \mathsf{SStot} \rightarrow y
 
+    where the state vector :math:`x` is :math:`[x_1, x_2]`.
+
     Args:
-        SS01 (libss.ss): State Space 1 instance. Can be DLTI/CLTI, dense or sparse.
-        SS02 (libss.ss): State Space 2 instance. Can be DLTI/CLTI, dense or sparse.
+        SS01 (libss.StateSpace): State Space 1 instance. Can be DLTI/CLTI, dense or sparse.
+        SS02 (libss.StateSpace): State Space 2 instance. Can be DLTI/CLTI, dense or sparse.
 
     Returns
-        libss.ss: Combined state space system in series in dense format.
+        libss.StateSpace: Combined state space system in series in dense format.
     """
 
     if type(SS01) is not type(SS02):
-        raise NameError('The two input systems need to have the same size!')
+        raise TypeError('The two input systems are not of the same type')
     if SS01.dt != SS02.dt:
-        raise NameError('DLTI systems do not have the same time-step!')
+        raise NameError('DLTI systems do not have the same time-step. SS01 dt={:f}, SS02 dt={:f}'.format(
+            SS01.dt, SS02.dt))
+
+    # check series connection
+    if SS01.output_variables is not None and SS02.input_variables is not None:
+        LinearVector.check_connection(SS01.output_variables, SS02.input_variables)
+        # for i_var in range(SS01.output_variables.num_variables):
+        #     out1 = SS01.output_variables[i_var]
+        #     in2 = SS02.input_variables[i_var]
+        #     if out1.name != in2.name:
+        #         raise NameError('Series coupling outputs1 and inputs2 have different names')
+        #     if not (out1.rows_loc == in2.cols_loc).all:
+        #         raise IndexError('Series coupling. Output1 channels do not line up with input2 channels.')
 
     # determine size of total system
     Nst01, Nst02 = SS01.states, SS02.states
     Nst = Nst01 + Nst02
     Nin = SS01.inputs
     Nout = SS02.outputs
+
+    if SS01.outputs != SS02.inputs:
+        raise ValueError('SS01 outputs not equal to SS02 inputs,\nSS01={:s}\nSS02={:s}'.format(str(SS01), str(SS02)))
 
     # Build A matrix
     A = np.zeros((Nst, Nst))
@@ -898,7 +1143,14 @@ def series(SS01, SS02):
     C = np.concatenate((libsp.dense(libsp.dot(SS02.D, SS01.C)), libsp.dense(SS02.C)), axis=1)
     D = libsp.dense(libsp.dot(SS02.D, SS01.D))
 
-    SStot = ss(A, B, C, D, dt=SS01.dt)
+    SStot = StateSpace(A, B, C, D, dt=SS01.dt)
+
+    SStot.input_variables = SS01.input_variables
+    try:
+        SStot.state_variables = LinearVector.merge(SS01.state_variables, SS02.state_variables)
+    except AttributeError:
+        SStot.state_variables = None
+    SStot.output_variables = SS02.output_variables
 
     return SStot
 
@@ -1071,9 +1323,9 @@ def addGain(SShere, Kmat, where):
         D = np.block([Kmat, SShere.D])
 
     if SShere.dt == None:
-        SSnew = ss(A, B, C, D)
+        SSnew = StateSpace(A, B, C, D)
     else:
-        SSnew = ss(A, B, C, D, dt=SShere.dt)
+        SSnew = StateSpace(A, B, C, D, dt=SShere.dt)
 
     return SSnew
 
@@ -1113,7 +1365,6 @@ def join2(SS1, SS2):
         SStot = np.block([[SS1, np.zeros((Nout01, Nin02))],
                           [np.zeros((Nout02, Nin01)), SS2]])
 
-
     elif isinstance(SS1, np.ndarray) and isinstance(SS2, type_dlti):
 
         Nin01, Nout01 = SS1.shape[1], SS1.shape[0]
@@ -1129,7 +1380,6 @@ def join2(SS1, SS2):
 
         SStot = scsig.StateSpace(A, B, C, D, dt=SS2.dt)
 
-
     elif isinstance(SS1, type_dlti) and isinstance(SS2, np.ndarray):
 
         Nin01, Nout01 = SS1.inputs, SS1.outputs
@@ -1144,7 +1394,6 @@ def join2(SS1, SS2):
                       [np.zeros((Nout02, Nin01)), SS2]])
 
         SStot = scsig.StateSpace(A, B, C, D, dt=SS1.dt)
-
 
     elif isinstance(SS1, type_dlti) and isinstance(SS2, type_dlti):
 
@@ -1164,50 +1413,51 @@ def join2(SS1, SS2):
                       [np.zeros((Nout02, Nin01)), SS2.D]])
         SStot = scsig.StateSpace(A, B, C, D, dt=SS1.dt)
 
-
     else:
         raise NameError('Input types not recognised in any implemented option!')
 
     return SStot
 
-def join(SS_list,wv=None):
-	'''
-	Given a list of state-space models belonging to the ss class, creates a
-	joined system whose output is the sum of the state-space outputs. If wv is
-	not None, this is a list of weights, such that the output is:
 
-		y = sum( wv[ii] y_ii )
+def join(SS_list, wv=None):
+    """
+    Given a list of state-space models belonging to the StateSpace class, creates a
+    joined system whose output is the sum of the state-space outputs. If wv is
+    not None, this is a list of weights, such that the output is:
 
-	Ref: equation (4.22) of
-	Benner, P., Gugercin, S. & Willcox, K., 2015. A Survey of Projection-Based
-	Model Reduction Methods for Parametric Dynamical Systems. SIAM Review, 57(4),
-	pp.483–531.
+        y = sum( wv[ii] y_ii )
 
-	Warning:
-	- system matrices must be numpy arrays
-	- the function does not perform any check!
-	'''
+    Ref: equation (4.22) of
+    Benner, P., Gugercin, S. & Willcox, K., 2015. A Survey of Projection-Based
+    Model Reduction Methods for Parametric Dynamical Systems. SIAM Review, 57(4),
+    pp.483–531.
 
-	N = len(SS_list)
-	if wv is not None:
-		assert N==len(wv), "'weights input should have'"
+    Warnings:
+        - system matrices must be numpy arrays
+        - the function does not perform any check!
+    """
 
-	A = scalg.block_diag(*[ getattr(ss,'A') for ss in SS_list ])
-	B = np.block([ [getattr(ss,'B')] for ss in SS_list ])
+    N = len(SS_list)
+    if wv is not None:
+        assert N == len(wv), "'weights input should have'"
 
-	if wv is None:
-		C = np.block( [ getattr(ss,'C') for ss in SS_list ] )
-	else:
-		C = np.block( [ ww*getattr(ss,'C') for ww,ss in zip(wv,SS_list) ] )
+    A = scalg.block_diag(*[getattr(ss, 'A') for ss in SS_list])
+    B = np.block([[getattr(ss, 'B')] for ss in SS_list])
 
-	D=np.zeros_like(SS_list[0].D)
-	for ii in range(N):
-		if wv is None:
-			D += SS_list[ii].D
-		else:
-			D += wv[ii]*SS_list[ii].D
+    if wv is None:
+        C = np.block([getattr(ss, 'C') for ss in SS_list])
+    else:
+        C = np.block([ww * getattr(ss, 'C') for ww, ss in zip(wv, SS_list)])
 
-	return ss(A,B,C,D,SS_list[0].dt)
+    D = np.zeros_like(SS_list[0].D)
+    for ii in range(N):
+        if wv is None:
+            D += SS_list[ii].D
+        else:
+            D += wv[ii] * SS_list[ii].D
+
+    return StateSpace(A, B, C, D, SS_list[0].dt)
+
 
 def sum_ss(SS1, SS2, negative=False):
     """
@@ -1358,7 +1608,9 @@ def scale_SS(SSin, input_scal=1., output_scal=1., state_scal=1., byref=True):
 def simulate(SShere, U, x0=None):
     """
     Routine to simulate response to generic input.
-    @warning: this routine is for testing and may lack of robustness. Use
+
+    Warnings:
+        This routine is for testing and may lack of robustness. Use
         scipy.signal instead.
     """
 
@@ -1596,6 +1848,7 @@ def eigvals(a, dlti=False):
 
     return eigs[order]
 
+
 # --------------------------------------------------------------------- Testing
 
 
@@ -1606,25 +1859,25 @@ def random_ss(Nx, Nu, Ny, dt=None, use_sparse=False, stable=True):
 
     A = np.random.rand(Nx, Nx)
     if stable:
-        ev,U=np.linalg.eig(A)
-        evabs=np.abs(ev)
+        ev, U = np.linalg.eig(A)
+        evabs = np.abs(ev)
 
         for ee in range(len(ev)):
-            if evabs[ee]>0.99:
-                ev[ee]/=1.1*evabs[ee]
-        A = np.dot(U*ev, np.linalg.inv(U) ).real
+            if evabs[ee] > 0.99:
+                ev[ee] /= 1.1 * evabs[ee]
+        A = np.dot(U * ev, np.linalg.inv(U)).real
     B = np.random.rand(Nx, Nu)
     C = np.random.rand(Ny, Nx)
     D = np.random.rand(Ny, Nu)
 
     if use_sparse:
-        SS = ss(libsp.csc_matrix(A),
-                libsp.csc_matrix(B),
-                libsp.csc_matrix(C),
-                libsp.csc_matrix(D),
-                dt=dt)
+        SS = StateSpace(libsp.csc_matrix(A),
+                        libsp.csc_matrix(B),
+                        libsp.csc_matrix(C),
+                        libsp.csc_matrix(D),
+                        dt=dt)
     else:
-        SS = ss(A, B, C, D, dt=dt)
+        SS = StateSpace(A, B, C, D, dt=dt)
 
     return SS
 
@@ -1658,171 +1911,12 @@ def compare_ss(SS1, SS2, tol=1e-10, Print=False):
 # -----------------------------------------------------------------------------
 
 
-if __name__ == '__main__':
-    import unittest
-
-
-    class Test_dlti(unittest.TestCase):
-        """ Test methods into this module for DLTI systems """
-
-        def setUp(self):
-            # allocate some state-space model (dense and sparse)
-            dt = 0.3
-            Ny, Nx, Nu = 4, 3, 2
-            A = np.random.rand(Nx, Nx)
-            B = np.random.rand(Nx, Nu)
-            C = np.random.rand(Ny, Nx)
-            D = np.random.rand(Ny, Nu)
-            self.SS = ss(A, B, C, D, dt=dt)
-            self.SSsp = ss(libsp.csc_matrix(A), libsp.csc_matrix(B), C, D, dt=dt)
-
-        def test_SSconv(self):
-
-            SS = self.SS
-            SSsp = self.SSsp
-            Nu, Nx, Ny = SS.inputs, SS.states, SS.outputs
-            A, B, C, D = SS.get_mats()
-
-            # remove predictor: try different scenario
-            B1 = np.random.rand(Nx, Nu)
-            SSpr0 = ss(*SSconv(A, B, B1, C, D), dt=0.3)
-            SSpr1 = ss(*SSconv(A, B, libsp.csc_matrix(B1), C, D), dt=0.3)
-            SSpr2 = ss(*SSconv(
-                libsp.csc_matrix(A), B, libsp.csc_matrix(B1), C, D), dt=0.3)
-            SSpr3 = ss(*SSconv(
-                libsp.csc_matrix(A), libsp.csc_matrix(B), B1, C, D), dt=0.3)
-            SSpr4 = ss(*SSconv(
-                libsp.csc_matrix(A), libsp.csc_matrix(B), libsp.csc_matrix(B1), C, D), dt=0.3)
-            compare_ss(SSpr0, SSpr1)
-            compare_ss(SSpr0, SSpr2)
-            compare_ss(SSpr0, SSpr3)
-            compare_ss(SSpr0, SSpr4)
-
-        def test_scale_SS(self):
-
-            SS = self.SS
-            SSsp = self.SSsp
-            Nu, Nx, Ny = SS.inputs, SS.states, SS.outputs
-
-            # scale (hard-copy)
-            insc = np.random.rand(Nu)
-            stsc = np.random.rand(Nx)
-            outsc = np.random.rand(Ny)
-            SSadim = scale_SS(SS, insc, outsc, stsc, byref=False)
-            SSadim_sp = scale_SS(SSsp, insc, outsc, stsc, byref=False)
-            compare_ss(SSadim, SSadim_sp)
-
-            # scale (by reference)
-            SS.scale(insc, outsc, stsc)
-            SSsp.scale(insc, outsc, stsc)
-            compare_ss(SS, SSsp)
-
-        def test_addGain(self):
-
-            SS = self.SS
-            SSsp = self.SSsp
-            Nu, Nx, Ny = SS.inputs, SS.states, SS.outputs
-
-            # add gains
-            Kin = np.random.rand(Nu, 5)
-            Kout = np.random.rand(4, Ny)
-            SS.addGain(Kin, 'in')
-            SS.addGain(Kout, 'out')
-            SSsp.addGain(Kin, 'in')
-            SSsp.addGain(Kout, 'out')
-            compare_ss(SS, SSsp)
-
-        def test_freqresp(self):
-            # freq response: try different scenario
-
-            SS = self.SS
-            SSsp = self.SSsp
-            Nu, Nx, Ny = SS.inputs, SS.states, SS.outputs
-
-            kv = np.linspace(0, 1, 8)
-            Y = SS.freqresp(kv)
-            Ysp = SSsp.freqresp(kv)
-            er = np.max(np.abs(Y - Ysp))
-            assert er < 1e-10, 'Test on freqresp failed'
-
-            SS.D = libsp.csc_matrix(SS.D)
-            Y1 = SS.freqresp(kv)
-            er = np.max(np.abs(Y - Y1))
-            assert er < 1e-10, 'Test on freqresp failed'
-
-        def test_couple(self):
-            dt = .2
-            Nx1, Nu1, Ny1 = 3, 4, 2
-            Nx2, Nu2, Ny2 = 4, 3, 2
-            K12 = np.random.rand(Nu1, Ny2)
-            K21 = np.random.rand(Nu2, Ny1)
-            SS1 = random_ss(Nx1, Nu1, Ny1, dt=.2)
-            SS2 = random_ss(Nx2, Nu2, Ny2, dt=.2)
-
-            SS1sp = ss(libsp.csc_matrix(SS1.A),
-                       libsp.csc_matrix(SS1.B),
-                       libsp.csc_matrix(SS1.C),
-                       libsp.csc_matrix(SS1.D), dt=dt)
-            SS2sp = ss(libsp.csc_matrix(SS2.A),
-                       libsp.csc_matrix(SS2.B),
-                       libsp.csc_matrix(SS2.C),
-                       libsp.csc_matrix(SS2.D), dt=dt)
-            K12sp = libsp.csc_matrix(K12)
-            K21sp = libsp.csc_matrix(K21)
-
-            # SCref=couple_full(SS1,SS2,K12,K21)
-            SC0 = couple(SS1, SS2, K12, K21)
-            # compare_ss(SCref,SC0)
-            for SSa in [SS1, SS1sp]:
-                for SSb in [SS2, SS2sp]:
-                    for k12 in [K12, K12sp]:
-                        for k21 in [K21, K21sp]:
-                            SChere = couple(SSa, SSb, k12, k21)
-                            compare_ss(SC0, SChere)
-
-        def test_join(self):
-
-            Nx,Nu,Ny = 4, 3, 2
-            SS_list = [random_ss(Nx,Nu,Ny,dt=.2) for ii in range(3)]
-
-            wv = [.3, .5, .2]
-            SSjoin = join(SS_list,wv)
-
-            kv = np.array([0., 1., 3.])
-            Yjoin = SSjoin.freqresp(kv)
-
-            Yref = np.zeros_like(Yjoin)
-            for ii in range(3):
-            	Yref += wv[ii]*SS_list[ii].freqresp(kv)
-
-            er = np.max(np.abs(Yjoin - Yref))
-            assert er<1e-14, 'test_join error %.3e too large' %er
-
-        def test_disc2cont(self):
-            # not the best test given that eigenvalue comparison is not great with random systems. (error grows near
-            # nyquist frequency)
-
-            # this test is for execution purposes only.
-            sys = copy.deepcopy(self.SS)
-            self.SS.disc2cont()
-
-            ct_sys = disc2cont(sys)
-
-
-
-    outprint = 'Testing libss'
-    print('\n' + 70 * '-')
-    print((70 - len(outprint)) * ' ' + outprint)
-    print(70 * '-')
-    unittest.main()
-
-
 def ss_to_scipy(ss):
     """
     Converts to a scipy.signal linear time invariant system
 
     Args:
-        ss (libss.ss): SHARPy state space object
+        ss (libss.StateSpace): SHARPy state space object
 
     Returns:
         scipy.signal.dlti
@@ -1834,43 +1928,3 @@ def ss_to_scipy(ss):
         sys = scsig.dlti(ss.A, ss.B, ss.C, ss.D, dt=ss.dt)
 
     return sys
-
-# 1/0
-
-# # check parallel connector
-# Nout=2
-# Nin01,Nin02=2,3
-# Nst01,Nst02=4,2
-
-# # build random systems
-# fac=0.1
-# A01,A02=fac*np.random.rand(Nst01,Nst01),fac*np.random.rand(Nst02,Nst02)
-# B01,B02=np.random.rand(Nst01,Nin01),np.random.rand(Nst02,Nin02)
-# C01,C02=np.random.rand(Nout,Nst01),np.random.rand(Nout,Nst02)
-# D01,D02=np.random.rand(Nout,Nin01),np.random.rand(Nout,Nin02)
-
-# dt=0.1
-# SS01=scsig.StateSpace( A01,B01,C01,D01,dt=dt )
-# SS02=scsig.StateSpace( A02,B02,C02,D02,dt=dt )
-
-# # simulate
-# NT=11
-# U01,U02=np.random.rand(NT,Nin01),np.random.rand(NT,Nin02)
-
-# # reference
-# Y01,X01=simulate(SS01,U01)
-# Y02,X02=simulate(SS02,U02)
-# Yref=Y01+Y02
-
-# # parallel
-# SStot=parallel(SS01,SS02)
-# Utot=np.block([U01,U02])
-# Ytot,Xtot=simulate(SStot,Utot)
-
-# # join method
-# SStot=join(SS01,SS02)
-# K=np.array([[1,2,3],[4,5,6]])
-# SStot=join(K,SS02)
-# SStot=join(SS02,K)
-# K2=np.array([[10,20,30],[40,50,60]]).T
-# Ktot=join(K,K2)

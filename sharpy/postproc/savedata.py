@@ -181,7 +181,7 @@ class SaveData(BaseSolver):
                                        sharpy.linear.assembler.linearaeroelastic.LinearAeroelastic,
                                        sharpy.linear.assembler.linearbeam.LinearBeam,
                                        sharpy.linear.assembler.linearuvlm.LinearUVLM,
-                                       sharpy.linear.src.libss.ss,
+                                       sharpy.linear.src.libss.StateSpace,
                                        sharpy.linear.src.lingebm.FlexDynamic,)
 
             if self.settings['save_linear_uvlm']:

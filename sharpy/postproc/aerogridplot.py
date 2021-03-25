@@ -67,6 +67,14 @@ class AerogridPlot(BaseSolver):
     settings_default['vortex_radius'] = vortex_radius_def
     settings_description['vortex_radius'] = 'Distance below which inductions are not computed'
 
+    settings_types['stride'] = 'int'
+    settings_default['stride'] = 1
+    settings_description['stride'] = 'Number of steps between the execution calls when run online'
+    
+    settings_types['save_wake'] = 'bool'
+    settings_default['save_wake'] = True
+    settings_description['save_wake'] = 'Plot the wake'
+    
     table = settings.SettingsTable()
     __doc__ += table.generate(settings_types, settings_default, settings_description)
 
@@ -110,14 +118,16 @@ class AerogridPlot(BaseSolver):
             for self.ts in range(self.ts_max):
                 if self.data.structure.timestep_info[self.ts] is not None:
                     self.plot_body()
-                    self.plot_wake()
+                    if self.settings['save_wake']:
+                        self.plot_wake()
             cout.cout_wrap('...Finished', 1)
-        else:
+        elif (self.data.ts % self.settings['stride'] == 0):
             aero_tsteps = len(self.data.aero.timestep_info) - 1
             struct_tsteps = len(self.data.structure.timestep_info) - 1
             self.ts = np.max((aero_tsteps, struct_tsteps))
             self.plot_body()
-            self.plot_wake()
+            if self.settings['save_wake']:
+                self.plot_wake()
         return self.data
 
     def plot_body(self):
@@ -168,7 +178,7 @@ class AerogridPlot(BaseSolver):
                     if self.settings['include_rbm']:
                         coords[counter, :] += struct_tstep.for_pos[0:3]
                     if self.settings['include_forward_motion']:
-                        coords[counter, 0] -= self.settings['dt'].value*self.ts*self.settings['u_inf'].value
+                        coords[counter, 0] -= self.settings['dt']*self.ts*self.settings['u_inf']
 
             if self.settings['include_incidence_angle']:
                 incidence_angle = np.zeros_like(panel_gamma)
@@ -281,7 +291,7 @@ class AerogridPlot(BaseSolver):
                     if self.settings['include_rbm']:
                         coords[counter, :] += self.data.structure.timestep_info[self.ts].for_pos[0:3]
                     if self.settings['include_forward_motion']:
-                        coords[counter, 0] -= self.settings['dt'].value*self.ts*self.settings['u_inf'].value
+                        coords[counter, 0] -= self.settings['dt']*self.ts*self.settings['u_inf']
 
             counter = -1
             node_counter = -1

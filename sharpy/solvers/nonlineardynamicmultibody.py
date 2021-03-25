@@ -317,7 +317,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
         if dt is None:
             dt = self.settings['dt']
         else:
-            self.settings['dt'] = ct.c_float(dt)
+            self.settings['dt'] = dt
 
         if self.data.structure.ini_info.in_global_AFoR:
             self.data.structure.ini_info.whole_structure_to_local_AFoR(self.data.structure)

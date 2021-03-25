@@ -30,6 +30,10 @@ class PickleData(BaseSolver):
     settings_types['folder'] = 'str'
     settings_default['folder'] = './output'
     settings_description['folder'] = 'Folder to output pickle file'
+    
+    settings_types['stride'] = 'int'
+    settings_default['stride'] = 1
+    settings_description['stride'] = 'Number of steps between the execution calls when run online'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
@@ -62,9 +66,8 @@ class PickleData(BaseSolver):
         self.caller = caller
 
     def run(self, online=False):
-        for it in range(len(self.data.structure.timestep_info)):
-            tstep_p = self.data.structure.timestep_info[it]
-        with open(self.filename, 'wb') as f:
-            pickle.dump(self.data, f, protocol=pickle.HIGHEST_PROTOCOL)
+        if ((online and (self.data.ts % self.settings['stride'] == 0)) or (not online)):
+            with open(self.filename, 'wb') as f:
+                pickle.dump(self.data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
         return self.data

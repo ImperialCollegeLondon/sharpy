@@ -97,8 +97,8 @@ class one_minus_cos(BaseGust):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
     def gust_shape(self, x, y, z, time=0):
-        gust_length = self.settings['gust_length'].value
-        gust_intensity = self.settings['gust_intensity'].value
+        gust_length = self.settings['gust_length']
+        gust_intensity = self.settings['gust_intensity']
 
         vel = np.zeros((3,))
         if x > 0.0 or x < -gust_length:
@@ -144,9 +144,9 @@ class DARPA(BaseGust):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
     def gust_shape(self, x, y, z, time=0):
-        gust_length = self.settings['gust_length'].value
-        gust_intensity = self.settings['gust_intensity'].value
-        span = self.settings['span'].value
+        gust_length = self.settings['gust_length']
+        gust_intensity = self.settings['gust_intensity']
+        span = self.settings['span']
 
         vel = np.zeros((3,))
         if x > 0.0 or x < -gust_length:
@@ -189,8 +189,8 @@ class continuous_sin(BaseGust):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
     def gust_shape(self, x, y, z, time=0):
-        gust_length = self.settings['gust_length'].value
-        gust_intensity = self.settings['gust_intensity'].value
+        gust_length = self.settings['gust_length']
+        gust_intensity = self.settings['gust_intensity']
 
         vel = np.zeros((3,))
         if x > 0.0:
@@ -228,8 +228,8 @@ class lateral_one_minus_cos(BaseGust):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
     def gust_shape(self, x, y, z, time=0):
-        gust_length = self.settings['gust_length'].value
-        gust_intensity = self.settings['gust_intensity'].value
+        gust_length = self.settings['gust_length']
+        gust_intensity = self.settings['gust_intensity']
 
         vel = np.zeros((3,))
         if x > 0.0 or x < -gust_length:
@@ -370,14 +370,14 @@ class span_sine(BaseGust):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-        if self.settings['span_with_gust'].value == 0:
+        if self.settings['span_with_gust'] == 0:
             self.settings['span_with_gust'] = self.settings['span']
 
     def gust_shape(self, x, y, z, time=0):
         d = np.dot(np.array([x, y, z]), self.settings['span_dir'])
-        if np.abs(d) <= self.settings['span_with_gust'].value / 2:
-            vel = 0.5 * self.settings['gust_intensity'].value * np.sin(
-                d * 2. * np.pi / (self.settings['span'].value / self.settings['periods_per_span'].value))
+        if np.abs(d) <= self.settings['span_with_gust'] / 2:
+            vel = 0.5 * self.settings['gust_intensity'] * np.sin(
+                d * 2. * np.pi / (self.settings['span'] / self.settings['periods_per_span']))
         else:
             vel = np.zeros((3,))
 
@@ -492,10 +492,10 @@ class GustVelocityField(generator_interface.BaseGenerator):
 
             for i in range(zeta[i_surf].shape[1]):
                 for j in range(zeta[i_surf].shape[2]):
-                    total_offset_val = self.settings['offset'].value
+                    total_offset_val = self.settings['offset']
                     if self.settings['relative_motion']:
-                        uext[i_surf][:, i, j] += self.settings['u_inf'].value * self.settings['u_inf_direction']
-                        total_offset_val -= self.settings['u_inf'].value * t
+                        uext[i_surf][:, i, j] += self.settings['u_inf'] * self.settings['u_inf_direction']
+                        total_offset_val -= self.settings['u_inf'] * t
 
                     total_offset = total_offset_val * self.settings['u_inf_direction'] + for_pos
                     uext[i_surf][:, i, j] += self.gust.gust_shape(
