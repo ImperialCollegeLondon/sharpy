@@ -418,6 +418,6 @@ class TestDoublePendulum(unittest.TestCase):
                                name + '.mb.h5',
                                name + '.sharpy']
             for f in files_to_delete:
-                # os.remove(solver_path + f)
-                pass
-        #shutil.rmtree(solver_path + 'output/')
+                os.remove(solver_path + f)
+
+        shutil.rmtree(solver_path + 'output/')
