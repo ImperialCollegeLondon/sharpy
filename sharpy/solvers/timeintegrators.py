@@ -61,6 +61,13 @@ class NewmarkBeta(_BaseTimeIntegrator):
     settings_default['newmark_damp'] = 1e-4
     settings_description['newmark_damp'] = 'Newmark damping coefficient'
 
+    settings_types['sys_size'] = 'int'
+    settings_default['sys_size'] = 0
+    settings_description['sys_size'] = 'Size of the system without constraints'
+
+    settings_types['num_LM_eq'] = 'int'
+    settings_default['num_LM_eq'] = 0
+    settings_description['num_LM_eq'] = 'Number of contraint equations'
 
     def __init__(self):
 
