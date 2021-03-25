@@ -90,10 +90,6 @@ class StaticTrim(BaseSolver):
     settings_default['save_info'] = False
     settings_description['save_info'] = 'Save trim results to text file'
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output/'
-    settings_description['folder'] = 'Output location for trim results'
-
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
