@@ -209,8 +209,6 @@ class Aerogrid(object):
         for i_surf in range(self.n_surf):
             global_node_in_surface.append([])
 
-        global_tstep = structure_tstep
-
         # check that we have control surface information
         try:
             self.aero_dict['control_surface']
@@ -333,14 +331,14 @@ class Aerogrid(object):
                 node_info['M_distribution'] = self.aero_dict['m_distribution'].decode('ascii')
                 node_info['airfoil'] = self.aero_dict['airfoil_distribution'][i_elem, i_local_node]
                 node_info['control_surface'] = control_surface_info
-                node_info['beam_coord'] = global_tstep.pos[i_global_node, :]
-                node_info['pos_dot'] = global_tstep.pos_dot[i_global_node, :]
-                node_info['beam_psi'] = global_tstep.psi[i_elem, i_local_node, :]
-                node_info['psi_dot'] = global_tstep.psi_dot[i_elem, i_local_node, :]
+                node_info['beam_coord'] = structure_tstep.pos[i_global_node, :]
+                node_info['pos_dot'] = structure_tstep.pos_dot[i_global_node, :]
+                node_info['beam_psi'] = structure_tstep.psi[i_elem, i_local_node, :]
+                node_info['psi_dot'] = structure_tstep.psi_dot[i_elem, i_local_node, :]
                 node_info['for_delta'] = beam.frame_of_reference_delta[i_elem, i_local_node, :]
                 node_info['elem'] = beam.elements[i_elem]
-                node_info['for_pos'] = global_tstep.for_pos
-                node_info['cga'] = global_tstep.cga()
+                node_info['for_pos'] = structure_tstep.for_pos
+                node_info['cga'] = structure_tstep.cga()
                 if node_info['M_distribution'].lower() == 'user_defined':
                     ielem_in_surf = i_elem - np.sum(self.surface_distribution < i_surf)
                     node_info['user_defined_m_distribution'] = self.aero_dict['user_defined_m_distribution'][str(i_surf)][:, ielem_in_surf, i_local_node]
