@@ -84,8 +84,8 @@ class TestGolandFlutter(unittest.TestCase):
                  'SaveData',
                  ],
             'case': ws.case_name, 'route': ws.route,
-            'write_screen': 'off', 'write_log': 'on',
-            'log_folder': self.route_test_dir + '/output/' + ws.case_name + '/',
+            'write_screen': 'on', 'write_log': 'on',
+            'log_folder': self.route_test_dir + '/output/',
             'log_file': ws.case_name + '.log'}
 
         ws.config['BeamLoader'] = {
@@ -145,8 +145,7 @@ class TestGolandFlutter(unittest.TestCase):
                                            'gravity_on': 'on',
                                            'gravity': 9.81}}
 
-        ws.config['AerogridPlot'] = {'folder': self.route_test_dir + '/output/',
-                                     'include_rbm': 'off',
+        ws.config['AerogridPlot'] = {'include_rbm': 'off',
                                      'include_applied_forces': 'on',
                                      'minus_m_star': 0}
 
@@ -165,8 +164,7 @@ class TestGolandFlutter(unittest.TestCase):
                                       'output_psi': 'on',
                                       'screen_output': 'on'}
 
-        ws.config['Modal'] = {'folder': self.route_test_dir + '/output/',
-                              'NumLambda': 20,
+        ws.config['Modal'] = {'NumLambda': 20,
                               'rigid_body_modes': 'off',
                               'print_matrices': 'on',
                               'keep_linear_matrices': 'on',
@@ -209,7 +207,6 @@ class TestGolandFlutter(unittest.TestCase):
                                             'rigid_body_motion': 'off'}}
 
         ws.config['AsymptoticStability'] = {'print_info': True,
-                                            'folder': self.route_test_dir + '/output/',
                                             'target_system': ['aeroelastic', 'aerodynamic', 'structural'],
                                             'velocity_analysis': [160, 180, 20]}
 
@@ -228,7 +225,6 @@ class TestGolandFlutter(unittest.TestCase):
                                                        'include_applied_forces': 'on'}}}
 
         ws.config['FrequencyResponse'] = {'quick_plot': 'off',
-                                          'folder': self.route_test_dir + '/output/',
                                           'frequency_unit': 'k',
                                           'frequency_bounds': [0.0001, 1.0],
                                           'num_freqs': 100,
@@ -236,8 +232,7 @@ class TestGolandFlutter(unittest.TestCase):
                                           'target_system': ['aeroelastic'],
                                           }
 
-        ws.config['SaveData'] = {'folder': self.route_test_dir + '/output/',
-                                 'save_aero': 'off',
+        ws.config['SaveData'] = {'save_aero': 'off',
                                  'save_struct': 'off',
                                  'save_rom': 'on'}
 
