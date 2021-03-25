@@ -219,7 +219,7 @@ class TestDoublePendulum(unittest.TestCase):
         SimInfo.solvers['SHARPy']['case'] = 'double_pendulum_geradin'
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.solvers['SHARPy']['route'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
-        SimInfo.solvers['SHARPy']['log_folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
+        SimInfo.solvers['SHARPy']['log_folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
         SimInfo.set_variable_all_dicts('dt', dt)
         SimInfo.define_num_steps(numtimesteps)
         SimInfo.set_variable_all_dicts('rho', 0.0)
