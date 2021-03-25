@@ -289,6 +289,22 @@ class NonLinearDynamicMultibody(_BaseStructural):
             first_dof = last_dof
         # TODO: right now, these forces are only used as an output, they are not read when the multibody is splitted
 
+    def write_lm_cond_num(self, iteration, Lambda, Lambda_dot, Lambda_ddot, cond_num, cond_num_lm):
+
+        self.fid_lambda.write("%d %d " % (self.data.ts, iteration))
+        self.fid_lambda_dot.write("%d %d " % (self.data.ts, iteration))
+        self.fid_lambda_ddot.write("%d %d " % (self.data.ts, iteration))
+        self.fid_cond_num.write("%d %d " % (self.data.ts, iteration))
+        for ilm in range(self.num_LM_eq):
+            self.fid_lambda.write("%f " % Lambda[ilm])
+            self.fid_lambda_dot.write("%f " % Lambda_dot[ilm])
+            self.fid_lambda_ddot.write("%f " % Lambda_ddot[ilm])
+        self.fid_lambda.write("\n")
+        self.fid_lambda_dot.write("\n")
+        self.fid_lambda_ddot.write("\n")
+        self.fid_cond_num.write("%e %e\n" % (cond_num, cond_num_lm))
+
+
     def run(self, structural_step=None, dt=None):
         if structural_step is None:
             structural_step = self.data.structure.timestep_info[-1]
@@ -351,7 +367,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
             # Update positions and velocities
             Lambda, Lambda_dot = mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, num_LM_eq)
-            
+            if self.settings['write_lm'] and iteration:
+                self.write_lm_cond_num(iteration, Lambda, Lambda_dot, Lambda_ddot, cond_num, cond_num_lm)
+
             MB_M, MB_C, MB_K, MB_Q, kBnh, LM_Q = self.assembly_MB_eq_system(MB_beam,
                                                                 MB_tstep,
                                                                 self.data.ts,
@@ -397,27 +415,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
             # Corrector step
             self.time_integrator.corrector(q, dqdt, dqddt, relax_Dq)
 
-            if self.settings['write_lm']:
-                if not num_LM_eq == 0:
-                    Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-                    Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-                    Lambda_ddot = dqddt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-                else:
-                    Lambda = 0
-                    Lambda_dot = 0
-
-                self.fid_lambda.write("%d %d " % (self.data.ts, iteration))
-                self.fid_lambda_dot.write("%d %d " % (self.data.ts, iteration))
-                self.fid_lambda_ddot.write("%d %d " % (self.data.ts, iteration))
-                self.fid_cond_num.write("%d %d " % (self.data.ts, iteration))
-                for ilm in range(num_LM_eq):
-                    self.fid_lambda.write("%f " % Lambda[ilm])
-                    self.fid_lambda_dot.write("%f " % Lambda_dot[ilm])
-                    self.fid_lambda_ddot.write("%f " % Lambda_ddot[ilm])
-                self.fid_lambda.write("\n")
-                self.fid_lambda_dot.write("\n")
-                self.fid_lambda_ddot.write("\n")
-                self.fid_cond_num.write("%e %e\n" % (cond_num, cond_num_lm))
             if converged:
                 break
 
@@ -427,6 +424,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
                     LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
 
         Lambda, Lambda_dot = mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, num_LM_eq)
+        if self.settings['write_lm']:
+            self.write_lm_cond_num(iteration, Lambda, Lambda_dot, Lambda_ddot, cond_num, cond_num_lm)
         # end: comment time stepping
 
         # End of Newmark-beta iterations
