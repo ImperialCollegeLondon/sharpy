@@ -1,6 +1,6 @@
 import configparser
 import configobj
-
+import os
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, dict_of_solvers
 import sharpy.utils.settings as settings
@@ -86,10 +86,13 @@ class PreSharpy(object):
             self.settings['SHARPy']['flow'] = self.settings['SHARPy']['flow']
 
             settings.to_custom_types(self.settings['SHARPy'], self.settings_types, self.settings_default)
+            self.output_folder = self.settings['SHARPy']['log_folder'] + '/' + self.settings['SHARPy']['case'] + '/'
+            if not os.path.isdir(self.output_folder):
+                os.makedirs(self.output_folder)
 
             cout.cout_wrap.initialise(self.settings['SHARPy']['write_screen'],
                                       self.settings['SHARPy']['write_log'],
-                                      self.settings['SHARPy']['log_folder'],
+                                      self.output_folder,
                                       self.settings['SHARPy']['log_file'])
 
             self.case_route = in_settings['SHARPy']['route'] + '/'
@@ -99,6 +102,9 @@ class PreSharpy(object):
                     dict_of_solvers[solver_name]
                 except KeyError:
                     exceptions.NotImplementedSolver(solver_name)
+
+            cout.cout_wrap('SHARPy output folder set')
+            cout.cout_wrap('\t' + self.output_folder, 1)
 
             if self.settings['SHARPy']['save_settings']:
                 self.save_settings()
@@ -126,8 +132,7 @@ class PreSharpy(object):
         out_settings = configobj.ConfigObj()
         for k, v in self.settings.items():
             out_settings[k] = v
-        out_settings.filename = self.settings['SHARPy']['log_folder'] + '/' + self.settings['SHARPy']['case'] \
-                                + '.sharpy'
+        out_settings.filename = self.output_folder + self.settings['SHARPy']['case'] + '.sharpy'
         out_settings.write()
 
     @staticmethod
