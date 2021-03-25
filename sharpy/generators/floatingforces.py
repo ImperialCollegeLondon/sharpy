@@ -253,30 +253,12 @@ def test_change_system():
             wt_matrix[idof, jdof] = ("%s-%s" % (wt_dofs_char[idof], wt_dofs_char[jdof]))
             wt_matrix_num[idof, jdof] = 10.*idof + jdof
 
-    sharpy_matrix_old = change_of_to_sharpy_old(wt_matrix_num)
     sharpy_matrix = change_of_to_sharpy(wt_matrix_num)
-
     print("wt matrix: ", wt_matrix_num)
-    print("sharpy matrix old: ", sharpy_matrix_old)
     print("sharpy matrix: ", sharpy_matrix)
 
-    undo_sharpy_matrix_old = change_of_to_sharpy_old(sharpy_matrix_old)
     undo_sharpy_matrix = change_of_to_sharpy(sharpy_matrix)
-
-    print("undo sharpy matrix old: ", undo_sharpy_matrix_old)
     print("undo sharpy matrix: ", undo_sharpy_matrix)
-
-
-def change_of_to_sharpy_old(matrix_of):
-
-    # Wind turbine degrees of freedom: Surge, sway, heave, roll, pitch, yaw.
-    # SHARPy axis associated:              z,    y,     x,    z,     y,   x
-
-    of_to_sharpy = [2, 1, 0, 5, 4, 3]
-    matrix_sharpy = matrix_of[of_to_sharpy, :]
-    matrix_sharpy = matrix_sharpy[:, of_to_sharpy]
-
-    return matrix_sharpy
 
 
 def change_of_to_sharpy(matrix_of):
@@ -314,12 +296,6 @@ def interp_1st_dim_matrix(A, vec, value):
         rel_dist_to_i = (vec[i] - value)/dist
 
     return A[i - 1, ...]*rel_dist_to_i + A[i, ...]*rel_dist_to_im1
-
-    # Test
-    # A = np.ones((3, 3, 3))
-    # A[0, :, :] *= 0.
-    # A[2, :, :] *= 2.
-    # interp_1st_dim_matrix(A, vec, 0.6)
 
 
 def rfval(num, den, z):
@@ -599,64 +575,32 @@ class FloatingForces(generator_interface.BaseGenerator):
                                         self.floating_data['hydrodynamics']['ab_freq_rads'],
                                         self.settings['matrices_freq'])
 
-            # self.hd_added_mass *= 0.
-            # self.hd_damping *= 0.
         elif self.settings['method_matrices_freq'] == 'rational_function':
             self.hd_added_mass_const = self.floating_data['hydrodynamics']['added_mass_matrix'][-1, :, :]
             self.hd_damping_const = self.floating_data['hydrodynamics']['damping_matrix'][-1, :, :]
 
         self.added_mass_in_mass_matrix = self.settings['added_mass_in_mass_matrix']
         if self.added_mass_in_mass_matrix:
-        # if ((self.settings['method_matrices_freq'] == 'constant') and
-        #     self.added_mass_in_mass_matrix):
-                # Include added mass in structure
             data.structure.add_lumped_mass_to_element(self.buoyancy_node,
                                                       self.hd_added_mass_const)
             data.structure.generate_fortran()
-            # self.hd_added_mass *= 0.
-
-        # if self.settings['method_matrices_freq'] == 'interp_matrices':
-        #     self.hd_added_mass = self.floating_data['hydrodynamics']['added_mass_matrix']
-        #     self.hd_damping = self.floating_data['hydrodynamics']['damping_matrix']
-        #     self.ab_freq_rads = self.floating_data['hydrodynamics']['ab_freq_rads']
 
         if self.settings['method_matrices_freq'] == 'rational_function':
             ninput = 6
             noutput = 6
-            # hd_added_mass_num = [None]*noutput
-            # hd_added_mass_den = [None]*noutput
-            # hd_damping_num = [None]*noutput
-            # hd_damping_den = [None]*noutput
             hd_K_num = [None]*noutput
             hd_K_den = [None]*noutput
             for ioutput in range(noutput):
-                # hd_added_mass_num[ioutput] = [None]*ninput
-                # hd_added_mass_den[ioutput] = [None]*ninput
-                # hd_damping_num[ioutput] = [None]*ninput
-                # hd_damping_den[ioutput] = [None]*ninput
                 hd_K_num[ioutput] = [None]*ninput
                 hd_K_den[ioutput] = [None]*ninput
                 for iinput in range(ninput):
-                    # pos = "%d_%d" % (i, j)
                     pos = "%d_%d" % (ioutput, iinput)
-                    # hd_added_mass_num[ioutput][iinput] = self.floating_data['hydrodynamics']['added_mass_rf'][pos]['num']
-                    # hd_added_mass_den[ioutput][iinput] = self.floating_data['hydrodynamics']['added_mass_rf'][pos]['den']
-                    # hd_damping_num[ioutput][iinput] = self.floating_data['hydrodynamics']['damping_rf'][pos]['num']
-                    # hd_damping_den[ioutput][iinput] = self.floating_data['hydrodynamics']['damping_rf'][pos]['den']
                     hd_K_num[ioutput][iinput] = self.floating_data['hydrodynamics']['K_rf'][pos]['num']
                     hd_K_den[ioutput][iinput] = self.floating_data['hydrodynamics']['K_rf'][pos]['den']
 
-            # self.hd_added_mass = TransferFunction(hd_added_mass_num, hd_added_mass_den, self.settings['dt'])
-            # self.hd_damping = TransferFunction(hd_damping_num, hd_damping_den, self.settings['dt'])
-            # self.hd_added_mass = TransferFunction(hd_added_mass_num, hd_added_mass_den)
-            # self.hd_damping = TransferFunction(hd_damping_num, hd_damping_den)
             self.hd_K = TransferFunction(hd_K_num, hd_K_den)
             self.ab_freq_rads = self.floating_data['hydrodynamics']['ab_freq_rads']
 
-            # self.x0_added_mass = [None]*(self.settings['n_time_steps'] + 1)
-            # self.x0_damping = [None]*(self.settings['n_time_steps'] + 1)
-            # self.x0_added_mass[0] = 0.
-            # self.x0_damping[0] = 0.
             self.x0_K = [None]*(self.settings['n_time_steps'] + 1)
             self.x0_K[0] = 0.
 
@@ -726,10 +670,6 @@ class FloatingForces(generator_interface.BaseGenerator):
 
         if True:
             cga = struct_tstep.cga()
-            # self.q[it, 0:3] = (np.dot(cga, struct_tstep.pos[self.buoyancy_node, :]) -
-            #           np.dot(beam.ini_info.cga(), beam.ini_info.pos[self.buoyancy_node, :]) +
-            #           struct_tstep.for_pos[0:3] -
-            #           beam.ini_info.for_pos[0:3])
             self.q[it, 0:3] = (np.dot(cga, struct_tstep.pos[self.buoyancy_node, :]) +
                       struct_tstep.for_pos[0:3])
             self.q[it, 3:6] = algebra.quat2euler(struct_tstep.quat)
@@ -783,20 +723,16 @@ class FloatingForces(generator_interface.BaseGenerator):
                                  self.floating_data['mooring']['seabed_drag_coef'],
                                  hf0=self.hf_prev[imoor],
                                  vf0=self.vf_prev[imoor])
-                                 # hf0=None,
-                                 # vf0=None)
             mooring_forces[imoor, :] = np.array([hf, vf])
             # Save the results to initialise the computation in the next time step
             self.hf_prev[imoor] = hf + 0.
             self.vf_prev[imoor] = vf + 0.
-            # print(imoor, hf, vf)
 
             # Convert to the adequate reference system
             horizontal_unit_vec = algebra.unit_vector(fl_to_anchor_G)
             horizontal_unit_vec[0] = 0.
             horizontal_unit_vec = algebra.unit_vector(horizontal_unit_vec)
             force_fl = hf*horizontal_unit_vec + vf*np.array([-1., 0., 0.])
-            # print(imoor, force_fl)
 
             # Move the forces to the mooring node
             force_cl = np.zeros((6,))
@@ -811,8 +747,6 @@ class FloatingForces(generator_interface.BaseGenerator):
 
         # Yaw moment generated by the mooring system
         yaw = np.array([self.q[data.ts, 3], 0., 0.])
-        # if np.abs(yaw[0]) < 1.*deg2rad:
-        #     yaw[0] = 0.
         mooring_yaw = -self.floating_data['mooring']['yaw_spring_stif']*yaw
         struct_tstep.runtime_generated_forces[self.mooring_node, 3:6] += np.dot(cbg,
                                                                       mooring_yaw)
@@ -827,8 +761,6 @@ class FloatingForces(generator_interface.BaseGenerator):
                  (data.ts < self.settings['steps_constant_matrices'])):
                 hd_f_qdot_g -= np.dot(self.hd_damping_const, self.qdot[data.ts, :])
                 hd_f_qdotdot_g = np.zeros((6))
-                # hd_f_qdotdot_g = -np.dot(self.hd_added_mass_const, self.qdotdot[data.ts, :])
-                # equiv_hd_added_mass = self.hd_added_mass_const
 
             elif self.settings['method_matrices_freq'] == 'rational_function':
                 # Damping
@@ -844,61 +776,19 @@ class FloatingForces(generator_interface.BaseGenerator):
                 hd_f_qdot_g -= yout[:, 1]
                 hd_f_qdotdot_g = np.zeros((6))
 
-                # (T, yout, xout) = forced_response(self.hd_damping,
-                #                                   T=[0, self.settings['dt']],
-                #                                   U=self.qdot[data.ts-1:data.ts+1, :].T,
-                #                                   X0=self.x0_damping[data.ts-1])
-                #                                   # transpose=True)
-                # self.x0_damping[data.ts] = xout[:, 1]
-                # hd_f_qdot_g -= yout[:, 1]
-                # hd_f_qdotdot_g = np.zeros((6))
-                # (T, yout, xout) = forced_response(self.hd_added_mass,
-                #                                   T=[0, self.settings['dt']],
-                #                                   U=self.qdotdot[data.ts-1:data.ts+1, :],
-                #                                   X0=self.x0_added_mass[data.ts-1],
-                #                                   transpose=True)
-                # self.x0_added_mass[data.ts] = xout[1, :]
-                # hd_f_qdotdot_g = -yout[1, :]
-                # hd_f_qdotdot_g = -np.dot(self.hd_added_mass_const, self.qdotdot[data.ts, :])
-
-                # hd_f_qdot_g -= response_freq_dep_matrix(self.hd_damping, self.ab_freq_rads, self.qdot, data.ts, self.settings['dt'])
-                # hd_f_qdotdot_g = -response_freq_dep_matrix(self.hd_added_mass, self.ab_freq_rads, self.qdotdot, data.ts, self.settings['dt'])
-
-                # Compute the equivalent added mass matrix
-                # equiv_hd_added_mass = compute_equiv_hd_added_mass(-hd_f_qdotdot_g, self.qdotdot[data.ts, :])
-                # if self.added_mass_in_mass_matrix:
-                    # data.structure.add_lumped_mass_to_element(self.buoyancy_node,
-                    #                                           equiv_hd_added_mass,
-                    #                                           replace=True)
-                    # data.structure.generate_fortran()
-                    # hd_f_qdotdot_g += np.dot(self.hd_added_mass_const, self.qdotdot[data.ts, :])
-
             else:
                 cout.cout_wrap(("ERROR: Unknown method_matrices_freq %s" % self.settings['method_matrices_freq']), 4)
 
             # Correct gravity forces if needed
             if self.added_mass_in_mass_matrix:
-                # Compensate added mass
-                # struct_tstep.runtime_generated_forces[self.buoyancy_node, 0:3] += np.dot(cbg,
-                #                                                             hd_f_qdotdot_g[0:3])
-                # struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg,
-                #                                                              hd_f_qdotdot_g[3:6])
                 # Correct unreal gravity forces from added mass
                 gravity_b = np.zeros((6,),)
                 gravity_b[0:3] = np.dot(cbg, -self.settings['gravity_dir'])*self.settings['gravity']
-                # hd_correct_grav = -np.dot(equiv_hd_added_mass, gravity_b)
                 hd_correct_grav = -np.dot(self.hd_added_mass_const, gravity_b)
                 struct_tstep.runtime_generated_forces[self.buoyancy_node, :] += hd_correct_grav
-                # hd_f_qdotdot_g = np.zeros((6))
             else:
                 hd_correct_grav = np.zeros((6))
 
-                # if self.added_mass_in_mass_matrix:
-                    # # Include added mass in structure
-                    # data.structure.add_lumped_mass_to_element(self.buoyancy_node,
-                                                # self.hd_added_mass)
-                                                # data.structure.generate_fortran()
-                                                # # self.hd_added_mass *= 0.
         else:
             hd_f_qdot_g = np.zeros((6))
             hd_f_qdotdot_g = np.zeros((6))
