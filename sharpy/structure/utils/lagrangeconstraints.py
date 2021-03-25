@@ -603,16 +603,22 @@ def def_rot_axis_FoR_wrt_node_xyz(MB_tstep, MB_beam, FoR_body, node_body, node_n
     node_cga = MB_tstep[node_body].cga()
     FoR_cga = MB_tstep[FoR_body].cga()
     FoR_wa = MB_tstep[FoR_body].for_vel[3:6]
+    psi = MB_tstep[node_body].psi[ielem,inode_in_elem,:]
+    psi_dot = MB_tstep[node_body].psi_dot[ielem,inode_in_elem,:]
 
     # Components to be zero
     Z = np.zeros((2,3))
     Z[:, zero_comp] = np.eye(2)
-
-    Bnh[:, FoR_dof+3:FoR_dof+6] = ag.multiply_matrices(Z, cab.T, node_cga.T, FoR_cga)
+    
+    Bnh[:, FoR_dof+3:FoR_dof+6] += ag.multiply_matrices(Z, cab.T, node_cga.T, FoR_cga)
+    Bnh[:, node_dof+3:node_dof+6] -= ag.multiply_matrices(Z, ag.crv2tan(psi))
+    Bnh[:, node_FoR_dof+3:node_FoR_dof+6] -= ag.multiply_matrices(Z, cab.T)
 
     # Constrain angular velocities
     LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq+num_LM_eq_specific])
     LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*ag.multiply_matrices(Z, cab.T, node_cga.T, FoR_cga, FoR_wa)
+    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] -= scalingFactor*ag.multiply_matrices(Z, ag.crv2tan(psi), psi_dot)
+    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] -= scalingFactor*ag.multiply_matrices(Z, cab.T, MB_tstep[node_body].for_vel[3:6])
 
     LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
     LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
@@ -626,6 +632,9 @@ def def_rot_axis_FoR_wrt_node_xyz(MB_tstep, MB_beam, FoR_body, node_body, node_n
 
     LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += scalingFactor*ag.multiply_matrices(FoR_cga.T, node_cga, ag.der_Ccrv_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:],
                                                                                                                                   np.dot(Z.T, Lambda_dot[ieq:ieq+num_LM_eq_specific])))
+
+    LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] -= scalingFactor*ag.der_TanT_by_xv(psi, ag.multiply_matrices(Z.T, Lambda_dot[ieq:ieq+num_LM_eq_specific]))
+    LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] -= scalingFactor*ag.der_Ccrv_by_v(psi, ag.multiply_matrices(Z.T, Lambda_dot[ieq:ieq+num_LM_eq_specific]))
 
     if penaltyFactor:
         q = np.zeros((sys_size,))
@@ -855,7 +864,7 @@ class hinge_node_FoR(BaseLagrangeConstraint):
         else:
             self.rot_dir = 'general'
             self.indep = []
-
+    
         return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
