@@ -161,7 +161,7 @@ class AeroForcesCalculator(BaseSolver):
                     self.ts, fx, fy, fz)
                 cout.cout_wrap(line, 1)
 
-    def file_output(self):
+    def file_output(self, filename):
         # assemble forces matrix
         # (1 timestep) + (3+3 inertial steady+unsteady) + (3+3 body steady+unsteady)
         force_matrix = np.zeros((self.ts_max, 1 + 3 + 3 + 3 + 3))
