@@ -84,12 +84,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
         self.data.structure.add_unsteady_information(
             self.data.structure.dyn_dict, self.settings['num_steps'])
 
-        # Initialise time integrator
-        self.time_integrator = solver_interface.initialise_solver(
-            self.settings['time_integrator'])
-        self.time_integrator.initialise(
-            self.data, self.settings['time_integrator_settings'])
-
         # Define the number of equations
         self.lc_list = lagrangeconstraints.initialize_constraints(self.data.structure.ini_mb_dict)
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
@@ -111,6 +105,15 @@ class NonLinearDynamicMultibody(_BaseStructural):
         self.define_sys_size()
 
         self.prev_Dq = np.zeros((self.sys_size + self.num_LM_eq))
+
+        self.settings['time_integrator_settings']['sys_size'] = self.sys_size
+        self.settings['time_integrator_settings']['num_LM_eq'] = self.num_LM_eq
+
+        # Initialise time integrator
+        self.time_integrator = solver_interface.initialise_solver(
+            self.settings['time_integrator'])
+        self.time_integrator.initialise(
+            self.data, self.settings['time_integrator_settings'])
 
     def add_step(self):
         self.data.structure.next_step()
@@ -156,11 +159,10 @@ class NonLinearDynamicMultibody(_BaseStructural):
         """
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
-        MB_M = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
-        MB_C = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
-        MB_K = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
-        MB_Asys = np.zeros((self.sys_size+self.num_LM_eq, self.sys_size+self.num_LM_eq), dtype=ct.c_double, order='F')
-        MB_Q = np.zeros((self.sys_size+self.num_LM_eq,), dtype=ct.c_double, order='F')
+        MB_M = np.zeros((self.sys_size, self.sys_size), dtype=ct.c_double, order='F')
+        MB_C = np.zeros((self.sys_size, self.sys_size), dtype=ct.c_double, order='F')
+        MB_K = np.zeros((self.sys_size, self.sys_size), dtype=ct.c_double, order='F')
+        MB_Q = np.zeros((self.sys_size,), dtype=ct.c_double, order='F')
         first_dof = 0
         last_dof = 0
 
@@ -209,11 +211,15 @@ class NonLinearDynamicMultibody(_BaseStructural):
             "dynamic")
 
         # Include the matrices associated to Lagrange Multipliers
-        MB_C += LM_C
-        MB_K += LM_K
-        MB_Q += LM_Q
+        MB_C += LM_C[:self.sys_size, :self.sys_size]
+        MB_K += LM_K[:self.sys_size, :self.sys_size]
+        MB_Q += LM_Q[:self.sys_size]
 
-        return MB_M, MB_C, MB_K, MB_Q
+        # Only working for non-holonomic constratints
+        kBnh = LM_C[self.sys_size:, :self.sys_size]
+        strict_LM_Q = LM_Q[self.sys_size:]
+
+        return MB_M, MB_C, MB_K, MB_Q, kBnh, strict_LM_Q
 
     def integrate_position(self, MB_beam, MB_tstep, dt):
         """
@@ -283,6 +289,22 @@ class NonLinearDynamicMultibody(_BaseStructural):
             first_dof = last_dof
         # TODO: right now, these forces are only used as an output, they are not read when the multibody is splitted
 
+    def write_lm_cond_num(self, iteration, Lambda, Lambda_dot, Lambda_ddot, cond_num, cond_num_lm):
+
+        self.fid_lambda.write("%d %d " % (self.data.ts, iteration))
+        self.fid_lambda_dot.write("%d %d " % (self.data.ts, iteration))
+        self.fid_lambda_ddot.write("%d %d " % (self.data.ts, iteration))
+        self.fid_cond_num.write("%d %d " % (self.data.ts, iteration))
+        for ilm in range(self.num_LM_eq):
+            self.fid_lambda.write("%f " % Lambda[ilm])
+            self.fid_lambda_dot.write("%f " % Lambda_dot[ilm])
+            self.fid_lambda_ddot.write("%f " % Lambda_ddot[ilm])
+        self.fid_lambda.write("\n")
+        self.fid_lambda_dot.write("\n")
+        self.fid_lambda_ddot.write("\n")
+        self.fid_cond_num.write("%e %e\n" % (cond_num, cond_num_lm))
+
+
     def run(self, structural_step=None, dt=None):
         if structural_step is None:
             structural_step = self.data.structure.timestep_info[-1]
@@ -319,22 +341,16 @@ class NonLinearDynamicMultibody(_BaseStructural):
         dqdt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
         dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
 
-        # Predictor step
-        mb.disp_and_accel2state(MB_beam, MB_tstep, q, dqdt, dqddt)
-
         if not num_LM_eq == 0:
             Lambda = self.Lambda.astype(dtype=ct.c_double, copy=True, order='F')
             Lambda_dot = self.Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
             Lambda_ddot = self.Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
-
-            q[-num_LM_eq:] = Lambda.astype(dtype=ct.c_double, copy=True, order='F')
-            dqdt[-num_LM_eq:] = Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
-            dqddt[-num_LM_eq:] = Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
         else:
             Lambda = 0
             Lambda_dot = 0
 
         # Predictor step
+        q, dqdt, dqddt = mb.disp_and_accel2state(MB_beam, MB_tstep, Lambda, Lambda_dot, self.sys_size, num_LM_eq)
         self.time_integrator.predictor(q, dqdt, dqddt)
 
         # Reference residuals
@@ -350,8 +366,11 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 raise exc.NotConvergedSolver(error)
 
             # Update positions and velocities
-            mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep)
-            MB_M, MB_C, MB_K, MB_Q = self.assembly_MB_eq_system(MB_beam,
+            Lambda, Lambda_dot = mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, num_LM_eq)
+            if self.settings['write_lm'] and iteration:
+                self.write_lm_cond_num(iteration, Lambda, Lambda_dot, Lambda_ddot, cond_num, cond_num_lm)
+
+            MB_M, MB_C, MB_K, MB_Q, kBnh, LM_Q = self.assembly_MB_eq_system(MB_beam,
                                                                 MB_tstep,
                                                                 self.data.ts,
                                                                 dt,
@@ -359,13 +378,14 @@ class NonLinearDynamicMultibody(_BaseStructural):
                                                                 Lambda_dot,
                                                                 MBdict)
 
-            MB_Asys, MB_Q = self.time_integrator.build_matrix(MB_M, MB_C, MB_K, MB_Q, q, dqdt, dqddt)
+            Asys, Q = self.time_integrator.build_matrix(MB_M, MB_C, MB_K, MB_Q,
+                                                        kBnh, LM_Q)
 
             if self.settings['write_lm']:
-                cond_num = np.linalg.cond(MB_Asys[:self.sys_size, :self.sys_size])
-                cond_num_lm = np.linalg.cond(MB_Asys)
+                cond_num = np.linalg.cond(Asys[:self.sys_size, :self.sys_size])
+                cond_num_lm = np.linalg.cond(Asys)
 
-            Dq = np.linalg.solve(MB_Asys, -MB_Q)
+            Dq = np.linalg.solve(Asys, -Q)
 
             # Evaluate convergence
             if iteration:
@@ -389,28 +409,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
             # Corrector step
             self.time_integrator.corrector(q, dqdt, dqddt, relax_Dq)
 
-            if not num_LM_eq == 0:
-                Lambda = q[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-                Lambda_dot = dqdt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-                Lambda_ddot = dqddt[-num_LM_eq:].astype(dtype=ct.c_double, copy=True, order='F')
-            else:
-                Lambda = 0
-                Lambda_dot = 0
-
-            if self.settings['write_lm']:
-                self.fid_lambda.write("%d %d " % (self.data.ts, iteration))
-                self.fid_lambda_dot.write("%d %d " % (self.data.ts, iteration))
-                self.fid_lambda_ddot.write("%d %d " % (self.data.ts, iteration))
-                self.fid_cond_num.write("%d %d " % (self.data.ts, iteration))
-                for ilm in range(num_LM_eq):
-                    self.fid_lambda.write("%f " % Lambda[ilm])
-                    self.fid_lambda_dot.write("%f " % Lambda_dot[ilm])
-                    self.fid_lambda_ddot.write("%f " % Lambda_ddot[ilm])
-                self.fid_lambda.write("\n")
-                self.fid_lambda_dot.write("\n")
-                self.fid_lambda_ddot.write("\n")
-                self.fid_cond_num.write("%e %e\n" % (cond_num, cond_num_lm))
-
             if converged:
                 break
 
@@ -419,7 +417,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 if num_LM_eq:
                     LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
 
-        mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep)
+        Lambda, Lambda_dot = mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, num_LM_eq)
+        if self.settings['write_lm']:
+            self.write_lm_cond_num(iteration, Lambda, Lambda_dot, Lambda_ddot, cond_num, cond_num_lm)
         # end: comment time stepping
 
         # End of Newmark-beta iterations
