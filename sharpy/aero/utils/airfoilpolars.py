@@ -83,7 +83,7 @@ class polar(object):
             cm = 0. 
         else: 
             if cl == 0.:
-                cl_new, cd, cm = get_coefs(self.aoa_cl0_deg)
+                cl_new, cd, cm = self.get_coefs(self.aoa_cl0_deg)
             elif cl > 0.:
                 dist = np.abs(self.table[:,0] - self.aoa_cl0_deg)
                 min_dist = np.min(dist)
