@@ -203,7 +203,7 @@ class LinAeroEla():
 
     # self.dq[-3:]=-0.5*(wa*tsdata.quat[0]+np.cross(wa,tsdata.quat[1:]))
 
-    def assemble_ss(self, beam_num_modes=None):
+    def assemble_ss(self, beam_num_modes=None, wake_prop_settings=None):
         """Assemble State Space formulation"""
         data = self.data
 
@@ -213,7 +213,7 @@ class LinAeroEla():
         tsstr = self.tsstr
 
         ### assemble linear uvlm
-        self.linuvlm.assemble_ss()
+        self.linuvlm.assemble_ss(wake_prop_settings=wake_prop_settings)
         SSaero = self.linuvlm.SS
 
         ### assemble gains and stiffening term due to non-zero forces
