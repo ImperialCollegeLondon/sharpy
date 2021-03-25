@@ -124,7 +124,6 @@ class NewmarkBeta(_BaseTimeIntegrator):
     def corrector(self, q, dqdt, dqddt, Dq):
 
         sys_size = self.sys_size
-        num_LM_eq = self.num_LM_eq
 
         q[:sys_size] += Dq[:sys_size]
         dqdt[:sys_size] += self.gamma/(self.beta*self.dt)*Dq[:sys_size]
@@ -159,6 +158,13 @@ class GeneralisedAlpha(_BaseTimeIntegrator):
     settings_default['af'] = 0.1
     settings_description['af'] = 'alpha_F coefficient'
 
+    settings_types['sys_size'] = 'int'
+    settings_default['sys_size'] = 0
+    settings_description['sys_size'] = 'Size of the system without constraints'
+
+    settings_types['num_LM_eq'] = 'int'
+    settings_default['num_LM_eq'] = 0
+    settings_description['num_LM_eq'] = 'Number of contraint equations'
 
     def __init__(self):
 
@@ -189,37 +195,45 @@ class GeneralisedAlpha(_BaseTimeIntegrator):
         self.gamma = 0.5 - self.am + self.af
         self.beta = 0.25*(1. - self.am + self.af)**2
 
+        self.sys_size = self.settings['sys_size']
+        self.num_LM_eq = self.settings['num_LM_eq']
 
     def predictor(self, q, dqdt, dqddt):
 
-        q += self.dt*dqdt + (0.5 - self.beta)*self.dt*self.dt*dqddt
-        dqdt += (1.0 - self.gamma)*self.dt*dqddt
+        sys_size = self.sys_size
+        q[:sys_size] += self.dt*dqdt[:sys_size] + (0.5 - self.beta)*self.dt*self.dt*dqddt[:sys_size]
+        dqdt[:sys_size] += (1.0 - self.gamma)*self.dt*dqddt[:sys_size]
         dqddt *= 0.
 
+        dqdt[sys_size:] = dqdt[sys_size:]
 
-    def build_matrix(self, M, C, K, Q):
+    def build_matrix(self, M, C, K, Q, kBnh, LM_Q):
 
-        Asys = (self.om_af*K +
-                self.gamma*self.om_af/self.beta/self.dt*C +
-                self.om_am/(self.beta*self.dt*self.dt)*M)
+        sys_size = self.sys_size
+        num_LM_eq = self.num_LM_eq
 
-        Qout = Q.copy() # + np.dot(M, dqddt)
-                #np.dot(C, self.dt*self.om_af*dqddt + dqdt) +
-                #np.dot(K, 0.5*self.om_af*self.dt**2*dqddt + self.om_af*self.dt*dqdt + q))
+        Asys = np.zeros((sys_size + num_LM_eq, sys_size + num_LM_eq),
+                         dtype=ct.c_double, order='F')
+        Qout = np.zeros((sys_size + num_LM_eq), dtype=ct.c_double, order='F')
+
+        Asys[:sys_size, :sys_size] = (self.om_af*K +
+                                      self.gamma*self.om_af/self.beta/self.dt*C +
+                                      self.om_am/(self.beta*self.dt*self.dt)*M)
+
+        Qout[:sys_size] = Q.copy()
+
+        Asys[sys_size:, :sys_size] = (self.gamma*self.om_af/self.beta/self.dt)*kBnh
+        Asys[:sys_size, sys_size:] = kBnh.T
+        Qout[sys_size:] = LM_Q.copy()
 
         return Asys, Qout
 
     def corrector(self, q, dqdt, dqddt, Dq):
 
-        # Values at the beginning of the time step
-        # q_i = q.copy()
-        # dqdt_i = dqdt.copy()
-        # dqddt_i = dqddt.copy()
+        sys_size = self.sys_size
 
-        # dqddt = dqddt_i + 1./(self.beta*self.dt*self.dt)*Dq
-        # dqdt = dqdt_i + self.dt*dqddt_i + self.gamma/self.beta/self.dt*Dq
-        # q = q_i + self.dt*dqdt_i + self.dt**2/2*dqddt_i + Dq
-
-        q += self.om_af*Dq
-        dqdt += self.gamma*self.om_af/self.beta/self.dt*Dq
-        dqddt += self.om_am/self.beta/self.dt**2*Dq
+        q[:sys_size] += self.om_af*Dq[:sys_size]
+        dqdt[:sys_size] += self.gamma*self.om_af/self.beta/self.dt*Dq[:sys_size]
+        dqddt[:sys_size] += self.om_am/self.beta/self.dt**2*Dq[:sys_size]
+       
+        dqdt[sys_size:] += Dq[sys_size:]
