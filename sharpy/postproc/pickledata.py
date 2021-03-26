@@ -27,10 +27,6 @@ class PickleData(BaseSolver):
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Folder to output pickle file'
-
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
