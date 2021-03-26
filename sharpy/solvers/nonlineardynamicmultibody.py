@@ -250,9 +250,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
             else:
                 MB_tstep[ibody].for_pos[0:3] += dt*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_vel[0:3])
 
-    def extract_resultants(self):
+    def extract_resultants(self, tstep):
         # TODO: code
-        pass
+        return np.zeros((3)), np.zeros((3))
 
     def compute_forces_constraints(self, MB_beam, MB_tstep, ts, dt, Lambda, Lambda_dot):
         """
@@ -347,6 +347,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
         dqdt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
         dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
 
+        # TODO: i belive this can move into disp_and_accel2 state as self.Lambda, self.Lambda_dot
         if not num_LM_eq == 0:
             Lambda = self.Lambda.astype(dtype=ct.c_double, copy=True, order='F')
             Lambda_dot = self.Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
