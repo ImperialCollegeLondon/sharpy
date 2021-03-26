@@ -164,10 +164,6 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
     ws.config['BeamPlot'] = {'include_rbm': 'off',
                              'include_applied_forces': 'on'}
 
-    ws.config['BeamCsvOutput'] = {'output_pos': 'on',
-                                  'output_psi': 'on',
-                                  'screen_output': 'on'}
-
     ws.config['WriteVariablesTime'] = {'structure_variables': ['pos'],
                                        'structure_nodes': list(range(0, ws.num_node_surf)),
                                        'cleanup_old_solution': 'on'}

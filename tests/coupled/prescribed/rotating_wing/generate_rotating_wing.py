@@ -379,9 +379,8 @@ def generate_solver_file(horseshoe=False):
                                  # 'PrescribedUvlm',
                                  'AerogridPlot',
                                  # 'NonLinearDynamic',
-                                 'BeamPlot',
-                                 # 'AeroForcesCalculator',
-                                 'BeamCsvOutput'],
+                                 'BeamPlot',]
+                                 # 'AeroForcesCalculator',],
                         'write_screen': 'off',
                         'write_log': 'on',
                         'log_folder': route + '/output/',
@@ -513,10 +512,6 @@ def generate_solver_file(horseshoe=False):
                                       }
     config['BeamPlot'] = {'include_rbm': 'on',
                           'include_applied_forces': 'on'}
-    config['BeamCsvOutput'] = {'output_pos': 'on',
-                               'output_psi': 'on',
-                               'output_for_pos': 'on',
-                               'screen_output': 'off'}
     config.write()
 
 

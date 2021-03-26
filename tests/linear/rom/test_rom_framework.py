@@ -146,10 +146,6 @@ class TestROMFramework(unittest.TestCase):
         ws.config['BeamPlot'] = {'include_rbm': 'off',
                                  'include_applied_forces': 'on'}
 
-        ws.config['BeamCsvOutput'] = {'output_pos': 'on',
-                                      'output_psi': 'on',
-                                      'screen_output': 'on'}
-
         ws.config['Modal'] = {'NumLambda': 20,
                               'rigid_body_modes': 'off',
                               'print_matrices': 'on',
