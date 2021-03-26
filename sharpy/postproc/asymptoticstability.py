@@ -107,17 +107,16 @@ class AsymptoticStability(BaseSolver):
 
         self.num_evals = self.settings['num_evals']
 
-        stability_folder_path = data.output_folder + '/stability/'
-        if not os.path.exists(stability_folder_path):
-            os.makedirs(stability_folder_path)
-        self.folder = stability_folder_path
+        self.folder = data.output_folder + '/stability/'
+        if not os.path.exists(self.folder):
+            os.makedirs(self.folder)
 
-        if not os.path.exists(stability_folder_path):
-            os.makedirs(stability_folder_path)
+        if not os.path.exists(self.folder):
+            os.makedirs(self.folder)
 
         if self.settings['print_info']:
             cout.cout_wrap('Dynamical System Eigenvalues')
-            eigenvalue_description_file = stability_folder_path + '/eigenvaluetable.txt'
+            eigenvalue_description_file = self.folder + '/eigenvaluetable.txt'
             self.eigenvalue_table = modalutils.EigenvalueTable(filename=eigenvalue_description_file)
 
         # Output dict
@@ -216,13 +215,11 @@ class AsymptoticStability(BaseSolver):
             num_evals: Number of eigenvalues to save
         """
 
-        stability_folder_path = self.folder
-
         num_evals = min(num_evals, self.eigenvalues.shape[0])
 
-        np.savetxt(stability_folder_path + '/eigenvalues.dat', self.eigenvalues[:num_evals].view(float).reshape(-1, 2))
-        np.savetxt(stability_folder_path + '/eigenvectors_r.dat', self.eigenvectors.real[:, :num_evals])
-        np.savetxt(stability_folder_path + '/eigenvectors_i.dat', self.eigenvectors.imag[:, :num_evals])
+        np.savetxt(self.folder + '/eigenvalues.dat', self.eigenvalues[:num_evals].view(float).reshape(-1, 2))
+        np.savetxt(self.folder + '/eigenvectors_r.dat', self.eigenvectors.real[:, :num_evals])
+        np.savetxt(self.folder + '/eigenvectors_i.dat', self.eigenvectors.imag[:, :num_evals])
 
     def print_eigenvalues(self):
         """
