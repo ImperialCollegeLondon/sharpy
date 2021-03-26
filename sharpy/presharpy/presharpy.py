@@ -51,20 +51,21 @@ class PreSharpy(object):
 
     settings_types['write_screen'] = 'bool'
     settings_default['write_screen'] = True
-    settings_description['write_screen'] = 'Display output on terminal screen.'
+    settings_description['write_screen'] = 'Display output on terminal screen'
 
     settings_types['write_log'] = 'bool'
     settings_default['write_log'] = False
     settings_description['write_log'] = 'Write log file'
 
     settings_types['log_folder'] = 'str'
-    settings_default['log_folder'] = ''
-    settings_description['log_folder'] = 'Log folder destination directory'
+    settings_default['log_folder'] = './output/'
+    settings_description['log_folder'] = 'A folder with the case name will be created at this directory ' \
+                                         'containing the SHARPy log and output folders'
 
     settings_types['save_settings'] = 'bool'
     settings_default['save_settings'] = False
     settings_description['save_settings'] = 'Save a copy of the settings to a ``.sharpy`` file in the output ' \
-                                            'directory specified in ``log_folder``.'
+                                            'directory specified in ``log_folder``'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
