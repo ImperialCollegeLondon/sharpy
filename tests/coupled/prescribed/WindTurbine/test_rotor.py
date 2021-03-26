@@ -93,7 +93,7 @@ class TestRotor(unittest.TestCase):
         SimInfo.solvers['SHARPy']['route'] = route
         SimInfo.solvers['SHARPy']['write_log'] = True
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
-        SimInfo.solvers['SHARPy']['log_folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
+        SimInfo.solvers['SHARPy']['log_folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
         SimInfo.set_variable_all_dicts('dt', dt)
         SimInfo.set_variable_all_dicts('rho', air_density)
 
@@ -131,15 +131,9 @@ class TestRotor(unittest.TestCase):
     def tearDown(self):
         files_to_delete = [case + '.aero.h5',
                            case + '.fem.h5',
-                           case + '.sharpy',
-                           'log']
-        try:
-            for f in files_to_delete:
-                os.remove(folder +'/' + f)
-        except FileNotFoundError:
-            pass
-
-        try:
-            shutil.rmtree(folder + '/output/')
-        except FileNotFoundError:
-            pass
+                           case + '.sharpy',]
+        
+        for f in files_to_delete:
+            os.remove(folder +'/' + f)
+        
+        shutil.rmtree(folder + '/output/')
