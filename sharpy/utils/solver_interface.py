@@ -100,8 +100,10 @@ def dictionary_of_solvers(print_info=True):
     import sharpy.postproc
     dictionary = dict()
     for solver in dict_of_solvers:
-        init_solver = initialise_solver(solver, print_info)
-        dictionary[solver] = init_solver.settings_default
+        if not solver.lower() == 'SaveData'.lower():
+            # TODO: why it does not work for savedata?
+            init_solver = initialise_solver(solver, print_info)
+            dictionary[solver] = init_solver.settings_default
 
     return dictionary
 
@@ -191,3 +193,5 @@ def output_documentation(route=None):
                         out_file.write('    ./' + solver_type + '/' + k + '\n')
                 except AttributeError:
                     pass
+
+

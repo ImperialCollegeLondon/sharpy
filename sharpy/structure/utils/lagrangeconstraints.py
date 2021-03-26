@@ -314,15 +314,6 @@ def equal_lin_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, 
         FoR_body (int): body number of the "FoR"
         FoR_dof (int): position of the first degree of freedom associated to the "FoR"
     """
-    # Variables names. The naming of the variables can be quite confusing. The reader should think that
-    # the BC relates one "node" and one "FoR" (writen between quotes in these lines).
-    # If a variable is related to one of them starts with "node_" or "FoR_" respectively
-    # node_number: number of the "node" within its own body
-    # node_body: body number of the "node"
-    # node_FoR_dof: position of the first degree of freedom of the FoR to which the "node" belongs
-    # node_dof: position of the first degree of freedom associated to the "node"
-    # FoR_body: body number of the "FoR"
-    # FoR_dof: position of the first degree of freedom associated to the "FoR"
 
     num_LM_eq_specific = 3
     Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
@@ -437,16 +428,6 @@ def def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, FoR_body, node_body, no
         FoR_dof (int): position of the first degree of freedom associated to the "FoR"
     """
 
-    # Variables names. The naming of the variables can be quite confusing. The reader should think that
-    # the BC relates one "node" and one "FoR" (writen between quotes in these lines).
-    # If a variable is related to one of them starts with "node_" or "FoR_" respectively
-    # node_number: number of the "node" within its own body
-    # node_body: body number of the "node"
-    # node_FoR_dof: position of the first degree of freedom of the FoR to which the "node" belongs
-    # node_dof: position of the first degree of freedom associated to the "node"
-    # FoR_body: body number of the "FoR"
-    # FoR_dof: position of the first degree of freedom associated to the "FoR"
-
     ielem, inode_in_elem = MB_beam[node_body].node_master_elem[node_number]
 
     # Simplify notation
@@ -489,7 +470,6 @@ def def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, FoR_body, node_body, no
     # Lambda_dot[ieq:ieq+num_LM_eq_specific]
     # np.concatenate((Lambda_dot[ieq:ieq+num_LM_eq_specific], np.array([0.])))
 
-    # print(indep)
     Bnh[:, FoR_dof+3:FoR_dof+6] = ag.multiply_matrices(ag.skew(rot_axisB),
                                                        cab.T,
                                                        node_cga.T,
@@ -531,7 +511,6 @@ def def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, FoR_body, node_body, no
 
         LM_Q[:sys_size] += penaltyFactor*np.dot(Bnh.T, np.dot(Bnh, q))
 
-        # LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += penaltyFactor*np.dot(Bnh.T, Bnh)
         LM_C[:sys_size, :sys_size] += penaltyFactor*np.dot(Bnh.T, Bnh)
 
         sq_rot_axisB = np.dot(ag.skew(rot_axisB).T, ag.skew(rot_axisB))
@@ -624,16 +603,22 @@ def def_rot_axis_FoR_wrt_node_xyz(MB_tstep, MB_beam, FoR_body, node_body, node_n
     node_cga = MB_tstep[node_body].cga()
     FoR_cga = MB_tstep[FoR_body].cga()
     FoR_wa = MB_tstep[FoR_body].for_vel[3:6]
+    psi = MB_tstep[node_body].psi[ielem,inode_in_elem,:]
+    psi_dot = MB_tstep[node_body].psi_dot[ielem,inode_in_elem,:]
 
     # Components to be zero
     Z = np.zeros((2,3))
     Z[:, zero_comp] = np.eye(2)
-
-    Bnh[:, FoR_dof+3:FoR_dof+6] = ag.multiply_matrices(Z, cab.T, node_cga.T, FoR_cga)
+    
+    Bnh[:, FoR_dof+3:FoR_dof+6] += ag.multiply_matrices(Z, cab.T, node_cga.T, FoR_cga)
+    Bnh[:, node_dof+3:node_dof+6] -= ag.multiply_matrices(Z, ag.crv2tan(psi))
+    Bnh[:, node_FoR_dof+3:node_FoR_dof+6] -= ag.multiply_matrices(Z, cab.T)
 
     # Constrain angular velocities
     LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq+num_LM_eq_specific])
     LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*ag.multiply_matrices(Z, cab.T, node_cga.T, FoR_cga, FoR_wa)
+    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] -= scalingFactor*ag.multiply_matrices(Z, ag.crv2tan(psi), psi_dot)
+    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] -= scalingFactor*ag.multiply_matrices(Z, cab.T, MB_tstep[node_body].for_vel[3:6])
 
     LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
     LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
@@ -647,6 +632,9 @@ def def_rot_axis_FoR_wrt_node_xyz(MB_tstep, MB_beam, FoR_body, node_body, node_n
 
     LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += scalingFactor*ag.multiply_matrices(FoR_cga.T, node_cga, ag.der_Ccrv_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:],
                                                                                                                                   np.dot(Z.T, Lambda_dot[ieq:ieq+num_LM_eq_specific])))
+
+    LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] -= scalingFactor*ag.der_TanT_by_xv(psi, ag.multiply_matrices(Z.T, Lambda_dot[ieq:ieq+num_LM_eq_specific]))
+    LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] -= scalingFactor*ag.der_Ccrv_by_v(psi, ag.multiply_matrices(Z.T, Lambda_dot[ieq:ieq+num_LM_eq_specific]))
 
     if penaltyFactor:
         q = np.zeros((sys_size,))
@@ -734,22 +722,10 @@ def def_rot_vel_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_number
         FoR_body (int): body number of the "FoR"
         FoR_dof (int): position of the first degree of freedom associated to the "FoR"
     """
-    # Variables names. The naming of the variables can be quite confusing. The reader should think that
-    # the BC relates one "node" and one "FoR" (writen between quotes in these lines).
-    # If a variable is related to one of them starts with "node_" or "FoR_" respectively
-    # node_number: number of the "node" within its own body
-    # node_body: body number of the "node"
-    # node_FoR_dof: position of the first degree of freedom of the FoR to which the "node" belongs
-    # node_dof: position of the first degree of freedom associated to the "node"
-    # FoR_body: body number of the "FoR"
-    # FoR_dof: position of the first degree of freedom associated to the "FoR"
 
     num_LM_eq_specific = 1
     Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
     B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
-
-    # Lambda_dot[ieq:ieq+num_LM_eq_specific]
-    # np.concatenate((Lambda_dot[ieq:ieq+num_LM_eq_specific], np.array([0.])))
 
     ielem, inode_in_elem = MB_beam[node_body].node_master_elem[node_number]
     Bnh[:, FoR_dof+3:FoR_dof+6] = ag.multiply_matrices(rot_axisB,
@@ -796,9 +772,6 @@ def def_rot_vect_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_numbe
 
     num_LM_eq_specific = 3
     Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
-
-    # Lambda_dot[ieq:ieq+num_LM_eq_specific]
-    # np.concatenate((Lambda_dot[ieq:ieq+num_LM_eq_specific], np.array([0.])))
 
     # Simplify notation
     ielem, inode_in_elem = MB_beam[node_body].node_master_elem[node_number]
@@ -871,12 +844,6 @@ class hinge_node_FoR(BaseLagrangeConstraint):
         return self._n_eq
 
     def initialise(self, MBdict_entry, ieq, print_info=True):
-        # if print_info:
-            # cout.cout_wrap('Type of LC: ', self._lc_id)
-            # cout.cout_wrap('Arguments and values:')
-            # for k, v in MBdict_entry.items():
-                # cout.cout_wrap(k, v)
-
         self.node_number = MBdict_entry['node_in_body']
         self.node_body = MBdict_entry['body']
         self.FoR_body = MBdict_entry['body_FoR']
@@ -897,7 +864,7 @@ class hinge_node_FoR(BaseLagrangeConstraint):
         else:
             self.rot_dir = 'general'
             self.indep = []
-
+    
         return self._ieq + self._n_eq
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
@@ -957,11 +924,6 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         return self._n_eq
 
     def initialise(self, MBdict_entry, ieq, print_info=True):
-        # if print_info:
-            # cout.cout_wrap('Type of LC: ', self._lc_id)
-            # cout.cout_wrap('Arguments and values:')
-            # for k, v in MBdict_entry.items():
-                # cout.cout_wrap(k, v)
 
         self.node_number = MBdict_entry['node_in_body']
         self.node_body = MBdict_entry['body']
@@ -972,8 +934,8 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         self.scalingFactor = set_value_or_default(MBdict_entry, "scalingFactor", 1.)
         self.penaltyFactor = set_value_or_default(MBdict_entry, "penaltyFactor", 0.)
 
-        self.static_constraint = fully_constrained_node_FoR()
-        self.static_constraint.initialise(MBdict_entry, ieq)
+        # self.static_constraint = fully_constrained_node_FoR()
+        # self.static_constraint.initialise(MBdict_entry, ieq)
 
         return self._ieq + self._n_eq
 
@@ -1042,11 +1004,6 @@ class spherical_node_FoR(BaseLagrangeConstraint):
         return self._n_eq
 
     def initialise(self, MBdict_entry, ieq, print_info=True):
-        # if print_info:
-            # cout.cout_wrap('Type of LC: ', self._lc_id)
-            # cout.cout_wrap('Arguments and values:')
-            # for k, v in MBdict_entry.items():
-                # cout.cout_wrap(k, v)
 
         self.node_number = MBdict_entry['node_in_body']
         self.node_body = MBdict_entry['body']
@@ -1096,11 +1053,6 @@ class free(BaseLagrangeConstraint):
         return self._n_eq
 
     def initialise(self, MBdict_entry, ieq, print_info=True):
-        # if print_info:
-            # cout.cout_wrap('Type of LC: ', self._lc_id)
-            # cout.cout_wrap('Arguments and values:')
-            # for k, v in MBdict_entry.items():
-                # cout.cout_wrap(k, v)
 
         self._ieq = ieq
         return self._ieq + self._n_eq
@@ -1142,11 +1094,6 @@ class spherical_FoR(BaseLagrangeConstraint):
         return self._n_eq
 
     def initialise(self, MBdict_entry, ieq, print_info=True):
-        # if print_info:
-            # cout.cout_wrap('Type of LC: ', self._lc_id)
-            # cout.cout_wrap('Arguments and values:')
-            # for k, v in MBdict_entry.items():
-                # cout.cout_wrap(k, v)
 
         self.body_FoR = MBdict_entry['body_FoR']
         self._ieq = ieq
@@ -1211,11 +1158,6 @@ class hinge_FoR(BaseLagrangeConstraint):
         return self._n_eq
 
     def initialise(self, MBdict_entry, ieq, print_info=True):
-        # if print_info:
-            # cout.cout_wrap('Type of LC: ', self._lc_id)
-            # cout.cout_wrap('Arguments and values:')
-            # for k, v in MBdict_entry.items():
-                # cout.cout_wrap(k, v)
 
         self.body_FoR = MBdict_entry['body_FoR']
         self.rot_axis = MBdict_entry['rot_axis_AFoR']
@@ -1328,11 +1270,6 @@ class hinge_FoR_wrtG(BaseLagrangeConstraint):
         return self._n_eq
 
     def initialise(self, MBdict_entry, ieq, print_info=True):
-        # if print_info:
-            # cout.cout_wrap('Type of LC: ', self._lc_id)
-            # cout.cout_wrap('Arguments and values:')
-            # for k, v in MBdict_entry.items():
-                # cout.cout_wrap(k, v)
 
         self.body_FoR = MBdict_entry['body_FoR']
         self.rot_axis = MBdict_entry['rot_axis_AFoR']
@@ -1420,11 +1357,6 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
         return self._n_eq
 
     def initialise(self, MBdict_entry, ieq, print_info=True):
-        # if print_info:
-            # cout.cout_wrap('Type of LC: ', self._lc_id)
-            # cout.cout_wrap('Arguments and values:')
-            # for k, v in MBdict_entry.items():
-                # cout.cout_wrap(k, v)
 
         cout.cout_wrap("WARNING: do not use fully_constrained_node_FoR. It is outdated. Definetly not working if 'body' has velocity", 3)
         self.node_number = MBdict_entry['node_in_body']
@@ -1486,41 +1418,6 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
         return
 
 
-# @lagrangeconstraint
-# class hinge_node_FoR_constant_rotation(BaseLagrangeConstraint):
-#     _lc_id = 'hinge_node_FoR_constant_rotation'
-#
-#     def __init__(self):
-#         self._n_eq = 4
-#
-#     def get_n_eq(self):
-#         return self._n_eq
-#
-#     def initialise(self, MBdict_entry, ieq):
-#         print('Type of LC: ', self._lc_id)
-#         print('Arguments and values:')
-#         for k, v in MBdict_entry.items():
-#             print(k, v)
-#
-#         self._ieq = ieq
-#         return self._ieq + self._n_eq
-#
-#     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-#                 sys_size, dt, Lambda, Lambda_dot,
-#                 self.scalingFactor, self.penaltyFactor):
-#         return
-#
-#     def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
-#                 sys_size, dt, Lambda, Lambda_dot,
-#                 self.scalingFactor, self.penaltyFactor):
-#         return
-#
-#     def staticpost(self, lc_list, MB_beam, MB_tstep):
-#         return
-#
-#     def dynamicpost(self, lc_list, MB_beam, MB_tstep):
-#         return
-
 @lagrangeconstraint
 class constant_rot_vel_FoR(BaseLagrangeConstraint):
     __doc__ = """
@@ -1543,11 +1440,6 @@ class constant_rot_vel_FoR(BaseLagrangeConstraint):
         return self._n_eq
 
     def initialise(self, MBdict_entry, ieq, print_info=True):
-        # if print_info:
-            # cout.cout_wrap('Type of LC: ', self._lc_id)
-            # cout.cout_wrap('Arguments and values:')
-            # for k, v in MBdict_entry.items():
-                # cout.cout_wrap(k, v)
 
         self.rot_vel = MBdict_entry['rot_vel']
         self.FoR_body = MBdict_entry['FoR_body']
@@ -1611,11 +1503,6 @@ class constant_vel_FoR(BaseLagrangeConstraint):
         return self._n_eq
 
     def initialise(self, MBdict_entry, ieq, print_info=True):
-        # if print_info:
-            # cout.cout_wrap('Type of LC: ', self._lc_id)
-            # cout.cout_wrap('Arguments and values:')
-            # for k, v in MBdict_entry.items():
-                # cout.cout_wrap(k, v)
 
         self.vel = MBdict_entry['vel']
         self.FoR_body = MBdict_entry['FoR_body']
@@ -1681,11 +1568,6 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
         return self._n_eq
 
     def initialise(self, MBdict_entry, ieq, print_info=True):
-        # if print_info:
-            # cout.cout_wrap('Type of LC: ', self._lc_id)
-            # cout.cout_wrap('Arguments and values:')
-            # for k, v in MBdict_entry.items():
-                # cout.cout_wrap(k, v)
 
         self.vel = MBdict_entry['velocity']
         self.body_number = MBdict_entry['body_number']
@@ -1703,7 +1585,6 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
 
         # Define the position of the first degree of freedom associated to the FoR
-        # FoR_dof = define_FoR_dof(MB_beam, self.body_number)
         node_dof = define_node_dof(MB_beam, self.body_number, self.node_number)
         ieq = self._ieq
 
@@ -1733,7 +1614,6 @@ class lin_vel_node_wrtA(BaseLagrangeConstraint):
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
 
         # Define the position of the first degree of freedom associated to the FoR
-        # FoR_dof = define_FoR_dof(MB_beam, self.body_number)
         node_dof = define_node_dof(MB_beam, self.body_number, self.node_number)
         ieq = self._ieq
 
@@ -1779,11 +1659,6 @@ class lin_vel_node_wrtG(BaseLagrangeConstraint):
         return self._n_eq
 
     def initialise(self, MBdict_entry, ieq, print_info=True):
-        # if print_info:
-            # cout.cout_wrap('Type of LC: ' + str(self._lc_id))
-            # cout.cout_wrap('Arguments and values:')
-            # for k, v in MBdict_entry.items():
-                # cout.cout_wrap(str(k) + str(v))
 
         self.vel = MBdict_entry['velocity']
         self.body_number = MBdict_entry['body_number']
@@ -1801,7 +1676,6 @@ class lin_vel_node_wrtG(BaseLagrangeConstraint):
         B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
 
         # Define the position of the first degree of freedom associated to the FoR
-        # FoR_dof = define_FoR_dof(MB_beam, self.body_number)
         node_dof = define_node_dof(MB_beam, self.body_number, self.node_number)
         ieq = self._ieq
 
@@ -1947,7 +1821,6 @@ def generate_lagrange_matrix(lc_list, MB_beam, MB_tstep, ts, num_LM_eq, sys_size
             lc.staticmat(LM_C=LM_C,
                         LM_K=LM_K,
                         LM_Q=LM_Q,
-                        # MBdict=MBdict,
                         MB_beam=MB_beam,
                         MB_tstep=MB_tstep,
                         ts=ts,
@@ -1956,13 +1829,11 @@ def generate_lagrange_matrix(lc_list, MB_beam, MB_tstep, ts, num_LM_eq, sys_size
                         dt=dt,
                         Lambda=Lambda,
                         Lambda_dot=Lambda_dot)
-                        # ieq=ieq,
 
         elif dynamic_or_static.lower() == "dynamic":
             lc.dynamicmat(LM_C=LM_C,
                         LM_K=LM_K,
                         LM_Q=LM_Q,
-                        # MBdict=MBdict,
                         MB_beam=MB_beam,
                         MB_tstep=MB_tstep,
                         ts=ts,
@@ -1971,7 +1842,6 @@ def generate_lagrange_matrix(lc_list, MB_beam, MB_tstep, ts, num_LM_eq, sys_size
                         dt=dt,
                         Lambda=Lambda,
                         Lambda_dot=Lambda_dot)
-                        # ieq=ieq,
 
     return LM_C, LM_K, LM_Q
 
@@ -1985,13 +1855,11 @@ def postprocess(lc_list, MB_beam, MB_tstep, dynamic_or_static):
             lc.staticpost(lc_list = lc_list,
                            MB_beam = MB_beam,
                            MB_tstep = MB_tstep)
-                           # MBdict = MBdict)
 
         elif dynamic_or_static.lower() == "dynamic":
             lc.dynamicpost(lc_list = lc_list,
                            MB_beam = MB_beam,
                            MB_tstep = MB_tstep)
-                           # MBdict = MBdict)
 
     return
 
@@ -2014,16 +1882,4 @@ def remove_constraint(MBdict, constraint):
 ################################################################################
 ################################################################################
 ################################################################################
-# this at the end of the file
 print_available_lc()
-
-# test
-# if __name__ == '__main__':
-    # lc_list = list()
-    # lc_list.append(lc_from_string('SampleLagrange')())
-    # lc_list.append(lc_from_string('SampleLagrange')())
-
-    # counter = -1
-    # for lc in lc_list:
-        # counter += 1
-        # lc.initialise(counter=counter)
