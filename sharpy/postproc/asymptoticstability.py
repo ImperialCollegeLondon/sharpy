@@ -111,9 +111,6 @@ class AsymptoticStability(BaseSolver):
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
 
-        if not os.path.exists(self.folder):
-            os.makedirs(self.folder)
-
         if self.settings['print_info']:
             cout.cout_wrap('Dynamical System Eigenvalues')
             eigenvalue_description_file = self.folder + '/eigenvaluetable.txt'
@@ -343,7 +340,7 @@ class AsymptoticStability(BaseSolver):
 
             # Initialise postprocessors - new folder for each mode
             # initialise postprocessors
-            route = self.settings['folder'] + '/stability/mode_%06d/' % mode
+            route = self.folder + '/stability/mode_%06d/' % mode
             postprocessors = dict()
             postprocessor_list = ['AerogridPlot', 'BeamPlot']
             postprocessors_settings = dict()
