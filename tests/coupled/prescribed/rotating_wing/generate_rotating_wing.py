@@ -489,35 +489,31 @@ def generate_solver_file(horseshoe=False):
                                     'aligned_grid': 'on',
                                     'mstar': 1,
                                     'freestream_dir': ['1', '0', '0'],
-                                    'wake_shape_generator': 'StraightWake',                                                                                                 
-                                    'wake_shape_generator_input': {'u_inf': u_inf,                                                                                      
-                                                                     'u_inf_direction': np.array([1., 0., 0.]),                                                              
+                                    'wake_shape_generator': 'StraightWake',
+                                    'wake_shape_generator_input': {'u_inf': u_inf,
+                                                                     'u_inf_direction': np.array([1., 0., 0.]),
                                                                      'dt': dt}}
     else:
         config['AerogridLoader'] = {'unsteady': 'on',
                                     'aligned_grid': 'on',
                                     'mstar': 150,
                                     'freestream_dir': ['1', '0', '0'],
-                                    'wake_shape_generator': 'StraightWake'                                                                                                 
-                                    'wake_shape_generator_input': {'u_inf': u_inf,                                                                                      
-                                                                     'u_inf_direction': np.array([1., 0., 0.]),                                                              
+                                    'wake_shape_generator': 'StraightWake'
+                                    'wake_shape_generator_input': {'u_inf': u_inf,
+                                                                     'u_inf_direction': np.array([1., 0., 0.]),
                                                                      'dt': dt}}
-    config['AerogridPlot'] = {'folder': route + '/output/',
-                              'include_rbm': 'on',
+    config['AerogridPlot'] = {'include_rbm': 'on',
                               'include_applied_forces': 'on',
                               'minus_m_star': 0
                               }
-    config['AeroForcesCalculator'] = {'folder': route + '/output/forces',
-                                      'write_text_file': 'on',
+    config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                       'text_file_name': case_name + '_aeroforces.csv',
                                       'screen_output': 'on',
                                       'unsteady': 'off'
                                       }
-    config['BeamPlot'] = {'folder': route + '/output/',
-                          'include_rbm': 'on',
+    config['BeamPlot'] = {'include_rbm': 'on',
                           'include_applied_forces': 'on'}
-    config['BeamCsvOutput'] = {'folder': route + '/output/',
-                               'output_pos': 'on',
+    config['BeamCsvOutput'] = {'output_pos': 'on',
                                'output_psi': 'on',
                                'output_for_pos': 'on',
                                'screen_output': 'off'}

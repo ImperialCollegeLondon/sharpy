@@ -86,7 +86,6 @@ class SaveParametricCase(BaseSolver):
         sim_info['case'] = self.data.settings['SHARPy']['case']
 
         if 'PickleData' not in self.data.settings['SHARPy']['flow'] and self.settings['save_case']:
-            self.data.settings['PickleData'] = {'folder': self.settings['folder']}
             pickle_solver = initialise_solver('PickleData')
             pickle_solver.initialise(self.data)
             self.data = pickle_solver.run()

@@ -1667,12 +1667,6 @@ class SimulationInformation():
                                   'log_folder': './output',
                                   'log_file': 'log'}
 
-        self.solvers['SaveData'] = {'folder': './output',
-                                   'save_aero': True,
-                                   'save_struct': True,
-                                   # 'skip_attr': dict(),
-                                   'compress_float': False}
-
     def check(self):
 
         default = SimulationInformation()

@@ -10,7 +10,7 @@ class TestROMFramework(unittest.TestCase):
     Test verifyies the execution of the balancing ROMs (i.e. checks that everything runs rather than checking
     against a benchmark case
     """
-    
+
     def setUp(self):
         # Problem Set up
         u_inf = 1.
@@ -84,10 +84,10 @@ class TestROMFramework(unittest.TestCase):
             'unsteady': 'off',
             'aligned_grid': 'on',
             'mstar': 1,
-            'freestream_dir': ws.u_inf_direction,                                                                                                                            
-            'wake_shape_generator': 'StraightWake',                                                                                                                          
-            'wake_shape_generator_input': {'u_inf': ws.u_inf,                                                                                                                
-                                           'u_inf_direction': ws.u_inf_direction,                                                                                            
+            'freestream_dir': ws.u_inf_direction,
+            'wake_shape_generator': 'StraightWake',
+            'wake_shape_generator_input': {'u_inf': ws.u_inf,
+                                           'u_inf_direction': ws.u_inf_direction,
                                            'dt': ws.dt}
         }
 
@@ -134,28 +134,23 @@ class TestROMFramework(unittest.TestCase):
                                            'gravity_on': 'on',
                                            'gravity': 9.754}}
 
-        ws.config['AerogridPlot'] = {'folder': self.route_test_dir + '/output/',
-                                     'include_rbm': 'off',
+        ws.config['AerogridPlot'] = {'include_rbm': 'off',
                                      'include_applied_forces': 'on',
                                      'minus_m_star': 0}
 
-        ws.config['AeroForcesCalculator'] = {'folder': self.route_test_dir + '/output/forces',
-                                             'write_text_file': 'on',
+        ws.config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                              'text_file_name': ws.case_name + '_aeroforces.csv',
                                              'screen_output': 'on',
                                              'unsteady': 'off'}
 
-        ws.config['BeamPlot'] = {'folder': self.route_test_dir + '/output/',
-                                 'include_rbm': 'off',
+        ws.config['BeamPlot'] = {'include_rbm': 'off',
                                  'include_applied_forces': 'on'}
 
-        ws.config['BeamCsvOutput'] = {'folder': self.route_test_dir + '/output/',
-                                      'output_pos': 'on',
+        ws.config['BeamCsvOutput'] = {'output_pos': 'on',
                                       'output_psi': 'on',
                                       'screen_output': 'on'}
 
-        ws.config['Modal'] = {'folder': self.route_test_dir + '/output/',
-                              'NumLambda': 20,
+        ws.config['Modal'] = {'NumLambda': 20,
                               'rigid_body_modes': 'off',
                               'print_matrices': 'on',
                               'keep_linear_matrices': 'on',
@@ -204,16 +199,13 @@ class TestROMFramework(unittest.TestCase):
                                       'postprocessors': ['BeamPlot', 'AerogridPlot'],
                                       'postprocessors_settings': {'AerogridPlot': {
                                           'u_inf': ws.u_inf,
-                                          'folder': self.route_test_dir + '/output/',
                                           'include_rbm': 'on',
                                           'include_applied_forces': 'on',
                                           'minus_m_star': 0},
-                                          'BeamPlot': {'folder': ws.route + '/output/',
-                                                       'include_rbm': 'on',
+                                          'BeamPlot': {'include_rbm': 'on',
                                                        'include_applied_forces': 'on'}}}
 
         ws.config['FrequencyResponse'] = {'quick_plot': 'off',
-                                          'folder': self.route_test_dir + '/output/',
                                           'frequency_unit': 'k',
                                           'frequency_bounds': [0.0001, 1.0],
                                           'target_system': ['aeroelastic']

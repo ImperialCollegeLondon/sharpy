@@ -347,14 +347,12 @@ class AsymptoticStability(BaseSolver):
             postprocessors = dict()
             postprocessor_list = ['AerogridPlot', 'BeamPlot']
             postprocessors_settings = dict()
-            postprocessors_settings['AerogridPlot'] = {'folder': route,
-                                    'include_rbm': 'on',
+            postprocessors_settings['AerogridPlot'] = {'include_rbm': 'on',
                                     'include_applied_forces': 'on',
                                     'minus_m_star': 0,
                                     'u_inf': 1
                                     }
-            postprocessors_settings['BeamPlot'] = {'folder': route + '/',
-                                    'include_rbm': 'on',
+            postprocessors_settings['BeamPlot'] = {'include_rbm': 'on',
                                     'include_applied_forces': 'on'}
 
             for postproc in postprocessor_list:
