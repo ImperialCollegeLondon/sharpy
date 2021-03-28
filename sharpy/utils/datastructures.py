@@ -766,8 +766,8 @@ class StructTimeStepInfo(object):
             # self.pos_dot[inode,:] = np.dot(Csm,self.pos_dot[inode,:]) - np.dot(CAslaveG,delta_vel_ms[0:3])
             self.pos_dot[inode,:] = (np.dot(Csm, self.pos_dot[inode,:]) -
                                     np.dot(CAslaveG, delta_vel_ms[0:3]) -
-                                    np.dot(algebra.skew(np.dot( CAslaveG, self.for_vel[3:6])), self.pos[inode,:]) +
-                                    np.dot(Csm, np.dot(algebra.skew(np.dot(CGAmaster.T, for0_vel[3:6])), pos_previous)))
+                                    np.dot(algebra.skew(self.for_vel[3:6]), self.pos[inode,:]) +
+                                    np.dot(Csm, np.dot(algebra.skew(for0_vel[3:6]), pos_previous)))
 
             self.gravity_forces[inode,0:3] = np.dot(Csm, self.gravity_forces[inode,0:3])
             self.gravity_forces[inode,3:6] = np.dot(Csm, self.gravity_forces[inode,3:6])
@@ -807,8 +807,8 @@ class StructTimeStepInfo(object):
                                 np.dot(np.transpose(CGAmaster),delta_pos_ms[0:3]))
             self.pos_dot[inode,:] = (np.dot(np.transpose(Csm),self.pos_dot[inode,:]) +
                                     np.dot(np.transpose(CGAmaster),delta_vel_ms[0:3]) +
-                                    np.dot(Csm.T, np.dot(algebra.skew(np.dot(CAslaveG, self.for_vel[3:6])), pos_previous)) -
-                                    np.dot(algebra.skew(np.dot(CGAmaster.T, for0_vel[3:6])), self.pos[inode,:]))
+                                    np.dot(Csm.T, np.dot(algebra.skew(self.for_vel[3:6]), pos_previous)) -
+                                    np.dot(algebra.skew(for0_vel[3:6]), self.pos[inode,:]))
             self.gravity_forces[inode,0:3] = np.dot(Csm.T, self.gravity_forces[inode,0:3])
             self.gravity_forces[inode,3:6] = np.dot(Csm.T, self.gravity_forces[inode,3:6])
                                     # np.cross(np.dot(CGAmaster.T, delta_vel_ms[3:6]), pos_previous))
@@ -895,7 +895,6 @@ class StructTimeStepInfo(object):
 
             # Merge tstep
             self.pos[ibody_nodes,:] = MB_tstep[ibody].pos.astype(dtype=ct.c_double, order='F', copy=True)
-            # tstep.pos_dot[ibody_nodes,:] = MB_tstep[ibody].pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
             self.psi[ibody_elems,:,:] = MB_tstep[ibody].psi.astype(dtype=ct.c_double, order='F', copy=True)
             self.gravity_forces[ibody_nodes,:] = MB_tstep[ibody].gravity_forces.astype(dtype=ct.c_double, order='F',
                                                                                        copy=True)
