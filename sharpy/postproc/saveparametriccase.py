@@ -66,10 +66,9 @@ class SaveParametricCase(BaseSolver):
 
         settings.to_custom_types(self.settings,
                                  self.settings_types,
-                                 self.settings_default,
-                                 no_ctype=True)
+                                 self.settings_default
+                                 )
 
-        # create folder for containing files if necessary
         self.folder = data.output_folder
 
     def run(self):
