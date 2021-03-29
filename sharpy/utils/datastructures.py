@@ -754,31 +754,35 @@ class StructTimeStepInfo(object):
         CGAmaster = algebra.quat2rotation(quat0)
         Csm = np.dot(CAslaveG, CGAmaster)
 
-        delta_vel_ms = np.zeros((6,))
-        delta_pos_ms = self.for_pos[0:3] - for0_pos[0:3]
-        delta_vel_ms[0:3] = np.dot(CAslaveG.T, self.for_vel[0:3]) - np.dot(CGAmaster, for0_vel[0:3])
-        delta_vel_ms[3:6] = np.dot(CAslaveG.T, self.for_vel[3:6]) - np.dot(CGAmaster, for0_vel[3:6])
-
         # Modify position
         for inode in range(self.pos.shape[0]):
-            pos_previous = self.pos[inode,:] + np.zeros((3,),)
-            self.pos[inode,:] = np.dot(Csm,self.pos[inode,:]) - np.dot(CAslaveG,delta_pos_ms[0:3])
-            # self.pos_dot[inode,:] = np.dot(Csm,self.pos_dot[inode,:]) - np.dot(CAslaveG,delta_vel_ms[0:3])
-            self.pos_dot[inode,:] = (np.dot(Csm, self.pos_dot[inode,:]) -
-                                    np.dot(CAslaveG, delta_vel_ms[0:3]) -
-                                    algebra.cross3(self.for_vel[3:6]), self.pos[inode,:]) +
-                                    np.dot(Csm, algebra.cross3(for0_vel[3:6], pos_previous)))
+            vel_master = (self.pos_dot[inode,:] +
+                          for0_vel[0:3] +
+                          algebra.cross3(for0_vel[3:6], self.pos[inode, :]))
+            self.pos[inode, :] = np.dot(Csm,self.pos[inode,:]) + np.dot(CAslaveG, for0_pos[0:3] - self.for_pos[0:3])
+            self.pos_dot[inode, :] = (np.dot(Csm, vel_master) -
+                                     self.for_vel[0:3] -
+                                     algebra.cross3(self.for_vel[3:6], self.pos[inode,:]))
 
-            self.gravity_forces[inode,0:3] = np.dot(Csm, self.gravity_forces[inode,0:3])
-            self.gravity_forces[inode,3:6] = np.dot(Csm, self.gravity_forces[inode,3:6])
+            self.gravity_forces[inode, 0:3] = np.dot(Csm, self.gravity_forces[inode, 0:3])
+            self.gravity_forces[inode, 3:6] = np.dot(Csm, self.gravity_forces[inode, 3:6])
 
         # Modify local rotations
         for ielem in range(self.psi.shape[0]):
             for inode in range(3):
-                psi_previous = self.psi[ielem,inode,:] + np.zeros((3,),)
-                self.psi[ielem,inode,:] = algebra.rotation2crv(np.dot(Csm,algebra.crv2rotation(self.psi[ielem,inode,:])))
-                self.psi_dot[ielem, inode, :] = np.dot(np.dot(algebra.crv2tan(self.psi[ielem,inode,:]),Csm),
-                                                    (np.dot(algebra.crv2tan(psi_previous).T,self.psi_dot[ielem,inode,:]) - np.dot(CGAmaster.T,delta_vel_ms[3:6])))
+                # psi_master = self.psi[ielem, inode, :] + np.zeros((3,),)
+                # self.psi[ielem, inode, :] = np.dot(Csm, self.psi[ielem, inode, :])
+                # self.psi_dot[ielem, inode, :] = (np.dot(Csm, self.psi_dot[ielem, inode, :] + algebra.cross3(for0_vel[3:6], psi_master)) -
+                #                                  algebra.multiply_matrices(CAslaveG, algebra.skew(self.for_vel[3:6]), CGAmaster, psi_master))
+                psi_master = self.psi[ielem,inode,:] + np.zeros((3,),)
+                self.psi[ielem, inode, :] = algebra.rotation2crv(np.dot(Csm,algebra.crv2rotation(self.psi[ielem,inode,:])))
+                psi_slave = self.psi[ielem, inode, :] + np.zeros((3,),)                
+                cbam = algebra.crv2rotation(psi_master).T
+                cbas = algebra.crv2rotation(psi_slave).T
+                tm = algebra.crv2tan(psi_master)
+                inv_ts = np.linalg.inv(algebra.crv2tan(psi_slave))
+    
+                self.psi_dot[ielem, inode, :] = np.dot(inv_ts, np.dot(tm, self.psi_dot[ielem, inode, :]) + np.dot(cbam, for0_vel[3:6]) - np.dot(cbas, self.for_vel[3:6]))
 
 
     def change_to_global_AFoR(self, for0_pos, for0_vel, quat0):
@@ -792,35 +796,37 @@ class StructTimeStepInfo(object):
         """
 
         # Define the rotation matrices between the different FoR
-        CAslaveG = algebra.quat2rotation(self.quat).T
-        CGAmaster = algebra.quat2rotation(quat0)
-        Csm = np.dot(CAslaveG, CGAmaster)
-
-        delta_vel_ms = np.zeros((6,))
-        delta_pos_ms = self.for_pos[0:3] - for0_pos[0:3]
-        delta_vel_ms[0:3] = np.dot(CAslaveG.T, self.for_vel[0:3]) - np.dot(CGAmaster, for0_vel[0:3])
-        delta_vel_ms[3:6] = np.dot(CAslaveG.T, self.for_vel[3:6]) - np.dot(CGAmaster, for0_vel[3:6])
+        CGAslave = algebra.quat2rotation(self.quat)
+        CAmasterG = algebra.quat2rotation(quat0).T
+        Cms = np.dot(CAmasterG, CGAslave)
 
         for inode in range(self.pos.shape[0]):
-            pos_previous = self.pos[inode,:] + np.zeros((3,),)
-            self.pos[inode,:] = (np.dot(np.transpose(Csm),self.pos[inode,:]) +
-                                np.dot(np.transpose(CGAmaster),delta_pos_ms[0:3]))
-            self.pos_dot[inode,:] = (np.dot(np.transpose(Csm),self.pos_dot[inode,:]) +
-                                    np.dot(np.transpose(CGAmaster),delta_vel_ms[0:3]) +
-                                    np.dot(Csm.T, algebra.cross3(self.for_vel[3:6], pos_previous)) -
-                                    algebra.cross3(for0_vel[3:6], self.pos[inode,:]))
-            self.gravity_forces[inode,0:3] = np.dot(Csm.T, self.gravity_forces[inode,0:3])
-            self.gravity_forces[inode,3:6] = np.dot(Csm.T, self.gravity_forces[inode,3:6])
-                                    # np.cross(np.dot(CGAmaster.T, delta_vel_ms[3:6]), pos_previous))
+            vel_slave = (self.pos_dot[inode, :] +
+                         self.for_vel[0:3] +
+                         algebra.cross3(self.for_vel[3:6], self.pos[inode, :]))
+            self.pos[inode, :] = np.dot(Cms, self.pos[inode,:]) + np.dot(CAmasterG, self.for_pos[0:3] - for0_pos[0:3])
+            self.pos_dot[inode, :] = (np.dot(Cms, vel_slave) -
+                                      for0_vel[0:3] -
+                                      algebra.cross3(for0_vel[3:6], self.pos[inode, :]))
+            
+            self.gravity_forces[inode, 0:3] = np.dot(Cms, self.gravity_forces[inode, 0:3])
+            self.gravity_forces[inode, 3:6] = np.dot(Cms, self.gravity_forces[inode, 3:6])
 
         for ielem in range(self.psi.shape[0]):
             for inode in range(3):
-                psi_previous = self.psi[ielem,inode,:] + np.zeros((3,),)
-                self.psi[ielem,inode,:] = algebra.rotation2crv(np.dot(Csm.T, algebra.crv2rotation(self.psi[ielem,inode,:])))
-                self.psi_dot[ielem, inode, :] = np.dot(algebra.crv2tan(self.psi[ielem,inode,:]),
-                                                (np.dot(Csm.T, np.dot(algebra.crv2tan(psi_previous).T, self.psi_dot[ielem, inode, :])) +
-                                                np.dot(algebra.quat2rotation(quat0).T, delta_vel_ms[3:6])))
-
+                # psi_slave = self.psi[ielem,inode,:] + np.zeros((3,),)
+                # self.psi[ielem, inode, :] = np.dot(Cms, self.psi[ielem, inode, :])
+                # self.psi_dot[ielem, inode, :] = (np.dot(Cms, self.psi_dot[ielem, inode, :] + algebra.cross3(self.for_vel[3:6], psi_slave)) -
+                #                                  algebra.multiply_matrices(CAmasterG, algebra.skew(self.for0_vel[3:6]), CGAslave, psi_slave))
+                psi_slave = self.psi[ielem, inode, :] + np.zeros((3,),)                
+                self.psi[ielem, inode, :] = algebra.rotation2crv(np.dot(Cms,algebra.crv2rotation(self.psi[ielem,inode,:])))
+                psi_master = self.psi[ielem,inode,:] + np.zeros((3,),)
+                cbam = algebra.crv2rotation(psi_master).T
+                cbas = algebra.crv2rotation(psi_slave).T
+                ts = algebra.crv2tan(psi_slave)
+                inv_tm = np.linalg.inv(algebra.crv2tan(psi_master))
+    
+                self.psi_dot[ielem, inode, :] = np.dot(inv_tm, np.dot(ts, self.psi_dot[ielem, inode, :]) + np.dot(cbas, self.for_vel[3:6]) - np.dot(cbam, for0_vel[3:6]))
 
     def whole_structure_to_local_AFoR(self, beam):
         """
