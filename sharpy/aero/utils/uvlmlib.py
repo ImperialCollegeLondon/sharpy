@@ -372,7 +372,7 @@ def uvlm_calculate_total_induced_velocity_at_points(ts_info,
                                                     target_triads,
                                                     vortex_radius,
                                                     for_pos=np.zeros((6)),
-                                                    ncores=ct.cuint(1)):
+                                                    ncores=ct.c_uint(1)):
     """
     uvlm_calculate_total_induced_velocity_at_points
 
