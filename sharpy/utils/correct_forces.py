@@ -18,6 +18,8 @@ import numpy as np
 import sharpy.aero.utils.airfoilpolars as ap
 import sharpy.utils.algebra as algebra
 from sharpy.utils.constants import deg2rad
+import ctypes as ct
+import sharpy.aero.utils.uvlmlib as uvlmlib
 
 
 # dict_of_corrections = {}
@@ -100,6 +102,9 @@ def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
         rho (float): air density
         correct_lift (bool): correct also lift coefficient according to the polars
         cd_from_cl (bool): interpolate drag from lift instead of computing the AoA first
+        compute_uind (bool): compute (and include) vortex induced velocities
+        compute_actual_aoa (bool): compute the coefficients using the actual angle of attack of the section, as opposed
+          to the angle necessary to provide the UVLM calculated C_L with an assumed lift curve slope of 2pi
         
     Returns:
          np.ndarray: corresponding aerodynamic force at the structural node from the force and moment at a grid vertex
@@ -110,6 +115,9 @@ def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
     rho = kwargs.get('rho', 1.225)
     correct_lift = kwargs.get('correct_lift', False)
     cd_from_cl = kwargs.get('cd_from_cl', False)
+    compute_induced_velocity = kwargs.get('compute_uind', False)
+    compute_actual_aoa = kwargs.get('compute_actual_aoa', True)
+
     aero_dict = aerogrid.aero_dict
     if aerogrid.polars is None:
         return struct_forces
@@ -159,12 +167,15 @@ def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
                              structural_kstep.pos[inode, :]))
             urel = -np.dot(cga, urel)
             urel += np.average(aero_kstep.u_ext[isurf][:, :, i_n], axis=1)
-            # uind = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(aero_kstep,
-            #                                                                np.array([structural_kstep.pos[inode, :] - np.array([0, 0, 1])]),
-            #                                                                structural_kstep.for_pos,
-            #                                                                ct.c_uint(8))[0]
-            # print(inode, urel, uind)
-            # urel -= uind
+
+            if compute_induced_velocity:
+                # TODO - is it worth saving as part of time step?
+                uind = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(aero_kstep,
+                                                                               np.array([structural_kstep.pos[inode, :] - np.array([0, 0, 1])]),
+                                                                               vortex_radius=1e-6,
+                                                                               for_pos=structural_kstep.for_pos,
+                                                                               ncores=ct.c_uint(8))[0]
+                urel += uind
             dir_urel = algebra.unit_vector(urel)
 
 
@@ -185,26 +196,34 @@ def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
             cd_sharpy = np.linalg.norm(drag_force)/coef
 
             if cd_from_cl:
-                # Compute the drag from the lift
+                # Compute the drag from the UVLM computed lift
                 cd, cm = polar.get_cdcm_from_cl(cl)
 
             else:
-                # Compute the angle of attack assuming that UVLM gives a 2pi polar
-                aoa_deg_2pi = polar.get_aoa_deg_from_cl_2pi(cl)
+                # Compute L, D, M from polar depending on:
+                if compute_actual_aoa:
+                    # i) Compute the actual aoa given the induced velocity
+                    aoa = np.arccos(dir_chord.dot(dir_urel) / np.linalg.norm(dir_urel) / np.linalg.norm(dir_chord))
+                    cl_polar, cd, cm = polar.get_coefs(aoa)
+                else:
+                    # ii) Compute the angle of attack assuming that UVLM gives a 2pi polar and using the CL calculated
+                    # from the UVLM
+                    aoa_deg_2pi = polar.get_aoa_deg_from_cl_2pi(cl)
 
-                # Compute the coefficients assocaited to that angle of attack
-                cl_new, cd, cm = polar.get_coefs(aoa_deg_2pi)
-                # print(cl, cl_new)
-    
+                    # Compute the coefficients assocaited to that angle of attack
+                    cl_polar, cd, cm = polar.get_coefs(aoa_deg_2pi)
+                    # print(cl, cl_new)
+
                 if correct_lift:
-                    cl = cl_new
+                    # Use polar generated CL rather than UVLM computed CL
+                    cl = cl_polar
 
             # Recompute the forces based on the coefficients
             lift_force = cl*algebra.unit_vector(lift_force)*coef
             drag_force += cd*dir_urel*coef
             force = lift_force + drag_force
             new_struct_forces[inode, 0:3] = np.dot(cgb.T,
-                                               force)
+                                                   force)
 
     return new_struct_forces
 
