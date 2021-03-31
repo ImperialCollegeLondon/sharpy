@@ -814,7 +814,7 @@ class FloatingForces(generator_interface.BaseGenerator):
             # xi_matrix2 = interp_x1(self.floating_data['wave_forces']['xi_freq_rads'][2:4])
             interp_x2 = interp1d(self.floating_data['wave_forces']['xi_beta_deg']*deg2rad,
                                  xi_matrix2,
-                                 axis=1)
+                                 axis=0)
             xi = interp_x2(self.settings['wave_incidence'])
             # xi = interp_x2(self.floating_data['wave_forces']['xi_beta_deg'][5]*deg2rad)
             # print(xi[0, :])
