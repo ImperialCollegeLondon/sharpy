@@ -412,85 +412,78 @@ def jonswap_spectrum(Tp, Hs, w):
             gamma = np.exp(5.75 - 1.15*param)
         # Compute one-sided spectrum
         omega = w[iomega]
-        param = omega*Tp/2/np.pi
-        spectrum[iomega] = (1./2/np.pi)*(5./16)*(Hs**2*Tp)*param**(-5)
-        spectrum[iomega] *= np.exp(-5./4*param**(-4))
-        spectrum[iomega] *= (1. - 0.287*np.log(gamma))
-        spectrum[iomega] *= gamma**np.exp(-0.5*((param - 1.)/sigma)**2)
+        if omega == 0:
+            spectrum[iomega] = 0.
+        else:
+            param = omega*Tp/2/np.pi
+            spectrum[iomega] = (1./2/np.pi)*(5./16)*(Hs**2*Tp)*param**(-5)
+            spectrum[iomega] *= np.exp(-5./4*param**(-4))
+            spectrum[iomega] *= (1. - 0.287*np.log(gamma))
+            spectrum[iomega] *= gamma**np.exp(-0.5*((param - 1.)/sigma)**2)
 
     return spectrum
 
 
-def noise_spectrum(Tp, Hs, w):
+def noise_spectrum_1s(w):
     """
     Apply a white noise to the spectrum to get different realisation
     every run
     """
     nomega = w.shape[0]
-    nomega_2s = (nomega - 1)*2 + 1
-    spectrum_1s = jonswap_spectrum(Tp, Hs, w) + 0j
-    # Compute the two sided spectrum
-    omega_2s = np.zeros((nomega_2s,))
-    spectrum_2s = np.zeros((nomega_2s,), dtype=np.complex)
-    for iomega in range(nomega):
-        omega_2s[nomega - 1 - iomega] = -w[iomega]
-        omega_2s[nomega - 1 + iomega] = w[iomega]
-        spectrum_2s[nomega - 1 - iomega] = 0.5*spectrum_1s[iomega]
-        spectrum_2s[nomega - 1 + iomega] = 0.5*spectrum_1s[iomega]
-    # Compute a random signal with random noise
-    u1 = np.random.random(size=nomega) + 0j
-    u2 = np.random.random(size=nomega) + 0j
 
-    fft_wn_2s = np.zeros((nomega_2s,), dtype=np.complex)
-    # Keep zero freq to zero
+    wn = np.zeros((nomega, ), dtype=np.complex)
+    u1 = np.random.random(size=nomega) #+ 0j
+    u2 = np.random.random(size=nomega) #+ 0j
+    wn[0] = 1. + 0j
     for iomega in range(1, nomega):
         u1w = u1[iomega]
         u2w = u2[iomega]
-        fft_wn_2s[nomega - 1 + iomega] = np.sqrt(-2.*np.log(u1w))*(np.cos(2*np.pi*u2w) + 1j*np.sin(2*np.pi*u2w))
-        fft_wn_2s[nomega - 1 - iomega] = np.sqrt(-2.*np.log(u1w))*(np.cos(2*np.pi*u2w) - 1j*np.sin(2*np.pi*u2w))
-
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(2, 1, figsize=(4, 3*2))
-    ax[0].grid()
-    ax[0].set_xlabel("omega [rad/s]")
-    ax[0].set_ylabel("abs white noise")
-    ax[0].plot(omega_2s, np.abs(fft_wn_2s), '-')
-    ax[1].grid()
-    ax[1].set_xlabel("omega [rad/s]")
-    ax[1].set_ylabel("phase white noise")
-    ax[1].plot(omega_2s, np.angle(fft_wn_2s, deg=True), '-')
-
-    fig.legend()
-    fig.tight_layout()
-    fig.savefig("white_noise.png")
-
-    ns = fft_wn_2s*np.sqrt(2*np.pi*spectrum_2s)
-    return ns
+        wn[iomega] = np.sqrt(-2.*np.log(u1w))*(np.cos(2*np.pi*u2w) +
+                             1j*np.sin(2*np.pi*u2w))
+        #wn[iomega] = 1. + 0j
+    return wn
 
 
-def time_wave_forces(Tp, Hs, w, time, xi, w_xi):
+def time_wave_forces(Tp, Hs, dt, time, xi, w_xi):
     """
     Compute the time evolution of wave forces
     """
+    # Compute time and frequency discretisations
+    ntime_steps = time.shape[0]
+    wave_force = np.zeros((ntime_steps, 6), dtype=np.complex)
 
-    wave_force = np.zeros((time.shape[0], 6), dtype=np.complex)
-    ns = noise_spectrum(Tp, Hs, w)
-    nomega = w.shape[0]
-    omega_2s = np.zeros(((nomega - 1)*2 + 1))
+    nomega = ntime_steps//2 + 1
+    w = np.zeros((nomega))
+    w_temp = np.fft.fftfreq(ntime_steps, d=dt)
+    w[:ntime_steps//2] = w_temp[:ntime_steps//2]
+    if ntime_steps%2 == 0:
+        w[-1] = -1*w_temp[ntime_steps//2]
+    else:
+        w[-1] = w_temp[ntime_steps//2]
+    nomega_2s = ntime_steps
+
+    # Compute the one-sided spectrums
+    noise_1s = noise_spectrum_1s(w)
+    jonswap_1s = jonswap_spectrum(Tp, Hs, w) + 0j
+
+    # Compute the two-sided spectrum
+    force_spectrum_2s = np.zeros((nomega_2s, 6), dtype=np.complex)
     for idim in range(6):
-        refine_xi = np.interp(w, w_xi, xi[:, idim]) + 0j
-        refine_xi_2s = np.zeros((ns.shape[0],), dtype=np.complex)
         for iomega in range(nomega):
-            refine_xi_2s[nomega - 1 - iomega] = refine_xi[iomega]
-            refine_xi_2s[nomega - 1 + iomega] = refine_xi[iomega]
-            omega_2s[nomega - 1 + iomega] = w[iomega]
-            omega_2s[nomega - 1 - iomega] = -w[iomega]
-        for it in range(time.shape[0]):
-            function = ns*refine_xi_2s*np.exp(1j*omega_2s*time[it])
-            wf = (1./2/np.pi)*np.trapz(omega_2s, function)
-            wave_force[it, idim] = wf.copy()
+            xi_interp = np.interp(w[iomega], w_xi, xi[:, idim])
+            force_spectrum_2s[iomega, idim] = (noise_1s[iomega]*
+                                               jonswap_1s[iomega]*
+                                               xi_interp)
+            if not iomega == 0:
+                if not ((iomega == nomega - 1) and (nomega_2s%2 == 0)):
+                    force_spectrum_2s[-iomega, idim] = (np.conj(noise_1s[iomega])*
+                                                        jonswap_1s[iomega]*
+                                                        xi_interp)
 
-    return wave_force
+    # Compute the inverse Fourier transform
+    force_waves = ifft(force_spectrum_2s, axis=0)
+
+    return force_waves
 
 
 def test_time_wave_forces():
@@ -498,30 +491,29 @@ def test_time_wave_forces():
     Hs = 5.49 #6.
     nrealisations = 10
     dt = 1./20 # To get max freq equal to 10Hz
-    w = 2.*np.pi*np.arange(0.005, 10 + 0.005, 0.005)
-    ntime_steps = 2*w.shape[0]
-    time = np.linspace(0, (ntime_steps - 1)*dt, ntime_steps)
+    ntime_steps = 1000
+    time = np.arange(ntime_steps)*dt
 
     # Get the zero-noise specturm
-    zero_noise_spectrum = jonswap_spectrum(Tp, Hs, w)
+    w_js = np.arange(0, 4, 0.01)
+    zero_noise_spectrum = jonswap_spectrum(Tp, Hs, w_js)
 
     # Compute different realisations
-    xi = np.ones((2, 6), dtype=complex)
-    w_xi = np.array([0.005, 10.])
+    xi = np.zeros((2, 6), dtype=complex)
+    xi[0, 0] = 1. + 0j
+    xi[1, 0] = 1. + 0j
+    w_xi = np.array([0., 4.])
     wave_force = np.zeros((ntime_steps, nrealisations), dtype=np.complex)
     for ireal in range(nrealisations):
-        wave_force[:, ireal] = time_wave_forces(Tp, Hs, w, time, xi, w_xi)[:, 0] # Keep only on dimension
+        wave_force[:, ireal] = time_wave_forces(Tp, Hs, dt, time, xi, w_xi)[:, 0] # Keep only on dimension
 
     # Compute the spectrum of the realisations
-    ns = np.zeros((w.shape[0], nrealisations), dtype=np.complex)
+    ns = np.zeros((ntime_steps//2, nrealisations), dtype=np.complex)
     for ireal in range(nrealisations):
         ns[:, ireal] = fft(wave_force[:, ireal])[:ntime_steps//2]
-        # ns[:, ireal] = noise_spectrum(Tp, Hs, w)[ntime_steps//2 - 1:]
-
+    w_ns = np.fft.fftfreq(ntime_steps, d=dt)[:ntime_steps//2]
     # Compare the zero noise with the realisations average
     avg_noise_spectrum = np.average(np.abs(ns), axis=1)
-    #avg_noise_spectrum = np.abs(ns)
-    print(np.angle(avg_noise_spectrum, deg=True))
 
     import matplotlib.pyplot as plt
     # Plot JONSWAP spectum
@@ -531,27 +523,29 @@ def test_time_wave_forces():
     ax.set_ylabel("specturm")
     ax.set_xlim(0, 1.3)
     ax.set_ylim(0, 12)
-    ax.plot(w, zero_noise_spectrum, '--', label='JONSWAP')
+    ax.plot(w_js, zero_noise_spectrum, '--', label='JONSWAP')
     fig.legend()
     fig.tight_layout()
     fig.savefig("jonswap.png")
+    plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=(4, 3))
     ax.grid()
     ax.set_xlabel("omega [rad/s]")
     ax.set_ylabel("specturm")
     #ax.set_xlim(0, 1.3)
-    ax.set_xlim(0, 13)
+    ax.set_xlim(0, 4)
     #ax.set_ylim(0, 12)
     for ireal in range(nrealisations):
-        ax.plot(w, np.abs(ns[:, ireal]), 'bo')
-    ax.plot(w, avg_noise_spectrum, '-', label="avg")
-    ax.plot(w, zero_noise_spectrum, '--', label="JONSWAP")
+        ax.plot(w_ns, np.abs(ns[:, ireal]), 'bo')
+    ax.plot(w_ns, avg_noise_spectrum, '-', label="avg")
+    ax.plot(w_js, zero_noise_spectrum, '--', label="JONSWAP")
     fig.legend()
     fig.tight_layout()
     fig.show()
     #plt.pause(30)
     fig.savefig("spectrum.png")
+    plt.close()
     print("DONE!")
 
 
