@@ -826,12 +826,12 @@ class FloatingForces(generator_interface.BaseGenerator):
                                  axis=1)
             xi_matrix = interp_x1(self.settings['wave_incidence'])
 
-            self.wave_forces_g = time_wave_forces(self.settings['Tp'],
-                                                  self.settings['Hs'],
+            self.wave_forces_g = np.real(time_wave_forces(self.settings['wave_Tp'],
+                                                  self.settings['wave_Hs'],
                                                   self.settings['dt'],
                                                   np.arange(self.settings['n_time_steps'] + 1)*self.settings['dt'],
                                                   xi_matrix,
-                                                  self.floating_data['wave_forces']['xi_freq_rads'])
+                                                  self.floating_data['wave_forces']['xi_freq_rads']))
 
         # Log file
         if not os.path.exists(self.settings['folder']):
@@ -1050,8 +1050,8 @@ class FloatingForces(generator_interface.BaseGenerator):
         cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
         cbg = np.dot(cab.T, cga.T)
 
-        struct_tstep.runtime_generated_forces[self.wave_forces_node, 0:3] += np.dot(cbg, force_coeff*wave_forces_g[data.ts, 0:3])
-        struct_tstep.runtime_generated_forces[self.wave_forces_node, 3:6] += np.dot(cbg, force_coeff*wave_forces_g[data.ts, 3:6])
+        struct_tstep.runtime_generated_forces[self.wave_forces_node, 0:3] += np.dot(cbg, force_coeff*self.wave_forces_g[data.ts, 0:3])
+        struct_tstep.runtime_generated_forces[self.wave_forces_node, 3:6] += np.dot(cbg, force_coeff*self.wave_forces_g[data.ts, 3:6])
 
         # Write output
         if self.settings['write_output']:
