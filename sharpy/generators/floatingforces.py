@@ -3,7 +3,7 @@ import h5py as h5
 import ctypes as ct
 import os
 from scipy import fft, ifft
-from scipy.interpolare import interp1d
+from scipy.interpolate import interp1d
 from control import forced_response, TransferFunction
 
 import sharpy.utils.cout_utils as cout
