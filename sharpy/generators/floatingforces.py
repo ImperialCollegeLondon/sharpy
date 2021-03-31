@@ -822,7 +822,9 @@ class FloatingForces(generator_interface.BaseGenerator):
             # print(xi[0, :] - self.floating_data['wave_forces']['xi'][2, 5, :])
 
             phase = self.settings['wave_freq']*np.arange(self.settings['n_time_steps'] + 1)*self.settings['dt']
-            self.wave_forces_g = np.real(self.settings['wave_amplitude']*xi*(np.cos(phase) + 1j*np.sin(phase)))
+            self.wave_forces_g = np.zeros((self.settings['n_time_steps'] + 1, 6))
+            for idim in range(6):
+                self.wave_forces_g[:, idim] = np.real(self.settings['wave_amplitude']*xi[idim]*(np.cos(phase) + 1j*np.sin(phase)))
 
         elif self.settings['method_wave'] == 'jonswap':
 
@@ -1061,4 +1063,4 @@ class FloatingForces(generator_interface.BaseGenerator):
         # Write output
         if self.settings['write_output']:
             self.write_output(data.ts, k, mooring_forces, mooring_yaw, hs_f_g,
-                     hd_f_qdot_g, hd_f_qdotdot_g, hd_correct_grav, wave_forces_g)
+                     hd_f_qdot_g, hd_f_qdotdot_g, hd_correct_grav, wave_forces_g[it, :])
