@@ -42,55 +42,8 @@ def compute_xf_zf(hf, vf, l, w, EA, cb):
         if not cb == 0.:
             xf += cb*w/2/EA*(-lb**2 + (lb - hf/cb/w)*np.maximum((lb - hf/cb/w), 0))
         zf = hf/w*(root1 - 1) + vf**2/2/EA/w
-
+    
     return xf, zf
-
-
-def test_compute_xf_zf():
-    """
-        This function tests based on by hand computations and data from the MooringLineFD.txt file
-        from the OC3 task.
-            Jonkman, J.
-            Definition of the Floating System for Phase IV of OC3
-            NREL/TP-500-47535
-    """
-
-    # Values for OC3
-    l = 902.2 # Initial length [m]
-    w = 698.094 # Aparent weight 77.7066*9.81 # Apparent mass per unit length times gravity
-    EA = 384243000. # Extensional stiffness
-    cb = 0.1 # Seabed friction coefficient
-
-    # No mooring line on the Seabed
-    vf = 1.1*l*w # 692802.4475
-    hf = vf
-    xf_byhand = 784.5965853 + 1.626695524
-    zf_byhand = 406.9813526 + 0.887288467
-    xf, zf = compute_xf_zf(hf, vf, l, w, EA, cb)
-    print("Case without mooring line on the seabed")
-    print("xf=%f and xf_byhand=%f" % (xf, xf_byhand))
-    print("zf=%f and zf_byhand=%f" % (zf, zf_byhand))
-
-    # Some mooring line on the Seabed
-    lb_div_l = 0.1 # 10% of the mooring line on the seabed
-    vf = (1-lb_div_l)*l*w
-    hf = vf
-    xf_byhand = 90.22 + 715.6577252 + 1.330932701 - 7.298744381e-4
-    zf_byhand = 336.3331284 + 0.598919715
-    xf, zf = compute_xf_zf(hf, vf, l, w, EA, cb)
-    print("Case with %f%% mooring line on the seabed" % (lb_div_l*100))
-    print("xf=%f and xf_byhand=%f" % (xf, xf_byhand))
-    print("zf=%f and zf_byhand=%f" % (zf, zf_byhand))
-
-    # From solution file
-    xf, zf = compute_xf_zf(0.1*1e3, 174.599971*1e3, l, w, EA, cb)
-    distance = 653.
-    print("Case with mooring line on the seabed from file")
-    print("xf=%f and distance=%f. zf=%f" % (xf, distance, zf))
-    xf, zf = compute_xf_zf(1415.6*1e3, 730.565288*1e3, l, w, EA, cb)
-    distance = 864.
-    print("Case without mooring line on the seabed from file")
-    print("xf=%f and distance=%f. zf=%f" % (xf, distance, zf))
 
 
 def compute_jacobian(hf, vf, l, w, EA, cb):
@@ -184,7 +137,7 @@ def quasisteady_mooring(xf, zf, l, w, EA, cb, hf0=None, vf0=None):
     # print("initial: ", xf_est, zf_est)
     tol = 1e-6
     error = 2*tol
-    max_iter = 100
+    max_iter = 10000
     it = 0
     while ((error > tol) and (it < max_iter)):
         J_est = compute_jacobian(hf_est, vf_est, l, w, EA, cb)
@@ -198,37 +151,11 @@ def quasisteady_mooring(xf, zf, l, w, EA, cb, hf0=None, vf0=None):
         error = np.maximum(np.abs(xf - xf_est), np.abs(zf - zf_est))
         # print(error)
         it += 1
-    if ((it == max_iter - 1) and (error > tol)):
+    if ((it == max_iter) and (error > tol)):
         cout.cout_wrap(("Mooring system did not converge. error %f" % error), 4)
+        print("Mooring system did not converge. error %f" % error)
 
     return hf_est, vf_est
-
-
-def generate_mooringlinefd():
-    """
-        This function generates a file similar to MoorinLinesFD.txt for comparison
-    """
-
-    # Values for OC3
-    l = 902.2 # Initial length [m]
-    w = 698.094 # Aparent weight 77.7066*9.81 # Apparent mass per unit length times gravity
-    EA = 384243000./A # Extensional stiffness
-    cb = 0. # Seabed friction coefficient
-
-    zf = 320. - 70.
-
-    # xf0 = 853.87
-    xf_list = np.arange(653.00, 902.50 + 1., 1.)
-    npoints = xf_list.shape[0]
-    output = np.zeros((npoints, 4))
-    for i in range(npoints):
-        hf, vf = quasisteady_mooring(xf_list[i], zf, l, w, EA, cb, hf0=None, vf0=None)
-        # print(xf0, zf0, hf0, vf0)
-        lb = np.maximum(l - vf/w, 0)
-        # print("Suspended lenght = %f" % (l - lb))
-        output[i, :] = np.array([xf_list[i], np.sqrt(vf**2 + hf**2)*1e-3, hf*1e-3, (l - lb)])
-
-    np.savetxt("sharpy_mooringlinefd.txt", output, header="# DISTANCE(m) TENSION(kN) HTENSION(kN) SUSPL(m)")
 
 
 def wave_radiation_damping(K, qdot, it, dt):
@@ -240,26 +167,6 @@ def wave_radiation_damping(K, qdot, it, dt):
         qdot_int[idof] = np.trapz(np.arange(0, it + 1, 1)*dt, qdot[0:it, idof])
 
     return np.dot(K, qdot_int)
-
-
-def test_change_system():
-    # Wind turbine degrees of freedom: Surge, sway, heave, roll, pitch, yaw.
-    # SHARPy axis associated:              z,    y,     x,    z,     y,   x
-
-    wt_dofs_char = ["surge", "sway", "heave", "roll", "pitch", "yaw"]
-    wt_matrix = np.zeros((6,6), dtype=np.object_)
-    wt_matrix_num = np.zeros((6,6),)
-    for idof in range(6):
-        for jdof in range(6):
-            wt_matrix[idof, jdof] = ("%s-%s" % (wt_dofs_char[idof], wt_dofs_char[jdof]))
-            wt_matrix_num[idof, jdof] = 10.*idof + jdof
-
-    sharpy_matrix = change_of_to_sharpy(wt_matrix_num)
-    print("wt matrix: ", wt_matrix_num)
-    print("sharpy matrix: ", sharpy_matrix)
-
-    undo_sharpy_matrix = change_of_to_sharpy(sharpy_matrix)
-    print("undo sharpy matrix: ", undo_sharpy_matrix)
 
 
 def change_of_to_sharpy(matrix_of):
@@ -493,69 +400,6 @@ def time_wave_forces(Tp, Hs, dt, time, xi, w_xi):
     force_waves = ifft(force_spectrum_2s, axis=0)
 
     return force_waves
-
-
-def test_time_wave_forces():
-    Tp = 14.656 #10.
-    Hs = 5.49 #6.
-    nrealisations = 10
-    dt = 1./20 # To get max freq equal to 10Hz
-    ntime_steps = 1000
-    time = np.arange(ntime_steps)*dt
-
-    # Get the zero-noise specturm
-    w_js = np.arange(0, 4, 0.01)
-    zero_noise_spectrum = jonswap_spectrum(Tp, Hs, w_js)
-
-    # Compute different realisations
-    xi = np.zeros((2, 6), dtype=complex)
-    xi[0, 0] = 1. + 0j
-    xi[1, 0] = 1. + 0j
-    w_xi = np.array([0., 4.])
-    wave_force = np.zeros((ntime_steps, nrealisations), dtype=np.complex)
-    for ireal in range(nrealisations):
-        wave_force[:, ireal] = time_wave_forces(Tp, Hs, dt, time, xi, w_xi)[:, 0] # Keep only on dimension
-
-    # Compute the spectrum of the realisations
-    ns = np.zeros((ntime_steps//2, nrealisations), dtype=np.complex)
-    for ireal in range(nrealisations):
-        ns[:, ireal] = fft(wave_force[:, ireal])[:ntime_steps//2]
-    w_ns = np.fft.fftfreq(ntime_steps, d=dt)[:ntime_steps//2]
-    # Compare the zero noise with the realisations average
-    avg_noise_spectrum = np.average(np.abs(ns), axis=1)
-
-    import matplotlib.pyplot as plt
-    # Plot JONSWAP spectum
-    fig, ax = plt.subplots(1, 1, figsize=(4, 3))
-    ax.grid()
-    ax.set_xlabel("omega [rad/s]")
-    ax.set_ylabel("specturm")
-    ax.set_xlim(0, 1.3)
-    ax.set_ylim(0, 12)
-    ax.plot(w_js, zero_noise_spectrum, '--', label='JONSWAP')
-    fig.legend()
-    fig.tight_layout()
-    fig.savefig("jonswap.png")
-    plt.close()
-
-    fig, ax = plt.subplots(1, 1, figsize=(4, 3))
-    ax.grid()
-    ax.set_xlabel("omega [rad/s]")
-    ax.set_ylabel("specturm")
-    #ax.set_xlim(0, 1.3)
-    ax.set_xlim(0, 4)
-    #ax.set_ylim(0, 12)
-    for ireal in range(nrealisations):
-        ax.plot(w_ns, np.abs(ns[:, ireal]), 'bo')
-    ax.plot(w_ns, avg_noise_spectrum, '-', label="avg")
-    ax.plot(w_js, zero_noise_spectrum, '--', label="JONSWAP")
-    fig.legend()
-    fig.tight_layout()
-    fig.show()
-    #plt.pause(30)
-    fig.savefig("spectrum.png")
-    plt.close()
-    print("DONE!")
 
 
 @generator_interface.generator
