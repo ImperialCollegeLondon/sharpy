@@ -782,7 +782,9 @@ class StructTimeStepInfo(object):
                 tm = algebra.crv2tan(psi_master)
                 inv_ts = np.linalg.inv(algebra.crv2tan(psi_slave))
     
-                self.psi_dot[ielem, inode, :] = np.dot(inv_ts, np.dot(tm, self.psi_dot[ielem, inode, :]) + np.dot(cbam, for0_vel[3:6]) - np.dot(cbas, self.for_vel[3:6]))
+                self.psi_dot[ielem, inode, :] = np.dot(inv_ts, (np.dot(tm, self.psi_dot[ielem, inode, :]) +
+                                                                np.dot(cbam, for0_vel[3:6]) -
+                                                                np.dot(cbas, self.for_vel[3:6])))
 
 
     def change_to_global_AFoR(self, for0_pos, for0_vel, quat0):
@@ -826,7 +828,9 @@ class StructTimeStepInfo(object):
                 ts = algebra.crv2tan(psi_slave)
                 inv_tm = np.linalg.inv(algebra.crv2tan(psi_master))
     
-                self.psi_dot[ielem, inode, :] = np.dot(inv_tm, np.dot(ts, self.psi_dot[ielem, inode, :]) + np.dot(cbas, self.for_vel[3:6]) - np.dot(cbam, for0_vel[3:6]))
+                self.psi_dot[ielem, inode, :] = np.dot(inv_tm, (np.dot(ts, self.psi_dot[ielem, inode, :]) +
+                                                                np.dot(cbas, self.for_vel[3:6]) -
+                                                                np.dot(cbam, for0_vel[3:6])))
 
     def whole_structure_to_local_AFoR(self, beam):
         """
