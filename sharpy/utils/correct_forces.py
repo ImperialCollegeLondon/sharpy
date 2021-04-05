@@ -18,6 +18,8 @@ import numpy as np
 import sharpy.aero.utils.airfoilpolars as ap
 import sharpy.utils.algebra as algebra
 from sharpy.utils.constants import deg2rad
+import ctypes as ct
+import sharpy.aero.utils.uvlmlib as uvlmlib
 
 
 # dict_of_corrections = {}
@@ -159,12 +161,12 @@ def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
                              structural_kstep.pos[inode, :]))
             urel = -np.dot(cga, urel)
             urel += np.average(aero_kstep.u_ext[isurf][:, :, i_n], axis=1)
-            # uind = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(aero_kstep,
-            #                                                                np.array([structural_kstep.pos[inode, :] - np.array([0, 0, 1])]),
-            #                                                                structural_kstep.for_pos,
-            #                                                                ct.c_uint(8))[0]
-            # print(inode, urel, uind)
-            # urel -= uind
+            uind = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(aero_kstep,
+                                                                           np.array([structural_kstep.pos[inode, :] - np.array([0, 0, 1])]),
+                                                                           structural_kstep.for_pos,
+                                                                           ncores=int(8))[0]
+            print(inode, urel, uind)
+            urel += uind
             dir_urel = algebra.unit_vector(urel)
 
 
@@ -184,6 +186,8 @@ def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
             cl = np.linalg.norm(lift_force)/coef
             cd_sharpy = np.linalg.norm(drag_force)/coef
 
+            aoa = np.arccos(dir_urel.dot(dir_chord) / np.linalg.norm(dir_urel) / np.linalg.norm(dir_chord))
+            print(aoa * 180 / np.pi)
             if cd_from_cl:
                 # Compute the drag from the lift
                 cd, cm = polar.get_cdcm_from_cl(cl)
@@ -193,7 +197,8 @@ def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
                 aoa_deg_2pi = polar.get_aoa_deg_from_cl_2pi(cl)
 
                 # Compute the coefficients assocaited to that angle of attack
-                cl_new, cd, cm = polar.get_coefs(aoa_deg_2pi)
+                # cl_new, cd, cm = polar.get_coefs(aoa_deg_2pi)
+                cl_new, cd, cm = polar.get_coefs(aoa)
                 # print(cl, cl_new)
     
                 if correct_lift:

@@ -146,6 +146,7 @@ class Aerogrid(object):
             for iairfoil in range(nairfoils):
                 new_polar = ap.polar()
                 new_polar.initialise(aero_dict['polars'][str(iairfoil)])
+                cout.cout_wrap('\tInitialising airfoil Polar {:g}'.format(iairfoil), 1)
                 self.polars.append(new_polar)
 
     def output_info(self):

@@ -6,6 +6,7 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.aero.utils.mapping as mapping
+import sharpy.utils.correct_forces as cf
 
 
 class ForcesContainer(object):
@@ -66,6 +67,11 @@ class AeroForcesCalculator(BaseSolver):
     settings_default['c_ref'] = 1
     settings_description['c_ref'] = 'Reference chord'
 
+    # settings_types['correct_forces_method'] = 'str'
+    # settings_default['correct_forces_method'] = '' # 'efficiency'
+    # settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. Check :py:mod:`sharpy.utils.correct_forces`'
+    # settings_options['correct_forces_method'] = ['efficiency', 'polars']
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -125,11 +131,22 @@ class AeroForcesCalculator(BaseSolver):
                 self.data.aero.timestep_info[self.ts].body_steady_forces[i_surf, 0:3] = np.dot(rot.T, total_steady_force)
                 self.data.aero.timestep_info[self.ts].body_unsteady_forces[i_surf, 0:3] = np.dot(rot.T, total_unsteady_force)
 
-            aero_forces_beam_dof = self.calculate_moments(self.ts)
-            self.data.aero.timestep_info[self.ts].total_body_forces = aero_forces_beam_dof
-            self.data.aero.timestep_info[self.ts].total_inertial_forces = \
-                np.block([[rot, np.zeros((3, 3))],
-                          [np.zeros((3, 3)), rot]]).dot(aero_forces_beam_dof)
+
+            try:
+                forces_b = self.data.aero.timestep_info[self.ts].aero_forces_beam_dof
+                forces_a = self.data.structure.nodal_b_for_2_a_for(forces_b, self.data.structure.timestep_info[self.ts])
+
+                self.data.aero.timestep_info[self.ts].total_body_forces = np.sum(forces_a, axis=0)
+                self.data.aero.timestep_info[self.ts].total_inertial_forces = \
+                    np.block([[rot, np.zeros((3, 3))],
+                              [np.zeros((3, 3)), rot]]).dot(self.data.aero.timestep_info[self.ts].total_body_forces)
+
+            except AttributeError:
+                aero_forces_beam_dof = self.calculate_moments(self.ts)
+                self.data.aero.timestep_info[self.ts].total_body_forces = aero_forces_beam_dof
+                self.data.aero.timestep_info[self.ts].total_inertial_forces = \
+                    np.block([[rot, np.zeros((3, 3))],
+                              [np.zeros((3, 3)), rot]]).dot(aero_forces_beam_dof)
 
     def calculate_moments(self, ts):
         aero_tstep = self.data.aero.timestep_info[ts]
@@ -167,14 +184,15 @@ class AeroForcesCalculator(BaseSolver):
                 'tstep', '  Cfx_g', '  Cfy_g', '  Cfz_g', '  Cmx_g', '  Cmy_g', '  Cmz_g')
             cout.cout_wrap(line, 1)
             for self.ts in range(self.ts_max):
-                fx = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 0], 0) + \
-                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 0], 0)
-
-                fy = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 1], 0) + \
-                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 1], 0)
-
-                fz = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 2], 0) + \
-                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 2], 0)
+                # fx = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 0], 0) + \
+                #      np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 0], 0)
+                #
+                # fy = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 1], 0) + \
+                #      np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 1], 0)
+                #
+                # fz = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 2], 0) + \
+                #      np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 2], 0)
+                fx, fy, fz = self.data.aero.timestep_info[self.ts].total_inertial_forces[:3]
                 mx, my, mz = self.data.aero.timestep_info[self.ts].total_inertial_forces[3:]
                 Cfx, Cfy, Cfz, Cmx, Cmy, Cmz = self.calculate_coefficients(fx, fy, fz, mx, my, mz)
 
@@ -186,14 +204,15 @@ class AeroForcesCalculator(BaseSolver):
                 'tstep', '  fx_g', '  fy_g', '  fz_g')
             cout.cout_wrap(line, 1)
             for self.ts in range(self.ts_max):
-                fx = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 0], 0) + \
-                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 0], 0)
-
-                fy = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 1], 0) + \
-                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 1], 0)
-
-                fz = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 2], 0) + \
-                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 2], 0)
+                # fx = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 0], 0) + \
+                #      np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 0], 0)
+                #
+                # fy = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 1], 0) + \
+                #      np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 1], 0)
+                #
+                # fz = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 2], 0) + \
+                #      np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 2], 0)
+                fx, fy, fz = self.data.aero.timestep_info[self.ts].total_inertial_forces[:3]
                 mx, my, mz = self.data.aero.timestep_info[self.ts].total_inertial_forces[3:]
 
                 line = "{0:5d} | {1: 8.3e} | {2: 8.3e} | {3: 8.3e}| {1: 8.3e} | {2: 8.3e} | {3: 8.3e}".format(
@@ -205,10 +224,13 @@ class AeroForcesCalculator(BaseSolver):
         # (1 timestep) + (3+3 inertial steady+unsteady) + (3+3 body steady+unsteady) + (3 inertial moments) + (3 body moments)
         force_matrix = np.zeros((self.ts_max, 1 + 3 + 3 + 3 + 3 + 3 + 3))
         for self.ts in range(self.ts_max):
+            fx, fy, fz = self.data.aero.timestep_info[self.ts].total_inertial_forces[:3]
+            mx, my, mz = self.data.aero.timestep_info[self.ts].total_inertial_forces[3:]
             i = 0
             force_matrix[self.ts, i] = self.ts
             i += 1
-            force_matrix[self.ts, i:i+3] = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 0:3], 0)
+            # force_matrix[self.ts, i:i+3] = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 0:3], 0)
+            force_matrix[self.ts, i:i+3] = fx, fy, fz
             i += 3
             force_matrix[self.ts, i:i+3] = np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 0:3], 0)
             i += 3

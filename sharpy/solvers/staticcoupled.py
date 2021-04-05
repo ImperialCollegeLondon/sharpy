@@ -163,11 +163,15 @@ class StaticCoupled(BaseSolver):
                     self.data.aero.aero_dict)
 
                 if self.correct_forces:
+                    print('Correcting forces')
                     struct_forces = self.correct_forces_function(self.data,
                                         self.data.aero.timestep_info[self.data.ts],
                                         self.data.structure.timestep_info[self.data.ts],
                                         struct_forces,
-                                        rho=self.aero_solver.settings['rho'])
+                                        rho=self.aero_solver.settings['rho'], correct_lift=True)
+
+                print(np.sum(struct_forces, axis=0))
+                self.data.aero.timestep_info[self.data.ts].aero_forces_beam_dof = struct_forces
 
                 if not self.settings['relaxation_factor'] == 0.:
                     if i_iter == 0:
