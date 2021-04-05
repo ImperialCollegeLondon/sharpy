@@ -246,7 +246,11 @@ def equal_pos_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, inode_in_body, no
         node_dof (int): position of the first degree of freedom associated to the "node"
         FoR_body (int): body number of the "FoR"
         FoR_dof (int): position of the first degree of freedom associated to the "FoR"
+
+    Note: this equation constitutes a holonomic constraint which is not currently supported. Check ``equal_lin_vel_node_FoR``
     """
+    cout.cout_wrap("WARNING: this equation constitutes a holonomic constraint which is not currently supported. Check ``equal_lin_vel_node_FoR``", 3)
+
     num_LM_eq_specific = 3
     Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
     B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
@@ -426,7 +430,10 @@ def def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, FoR_body, node_body, no
         node_dof (int): position of the first degree of freedom associated to the "node"
         FoR_body (int): body number of the "FoR"
         FoR_dof (int): position of the first degree of freedom associated to the "FoR"
+
+    Notes: this function is missing the contribution of the rotation velocity of the reference node. See ``def_rot_axis_FoR_wrt_node_general``
     """
+    cout.cout_wrap("WARNING: this function is missing the contribution of the rotation velocity of the reference node. See ``def_rot_axis_FoR_wrt_node_general``", 3)
 
     ielem, inode_in_elem = MB_beam[node_body].node_master_elem[node_number]
 
@@ -896,7 +903,7 @@ class hinge_node_FoR(BaseLagrangeConstraint):
             self.rot_dir = 'z'
             self.zero_comp = np.array([0, 1], dtype=int)
         else:
-            raise NotImplementedError
+            raise NotImplementedError("Hinges should be parallel to the xB, yB or zB of the reference node")
             #self.rot_dir = 'general'
             #self.indep = []
 
@@ -963,9 +970,7 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         self.node_number = MBdict_entry['node_in_body']
         self.node_body = MBdict_entry['body']
         self.FoR_body = MBdict_entry['body_FoR']
-        # self.rot_vect =
         self.rot_axisB = ag.unit_vector(MBdict_entry['rot_vect'])
-        self.rot_vel = -np.linalg.norm(MBdict_entry['rot_vect'])
         self._ieq = ieq
         self.indep = []
         self.scalingFactor = set_value_or_default(MBdict_entry, "scalingFactor", 1.)
@@ -984,7 +989,9 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
             self.zero_comp = np.array([0, 1], dtype=int)
             self.nonzero_comp = 2
         else:
-            raise NotImplementedError
+            raise NotImplementedError("Hinges should be parallel to the xB, yB or zB of the reference node")
+        self.rot_vel = MBdict_entry['rot_vect'][self.nonzero_comp]
+
         # self.static_constraint = fully_constrained_node_FoR()
         # self.static_constraint.initialise(MBdict_entry, ieq)
 
