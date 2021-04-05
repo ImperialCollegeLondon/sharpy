@@ -48,6 +48,13 @@ class PickleData(BaseSolver):
 
     def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
+        if custom_settings is None:
+            self.settings = data.settings[self.solver_id]
+        else:
+            self.settings = custom_settings
+
+        settings.to_custom_types(self.settings,
+                                 self.settings_types, self.settings_default)
 
         self.folder = data.output_folder
         self.filename = self.folder + self.data.settings['SHARPy']['case']+'.pkl'
