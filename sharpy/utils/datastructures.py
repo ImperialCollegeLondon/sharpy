@@ -570,7 +570,11 @@ class StructTimeStepInfo(object):
 
         if num_dof is None:
             # For backwards compatibility
-            num_dof = (self.num_node.value - 1)*6
+            try:
+                num_dof = ct.c_int((self.num_node.value - 1)*6)
+            except AttributeError:
+                num_dof = ct.c_int((self.num_node - 1)*6)
+
         self.q = np.zeros((num_dof.value + 6 + 4,), dtype=ct.c_double, order='F')
         self.dqdt = np.zeros((num_dof.value + 6 + 4,), dtype=ct.c_double, order='F')
         self.dqddt = np.zeros((num_dof.value + 6 + 4,), dtype=ct.c_double, order='F')

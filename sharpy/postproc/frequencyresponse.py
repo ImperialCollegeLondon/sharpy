@@ -9,6 +9,7 @@ import sharpy.linear.src.libss as libss
 import h5py as h5
 import sharpy.utils.frequencyutils as frequencyutils
 from sharpy.utils.frequencyutils import find_target_system
+from sharpy.postproc.beamloads import timestep_add_loads
 
 
 @solver_interface.solver
@@ -177,6 +178,10 @@ class FrequencyResponse(solver_interface.BaseSolver):
             else:
                 hinf = None
 
+            # beam_loads_steps = self.beam_loads(system, y_freq_fom, self.wv)
+            # import pdb; pdb.set_trace()
+            # self.save_beam_loads(beam_loads_steps)
+
             self.save_freq_resp(self.wv, y_freq_fom, system_name=system_name, hinf=hinf)
 
             cout.cout_wrap('\tComputed the frequency response in %f s' % tfom, 2)
@@ -185,6 +190,29 @@ class FrequencyResponse(solver_interface.BaseSolver):
                 self.quick_plot(y_freq_fom, subfolder=system_name)
 
         return self.data
+
+    def save_beam_loads(self, beam_load_steps):
+
+        loads_folder = self.folder + '/beam_loads/'
+        if not os.path.isdir(loads_folder):
+            os.makedirs(loads_folder)
+        for input_channel in range(len(beam_load_steps)):
+            with open(loads_folder + 'pos_dot_in{:g}_r.txt'.format(input_channel), 'w') as outfile:
+                for freqstep in beam_load_steps[input_channel]:
+                    str_out = '{0:4e}, {1:4e}, {2:4e}, {3:4e}, {4:4e}, {5:4e}, {6:4e}\n'.format(
+                        freqstep.omega,
+                        *freqstep.pos_dot[1, :].real,
+                        *freqstep.psi_dot[1, 0, :].real
+                    )
+                    outfile.write(str_out)
+            with open(loads_folder + 'pos_dot_in{:g}_i.txt'.format(input_channel), 'w') as outfile:
+                for freqstep in beam_load_steps[input_channel]:
+                    str_out = '{0:4e}, {1:4e}, {2:4e}, {3:4e}, {4:4e}, {5:4e}, {6:4e}\n'.format(
+                        freqstep.omega,
+                        *freqstep.pos_dot[1, :].imag,
+                        *freqstep.psi_dot[1, 0, :].imag
+                    )
+                    outfile.write(str_out)
 
     def save_freq_resp(self, wv, Yfreq, system_name=None, hinf=None):
         """
@@ -259,3 +287,65 @@ class FrequencyResponse(solver_interface.BaseSolver):
             cout.cout_wrap('\tPlots saved to %s' % out_folder, 1)
         except ModuleNotFoundError:
             warnings.warn('Matplotlib not found - skipping plot')
+
+    def beam_loads(self, ss, yfreq, omega_vec):
+        # Take output of freqresp
+        # add into a pseudo-timestep
+        # run BeamLoads post-proc
+        # output frequency vs loads at each element
+        pos_loc = ss.output_variables('eta').rows_loc
+        vels_loc = ss.output_variables('eta_dot').rows_loc
+        ref_frequency_step = FrequencyStepInfo.from_timestep(self.data.linear.tsstruct0)
+        transfer_function_input = []
+        for i_input in range(yfreq.shape[1]):
+            frequency_info = []
+            for i_omega, omega in enumerate(omega_vec):
+                step = FrequencyStepInfo.from_timestep(ref_frequency_step)
+                step.set_omega(omega)
+                eta = yfreq[pos_loc, i_input, i_omega]
+                eta_dot = yfreq[vels_loc, i_input, i_omega]
+
+                pos, psi, pos_dot, psi_dot = self.data.linear.linear_system.beam.unpack_flex_dof(eta, eta_dot)
+                step.pos = pos
+                step.psi = psi
+                step.pos_dot = pos_dot
+                step.psi_dot = psi_dot
+                timestep_add_loads(self.data.structure, step)
+                frequency_info.append(step)
+            transfer_function_input.append(frequency_info)
+
+        return transfer_function_input
+
+
+from sharpy.utils.datastructures import StructTimeStepInfo
+class FrequencyStepInfo(StructTimeStepInfo):
+
+    def __init__(self, num_node, num_elem, num_node_elem, num_dof=None):
+        super().__init__(num_node, num_elem, num_node_elem, num_dof)
+
+        self.omega = None
+
+    def set_omega(self, value):
+        self.omega = value
+
+    @classmethod
+    def from_timestep(cls, timestep):
+        """
+        Initialise FrequencyStepInfo from StructTimeStepInfo
+
+        Args:
+            timestep (StructTimeStepInfo):
+
+        Returns:
+            FrequencyStepInfo
+        """
+        new_freqstep = cls(num_node=timestep.num_node,
+                           num_elem=timestep.num_elem,
+                           num_node_elem=timestep.num_node_elem)
+        new_freqstep.pos = np.zeros_like(timestep.pos, dtype=complex)
+        new_freqstep.pos_dot = np.zeros_like(timestep.pos_dot, dtype=complex)
+
+        new_freqstep.psi = np.zeros_like(timestep.psi, dtype=complex)
+        new_freqstep.psi_dot = np.zeros_like(timestep.psi_dot, dtype=complex)
+
+        return new_freqstep
