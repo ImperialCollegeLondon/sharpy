@@ -1805,7 +1805,11 @@ def initialize_constraints(MBdict):
     # Read the dictionary and create the constraints
     for iconstraint in range(num_constraints):
         lc_list.append(lc_from_string(MBdict["constraint_%02d" % iconstraint]['behaviour'])())
-        index_eq = lc_list[-1].initialise(MBdict["constraint_%02d" % iconstraint], index_eq)
+        MBdict_entry = MBdict["constraint_%02d" % iconstraint]
+        if "penaltyFactor" in MBdict_entry.keys():
+            if not MBdict_entry['penaltyFactor'] == 0.:
+                raise NotImplementedError("Penalty method not completely implemented for Lagrange Constraints")
+        index_eq = lc_list[-1].initialise(MBdict_entry, index_eq)
 
     return lc_list
 
