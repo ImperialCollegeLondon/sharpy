@@ -172,7 +172,7 @@ class HortenWing:
         self.elastic_axis = np.zeros((self.n_elem, self.n_node_elem))
 
         # control surfaces attributes initialisation
-        self.n_control_surfaces = 1
+        self.n_control_surfaces = 2
         self.control_surface = np.zeros((self.n_elem, self.n_node_elem), dtype=int) - 1
         self.control_surface_type = np.zeros((self.n_control_surfaces,), dtype=int)
         self.control_surface_deflection = np.zeros((self.n_control_surfaces,))
@@ -245,7 +245,7 @@ class HortenWing:
         self.elastic_axis = np.zeros((self.n_elem, self.n_node_elem))
 
         # control surfaces attributes initialisation
-        self.n_control_surfaces = 1
+        self.n_control_surfaces = 2
         self.control_surface = np.zeros((self.n_elem, self.n_node_elem), dtype=int) - 1
         self.control_surface_type = np.zeros((self.n_control_surfaces,), dtype=int)
         self.control_surface_deflection = np.zeros((self.n_control_surfaces,))
@@ -843,6 +843,11 @@ class HortenWing:
         control_surface_chord[0] = 2  # m
         control_surface_hinge_coord[0] = 0.25
 
+        control_surface_type[1] = self.control_surface_type[0]
+        control_surface_deflection[1] = cs_deflection
+        control_surface_chord[1] = 2  # m
+        control_surface_hinge_coord[1] = 0.25
+
         # RIGHT FUSELAGE (Surface 0, Beam 0)
         we = 0
         wn = 0
@@ -955,7 +960,7 @@ class HortenWing:
                 elastic_axis[ielem, i_local_node] = temp_ea[node_counter]
                 twist[ielem, i_local_node] = -temp_washout[node_counter]
                 if ielem >= round((we + n_elem_wing / 2)):
-                    control_surface[ielem, i_local_node] = 0
+                    control_surface[ielem, i_local_node] = 1
 
         # update working element and node
         we += n_elem_wing
@@ -1173,7 +1178,7 @@ class HortenWing:
                             'initial_alpha': alpha,
                             'initial_beta': beta,
                             'cs_indices': [0],
-                            'initial_cs_deflection': [cs_deflection],
+                            'initial_cs_deflection': [cs_deflection, cs_deflection],
                             'thrust_nodes': thrust_nodes,
                             'initial_thrust': [thrust, thrust]}
 
