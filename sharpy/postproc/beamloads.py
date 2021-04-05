@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import os
 from sharpy.utils.solver_interface import solver, BaseSolver

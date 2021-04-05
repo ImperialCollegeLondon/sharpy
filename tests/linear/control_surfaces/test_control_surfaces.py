@@ -99,10 +99,10 @@ class TestGolandControlSurface(unittest.TestCase):
             'unsteady': 'off',
             'aligned_grid': 'on',
             'mstar': ws.Mstar_fact * ws.M,
-            'freestream_dir': ws.u_inf_direction,                                                                                                       
-            'wake_shape_generator': 'StraightWake',                                                                                                  
-            'wake_shape_generator_input': {'u_inf': ws.u_inf,                                                                                           
-                                           'u_inf_direction': ws.u_inf_direction,                                                                
+            'freestream_dir': ws.u_inf_direction,
+            'wake_shape_generator': 'StraightWake',
+            'wake_shape_generator_input': {'u_inf': ws.u_inf,
+                                           'u_inf_direction': ws.u_inf_direction,
                                            'dt': ws.dt}}
 
         ws.config['StaticUvlm'] = {
@@ -148,28 +148,19 @@ class TestGolandControlSurface(unittest.TestCase):
                                            'gravity_on': 'on',
                                            'gravity': 9.81}}
 
-        ws.config['AerogridPlot'] = {'folder': self.route_test_dir + '/output/',
-                                     'include_rbm': 'off',
+        ws.config['AerogridPlot'] = {'include_rbm': 'off',
                                      'include_applied_forces': 'on',
                                      'minus_m_star': 0}
 
-        ws.config['AeroForcesCalculator'] = {'folder': self.route_test_dir + '/output/forces',
-                                             'write_text_file': 'on',
+        ws.config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                              'text_file_name': ws.case_name + '_aeroforces.csv',
                                              'screen_output': 'on',
                                              'unsteady': 'off'}
 
-        ws.config['BeamPlot'] = {'folder': self.route_test_dir + '/output/',
-                                 'include_rbm': 'off',
+        ws.config['BeamPlot'] = {'include_rbm': 'off',
                                  'include_applied_forces': 'on'}
 
-        ws.config['BeamCsvOutput'] = {'folder': self.route_test_dir + '/output/',
-                                      'output_pos': 'on',
-                                      'output_psi': 'on',
-                                      'screen_output': 'on'}
-
-        ws.config['Modal'] = {'folder': self.route_test_dir + '/output/',
-                              'NumLambda': 20,
+        ws.config['Modal'] = {'NumLambda': 20,
                               'rigid_body_modes': 'off',
                               'print_matrices': 'on',
                               'keep_linear_matrices': 'on',

@@ -152,33 +152,23 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
         'structural_solver': 'NonLinearStatic',
         'structural_solver_settings': settings['NonLinearStatic']}
 
-    ws.config['AerogridPlot'] = {'folder': output_folder,
-                                 'include_rbm': 'off',
+    ws.config['AerogridPlot'] = {'include_rbm': 'off',
                                  'include_applied_forces': 'on',
                                  'minus_m_star': 0}
 
-    ws.config['AeroForcesCalculator'] = {'folder': output_folder,
-                                         'write_text_file': 'on',
+    ws.config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                          'text_file_name': ws.case_name + '_aeroforces.csv',
                                          'screen_output': 'on',
                                          'unsteady': 'off'}
 
-    ws.config['BeamPlot'] = {'folder': output_folder,
-                             'include_rbm': 'off',
+    ws.config['BeamPlot'] = {'include_rbm': 'off',
                              'include_applied_forces': 'on'}
 
-    ws.config['BeamCsvOutput'] = {'folder': output_folder,
-                                  'output_pos': 'on',
-                                  'output_psi': 'on',
-                                  'screen_output': 'on'}
-
-    ws.config['WriteVariablesTime'] = {'folder': output_folder,
-                                       'structure_variables': ['pos'],
+    ws.config['WriteVariablesTime'] = {'structure_variables': ['pos'],
                                        'structure_nodes': list(range(0, ws.num_node_surf)),
                                        'cleanup_old_solution': 'on'}
 
-    ws.config['Modal'] = {'folder': output_folder,
-                          'NumLambda': 20,
+    ws.config['Modal'] = {'NumLambda': 20,
                           'rigid_body_modes': 'off',
                           'print_matrices': 'on',
                           'keep_linear_matrices': 'on',
@@ -224,7 +214,6 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
                                         'rigid_body_motion': False}}
 
     ws.config['AsymptoticStability'] = {'print_info': True,
-                                        'folder': output_folder,
                                         'export_eigenvalues': 'on',
                                         'target_system': ['aeroelastic', 'aerodynamic', 'structural'],
                                         # 'velocity_analysis': [160, 180, 20]}
@@ -236,16 +225,13 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
                                   'postprocessors': ['BeamPlot', 'AerogridPlot'],
                                   'postprocessors_settings': {'AerogridPlot': {
                                       'u_inf': ws.u_inf,
-                                      'folder': output_folder,
                                       'include_rbm': 'on',
                                       'include_applied_forces': 'on',
                                       'minus_m_star': 0},
-                                      'BeamPlot': {'folder': ws.route + output_folder,
-                                                   'include_rbm': 'on',
+                                      'BeamPlot': {'include_rbm': 'on',
                                                    'include_applied_forces': 'on'}}}
 
     ws.config['FrequencyResponse'] = {'quick_plot': 'off',
-                                      'folder': output_folder,
                                       'frequency_unit': 'w',
                                       'frequency_bounds': [0.0001, 1.0],
                                       'num_freqs': 100,
@@ -253,8 +239,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
                                       'target_system': ['aeroelastic', 'aerodynamic', 'structural'],
                                       }
 
-    ws.config['SaveParametricCase'] = {'folder': output_folder + ws.case_name + '/',
-                                       'save_case':'off',
+    ws.config['SaveParametricCase'] = {'save_case':'off',
                                        'parameters': {'u_inf': u_inf}}
     settings = dict()
     settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'on',
@@ -319,20 +304,16 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
                                                                                    },
                                                        },
                                   'postprocessors': ['AerogridPlot', 'BeamPlot', 'WriteVariablesTime'],
-                                  'postprocessors_settings': {'BeamLoads': {'folder': output_folder,
-                                                                            'csv_output': 'off'},
-                                                              'BeamPlot': {'folder': output_folder,
-                                                                           'include_rbm': 'on',
+                                  'postprocessors_settings': {'BeamLoads': {'csv_output': 'off'},
+                                                              'BeamPlot': {'include_rbm': 'on',
                                                                            'include_applied_forces': 'on'},
                                                               'StallCheck': {},
                                                               'AerogridPlot': {
                                                                   'u_inf': ws.u_inf,
-                                                                  'folder': output_folder,
                                                                   'include_rbm': 'on',
                                                                   'include_applied_forces': 'on',
                                                                   'minus_m_star': 0},
                                                               'WriteVariablesTime': {
-                                                                  'folder': output_folder,
                                                                   'structure_variables': ['pos', 'psi'],
                                                                   'structure_nodes': [ws.num_node_surf - 1,
                                                                                       ws.num_node_surf,

@@ -38,10 +38,6 @@ class SaveData(BaseSolver):
     settings_description = dict()
     settings_options = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Folder to save data'
-
     settings_types['save_aero'] = 'bool'
     settings_default['save_aero'] = True
     settings_description['save_aero'] = 'Save aerodynamic classes.'

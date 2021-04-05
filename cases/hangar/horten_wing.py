@@ -1256,8 +1256,7 @@ class HortenWing:
                                       'dt': dt,
                                       'include_unsteady_force_contribution': 'off',
                                       'postprocessors': ['BeamLoads', 'StallCheck', 'BeamPlot', 'AerogridPlot'],
-                                      'postprocessors_settings': {'BeamLoads': {'folder': './output/',
-                                                                                'csv_output': 'off'},
+                                      'postprocessors_settings': {'BeamLoads': {'csv_output': 'off'},
                                                                   'StallCheck': {'output_degrees': True,
                                                                                  'stall_angles': {
                                                                                      '0': [-12 * np.pi / 180,
@@ -1266,12 +1265,10 @@ class HortenWing:
                                                                                            6 * np.pi / 180],
                                                                                      '2': [-12 * np.pi / 180,
                                                                                            6 * np.pi / 180]}},
-                                                                  'BeamPlot': {'folder': route + '/output/',
-                                                                               'include_rbm': 'on',
+                                                                  'BeamPlot': {'include_rbm': 'on',
                                                                                'include_applied_forces': 'on'},
                                                                   'AerogridPlot': {
                                                                       'u_inf': u_inf,
-                                                                      'folder': './output/',
                                                                       'include_rbm': 'on',
                                                                       'include_applied_forces': 'on',
                                                                       'minus_m_star': 0},
@@ -1335,8 +1332,7 @@ class HortenWing:
                                     'display_root_locus':'off',
                                     'frequency_cutoff': 0,
                                     'export_eigenvalues': 'on',
-                                    'num_evals':100,
-                                    'folder': './output/'}
+                                    'num_evals':100}
 
         settings['LinDynamicSim'] = {'dt': dt,
                                       'n_tsteps': self.n_tstep,
@@ -1344,22 +1340,18 @@ class HortenWing:
                                       'postprocessors': ['BeamPlot', 'AerogridPlot'],
                                       'postprocessors_settings': {'AerogridPlot': {
                                           'u_inf': u_inf,
-                                          'folder': './output',
                                           'include_rbm': 'on',
                                           'include_applied_forces': 'on',
                                           'minus_m_star': 0},
-                                          'BeamPlot': {'folder': './output/',
-                                                       'include_rbm': 'on',
+                                          'BeamPlot': {'include_rbm': 'on',
                                                        'include_applied_forces': 'on'}}}
 
-        settings['AerogridPlot'] = {'folder': './output/',
-                                    'include_rbm': 'off',
+        settings['AerogridPlot'] = {'include_rbm': 'off',
                                     'include_applied_forces': 'on',
                                     'minus_m_star': 0,
                                     'u_inf': u_inf
                                     }
-        settings['AeroForcesCalculator'] = {'folder': './output/',
-                                            'write_text_file': 'off',
+        settings['AeroForcesCalculator'] = {'write_text_file': 'off',
                                             'text_file_name': case_name + '_aeroforces.csv',
                                             'screen_output': 'on',
                                             'unsteady': 'off',
@@ -1367,16 +1359,13 @@ class HortenWing:
                                             'q_ref': 0.5 * rho * u_inf ** 2,
                                             'S_ref': self.planform_area()
                                             }
-        settings['BeamPlot'] = {'folder': './output/',
-                                'include_rbm': 'on',
+        settings['BeamPlot'] = {'include_rbm': 'on',
                                 'include_applied_forces': 'on',
                                 'include_FoR': 'on'}
 
-        settings['BeamLoads'] = {'folder': './output/',
-                                 'csv_output': 'off'}
+        settings['BeamLoads'] = {'csv_output': 'off'}
 
-        settings['SaveData'] = {'folder': './output/',
-                                'save_aero': 'on',
+        settings['SaveData'] = {'save_aero': 'on',
                                 'save_structure': 'on',
                                 'save_linear': 'off'}
 
@@ -1402,4 +1391,3 @@ if __name__=='__main__':
                     u_inf=28,
                     rho=1.225,
                     alpha_deg=4)
-
