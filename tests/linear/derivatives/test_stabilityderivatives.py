@@ -73,13 +73,12 @@ class TestLinearDerivatives(unittest.TestCase):
 
         frequency_continuous_w = 2 * u_inf * frequency_continuous_k / ws.c_ref
         rom_settings['frequency'] = frequency_continuous_w
-        rom_settings['tangent_input_file'] = ws.route + '/' + ws.case_name + '.rom.h5'
 
         ws.config['SHARPy'] = {
             'flow': flow,
             'case': ws.case_name, 'route': ws.route,
             'write_screen': 'on', 'write_log': 'on',
-            'log_folder': self.route_test_dir + '/output/' + ws.case_name + '/',
+            'log_folder': self.route_test_dir + '/output/',
             'log_file': ws.case_name + '.log'}
 
         ws.config['BeamLoader'] = {
@@ -139,28 +138,23 @@ class TestLinearDerivatives(unittest.TestCase):
                                            'gravity_on': 'off',
                                            'gravity': 9.81}}
 
-        ws.config['AerogridPlot'] = {'folder': self.route_test_dir + '/output/',
-                                     'include_rbm': 'off',
+        ws.config['AerogridPlot'] = {'include_rbm': 'off',
                                      'include_applied_forces': 'on',
                                      'minus_m_star': 0}
 
-        ws.config['AeroForcesCalculator'] = {'folder': self.route_test_dir + '/output/',
-                                             'write_text_file': 'on',
+        ws.config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                              # 'text_file_name': ws.case_name + '_aeroforces.csv',
                                              'screen_output': 'on',
                                              'unsteady': 'off'}
 
-        ws.config['BeamPlot'] = {'folder': self.route_test_dir + '/output/',
-                                 'include_rbm': 'off',
+        ws.config['BeamPlot'] = {'include_rbm': 'off',
                                  'include_applied_forces': 'on'}
 
-        ws.config['BeamCsvOutput'] = {'folder': self.route_test_dir + '/output/',
-                                      'output_pos': 'on',
+        ws.config['BeamCsvOutput'] = {'output_pos': 'on',
                                       'output_psi': 'on',
                                       'screen_output': 'on'}
 
-        ws.config['Modal'] = {'folder': self.route_test_dir + '/output/',
-                              'print_info': 'on',
+        ws.config['Modal'] = {'print_info': 'on',
                               'use_undamped_modes': 'on',
                               'NumLambda': 20,
                               'rigid_body_modes': 'on',
@@ -255,7 +249,6 @@ class TestLinearDerivatives(unittest.TestCase):
                                        }
 
         ws.config['FrequencyResponse'] = {'quick_plot': 'off',
-                                          'folder': self.route_test_dir + '/output/',
                                           'frequency_unit': 'k',
                                           'frequency_bounds': [0.0001, 1.0],
                                           'num_freqs': 100,
@@ -263,23 +256,19 @@ class TestLinearDerivatives(unittest.TestCase):
                                           'target_system': ['aeroelastic'],
                                           }
 
-        ws.config['StabilityDerivatives'] = {'folder': self.route_test_dir + '/output/',
-                                             'target_system': target_system,
+        ws.config['StabilityDerivatives'] = {'target_system': target_system,
                                              'u_inf': ws.u_inf,
                                              'c_ref': ws.main_chord,
                                              'b_ref': ws.wing_span,
                                              'S_ref': ws.wing_span * ws.main_chord,
                                              }
 
-        ws.config['AsymptoticStability'] = {'folder': self.route_test_dir + '/output/' + case_name + '/',
-                                            'print_info': 'on'}
+        ws.config['AsymptoticStability'] = {'print_info': 'on'}
 
-        ws.config['SaveParametricCase'] = {'folder': self.route_test_dir + '/output/' + case_name + '/',
-                                           'save_case': 'off',
+        ws.config['SaveParametricCase'] = {'save_case': 'off',
                                            'parameters': {'alpha': alpha_deg}}
 
-        ws.config['SaveData'] = {'folder': self.route_test_dir + '/output/',
-                                 'save_aero': 'off',
+        ws.config['SaveData'] = {'save_aero': 'off',
                                  'save_struct': 'off',
                                  'save_linear': 'on',
                                  'save_linear_uvlm': 'on',
