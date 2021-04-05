@@ -965,7 +965,7 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         self.FoR_body = MBdict_entry['body_FoR']
         # self.rot_vect =
         self.rot_axisB = ag.unit_vector(MBdict_entry['rot_vect'])
-        self.rot_vel = np.linalg.norm(MBdict_entry['rot_vect'])
+        self.rot_vel = -np.linalg.norm(MBdict_entry['rot_vect'])
         self._ieq = ieq
         self.indep = []
         self.scalingFactor = set_value_or_default(MBdict_entry, "scalingFactor", 1.)
@@ -974,15 +974,15 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         if (self.rot_axisB[[1, 2]]  == 0).all():
             self.rot_dir = 'x'
             self.zero_comp = np.array([1, 2], dtype=int)
-            self.nozero_comp = 0
+            self.nonzero_comp = 0
         elif (self.rot_axisB[[0, 2]]  == 0).all():
             self.rot_dir = 'y'
             self.zero_comp = np.array([0, 2], dtype=int)
-            self.nozero_comp = 1
+            self.nonzero_comp = 1
         elif (self.rot_axisB[[0, 1]]  == 0).all():
             self.rot_dir = 'z'
             self.zero_comp = np.array([0, 1], dtype=int)
-            self.nozero_comp = 2
+            self.nonzero_comp = 2
         else:
             raise NotImplementedError
         # self.static_constraint = fully_constrained_node_FoR()
@@ -1017,17 +1017,17 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
     def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         MB_tstep[self.FoR_body].for_pos[0:3] = np.dot(MB_tstep[self.node_body].cga(), MB_tstep[self.node_body].pos[self.node_number,:]) + MB_tstep[self.node_body].for_pos[0:3]
 
-        ielem, inode_in_elem = MB_beam[self.node_body].node_master_elem[self.node_number]
-        node_cga = MB_tstep[self.node_body].cga()
-        cab = ag.crv2rotation(MB_tstep[self.node_body].psi[ielem,inode_in_elem,:])
-        FoR_cga = MB_tstep[self.FoR_body].cga()
+        # ielem, inode_in_elem = MB_beam[self.node_body].node_master_elem[self.node_number]
+        # node_cga = MB_tstep[self.node_body].cga()
+        # cab = ag.crv2rotation(MB_tstep[self.node_body].psi[ielem,inode_in_elem,:])
+        # FoR_cga = MB_tstep[self.FoR_body].cga()
 
-        rot_vect_A = ag.multiply_matrices(FoR_cga.T,
-                                         node_cga,
-                                         cab,
-                                         self.rot_vect)
+        # rot_vect_A = ag.multiply_matrices(FoR_cga.T,
+        #                                  node_cga,
+        #                                  cab,
+        #                                  self.rot_vect)
 
-        MB_tstep[self.FoR_body].for_vel[3:6] = rot_vect_A.copy()
+        # MB_tstep[self.FoR_body].for_vel[3:6] = rot_vect_A.copy()
         return
 
 
