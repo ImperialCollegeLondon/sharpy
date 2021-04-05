@@ -9,7 +9,7 @@ import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
 import sharpy.utils.generator_interface as gi
 from sharpy.linear.utils.ss_interface import LinearVector, InputVariable, StateVariable, OutputVariable
-import sharpy.aero.utils as aero_utils
+import sharpy.aero.utils.utils as aero_utils
 
 
 @ss_interface.linear_system
