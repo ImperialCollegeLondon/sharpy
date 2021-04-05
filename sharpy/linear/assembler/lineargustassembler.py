@@ -63,6 +63,7 @@ class LinearGust:
                                       'than fluid.')
 
     def get_x_max(self):
+        # TODO: fix such that it doesn't take x-max but rather the projection onto the freestream vector
         max_chord_surf = []
         min_chord_surf = []
         for i_surf in range(len(self.tsaero0.zeta)):
@@ -170,8 +171,9 @@ class LinearGust:
         u_ext_direction = self.u_ext_direction
 
         # Project onto free stream
-        x_min = x_min.dot(u_ext_direction) * u_ext_direction
-        x_max = x_max.dot(u_ext_direction) * u_ext_direction
+        # TODO: need to fix. Projection before getting xmin/xmax
+        # x_min = x_min.dot(u_ext_direction) * u_ext_direction
+        # x_max = x_max.dot(u_ext_direction) * u_ext_direction
 
         N = int(np.ceil((x_max - x_min) / self.linuvlm.SS.dt))
         x_domain = np.linspace(x_min, x_max, N)
