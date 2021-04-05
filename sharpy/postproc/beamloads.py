@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import os
 from sharpy.utils.solver_interface import solver, BaseSolver
@@ -26,10 +27,6 @@ class BeamLoads(BaseSolver):
     settings_default['output_file_name'] = 'beam_loads'
     settings_description['output_file_name'] = 'Output file name'
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Output folder path'
-
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -38,7 +35,7 @@ class BeamLoads(BaseSolver):
         self.settings = None
         self.data = None
 
-        self.folder = ''
+        self.folder = None
         self.caller = None
 
     def initialise(self, data, custom_settings=None, caller=None):
@@ -50,7 +47,7 @@ class BeamLoads(BaseSolver):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.caller = caller
 
-        self.folder = self.settings['folder'] + '/' + self.data.case_name + '/beam/'
+        self.folder = data.output_folder + '/beam/'
         if not os.path.isdir(self.folder):
             os.makedirs(self.folder)
 

@@ -80,7 +80,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
                                  options=self.settings_options,
                                  no_ctype=True)
         self.caller = caller
-        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/derivatives/'
+        self.folder = data.output_folder + '/derivatives/'
         if not os.path.isdir(self.folder):
             os.makedirs(self.folder, exist_ok=True)
 

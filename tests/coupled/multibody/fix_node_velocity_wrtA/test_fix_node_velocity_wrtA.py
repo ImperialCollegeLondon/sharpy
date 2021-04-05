@@ -72,10 +72,10 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         SimInfo.solvers['SHARPy']['case'] = name
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.solvers['SHARPy']['route'] = folder + '/'
+        SimInfo.solvers['SHARPy']['log_folder'] = folder + '/output/'
         SimInfo.set_variable_all_dicts('dt', 0.05)
         SimInfo.set_variable_all_dicts('rho', 0.0)
         SimInfo.set_variable_all_dicts('velocity_field_input', SimInfo.solvers['SteadyVelocityField'])
-        SimInfo.set_variable_all_dicts('folder', folder + '/output/')
 
         SimInfo.solvers['BeamLoader']['unsteady'] = 'on'
 

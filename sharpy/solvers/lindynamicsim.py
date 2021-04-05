@@ -43,10 +43,6 @@ class LinDynamicSim(BaseSolver):
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output/'
-    settings_description['folder'] = 'Output directory'
-
     settings_types['write_dat'] = 'list(str)'
     settings_default['write_dat'] = []
     settings_description['write_dat'] = 'List of vectors to write: ``x``, ``y``, ``u`` and/or ``t``'
@@ -105,7 +101,7 @@ class LinDynamicSim(BaseSolver):
         self.read_files()
 
         # Output folder
-        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/lindynamicsim/'
+        self.folder = data.output_folder + '/lindynamicsim/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
 

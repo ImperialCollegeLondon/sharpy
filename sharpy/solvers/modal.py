@@ -32,10 +32,6 @@ class Modal(BaseSolver):
     settings_default['print_info'] = True
     settings_description['print_info'] = 'Write status to screen'
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Output folder'
-
     # solution options
     settings_types['rigid_body_modes'] = 'bool'
     settings_default['rigid_body_modes'] = False
@@ -135,13 +131,10 @@ class Modal(BaseSolver):
                                             self.data.ts)
 
         # create folder for containing files if necessary
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
-        self.folder = (self.settings['folder'] + '/' +
-                       self.data.settings['SHARPy']['case'] +
-                       '/beam_modal_analysis/')
+        self.folder = data.output_folder + '/beam_modal_analysis/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
+
         self.filename_freq = (self.folder +
                               'tstep' + ("%06d" % self.data.ts) +
                               '_ModalFrequencies.dat')

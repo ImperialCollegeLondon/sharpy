@@ -69,7 +69,7 @@ class PlotFlowField(BaseSolver):
     def __init__(self):
         self.settings = None
         self.data = None
-        self.dir = 'output/'
+        self.folder = None
         self.caller = None
 
     def initialise(self, data, custom_settings=None, caller=None):
@@ -81,9 +81,9 @@ class PlotFlowField(BaseSolver):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
                                  self.settings_options)
 
-        self.dir =   self.data.case_route + 'output/' + self.data.case_name + '/' + 'GenerateFlowField/'
-        if not os.path.isdir(self.dir):
-            os.makedirs(self.dir)
+        self.folder = data.output_folder + '/' + 'GenerateFlowField/'
+        if not os.path.isdir(self.folder):
+            os.makedirs(self.folder)
 
         # init velocity generator
         velocity_generator_type = gen_interface.generator_from_string(
@@ -177,7 +177,7 @@ class PlotFlowField(BaseSolver):
         vtk_info.point_data.update()
         array_counter += 1
 
-        filename = self.dir + "VelocityField_" + '%06u' % ts + ".vtk"
+        filename = self.folder + "VelocityField_" + '%06u' % ts + ".vtk"
         write_data(vtk_info, filename)
 
     def run(self, online=False):

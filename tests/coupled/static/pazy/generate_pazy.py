@@ -1,10 +1,7 @@
-import numpy as np
-import os
-import unittest
 import cases.templates.flying_wings as wings
 import sharpy.sharpy_main
 
-    # Problem Set up
+
 def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', **kwargs):
     # u_inf = 60
     alpha_deg = kwargs.get('alpha', 0.)
@@ -53,7 +50,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
         'case': ws.case_name, 'route': ws.route,
         'write_screen': 'off', 'write_log': 'on',
         'save_settings': 'on',
-        'log_folder': output_folder + '/' + ws.case_name + '/',
+        'log_folder': output_folder,
         'log_file': ws.case_name + '.log'}
 
     ws.config['BeamLoader'] = {
@@ -117,19 +114,16 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
         'structural_solver': 'NonLinearStatic',
         'structural_solver_settings': settings['NonLinearStatic']}
 
-    ws.config['AerogridPlot'] = {'folder': output_folder,
-                                 'include_rbm': 'off',
+    ws.config['AerogridPlot'] = {'include_rbm': 'off',
                                  'include_applied_forces': 'on',
                                  'minus_m_star': 0}
 
-    ws.config['BeamPlot'] = {'folder': output_folder,
-                             'include_rbm': 'off',
+    ws.config['BeamPlot'] = {'include_rbm': 'off',
                              'include_applied_forces': 'on'}
 
-    ws.config['WriteVariablesTime'] = {'folder': output_folder,
-                                        'structure_variables': ['pos'],
-                                        'structure_nodes': list(range(0, ws.num_node_surf)),
-                                        'cleanup_old_solution': 'on'}
+    ws.config['WriteVariablesTime'] = {'structure_variables': ['pos'],
+                                       'structure_nodes': list(range(0, ws.num_node_surf)),
+                                       'cleanup_old_solution': 'on'}
 
     ws.config.write()
 
