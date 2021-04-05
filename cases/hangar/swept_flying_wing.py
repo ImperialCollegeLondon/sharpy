@@ -1053,8 +1053,7 @@ class SweptWing:
                                       'dt': dt,
                                       'include_unsteady_force_contribution': 'off',
                                       'postprocessors': ['BeamLoads', 'StallCheck', 'BeamPlot', 'AerogridPlot'],
-                                      'postprocessors_settings': {'BeamLoads': {'folder': route + '/output/',
-                                                                                'csv_output': 'off'},
+                                      'postprocessors_settings': {'BeamLoads': {'csv_output': 'off'},
                                                                   'StallCheck': {'output_degrees': True,
                                                                                  'stall_angles': {
                                                                                      '0': [-12 * np.pi / 180,
@@ -1063,12 +1062,10 @@ class SweptWing:
                                                                                            6 * np.pi / 180],
                                                                                      '2': [-12 * np.pi / 180,
                                                                                            6 * np.pi / 180]}},
-                                                                  'BeamPlot': {'folder': route + '/output/',
-                                                                               'include_rbm': 'on',
+                                                                  'BeamPlot': {'include_rbm': 'on',
                                                                                'include_applied_forces': 'on'},
                                                                   'AerogridPlot': {
                                                                       'u_inf': u_inf,
-                                                                      'folder': route + '/output/',
                                                                       'include_rbm': 'on',
                                                                       'include_applied_forces': 'on',
                                                                       'minus_m_star': 0},
@@ -1093,7 +1090,6 @@ class SweptWing:
                                                                   }}
 
         settings['Modal'] = {'print_info': True,
-                             'folder': route + '/',
                              'use_undamped_modes': True,
                              'NumLambda': 20,
                              'rigid_body_modes': True,
@@ -1131,29 +1127,24 @@ class SweptWing:
         settings['AsymptoticStability'] = {'sys_id': 'LinearAeroelastic',
                                     'print_info': 'on',
                                     'frequency_cutoff': 0,
-                                    'export_eigenvalues': 'on',
-                                    'folder': route}
+                                    'export_eigenvalues': 'on'}
 
-        settings['AerogridPlot'] = {'folder': route,
-                                    'include_rbm': 'on',
+        settings['AerogridPlot'] = {'include_rbm': 'on',
                                     'include_applied_forces': 'on',
                                     'minus_m_star': 0,
                                     'u_inf': u_inf
                                     }
-        settings['AeroForcesCalculator'] = {'folder': route + '/',
-                                            'write_text_file': 'off',
+        settings['AeroForcesCalculator'] = {'write_text_file': 'off',
                                             'text_file_name': case_name + '_aeroforces.csv',
                                             'screen_output': 'on',
                                             'unsteady': 'off'
                                             }
-        settings['BeamPlot'] = {'folder': route + '/',
-                                'include_rbm': 'on',
+        settings['BeamPlot'] = {'include_rbm': 'on',
                                 'include_applied_forces': 'on'}
 
-        settings['BeamLoads'] = {'folder': route + '/',
-                                 'csv_output': 'off'}
+        settings['BeamLoads'] = {'csv_output': 'off'}
 
-        settings['SaveData'] = {'folder': route + '/'}
+        settings['SaveData'] = {}
 
         config = configobj.ConfigObj()
         config.filename = file_name

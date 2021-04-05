@@ -36,10 +36,6 @@ class SaveData(BaseSolver):
     settings_description = dict()
     settings_options = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Folder to save data'
-
     settings_types['save_aero'] = 'bool'
     settings_default['save_aero'] = True
     settings_description['save_aero'] = 'Save aerodynamic classes.'
@@ -144,9 +140,7 @@ class SaveData(BaseSolver):
         self.ts_max = self.data.ts + 1
 
         # create folder for containing files if necessary
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/savedata/'
+        self.folder = data.output_folder + '/savedata/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.filename = self.folder + self.data.settings['SHARPy']['case'] + '.data.h5'

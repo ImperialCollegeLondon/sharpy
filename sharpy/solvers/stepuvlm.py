@@ -174,8 +174,7 @@ class StepUvlm(BaseSolver):
                         " to " +
                         str(self.settings['gamma_dot_filtering'] + 1),
                         2)
-                    self.settings['gamma_dot_filtering'] = (
-                        ct.c_int(self.settings['gamma_dot_filtering'] + 1))
+                    self.settings['gamma_dot_filtering'] += 1
 
         # init velocity generator
         velocity_generator_type = gen_interface.generator_from_string(

@@ -21,10 +21,6 @@ class BeamPlot(BaseSolver):
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Output folder path'
-
     settings_types['include_rbm'] = 'bool'
     settings_default['include_rbm'] = True
     settings_description['include_rbm'] = 'Include frame of reference rigid body motion'
@@ -59,6 +55,7 @@ class BeamPlot(BaseSolver):
 
         self.folder = ''
         self.filename = ''
+        self.filename_for = ''
         self.caller = None
 
     def initialise(self, data, custom_settings=None, caller=None):
@@ -69,9 +66,7 @@ class BeamPlot(BaseSolver):
             self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
         # create folder for containing files if necessary
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/beam/'
+        self.folder = data.output_folder + '/beam/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.filename = (self.folder +
@@ -79,9 +74,9 @@ class BeamPlot(BaseSolver):
                          'beam_' +
                          self.data.settings['SHARPy']['case'])
         self.filename_for = (self.folder +
-                         self.settings['name_prefix'] +
-                         'for_' +
-                         self.data.settings['SHARPy']['case'])
+                             self.settings['name_prefix'] +
+                             'for_' +
+                             self.data.settings['SHARPy']['case'])
         self.caller = caller
 
     def run(self, online=False):
@@ -232,11 +227,11 @@ class BeamPlot(BaseSolver):
                                                   tstep.steady_applied_forces[i_node, 3:6]+
                                                   tstep.unsteady_applied_forces[i_node, 3:6]))
             forces_constraints_nodes[i_node, :] = np.dot(aero2inertial,
-                                           np.dot(cab,
-                                                  tstep.forces_constraints_nodes[i_node, 0:3]))
+                                                         np.dot(cab,
+                                                                tstep.forces_constraints_nodes[i_node, 0:3]))
             moments_constraints_nodes[i_node, :] = np.dot(aero2inertial,
-                                           np.dot(cab,
-                                                  tstep.forces_constraints_nodes[i_node, 3:6]))
+                                                          np.dot(cab,
+                                                                 tstep.forces_constraints_nodes[i_node, 3:6]))
 
             if with_gravity:
                 gravity_forces_g[i_node, 0:3] = np.dot(aero2inertial,

@@ -120,7 +120,7 @@ def main(args=None, sharpy_input_dict=None):
 
     except Exception as e:
         try:
-            logdir = settings['SHARPy']['log_folder']
+            logdir = settings['SHARPy']['log_folder'] + '/' + settings['SHARPy']['case']
         except KeyError:
             logdir = './'
         except NameError:

@@ -141,14 +141,12 @@ settings['StaticTrim'] = {'solver': 'StaticCoupled',
                           'fx_tolerance': 1e-2,
                           'm_tolerance': 1e-2}
 
-settings['AerogridPlot'] = {'folder': './output/',
-                            'include_rbm': 'off',
+settings['AerogridPlot'] = {'include_rbm': 'off',
                             'include_applied_forces': 'on',
                             'minus_m_star': 0,
                             'u_inf': ws.u_inf
                             }
-settings['AeroForcesCalculator'] = {'folder': './output/',
-                                    'write_text_file': 'off',
+settings['AeroForcesCalculator'] = {'write_text_file': 'off',
                                     'text_file_name': ws.case_name + '_aeroforces.csv',
                                     'screen_output': 'on',
                                     'unsteady': 'off',
@@ -157,8 +155,7 @@ settings['AeroForcesCalculator'] = {'folder': './output/',
                                     'S_ref': 12.809,
                                     }
 
-settings['BeamPlot'] = {'folder': './output/',
-                        'include_rbm': 'on',
+settings['BeamPlot'] = {'include_rbm': 'on',
                         'include_applied_forces': 'on',
                         'include_FoR': 'on'}
 
@@ -206,19 +203,15 @@ settings['DynamicCoupled'] = {'print_info': 'on',
                               'dt': ws.dt,
                               'include_unsteady_force_contribution': 'off',
                               'postprocessors': ['BeamLoads', 'BeamPlot', 'AerogridPlot', 'WriteVariablesTime'],
-                              'postprocessors_settings': {'BeamLoads': {'folder': './output/',
-                                                                        'csv_output': 'off'},
-                                                          'BeamPlot': {'folder': './output/',
-                                                                       'include_rbm': 'on',
+                              'postprocessors_settings': {'BeamLoads': {'csv_output': 'off'},
+                                                          'BeamPlot': {'include_rbm': 'on',
                                                                        'include_applied_forces': 'on'},
                                                           'AerogridPlot': {
                                                               'u_inf': ws.u_inf,
-                                                              'folder': './output/',
                                                               'include_rbm': 'on',
                                                               'include_applied_forces': 'on',
                                                               'minus_m_star': 0},
                                                           'WriteVariablesTime': {
-                                                              'folder': './output/',
                                                               'cleanup_old_solution': 'on',
                                                               'delimiter': ',',
                                                               'FoR_variables': ['total_forces',
@@ -272,8 +265,7 @@ settings['AsymptoticStability'] = {
                                     'display_root_locus': 'off',
                                     'frequency_cutoff': 0,
                                     'export_eigenvalues': 'on',
-                                    'num_evals': 10000,
-                                    'folder': './output/'}
+                                    'num_evals': 10000,}
 
 
 settings['LinDynamicSim'] = {'dt': ws.dt,
@@ -283,12 +275,10 @@ settings['LinDynamicSim'] = {'dt': ws.dt,
                              'postprocessors': ['BeamPlot', 'AerogridPlot'],
                              'postprocessors_settings': {'AerogridPlot': {
                                  'u_inf': ws.u_inf,
-                                 'folder': './output',
                                  'include_rbm': 'on',
                                  'include_applied_forces': 'on',
                                  'minus_m_star': 0},
-                                 'BeamPlot': {'folder': './output/',
-                                              'include_rbm': 'on',
+                                 'BeamPlot': {'include_rbm': 'on',
                                               'include_applied_forces': 'on'}}}
 
 
@@ -297,8 +287,7 @@ settings['StabilityDerivatives'] = {'u_inf': ws.u_inf,
                                     'b_ref': ws.span,
                                     'c_ref': 0.719}
 
-settings['SaveData'] = {'folder': './output',
-                        'save_aero': 'off',
+settings['SaveData'] = {'save_aero': 'off',
                         'save_struct': 'off',
                         'save_linear': 'on',
                         'save_linear_uvlm': 'on'}

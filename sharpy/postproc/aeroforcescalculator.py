@@ -30,10 +30,6 @@ class AeroForcesCalculator(BaseSolver):
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Output folder location'
-
     settings_types['write_text_file'] = 'bool'
     settings_default['write_text_file'] = False
     settings_description['write_text_file'] = 'Write ``txt`` file with results'
@@ -80,7 +76,7 @@ class AeroForcesCalculator(BaseSolver):
         self.ts_max = 0
         self.ts = 0
 
-        self.folder = ''
+        self.folder = None
         self.caller = None
 
     def initialise(self, data, custom_settings=None, caller=None):
@@ -94,19 +90,16 @@ class AeroForcesCalculator(BaseSolver):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.caller = caller
 
+        self.folder = data.output_folder + '/forces/'
+        if not os.path.exists(self.folder):
+            os.makedirs(self.folder)
+
     def run(self, online=False):
         self.ts = 0
 
         self.calculate_forces()
         if self.settings['write_text_file']:
-            self.folder = (self.settings['folder'] + '/' +
-                           self.data.settings['SHARPy']['case'] + '/' +
-                           'forces/')
-            # create folder for containing files if necessary
-            if not os.path.exists(self.folder):
-                os.makedirs(self.folder)
-            self.folder += self.settings['text_file_name']
-            self.file_output()
+            self.file_output(self.settings['text_file_name'])
         if self.settings['screen_output']:
             self.screen_output()
         cout.cout_wrap('...Finished', 1)
@@ -178,7 +171,7 @@ class AeroForcesCalculator(BaseSolver):
                     self.ts, fx, fy, fz, mx, my, mz)
                 cout.cout_wrap(line, 1)
 
-    def file_output(self):
+    def file_output(self, filename):
         # assemble forces matrix
         # (1 timestep) + (3+3 inertial steady+unsteady) + (3+3 body steady+unsteady) + (3 inertial moments) + (3 body moments)
         force_matrix = np.zeros((self.ts_max, 1 + 3 + 3 + 3 + 3 + 3 + 3))
@@ -208,7 +201,7 @@ class AeroForcesCalculator(BaseSolver):
         header += 'mx_total_G, my_total_G, mz_total_G'
         header += 'mx_total_a, my_total_a, mz_total_a'
 
-        np.savetxt(self.folder,
+        np.savetxt(self.folder + filename,
                    force_matrix,
                    fmt='%i' + ', %10e'*18,
                    delimiter=',',
