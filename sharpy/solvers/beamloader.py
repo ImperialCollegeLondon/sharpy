@@ -134,8 +134,8 @@ class BeamLoader(BaseSolver):
         self.data.structure.dyn_dict = self.dyn_data_dict
 
         # Change the beam description to the local FoR for multibody
-        if (self.data.structure.num_bodies > 1):
-            self.data.structure.ini_info.whole_structure_to_local_AFoR(self.data.structure)
-            self.data.structure.timestep_info[0].whole_structure_to_local_AFoR(self.data.structure)
+        # if (self.data.structure.num_bodies > 1):
+        #     self.data.structure.ini_info.whole_structure_to_local_AFoR(self.data.structure)
+        #     self.data.structure.timestep_info[0].whole_structure_to_local_AFoR(self.data.structure)
 
         return self.data
