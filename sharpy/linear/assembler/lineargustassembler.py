@@ -38,6 +38,9 @@ class LinearGust:
 
         self.settings = None
 
+        self.u_ext_direction = None # np.ndarray Unit external velocity vector in G frame
+        self.u_inf = None  # float Free stream velocity magnitude
+
     def initialise(self, aero, linuvlm, tsaero0, custom_settings=None):
         self.aero = aero
         self.linuvlm = linuvlm
@@ -46,6 +49,18 @@ class LinearGust:
         if custom_settings is not None:
             self.settings = custom_settings
             settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+
+        # find free stream velocity
+        u_ext = self.tsaero0.u_ext[0][:, 0, 0]  # use ref node external velocity
+        self.u_inf = np.linalg.norm(u_ext)
+        self.u_ext_direction = u_ext / self.u_inf
+
+        try:
+            np.testing.assert_array_almost_equal(self.u_ext_direction, np.array([1., 0., 0.]))
+        except AssertionError:
+            raise NotImplementedError('Gust system not yet implemented when the free-stream vector is not '
+                                      'coincident with the inertial G (x) vector. Please rotate structure rather '
+                                      'than fluid.')
 
     def get_x_max(self):
         max_chord_surf = []
@@ -148,6 +163,22 @@ class LinearGust:
 
         return gustss
 
+    def discretise_domain(self):
+
+        x_min, x_max = self.get_x_max()  # G frame, min and max of panels x coordinates
+
+        u_ext_direction = self.u_ext_direction
+
+        # Project onto free stream
+        x_min = x_min.dot(u_ext_direction) * u_ext_direction
+        x_max = x_max.dot(u_ext_direction) * u_ext_direction
+
+        N = int(np.ceil((x_max - x_min) / self.linuvlm.SS.dt))
+        x_domain = np.linspace(x_min, x_max, N)
+
+        return x_domain, N
+
+
 
 @linear_gust
 class LeadingEdge(LinearGust):
@@ -167,11 +198,8 @@ class LeadingEdge(LinearGust):
         Kzeta = self.linuvlm.Kzeta
 
         # Convection system: needed for as many inputs (since it carries their time histories)
-        x_min, x_max = self.get_x_max()  # G frame
-        # TODO: project onto free stream vector
-        # TODO: apply to time scaled systems
-        N = int(np.ceil((x_max - x_min) / self.linuvlm.SS.dt))
-        x_domain = np.linspace(x_min, x_max, N)
+        x_domain, N = self.discretise_domain()
+
         # State Equation
         # for each input...
         a_i = np.zeros((N, N))
@@ -244,11 +272,7 @@ class MultiLeadingEdge(LinearGust):
         span_loc = self.span_loc
 
         # Convection system: needed for as many inputs (since it carries their time histories)
-        x_min, x_max = self.get_x_max()  # G frame
-        # TODO: project onto free stream vector
-        # TODO: apply to time scaled systems
-        N = int(np.ceil((x_max - x_min) / self.linuvlm.SS.dt))
-        x_domain = np.linspace(x_min, x_max, N)
+        x_domain, N = self.discretise_domain()
 
         # State Equation
         # for each input...
