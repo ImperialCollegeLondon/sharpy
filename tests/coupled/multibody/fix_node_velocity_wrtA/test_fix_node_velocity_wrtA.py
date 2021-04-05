@@ -72,10 +72,10 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         SimInfo.solvers['SHARPy']['case'] = name
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.solvers['SHARPy']['route'] = folder + '/'
+        SimInfo.solvers['SHARPy']['log_folder'] = folder + '/output/'
         SimInfo.set_variable_all_dicts('dt', 0.05)
         SimInfo.set_variable_all_dicts('rho', 0.0)
         SimInfo.set_variable_all_dicts('velocity_field_input', SimInfo.solvers['SteadyVelocityField'])
-        SimInfo.set_variable_all_dicts('folder', folder + '/output/')
 
         SimInfo.solvers['BeamLoader']['unsteady'] = 'on'
 
@@ -104,7 +104,7 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         SimInfo.solvers['NonLinearDynamicMultibody']['relaxation_factor'] = 0.2
         SimInfo.solvers['NonLinearDynamicMultibody']['min_delta'] = 1e-6
         SimInfo.solvers['NonLinearDynamicMultibody']['max_iterations'] = 200
-        SimInfo.solvers['NonLinearDynamicMultibody']['print_cond_number'] = False
+        SimInfo.solvers['NonLinearDynamicMultibody']['write_lm'] = False
         SimInfo.solvers['NonLinearDynamicMultibody']['time_integrator'] = 'NewmarkBeta'
         SimInfo.solvers['NonLinearDynamicMultibody']['time_integrator_settings'] = {'newmark_damp': 1e-3,
                                                                                     'dt': 0.05}
@@ -120,7 +120,7 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
                                                                         'BeamPlot': SimInfo.solvers['BeamPlot'],
                                                                         'AerogridPlot': SimInfo.solvers['AerogridPlot']}
 
-        ntimesteps = 100
+        ntimesteps = 10
 
         SimInfo.define_num_steps(ntimesteps)
 
@@ -171,13 +171,13 @@ class TestFixNodeVelocitywrtA(unittest.TestCase):
         output_path = folder + '/output/fix_node_velocity_wrtA/WriteVariablesTime/'
         # quat_data = np.matrix(np.genfromtxt(output_path + 'FoR_00_mb_quat.dat', delimiter=' '))
         pos_tip_data = np.loadtxt(("%sstruct_pos_node-1.dat" % output_path), )
-        self.assertAlmostEqual(pos_tip_data[0, 1], 9.993, 3)
-        self.assertAlmostEqual(pos_tip_data[0, 2], 0., 2)
-        self.assertAlmostEqual(pos_tip_data[0, 3], -3.40215e-1, 3)
+        self.assertAlmostEqual(pos_tip_data[0, 1], 9.993007e+00, 3)
+        self.assertAlmostEqual(pos_tip_data[0, 2], 0., 3)
+        self.assertAlmostEqual(pos_tip_data[0, 3], -3.402154e-01, 3)
 
-        self.assertAlmostEqual(pos_tip_data[-1, 1], 9.9858, 3)
-        self.assertAlmostEqual(pos_tip_data[-1, 2], 0., 2)
-        self.assertAlmostEqual(pos_tip_data[-1, 3], -4.58856e-1, 3)
+        self.assertAlmostEqual(pos_tip_data[-1, 1], 9.962520e+00, 3)
+        self.assertAlmostEqual(pos_tip_data[-1, 2], 0., 3)
+        self.assertAlmostEqual(pos_tip_data[-1, 3], -6.943423e-01, 3)
 
         pos_root_data = np.loadtxt(("%sstruct_pos_node0.dat" % output_path), )
         self.assertAlmostEqual(pos_root_data[0, 1], 0.0, 2)

@@ -36,10 +36,6 @@ class SaveData(BaseSolver):
     settings_description = dict()
     settings_options = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Folder to save data'
-
     settings_types['save_aero'] = 'bool'
     settings_default['save_aero'] = True
     settings_description['save_aero'] = 'Save aerodynamic classes.'
@@ -122,7 +118,7 @@ class SaveData(BaseSolver):
 
         settings.to_custom_types(self.settings,
                                  self.settings_types, self.settings_default, options=self.settings_options)
-        
+
         # Add these anyway - therefore if you add your own skip_attr you don't have to retype all of these
         self.settings['skip_attr'].extend(['fortran',
                                             'airfoils',
@@ -144,9 +140,7 @@ class SaveData(BaseSolver):
         self.ts_max = self.data.ts + 1
 
         # create folder for containing files if necessary
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/savedata/'
+        self.folder = data.output_folder + '/savedata/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.filename = self.folder + self.data.settings['SHARPy']['case'] + '.data.h5'
@@ -309,11 +303,7 @@ class SaveData(BaseSolver):
                                SkipAttr=settings['skip_attr'],
                                compress_float=settings['compress_float'])
         if settings['save_struct']:
-            if data.structure.timestep_info[ts].in_global_AFoR:
-                tstep = data.structure.timestep_info[ts]
-            else:
-                tstep = data.structure.timestep_info[data.ts].copy()
-                tstep.whole_structure_to_global_AFoR(data.structure)
+            tstep = data.structure.timestep_info[ts]
 
             h5utils.add_as_grp(tstep,
                                hdfile['data']['structure']['timestep_info'],

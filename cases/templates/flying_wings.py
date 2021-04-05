@@ -6,8 +6,8 @@ classes:
 - FlyingWing: generate a flying wing model from a reduced set of input. The
 built in method 'update_mass_stiff' can be re-defined by the user to enter more
 complex inertial/stiffness properties
-- Smith(FlyingWing): generate HALE wing model 
-- Goland(FlyingWing): generate Goland wing model 
+- Smith(FlyingWing): generate HALE wing model
+- Goland(FlyingWing): generate Goland wing model
 '''
 
 import warnings
@@ -23,7 +23,7 @@ np.set_printoptions(linewidth=120)
 
 
 class FlyingWing():
-    ''' 
+    '''
     Flying wing template.
     - discretisation, and basic geometry/flight conditions can be passed in input
     - stiffness/mass properties must defined within the "update_mass_stiffness"
@@ -34,23 +34,23 @@ class FlyingWing():
 
     Args:
         M,N:            chord/span-wise discretisations
-        Mstar_fact:     wake 
+        Mstar_fact:     wake
         u_inf:          flow speed
         alpha:          FoR A pitch angle [deg]
         rho:            density
         b_ref:          geometry
-        main_chord:     main chord   
-        aspect_ratio:   
+        main_chord:     main chord
+        aspect_ratio:
         roll=0.:        FoR A roll  angle [deg] (see RollNodes flag)
-        beta=0@         FoR A side  angle [deg] 
+        beta=0@         FoR A side  angle [deg]
         sweep=0:        sweep angle [deg]
-        n_surfaces=2:   
+        n_surfaces=2:
         physical_time=2:
         route='.':       saving route
         case_name='flying_wing':
         RollNodes=False : If true, the wing nodes are rolled insted of the FoR A
 
-    Usage: 
+    Usage:
         ws=flying_wings.FlyingWing(*args)
         ws.clean_test_files()
         ws.update_derived_params()
@@ -241,9 +241,9 @@ class FlyingWing():
         half_span = 0.5 * self.wing_span
 
         #### Connectivity and nodal coordinates
-        # Warning: the elements direction determines the xB axis direction. 
-        # Hence, to avoid accidentally rotating aerofoil profiles, if a wing is 
-        # defined through  multiple surfaces, nodes should be oriented in the 
+        # Warning: the elements direction determines the xB axis direction.
+        # Hence, to avoid accidentally rotating aerofoil profiles, if a wing is
+        # defined through  multiple surfaces, nodes should be oriented in the
         # same direction.
 
         # generate connectivity. Mid node at the end of array.
@@ -524,8 +524,7 @@ class FlyingWing():
                                     'dt': self.dt,
                                     'include_unsteady_force_contribution': 'off',
                                     'postprocessors': ['BeamLoads', 'StallCheck', 'BeamPlot', 'AerogridPlot'],
-                                    'postprocessors_settings': {'BeamLoads': {'folder': './output/',
-                                                                              'csv_output': 'off'},
+                                    'postprocessors_settings': {'BeamLoads': {'csv_output': 'off'},
                                                                 'StallCheck': {'output_degrees': True,
                                                                                'stall_angles': {
                                                                                    '0': [-12 * np.pi / 180,
@@ -534,12 +533,10 @@ class FlyingWing():
                                                                                          6 * np.pi / 180],
                                                                                    '2': [-12 * np.pi / 180,
                                                                                          6 * np.pi / 180]}},
-                                                                'BeamPlot': {'folder': './output/',
-                                                                             'include_rbm': 'on',
+                                                                'BeamPlot': {'include_rbm': 'on',
                                                                              'include_applied_forces': 'on'},
                                                                 'AerogridPlot': {
                                                                     'u_inf': self.u_inf,
-                                                                    'folder': './output/',
                                                                     'include_rbm': 'on',
                                                                     'include_applied_forces': 'on',
                                                                     'minus_m_star': 0}}}
@@ -552,36 +549,26 @@ class FlyingWing():
                                  'include_unsteady_force_contribution': 'on',
                                  'postprocessors': ['AerogridPlot'],
                                  'postprocessors_settings': {'AerogridPlot': {'u_inf': self.u_inf,
-                                                                              'folder': './output/',
                                                                               'include_rbm': 'off',
                                                                               'include_applied_forces': 'on',
                                                                               'minus_m_star': 0}}
                                  }
 
-        config['AerogridPlot'] = {'folder': './output/',
-                                  'include_rbm': 'off',
+        config['AerogridPlot'] = {'include_rbm': 'off',
                                   'include_applied_forces': 'on',
                                   'minus_m_star': 0}
 
-        config['AeroForcesCalculator'] = {'folder': './output/forces',
-                                          'write_text_file': 'on',
+        config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                           'text_file_name': self.case_name + '_aeroforces.csv',
                                           'screen_output': 'on',
                                           'unsteady': 'off'}
 
-        config['BeamPlot'] = {'folder': './output/',
-                              'include_rbm': 'off',
+        config['BeamPlot'] = {'include_rbm': 'off',
                               'include_applied_forces': 'on'}
 
-        config['BeamCsvOutput'] = {'folder': './output/',
-                                   'output_pos': 'on',
-                                   'output_psi': 'on',
-                                   'screen_output': 'on'}
+        config['SaveData'] = {}
 
-        config['SaveData'] = {'folder': './output/' + self.case_name + '/'}
-
-        config['Modal'] = {'folder': './output/',
-                           'NumLambda': 20,
+        config['Modal'] = {'NumLambda': 20,
                            'rigid_body_modes': 'off',
                            'print_matrices': 'off',
                            'keep_linear_matrices': 'on',
@@ -627,16 +614,13 @@ class FlyingWing():
                                      'postprocessors': ['BeamPlot', 'AerogridPlot'],
                                      'postprocessors_settings': {'AerogridPlot': {
                                          'u_inf': self.u_inf,
-                                         'folder': './output/',
                                          'include_rbm': 'on',
                                          'include_applied_forces': 'on',
                                          'minus_m_star': 0},
-                                         'BeamPlot': {'folder': self.route + '/output/',
-                                                      'include_rbm': 'on',
+                                         'BeamPlot': {'include_rbm': 'on',
                                                       'include_applied_forces': 'on'}}}
 
-        config['FrequencyResponse'] = {'folder': './output/',
-                                       'compute_fom': 'on',
+        config['FrequencyResponse'] = {'compute_fom': 'on',
                                        'frequency_unit': 'k',
                                        'frequency_bounds': [0.0001, 1.0],
                                        'quick_plot': 'on'}
@@ -766,7 +750,7 @@ class FlyingWing():
             os.remove(rom_file)
 
 class Smith(FlyingWing):
-    ''' 
+    '''
     Build Smith HALE wing.
     This class is nothing but a FlyingWing with pre-defined geometry properties
     and mass/stiffness data ("update_mass_stiffness" method)
@@ -824,7 +808,7 @@ class Smith(FlyingWing):
 
 
 class Goland(FlyingWing):
-    ''' 
+    '''
     Build a Goland wing.
     This class is nothing but a FlyingWing with pre-defined geometry properties
     and mass/stiffness data ("update_mass_stiffness" method)
@@ -878,7 +862,7 @@ class Goland(FlyingWing):
         '''
         This method can be substituted to produce different wing configs.
 
-        Forthis model, remind that the delta_frame_of_reference is chosen such 
+        Forthis model, remind that the delta_frame_of_reference is chosen such
         that the B FoR axis are:
         - xb: along the wing span
         - yb: pointing towards the leading edge (i.e. roughly opposite than xa)
@@ -1045,7 +1029,7 @@ class GolandControlSurface(Goland):
                 'u', data=input_vec)
 
 class QuasiInfinite(FlyingWing):
-    ''' 
+    '''
     Builds a very high aspect ratio wing, for simulating 2D aerodynamics
     This class is nothing but a FlyingWing with pre-defined geometry properties
     and mass/stiffness data ("update_mass_stiffness" method)
