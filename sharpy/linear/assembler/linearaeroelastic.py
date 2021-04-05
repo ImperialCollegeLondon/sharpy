@@ -209,8 +209,8 @@ class LinearAeroelastic(ss_interface.BaseElement):
             if uvlm.scaled:
                 Kas /= uvlm.sys.ScalingFacts['length']
 
-            uvlm.ss.addGain(gain_ksa, where='out')
-            uvlm.ss.addGain(gain_kas, where='in')
+            uvlm.connect_output(gain_ksa)
+            uvlm.connect_input(gain_kas)
 
             # Stiffenning and damping terms within the uvlm
             Dmod = np.zeros_like(uvlm.ss.D)
@@ -253,8 +253,8 @@ class LinearAeroelastic(ss_interface.BaseElement):
                                            output_vars=LinearVector.transform(beam.ss.input_variables,
                                                                               to_type=OutputVariable))
 
-                uvlm.ss.addGain(in_mode_gain, where='in')
-                uvlm.ss.addGain(out_mode_gain, where='out')
+                uvlm.connect_input(in_mode_gain)
+                uvlm.connect_output(out_mode_gain)
                 self.couplings['in_mode_gain'] = in_mode_gain
                 self.couplings['out_mode_gain'] = out_mode_gain
 
@@ -995,3 +995,4 @@ class LinearAeroelastic(ss_interface.BaseElement):
         # uvlm_ss_read = read_data.linear.linear_system.uvlm.ss
         uvlm_ss_read = read_data
         return libss.StateSpace(uvlm_ss_read.A, uvlm_ss_read.B, uvlm_ss_read.C, uvlm_ss_read.D, dt=uvlm_ss_read.dt)
+
