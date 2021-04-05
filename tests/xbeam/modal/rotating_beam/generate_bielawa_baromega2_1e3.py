@@ -278,29 +278,16 @@ def generate_solver_file():
                                                                  'dt': dt}}
 
     # POSTPROCESS
-    settings['AerogridPlot'] = {'folder': route + '/output/',
-                                'include_rbm': 'on',
+    settings['AerogridPlot'] = {'include_rbm': 'on',
                                 'include_forward_motion': 'off',
                                 'include_applied_forces': 'on',
                                 'minus_m_star': 0,
                                 'u_inf': 100.0,
                                 'dt': dt}
 
-    #settings['AeroForcesCalculator'] = {'folder': route + '/output/forces',
-                                        #'write_text_file': 'on',
-                                        #'text_file_name': case_name + '_aeroforces.csv',
-                                        #'screen_output': 'on',
-                                        #'unsteady': 'off'}
-
-    settings['BeamPlot'] = {'folder': route + '/output/',
-                            'include_rbm': 'on',
+    settings['BeamPlot'] = {'include_rbm': 'on',
                             'include_applied_forces': 'on',
                             'include_forward_motion': 'on'}
-
-    #settings['BeamCsvOutput'] = {'folder': route + '/output/',
-                                 #'output_pos': 'on',
-                                 #'output_psi': 'on',
-                                 #'screen_output': 'off'}
 
     settings['BeamLoads'] = {}
 
@@ -378,8 +365,7 @@ def generate_solver_file():
                                             'postprocessors_settings': {'BeamPlot': settings['BeamPlot'],
                                                                         'AerogridPlot': settings['AerogridPlot']}}
 
-    settings['Modal'] = {'folder': route + '/output',
-                          'include_rbm': 'on',
+    settings['Modal'] = {'include_rbm': 'on',
                           'NumLambda': 10000,
                           'num_steps': 1,
                           'print_matrices': 'on'}

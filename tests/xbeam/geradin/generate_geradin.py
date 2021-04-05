@@ -155,10 +155,8 @@ def generate_solver_file():
                                  'gravity': 9.81,
                                  'gravity_dir': ['0', '0', '1']}
     config['WriteVariablesTime'] = {'structure_variables': ['pos', 'psi'],
-                                    'cleanup_old_solution': 'on',
-                                    'folder': route + '/output'}
-    config['BeamPlot'] = {'folder': route + '/output',
-                          'include_rbm': 'off',
+                                    'cleanup_old_solution': 'on',}
+    config['BeamPlot'] = {'include_rbm': 'off',
                           'include_applied_forces': 'on'}
 
     config.write()
@@ -170,10 +168,3 @@ def generate_solver_file():
 clean_test_files()
 generate_fem_file(route, case_name, 20)
 generate_solver_file()
-
-
-
-
-
-
-

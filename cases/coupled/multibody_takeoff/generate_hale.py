@@ -761,28 +761,22 @@ def generate_solver_file():
                                   'dt': dt,
                                   'include_unsteady_force_contribution': 'on',
                                   'postprocessors': ['BeamLoads', 'BeamPlot', 'AerogridPlot'],
-                                  'postprocessors_settings': {'BeamLoads': {'folder': route + '/output/',
-                                                                            'csv_output': 'off'},
-                                                              'BeamPlot': {'folder': route + '/output/',
-                                                                           'include_rbm': 'on',
+                                  'postprocessors_settings': {'BeamLoads': {'csv_output': 'off'},
+                                                              'BeamPlot': {'include_rbm': 'on',
                                                                            'include_applied_forces': 'on'},
                                                               'AerogridPlot': {
-                                                                  'folder': route + '/output/',
                                                                   'include_rbm': 'on',
                                                                   'include_applied_forces': 'on',
                                                                   'minus_m_star': 0},
                                                               }}
 
-    settings['BeamLoads'] = {'folder': route + '/output/',
-                             'csv_output': 'off'}
+    settings['BeamLoads'] = {'csv_output': 'off'}
 
-    settings['BeamPlot'] = {'folder': route + '/output/',
-                            'include_rbm': 'on',
+    settings['BeamPlot'] = {'include_rbm': 'on',
                             'include_applied_forces': 'on',
                             'include_forward_motion': 'on'}
 
-    settings['AerogridPlot'] = {'folder': route + '/output/',
-                                'include_rbm': 'on',
+    settings['AerogridPlot'] = {'include_rbm': 'on',
                                 'include_forward_motion': 'off',
                                 'include_applied_forces': 'on',
                                 'minus_m_star': 0,

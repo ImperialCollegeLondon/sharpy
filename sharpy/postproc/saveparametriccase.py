@@ -40,10 +40,6 @@ class SaveParametricCase(BaseSolver):
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output/'
-    settings_description['folder'] = 'Folder to save parametric case.'
-
     settings_types['save_case'] = 'bool'
     settings_default['save_case'] = True
     settings_description['save_case'] = 'Save a .pkl of the SHARPy case. Required for PMOR.'
@@ -70,15 +66,10 @@ class SaveParametricCase(BaseSolver):
 
         settings.to_custom_types(self.settings,
                                  self.settings_types,
-                                 self.settings_default,
-                                 no_ctype=True)
+                                 self.settings_default
+                                 )
 
-        # create folder for containing files if necessary
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/'
-        if not os.path.exists(self.folder):
-            os.makedirs(self.folder)
+        self.folder = data.output_folder
 
     def run(self):
 
@@ -94,13 +85,12 @@ class SaveParametricCase(BaseSolver):
         sim_info['case'] = self.data.settings['SHARPy']['case']
 
         if 'PickleData' not in self.data.settings['SHARPy']['flow'] and self.settings['save_case']:
-            self.data.settings['PickleData'] = {'folder': self.settings['folder']}
             pickle_solver = initialise_solver('PickleData')
             pickle_solver.initialise(self.data)
             self.data = pickle_solver.run()
-            sim_info['path_to_data'] = os.path.abspath(self.settings['folder'])
+            sim_info['path_to_data'] = os.path.abspath(self.folder)
         else:
-            sim_info['path_to_data'] = os.path.abspath(self.settings['folder'])
+            sim_info['path_to_data'] = os.path.abspath(self.folder)
 
         config['sim_info'] = sim_info
         config.write()

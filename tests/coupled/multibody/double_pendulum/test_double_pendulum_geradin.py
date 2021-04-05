@@ -218,7 +218,7 @@ class TestDoublePendulum(unittest.TestCase):
         SimInfo.solvers['SHARPy']['case'] = name_hinge
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.solvers['SHARPy']['route'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
-        SimInfo.solvers['SHARPy']['log_folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
+        SimInfo.solvers['SHARPy']['log_folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
         SimInfo.set_variable_all_dicts('dt', dt)
         SimInfo.define_num_steps(numtimesteps)
         SimInfo.set_variable_all_dicts('rho', 0.0)
@@ -258,9 +258,6 @@ class TestDoublePendulum(unittest.TestCase):
                                                                         'BeamPlot': SimInfo.solvers['BeamPlot'],
                                                                         'AerogridPlot': SimInfo.solvers['AerogridPlot']}
 
-        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['WriteVariablesTime']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
-        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['BeamPlot']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
-        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['AerogridPlot']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
         SimInfo.with_forced_vel = False
         SimInfo.with_dynamic_forces = False
 
