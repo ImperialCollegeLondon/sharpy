@@ -276,7 +276,7 @@ def cbeam3_step_nlndyn(beam, settings, ts, tstep=None, dt=None):
     xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
     xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
     xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
-    xbopts.relaxation_factor = settings['relaxation_factor']
+    xbopts.relaxation_factor = ct.c_double(settings['relaxation_factor'])
 
     # here we only need to set the flags at True, all the forces are follower
     xbopts.FollowerForce = ct.c_bool(True)
@@ -1205,7 +1205,7 @@ def xbeam_step_coupledrigid(beam, settings, ts, tstep=None, dt=None):
     xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
     xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
     xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
-    xbopts.relaxation_factor = settings['relaxation_factor']
+    xbopts.relaxation_factor = ct.c_double(settings['relaxation_factor'])
 
     if dt is None:
         in_dt = ct.c_double(settings['dt'])
