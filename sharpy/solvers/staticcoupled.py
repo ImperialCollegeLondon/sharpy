@@ -9,6 +9,7 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.utils.correct_forces as cf
+import sharpy.utils.generator_interface as gen_utils
 
 @solver
 class StaticCoupled(BaseSolver):
@@ -63,7 +64,11 @@ class StaticCoupled(BaseSolver):
     settings_types['correct_forces_method'] = 'str'
     settings_default['correct_forces_method'] = '' # 'efficiency'
     settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. Check :py:mod:`sharpy.utils.correct_forces`'
-    settings_options['correct_forces_method'] = ['efficiency', 'polars']
+    settings_options['correct_forces_method'] = ['efficiency', 'PolarCorrection']
+
+    settings_types['correct_forces_settings'] = 'dict'
+    settings_default['correct_forces_settings'] = {}
+    settings_description['correct_forces_settings'] = 'Settings for corrected forces evaluation'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
@@ -81,6 +86,7 @@ class StaticCoupled(BaseSolver):
 
         self.correct_forces = False
         self.correct_forces_function = None
+        self.correct_forces_generator = None
 
     def initialise(self, data, input_dict=None):
         self.data = data
@@ -111,7 +117,12 @@ class StaticCoupled(BaseSolver):
         # Define the function to correct aerodynamic forces
         if self.settings['correct_forces_method'] is not '':
             self.correct_forces = True
-            self.correct_forces_function = cf.dict_of_corrections[self.settings['correct_forces_method']]
+            # self.correct_forces_function = cf.dict_of_corrections[self.settings['correct_forces_method']]
+            self.correct_forces_generator = gen_utils.generator_from_string(self.settings['correct_forces_method'])()
+            self.correct_forces_generator.initialise(in_dict=self.settings['correct_forces_settings'],
+                                                     aero=self.data.aero,
+                                                     structure=self.data.structure,
+                                                     rho=self.settings['aero_solver_settings']['rho'])
 
     def increase_ts(self):
         self.data.ts += 1
@@ -163,12 +174,17 @@ class StaticCoupled(BaseSolver):
                     self.data.aero.aero_dict)
 
                 if self.correct_forces:
-                    struct_forces = self.correct_forces_function(self.data,
-                                        self.data.aero.timestep_info[self.data.ts],
-                                        self.data.structure.timestep_info[self.data.ts],
-                                        struct_forces,
-                                        rho=self.aero_solver.settings['rho'])
-
+                    # struct_forces = self.correct_forces_function(self.data,
+                    #                     self.data.aero.timestep_info[self.data.ts],
+                    #                     self.data.structure.timestep_info[self.data.ts],
+                    #                     struct_forces,
+                    #                     rho=self.aero_solver.settings['rho'])
+                    struct_forces = \
+                        self.correct_forces_generator.generate(aero_kstep=self.data.aero.timestep_info[self.data.ts],
+                                                               structural_kstep=
+                                                               self.data.structure.timestep_info[self.data.ts],
+                                                               struct_forces=struct_forces)
+                self.data.aero.timestep_info[self.data.ts].aero_steady_forces_beam_dof = struct_forces
                 if not self.settings['relaxation_factor'] == 0.:
                     if i_iter == 0:
                         self.previous_force = struct_forces.copy()
