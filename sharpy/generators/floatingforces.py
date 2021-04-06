@@ -3,6 +3,7 @@ import h5py as h5
 import ctypes as ct
 import os
 from scipy import fft, ifft
+from scipy.interpolate import interp1d
 from control import forced_response, TransferFunction
 
 import sharpy.utils.cout_utils as cout
@@ -41,55 +42,8 @@ def compute_xf_zf(hf, vf, l, w, EA, cb):
         if not cb == 0.:
             xf += cb*w/2/EA*(-lb**2 + (lb - hf/cb/w)*np.maximum((lb - hf/cb/w), 0))
         zf = hf/w*(root1 - 1) + vf**2/2/EA/w
-
+    
     return xf, zf
-
-
-def test_compute_xf_zf():
-    """
-        This function tests based on by hand computations and data from the MooringLineFD.txt file
-        from the OC3 task.
-            Jonkman, J.
-            Definition of the Floating System for Phase IV of OC3
-            NREL/TP-500-47535
-    """
-
-    # Values for OC3
-    l = 902.2 # Initial length [m]
-    w = 698.094 # Aparent weight 77.7066*9.81 # Apparent mass per unit length times gravity
-    EA = 384243000. # Extensional stiffness
-    cb = 0.1 # Seabed friction coefficient
-
-    # No mooring line on the Seabed
-    vf = 1.1*l*w # 692802.4475
-    hf = vf
-    xf_byhand = 784.5965853 + 1.626695524
-    zf_byhand = 406.9813526 + 0.887288467
-    xf, zf = compute_xf_zf(hf, vf, l, w, EA, cb)
-    print("Case without mooring line on the seabed")
-    print("xf=%f and xf_byhand=%f" % (xf, xf_byhand))
-    print("zf=%f and zf_byhand=%f" % (zf, zf_byhand))
-
-    # Some mooring line on the Seabed
-    lb_div_l = 0.1 # 10% of the mooring line on the seabed
-    vf = (1-lb_div_l)*l*w
-    hf = vf
-    xf_byhand = 90.22 + 715.6577252 + 1.330932701 - 7.298744381e-4
-    zf_byhand = 336.3331284 + 0.598919715
-    xf, zf = compute_xf_zf(hf, vf, l, w, EA, cb)
-    print("Case with %f%% mooring line on the seabed" % (lb_div_l*100))
-    print("xf=%f and xf_byhand=%f" % (xf, xf_byhand))
-    print("zf=%f and zf_byhand=%f" % (zf, zf_byhand))
-
-    # From solution file
-    xf, zf = compute_xf_zf(0.1*1e3, 174.599971*1e3, l, w, EA, cb)
-    distance = 653.
-    print("Case with mooring line on the seabed from file")
-    print("xf=%f and distance=%f. zf=%f" % (xf, distance, zf))
-    xf, zf = compute_xf_zf(1415.6*1e3, 730.565288*1e3, l, w, EA, cb)
-    distance = 864.
-    print("Case without mooring line on the seabed from file")
-    print("xf=%f and distance=%f. zf=%f" % (xf, distance, zf))
 
 
 def compute_jacobian(hf, vf, l, w, EA, cb):
@@ -183,7 +137,7 @@ def quasisteady_mooring(xf, zf, l, w, EA, cb, hf0=None, vf0=None):
     # print("initial: ", xf_est, zf_est)
     tol = 1e-6
     error = 2*tol
-    max_iter = 100
+    max_iter = 10000
     it = 0
     while ((error > tol) and (it < max_iter)):
         J_est = compute_jacobian(hf_est, vf_est, l, w, EA, cb)
@@ -197,37 +151,11 @@ def quasisteady_mooring(xf, zf, l, w, EA, cb, hf0=None, vf0=None):
         error = np.maximum(np.abs(xf - xf_est), np.abs(zf - zf_est))
         # print(error)
         it += 1
-    if ((it == max_iter - 1) and (error > tol)):
+    if ((it == max_iter) and (error > tol)):
         cout.cout_wrap(("Mooring system did not converge. error %f" % error), 4)
+        print("Mooring system did not converge. error %f" % error)
 
     return hf_est, vf_est
-
-
-def generate_mooringlinefd():
-    """
-        This function generates a file similar to MoorinLinesFD.txt for comparison
-    """
-
-    # Values for OC3
-    l = 902.2 # Initial length [m]
-    w = 698.094 # Aparent weight 77.7066*9.81 # Apparent mass per unit length times gravity
-    EA = 384243000./A # Extensional stiffness
-    cb = 0. # Seabed friction coefficient
-
-    zf = 320. - 70.
-
-    # xf0 = 853.87
-    xf_list = np.arange(653.00, 902.50 + 1., 1.)
-    npoints = xf_list.shape[0]
-    output = np.zeros((npoints, 4))
-    for i in range(npoints):
-        hf, vf = quasisteady_mooring(xf_list[i], zf, l, w, EA, cb, hf0=None, vf0=None)
-        # print(xf0, zf0, hf0, vf0)
-        lb = np.maximum(l - vf/w, 0)
-        # print("Suspended lenght = %f" % (l - lb))
-        output[i, :] = np.array([xf_list[i], np.sqrt(vf**2 + hf**2)*1e-3, hf*1e-3, (l - lb)])
-
-    np.savetxt("sharpy_mooringlinefd.txt", output, header="# DISTANCE(m) TENSION(kN) HTENSION(kN) SUSPL(m)")
 
 
 def wave_radiation_damping(K, qdot, it, dt):
@@ -241,27 +169,11 @@ def wave_radiation_damping(K, qdot, it, dt):
     return np.dot(K, qdot_int)
 
 
-def test_change_system():
-    # Wind turbine degrees of freedom: Surge, sway, heave, roll, pitch, yaw.
-    # SHARPy axis associated:              z,    y,     x,    z,     y,   x
-
-    wt_dofs_char = ["surge", "sway", "heave", "roll", "pitch", "yaw"]
-    wt_matrix = np.zeros((6,6), dtype=np.object_)
-    wt_matrix_num = np.zeros((6,6),)
-    for idof in range(6):
-        for jdof in range(6):
-            wt_matrix[idof, jdof] = ("%s-%s" % (wt_dofs_char[idof], wt_dofs_char[jdof]))
-            wt_matrix_num[idof, jdof] = 10.*idof + jdof
-
-    sharpy_matrix = change_of_to_sharpy(wt_matrix_num)
-    print("wt matrix: ", wt_matrix_num)
-    print("sharpy matrix: ", sharpy_matrix)
-
-    undo_sharpy_matrix = change_of_to_sharpy(sharpy_matrix)
-    print("undo sharpy matrix: ", undo_sharpy_matrix)
-
-
 def change_of_to_sharpy(matrix_of):
+    """
+    Change between frame of reference of OpenFAST and the
+    usual one in SHARPy
+    """
 
     sub_mat = np.array([[0., 0, 1],
                         [0., -1, 0],
@@ -274,28 +186,28 @@ def change_of_to_sharpy(matrix_of):
     return matrix_sharpy
 
 
-def interp_1st_dim_matrix(A, vec, value):
-
-    # Make sure vec is ordered in strictly ascending order
-    if (np.diff(vec) <= 0).any():
-        cout.cout_wrap("ERROR: vec should be in strictly increasing order", 4)
-    if not A.shape[0] == vec.shape[0]:
-        cout.cout_wrap("ERROR: Incoherent vector and matrix size", 4)
-
-    # Compute the positions to interpolate
-    if value <= vec[0]:
-        return A[0, ...]
-    elif ((value >= vec[-1]) or (value > vec[-2] and np.isinf(vec[-1]))):
-        return A[-1, ...]
-    else:
-        i = 0
-        while value > vec[i]:
-            i += 1
-        dist = vec[i] - vec[i - 1]
-        rel_dist_to_im1 = (value - vec[i - 1])/dist
-        rel_dist_to_i = (vec[i] - value)/dist
-
-    return A[i - 1, ...]*rel_dist_to_i + A[i, ...]*rel_dist_to_im1
+# def interp_1st_dim_matrix(A, vec, value):
+#
+#     # Make sure vec is ordered in strictly ascending order
+#     if (np.diff(vec) <= 0).any():
+#         cout.cout_wrap("ERROR: vec should be in strictly increasing order", 4)
+#     if not A.shape[0] == vec.shape[0]:
+#         cout.cout_wrap("ERROR: Incoherent vector and matrix size", 4)
+#
+#     # Compute the positions to interpolate
+#     if value <= vec[0]:
+#         return A[0, ...]
+#     elif ((value >= vec[-1]) or (value > vec[-2] and np.isinf(vec[-1]))):
+#         return A[-1, ...]
+#     else:
+#         i = 0
+#         while value > vec[i]:
+#             i += 1
+#         dist = vec[i] - vec[i - 1]
+#         rel_dist_to_im1 = (value - vec[i - 1])/dist
+#         rel_dist_to_i = (vec[i] - value)/dist
+#
+#     return A[i - 1, ...]*rel_dist_to_i + A[i, ...]*rel_dist_to_im1
 
 
 def rfval(num, den, z):
@@ -307,7 +219,9 @@ def rfval(num, den, z):
 
 
 def matrix_from_rf(dict_rf, w):
-
+    """
+    Create a matrix from the rational function approximation of each one of the elements
+    """
     H = np.zeros((6, 6))
     for i in range(6):
         for j in range(6):
@@ -332,7 +246,9 @@ def response_freq_dep_matrix(H, omega_H, q, it_, dt):
 
     # Compute the constant component
     if type(H) is np.ndarray:
-        H_omega = interp_1st_dim_matrix(H, omega_H, omega_fft[0])
+        # H_omega = interp_1st_dim_matrix(H, omega_H, omega_fft[0])
+        interp_H = interp1d(omega_H, H, axis=0)
+        H_omega = interp_H(omega_fft[0])
     elif type(H) is tuple:
         H_omega = matrix_from_rf(H, omega_fft[0])
     else:
@@ -343,7 +259,7 @@ def response_freq_dep_matrix(H, omega_H, q, it_, dt):
     for iomega in range(1, omega_fft.shape[0]):
         # Interpolate H at omega
         if type(H) is np.ndarray:
-            H_omega = interp_1st_dim_matrix(H, omega_H, omega_fft[iomega])
+            H_omega = interp_H(omega_fft[iomega])
         elif type(H) is dict:
             H_omega = matrix_from_rf(H, omega_fft[iomega])
         fourier_f[iomega, :] = np.dot(H_omega, fourier_q[iomega, :])
@@ -387,6 +303,103 @@ def compute_equiv_hd_added_mass(f, q):
                   [0,     hv[4], 0,     0,     0,     hv[3]]])
 
     return H
+
+
+def jonswap_spectrum(Tp, Hs, w):
+    """
+    This function computes the one-sided spectrum of the JONSWAP wave data
+    [2] Jonkman, J. M. Dynamics modeling and loads analysis of an offshore floating wind turbine. 2007. NREL/TP-500-41958
+    """
+    nomega = w.shape[0]
+    spectrum = np.zeros((nomega))
+    for iomega in range(nomega):
+        # Compute the scaling factor
+        if w[iomega] <= 2*np.pi/Tp:
+            sigma = 0.07
+        else:
+            sigma = 0.09
+        # Compute the peak shape parameter
+        param = Tp/np.sqrt(Hs)
+        if param <= 3.6:
+            gamma = 5.
+        elif param > 5:
+            gamma = 1.
+        else:
+            gamma = np.exp(5.75 - 1.15*param)
+        # Compute one-sided spectrum
+        omega = w[iomega]
+        if omega == 0:
+            spectrum[iomega] = 0.
+        else:
+            param = omega*Tp/2/np.pi
+            spectrum[iomega] = (1./2/np.pi)*(5./16)*(Hs**2*Tp)*param**(-5)
+            spectrum[iomega] *= np.exp(-5./4*param**(-4))
+            spectrum[iomega] *= (1. - 0.287*np.log(gamma))
+            spectrum[iomega] *= gamma**np.exp(-0.5*((param - 1.)/sigma)**2)
+
+    return spectrum
+
+
+def noise_spectrum_1s(w):
+    """
+    Apply a white noise to the spectrum to get different realisation
+    every run
+    """
+    nomega = w.shape[0]
+
+    wn = np.zeros((nomega, ), dtype=np.complex)
+    u1 = np.random.random(size=nomega) #+ 0j
+    u2 = np.random.random(size=nomega) #+ 0j
+    wn[0] = 1. + 0j
+    for iomega in range(1, nomega):
+        u1w = u1[iomega]
+        u2w = u2[iomega]
+        wn[iomega] = np.sqrt(-2.*np.log(u1w))*(np.cos(2*np.pi*u2w) +
+                             1j*np.sin(2*np.pi*u2w))
+        #wn[iomega] = 1. + 0j
+    return wn
+
+
+def time_wave_forces(Tp, Hs, dt, time, xi, w_xi):
+    """
+    Compute the time evolution of wave forces
+    """
+    # Compute time and frequency discretisations
+    ntime_steps = time.shape[0]
+    wave_force = np.zeros((ntime_steps, 6), dtype=np.complex)
+
+    nomega = ntime_steps//2 + 1
+    w = np.zeros((nomega))
+    w_temp = np.fft.fftfreq(ntime_steps, d=dt)
+    w[:ntime_steps//2] = w_temp[:ntime_steps//2]
+    if ntime_steps%2 == 0:
+        w[-1] = -1*w_temp[ntime_steps//2]
+    else:
+        w[-1] = w_temp[ntime_steps//2]
+    nomega_2s = ntime_steps
+
+    # Compute the one-sided spectrums
+    noise_1s = noise_spectrum_1s(w)
+    jonswap_1s = jonswap_spectrum(Tp, Hs, w) + 0j
+
+    # Compute the two-sided spectrum
+    force_spectrum_2s = np.zeros((nomega_2s, 6), dtype=np.complex)
+    for idim in range(6):
+        for iomega in range(nomega):
+            xi_interp = np.interp(w[iomega], w_xi, xi[:, idim])
+            force_spectrum_2s[iomega, idim] = (noise_1s[iomega]*
+                                               jonswap_1s[iomega]*
+                                               xi_interp)
+            if not iomega == 0:
+                if not ((iomega == nomega - 1) and (nomega_2s%2 == 0)):
+                    force_spectrum_2s[-iomega, idim] = (np.conj(noise_1s[iomega])*
+                                                        jonswap_1s[iomega]*
+                                                        xi_interp)
+
+    # Compute the inverse Fourier transform
+    force_waves = ifft(force_spectrum_2s, axis=0)
+
+    return force_waves
 
 
 @generator_interface.generator
@@ -463,13 +476,26 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_default['added_mass_in_mass_matrix'] = True
     settings_description['added_mass_in_mass_matrix'] = 'Include the platform added mass in the mass matrix of the system'
 
+    settings_types['method_wave'] = 'str'
+    settings_default['method_wave'] = 'sin'
+    settings_description['method_wave'] = 'Method to compute wave forces'
+    settings_options['method_wave'] = ['sin', 'jonswap']
+
     settings_types['wave_amplitude'] = 'float'
     settings_default['wave_amplitude'] = 0.
-    settings_description['wave_amplitude'] = 'Wave amplitude'
+    settings_description['wave_amplitude'] = 'Wave amplitude. Only used in ``method_wave = sin``'
 
     settings_types['wave_freq'] = 'float'
     settings_default['wave_freq'] = 0.
-    settings_description['wave_freq'] = 'Wave circular frequency [rad/s]'
+    settings_description['wave_freq'] = 'Wave circular frequency [rad/s]. Only used in ``method_wave = sin``'
+
+    settings_types['wave_Tp'] = 'float'
+    settings_default['wave_Tp'] = 0.
+    settings_description['wave_Tp'] = 'Wave peak spectral period [s]. Only used in ``method_wave = jonswap``'
+
+    settings_types['wave_Hs'] = 'float'
+    settings_default['wave_Hs'] = 0.
+    settings_description['wave_Hs'] = 'Significant wave height [m]. Only used in ``method_wave = jonswap``'
 
     settings_types['wave_incidence'] = 'float'
     settings_default['wave_incidence'] = 0.
@@ -571,15 +597,23 @@ class FloatingForces(generator_interface.BaseGenerator):
 
         # hydrodynamics
         self.cd = self.floating_data['hydrodynamics']['CD']*self.settings['cd_multiplier']
+            # self.hd_added_mass_const = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['added_mass_matrix'],
+            #                             self.floating_data['hydrodynamics']['ab_freq_rads'],
+            #                             self.settings['matrices_freq'])
 
-        if self.settings['method_matrices_freq'] == 'constant':
-            self.hd_added_mass_const = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['added_mass_matrix'],
-                                        self.floating_data['hydrodynamics']['ab_freq_rads'],
-                                        self.settings['matrices_freq'])
+            # self.hd_damping_const = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['damping_matrix'],
+            #                             self.floating_data['hydrodynamics']['ab_freq_rads'],
+            #                             self.settings['matrices_freq'])
 
-            self.hd_damping_const = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['damping_matrix'],
-                                        self.floating_data['hydrodynamics']['ab_freq_rads'],
-                                        self.settings['matrices_freq'])
+            interp_am = interp1d(self.floating_data['hydrodynamics']['ab_freq_rads'],
+                                 self.floating_data['hydrodynamics']['added_mass_matrix'],
+                                 axis=0)
+            self.hd_added_mass_const = interp_am(self.settings['matrices_freq'])
+            interp_d = interp1d(self.floating_data['hydrodynamics']['ab_freq_rads'],
+                               self.floating_data['hydrodynamics']['damping_matrix'],
+                               axis=0)
+            self.hd_damping_const = interp_d(self.settings['matrices_freq'])
+
 
         elif self.settings['method_matrices_freq'] == 'rational_function':
             self.hd_added_mass_const = self.floating_data['hydrodynamics']['added_mass_matrix'][-1, :, :]
@@ -613,12 +647,46 @@ class FloatingForces(generator_interface.BaseGenerator):
 
         # Wave forces
         self.wave_forces_node = self.floating_data['wave_forces']['node']
-        xi_matrix2 = interp_1st_dim_matrix(self.floating_data['wave_forces']['xi'],
-                                           self.floating_data['wave_forces']['xi_freq_rads'],
-                                           self.settings['wave_freq'])
-        self.xi = interp_1st_dim_matrix(xi_matrix2,
-                                        self.floating_data['wave_forces']['xi_beta_deg']*deg2rad,
-                                        self.settings['wave_incidence'])
+        if self.settings['method_wave'] == 'sin':
+            # xi_matrix2 = interp_1st_dim_matrix(self.floating_data['wave_forces']['xi'],
+            #                                 self.floating_data['wave_forces']['xi_freq_rads'],
+            #                                 self.settings['wave_freq'])
+            # xi = interp_1st_dim_matrix(xi_matrix2,
+            #                                 self.floating_data['wave_forces']['xi_beta_deg']*deg2rad,
+            #                                 self.settings['wave_incidence'])
+
+            interp_x1 = interp1d(self.floating_data['wave_forces']['xi_freq_rads'],
+                                 self.floating_data['wave_forces']['xi'],
+                                 axis=0)
+            xi_matrix2 = interp_x1(self.settings['wave_freq'])
+            # xi_matrix2 = interp_x1(self.floating_data['wave_forces']['xi_freq_rads'][2:4])
+            interp_x2 = interp1d(self.floating_data['wave_forces']['xi_beta_deg']*deg2rad,
+                                 xi_matrix2,
+                                 axis=0)
+            xi = interp_x2(self.settings['wave_incidence'])
+            # xi = interp_x2(self.floating_data['wave_forces']['xi_beta_deg'][5]*deg2rad)
+            # print(xi[0, :])
+            # print(self.floating_data['wave_forces']['xi'][2, 5, :])
+            # print(xi[0, :] - self.floating_data['wave_forces']['xi'][2, 5, :])
+
+            phase = self.settings['wave_freq']*np.arange(self.settings['n_time_steps'] + 1)*self.settings['dt']
+            self.wave_forces_g = np.zeros((self.settings['n_time_steps'] + 1, 6))
+            for idim in range(6):
+                self.wave_forces_g[:, idim] = np.real(self.settings['wave_amplitude']*xi[idim]*(np.cos(phase) + 1j*np.sin(phase)))
+
+        elif self.settings['method_wave'] == 'jonswap':
+
+            interp_x1 = interp1d(self.floating_data['wave_forces']['xi_beta_deg']*deg2rad,
+                                 self.floating_data['wave_forces']['xi'],
+                                 axis=1)
+            xi_matrix = interp_x1(self.settings['wave_incidence'])
+
+            self.wave_forces_g = np.real(time_wave_forces(self.settings['wave_Tp'],
+                                                  self.settings['wave_Hs'],
+                                                  self.settings['dt'],
+                                                  np.arange(self.settings['n_time_steps'] + 1)*self.settings['dt'],
+                                                  xi_matrix,
+                                                  self.floating_data['wave_forces']['xi_freq_rads']))
 
         # Log file
         if not os.path.exists(self.settings['folder']):
@@ -836,17 +904,14 @@ class FloatingForces(generator_interface.BaseGenerator):
             struct_tstep.runtime_generated_forces[inode, 0:3] += np.dot(cbg, drag_force)
 
         # Wave loading
-        phase = self.settings['wave_freq']*data.ts*self.settings['dt']
-        wave_forces_g = np.real(self.settings['wave_amplitude']*self.xi*(np.cos(phase) + 1j*np.sin(phase)))
-
         ielem, inode_in_elem = data.structure.node_master_elem[self.wave_forces_node]
         cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
         cbg = np.dot(cab.T, cga.T)
 
-        struct_tstep.runtime_generated_forces[self.wave_forces_node, 0:3] += np.dot(cbg, force_coeff*wave_forces_g[0:3])
-        struct_tstep.runtime_generated_forces[self.wave_forces_node, 3:6] += np.dot(cbg, force_coeff*wave_forces_g[3:6])
+        struct_tstep.runtime_generated_forces[self.wave_forces_node, 0:3] += np.dot(cbg, force_coeff*self.wave_forces_g[data.ts, 0:3])
+        struct_tstep.runtime_generated_forces[self.wave_forces_node, 3:6] += np.dot(cbg, force_coeff*self.wave_forces_g[data.ts, 3:6])
 
         # Write output
         if self.settings['write_output']:
             self.write_output(data.ts, k, mooring_forces, mooring_yaw, hs_f_g,
-                     hd_f_qdot_g, hd_f_qdotdot_g, hd_correct_grav, wave_forces_g)
+                     hd_f_qdot_g, hd_f_qdotdot_g, hd_correct_grav, wave_forces_g[it, :])
