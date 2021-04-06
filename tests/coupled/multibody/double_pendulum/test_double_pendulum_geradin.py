@@ -267,7 +267,7 @@ class TestDoublePendulum(unittest.TestCase):
         LC1.body_FoR = 0
         LC1.rot_axis_AFoR = np.array([0.0,1.0,0.0])
         LC1.scalingFactor = 1e6
-        LC1.penaltyFactor = 1e-12
+        LC1.penaltyFactor = 0.
 
         LC2 = gc.LagrangeConstraint()
         LC2.behaviour = 'hinge_node_FoR'
@@ -276,7 +276,7 @@ class TestDoublePendulum(unittest.TestCase):
         LC2.body_FoR = 1
         LC2.rot_axisB = np.array([0.0,1.0,0.0])
         LC2.scalingFactor = 1e6
-        LC2.penaltyFactor = 1e-12
+        LC2.penaltyFactor = 0.
 
         LC = []
         LC.append(LC1)
