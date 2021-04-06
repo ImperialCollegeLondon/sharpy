@@ -125,6 +125,10 @@ class StepUvlm(BaseSolver):
     settings_default['yaw_slerp'] = 0
     settings_description['yaw_slerp'] = 'Yaw angle in radians to be used when interp_metod == 4'
 
+    settings_types['centre_rot'] = 'list(float)'
+    settings_default['centre_rot'] = [0., 0., 0.]
+    settings_description['centre_rot'] = 'Coordinates of the centre of rotation to perform slerp interpolation or cylindrical coordinates'
+
     settings_types['quasi_steady'] = 'bool'
     settings_default['quasi_steady'] = False
     settings_description['quasi_steady'] = 'Use quasi-steady approximation in UVLM'
