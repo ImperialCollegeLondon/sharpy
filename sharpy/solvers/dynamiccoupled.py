@@ -493,12 +493,6 @@ class DynamicCoupled(BaseSolver):
                     structural_kstep, aero_kstep = self.process_controller_output(
                         state)
 
-            # print(structural_kstep.quat)
-            # print(structural_kstep.for_vel)
-            # print(structural_kstep.for_acc)
-            # print(self.data.structure.dynamic_input[self.data.ts - 1]['for_vel'])
-            # print(self.data.structure.dynamic_input[self.data.ts - 1]['for_acc'])
-
             # compute unsteady contribution
             force_coeff = 0.0
             unsteady_contribution = False
@@ -592,7 +586,6 @@ class DynamicCoupled(BaseSolver):
                                 structural_kstep,
                                 force_coeff)
 
-                # print(structural_kstep.steady_applied_forces[:, -1])
                 # relaxation
                 relax_factor = self.relaxation_factor(k)
                 relax(self.data.structure,
