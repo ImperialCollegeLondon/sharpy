@@ -442,6 +442,10 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_default['floating_file_name'] = './oc3.floating.h5'
     settings_description['floating_file_name'] = 'File containing the information about the floating dynamics'
 
+    settings_types['cd_multiplier'] = 'float'
+    settings_default['cd_multiplier'] = 1.
+    settings_description['cd_multiplier'] = 'Multiply the drag coefficient by this number to increase dissipation'
+
     settings_types['method_matrices_freq'] = 'str'
     settings_default['method_matrices_freq'] = 'constant'
     settings_description['method_matrices_freq'] = 'Method to compute frequency-dependent matrices'
@@ -566,6 +570,8 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.buoy_rest_mat = self.floating_data['hydrostatics']['buoyancy_restoring_matrix']
 
         # hydrodynamics
+        self.cd = self.floating_data['hydrodynamics']['CD']*self.settings['cd_multiplier']
+
         if self.settings['method_matrices_freq'] == 'constant':
             self.hd_added_mass_const = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['added_mass_matrix'],
                                         self.floating_data['hydrodynamics']['ab_freq_rads'],
@@ -825,7 +831,7 @@ class FloatingForces(generator_interface.BaseGenerator):
 
             drag_force = (-0.5*self.water_density*np.linalg.norm(vel_g)*vel_g*delta_x*
                           self.floating_data['hydrodynamics']['spar_diameter']*
-                          self.floating_data['hydrodynamics']['CD'])
+                          self.cd)
 
             struct_tstep.runtime_generated_forces[inode, 0:3] += np.dot(cbg, drag_force)
 
