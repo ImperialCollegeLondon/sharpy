@@ -268,11 +268,6 @@ class StepLinearUVLM(BaseSolver):
             # aero_tstep.linear.u = u_0
             # aero_tstep.linear.y = f_0
 
-        # Initialise velocity generator
-        velocity_generator_type = gen_interface.generator_from_string(self.settings['velocity_field_generator'])
-        self.velocity_generator = velocity_generator_type()
-        self.velocity_generator.initialise(self.settings['velocity_field_input'])
-
     def run(self,
             aero_tstep,
             structure_tstep,

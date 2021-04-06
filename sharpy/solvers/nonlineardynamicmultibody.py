@@ -32,10 +32,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
     settings_description = _BaseStructural.settings_description.copy()
     settings_options = dict()
 
-    settings_types['print_cond_number'] = 'bool'
-    settings_default['print_cond_number'] = False
-    settings_description['print_cond_number'] = 'Write condition number to screen'
-
     settings_types['time_integrator'] = 'str'
     settings_default['time_integrator'] = 'NewmarkBeta'
     settings_description['time_integrator'] = 'Method to perform time integration'

@@ -202,6 +202,7 @@ class StaticCoupled(BaseSolver):
 
                     struct_forces += self.data.structure.timestep_info[self.data.ts].runtime_generated_forces
 
+                if not self.settings['relaxation_factor'] == 0.:
                     if i_iter == 0:
                         self.previous_force = struct_forces.copy()
 

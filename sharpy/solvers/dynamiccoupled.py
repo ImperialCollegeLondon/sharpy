@@ -721,12 +721,12 @@ class DynamicCoupled(BaseSolver):
                          self.base_dqdt)
 
         if with_runtime_generators:
-            res_forces = (np.linalg.norm(tstep.runtime_generated_forces - 
+            res_forces = (np.linalg.norm(tstep.runtime_generated_forces -
                                         previous_tstep.runtime_generated_forces)/
                          self.base_res_forces)
         else:
             res_forces = 0.
-        
+
         # we don't want this to converge before introducing the gamma_dot forces!
         if self.settings['include_unsteady_force_contribution']:
             if k < self.settings['pseudosteps_ramp_unsteady_force'] \
@@ -734,12 +734,12 @@ class DynamicCoupled(BaseSolver):
                 return False
 
         # convergence
-        if k > self.settings['minimum_steps'].value - 1:
-            if self.res < self.settings['fsi_tolerance'].value or "rigid" in struct_solver.lower():
-                if self.res_dqdt < self.settings['fsi_tolerance'].value:
-                    if res_forces < self.settings['fsi_tolerance'].value:
+        if k > self.settings['minimum_steps'] - 1:
+            if self.res < self.settings['fsi_tolerance']:
+                if self.res_dqdt < self.settings['fsi_tolerance']:
+                    if res_forces < self.settings['fsi_tolerance']:
                         return True
-                    
+
         return False
 
     def map_forces(self, aero_kstep, structural_kstep, unsteady_forces_coeff=1.0):
