@@ -90,8 +90,7 @@ def cbeam3_solv_nlnstatic(beam, settings, ts):
     xbopts.MinDelta = ct.c_double(settings['min_delta'])
     xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
     xbopts.gravity = ct.c_double(settings['gravity'])
-    gravity_vector = settings['gravity_dir']
-    gravity_vector = np.dot(beam.timestep_info[ts].cag(), gravity_vector)
+    gravity_vector = np.dot(beam.timestep_info[ts].cag(), settings['gravity_dir'])
     xbopts.gravity_dir_x = ct.c_double(gravity_vector[0])
     xbopts.gravity_dir_y = ct.c_double(gravity_vector[1])
     xbopts.gravity_dir_z = ct.c_double(gravity_vector[2])
@@ -164,12 +163,10 @@ def cbeam3_solv_nlndyn(beam, settings):
     f_cbeam3_solv_nlndyn = xbeamlib.cbeam3_solv_nlndyn_python
     f_cbeam3_solv_nlndyn.restype = None
 
-
     n_elem = ct.c_int(beam.num_elem)
     n_nodes = ct.c_int(beam.num_node)
     n_mass = ct.c_int(beam.n_mass)
     n_stiff = ct.c_int(beam.n_stiff)
-
 
     dt = settings['dt']
     n_tsteps = settings['num_steps']
@@ -1137,8 +1134,7 @@ def cbeam3_asbly_static(beam, tstep, settings, iLoadStep):
     # xbopts.NewmarkDamp = settings['newmark_damp']
     xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
     xbopts.gravity = ct.c_double(settings['gravity'])
-    xbopts.gravity_dir_x = ct.c_double(tstep.gravity_vector_inertial[0])
-    xbopts.gravity_dir_y = ct.c_double(tstep.gravity_vector_inertial[1])
+    gravity_vector = np.dot(beam.timestep_info[ts].cag(), settings['gravity_dir'])
     xbopts.gravity_dir_x = ct.c_double(gravity_vector[0])
     xbopts.gravity_dir_y = ct.c_double(gravity_vector[1])
     xbopts.gravity_dir_z = ct.c_double(gravity_vector[2])
