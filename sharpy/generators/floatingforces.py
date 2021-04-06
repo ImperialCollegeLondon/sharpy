@@ -597,6 +597,7 @@ class FloatingForces(generator_interface.BaseGenerator):
 
         # hydrodynamics
         self.cd = self.floating_data['hydrodynamics']['CD']*self.settings['cd_multiplier']
+        if self.settings['method_matrices_freq'] == 'constant':        
             # self.hd_added_mass_const = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['added_mass_matrix'],
             #                             self.floating_data['hydrodynamics']['ab_freq_rads'],
             #                             self.settings['matrices_freq'])
