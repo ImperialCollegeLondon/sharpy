@@ -6,6 +6,7 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.aero.utils.mapping as mapping
+import sharpy.utils.correct_forces as cf
 
 
 class ForcesContainer(object):
@@ -66,6 +67,11 @@ class AeroForcesCalculator(BaseSolver):
     settings_default['c_ref'] = 1
     settings_description['c_ref'] = 'Reference chord'
 
+    # settings_types['correct_forces_method'] = 'str'
+    # settings_default['correct_forces_method'] = '' # 'efficiency'
+    # settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. Check :py:mod:`sharpy.utils.correct_forces`'
+    # settings_options['correct_forces_method'] = ['efficiency', 'polars']
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -109,6 +115,7 @@ class AeroForcesCalculator(BaseSolver):
         for self.ts in range(self.ts_max):
             rot = algebra.quat2rotation(self.data.structure.timestep_info[self.ts].quat)
 
+            # Forces per surface in G frame
             force = self.data.aero.timestep_info[self.ts].forces
             unsteady_force = self.data.aero.timestep_info[self.ts].dynamic_forces
             n_surf = len(force)
@@ -125,37 +132,54 @@ class AeroForcesCalculator(BaseSolver):
                 self.data.aero.timestep_info[self.ts].body_steady_forces[i_surf, 0:3] = np.dot(rot.T, total_steady_force)
                 self.data.aero.timestep_info[self.ts].body_unsteady_forces[i_surf, 0:3] = np.dot(rot.T, total_unsteady_force)
 
-            aero_forces_beam_dof = self.calculate_moments(self.ts)
-            self.data.aero.timestep_info[self.ts].total_body_forces = aero_forces_beam_dof
-            self.data.aero.timestep_info[self.ts].total_inertial_forces = \
-                np.block([[rot, np.zeros((3, 3))],
-                          [np.zeros((3, 3)), rot]]).dot(aero_forces_beam_dof)
+            # Forces expressed in the beam degrees of freedom
+            try:
+                steady_forces_b = self.data.aero.timestep_info[self.ts].aero_steady_forces_beam_dof
+            except AttributeError:
+                steady_forces_b = self.map_forces_beam_dof(self.ts, force)
 
-    def calculate_moments(self, ts):
+            try:
+                unsteady_forces_b = self.data.aero.timestep_info[self.ts].aero_unsteady_forces_beam_dof
+            except AttributeError:
+                unsteady_forces_b = self.map_forces_beam_dof(self.ts, unsteady_force)
+
+            steady_forces_a = self.data.structure.nodal_b_for_2_a_for(steady_forces_b,
+                                                                      self.data.structure.timestep_info[self.ts])
+
+            unsteady_forces_a = self.data.structure.nodal_b_for_2_a_for(unsteady_forces_b,
+                                                                        self.data.structure.timestep_info[self.ts])
+
+            # Express total forces in A frame
+            self.data.aero.timestep_info[self.ts].total_steady_body_forces = np.sum(steady_forces_a, axis=0)
+            self.data.aero.timestep_info[self.ts].total_unsteady_body_forces = np.sum(unsteady_forces_a, axis=0)
+
+            # Express total forces in G frame
+            self.data.aero.timestep_info[self.ts].total_steady_inertial_forces = \
+                np.block([[rot, np.zeros((3, 3))],
+                          [np.zeros((3, 3)), rot]]).dot(
+                    self.data.aero.timestep_info[self.ts].total_steady_body_forces)
+
+            self.data.aero.timestep_info[self.ts].total_unsteady_inertial_forces = \
+                np.block([[rot, np.zeros((3, 3))],
+                          [np.zeros((3, 3)), rot]]).dot(
+                    self.data.aero.timestep_info[self.ts].total_unsteady_body_forces)
+
+    def map_forces_beam_dof(self, ts, force):
         aero_tstep = self.data.aero.timestep_info[ts]
         struct_tstep = self.data.structure.timestep_info[ts]
-        aero_steady_forces_beam_dof = mapping.aero2struct_total_force_mapping(aero_tstep.forces,
-                                                                              self.data.aero.struct2aero_mapping,
-                                                                              aero_tstep.zeta,
-                                                                              struct_tstep.pos,
-                                                                              struct_tstep.psi,
-                                                                              self.data.structure.connectivities,
-                                                                              struct_tstep.cag())
-        aero_unsteady_forces_beam_dof = mapping.aero2struct_total_force_mapping(aero_tstep.dynamic_forces,
-                                                                                self.data.aero.struct2aero_mapping,
-                                                                                aero_tstep.zeta,
-                                                                                struct_tstep.pos,
-                                                                                struct_tstep.psi,
-                                                                                self.data.structure.connectivities,
-                                                                                struct_tstep.cag())
-
-        aero_forces_beam_dof = aero_steady_forces_beam_dof + aero_unsteady_forces_beam_dof
-
+        aero_forces_beam_dof = mapping.aero2struct_force_mapping(force,
+                                                                 self.data.aero.struct2aero_mapping,
+                                                                 aero_tstep.zeta,
+                                                                 struct_tstep.pos,
+                                                                 struct_tstep.psi,
+                                                                 None,
+                                                                 self.data.structure.connectivities,
+                                                                 struct_tstep.cag())
         return aero_forces_beam_dof
 
     def calculate_coefficients(self, fx, fy, fz, mx, my, mz):
-        qS = self.settings['q_ref'].value * self.settings['S_ref'].value
-        return fx/qS, fy/qS, fz/qS, mx/qS/self.settings['b_ref'].value, my/qS/self.settings['c_ref'], \
+        qS = self.settings['q_ref'] * self.settings['S_ref']
+        return fx/qS, fy/qS, fz/qS, mx/qS/self.settings['b_ref'], my/qS/self.settings['c_ref'], \
                mz/qS/self.settings['b_ref']
 
     def screen_output(self):
@@ -166,60 +190,58 @@ class AeroForcesCalculator(BaseSolver):
             line = "{0:5s} | {1:10s} | {2:10s} | {3:10s} | {4:10s} | {5:10s} | {6:10s}".format(
                 'tstep', '  Cfx_g', '  Cfy_g', '  Cfz_g', '  Cmx_g', '  Cmy_g', '  Cmz_g')
             cout.cout_wrap(line, 1)
-            for self.ts in range(self.ts_max):
-                fx = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 0], 0) + \
-                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 0], 0)
+        else:
+            line = "{0:5s} | {1:10s} | {2:10s} | {3:10s}| {4:10s} | {5:10s} | {6:10s}".format(
+                'tstep', '  fx_g', '  fy_g', '  fz_g',  '  mx_g', '  my_g', '  mz_g')
+            cout.cout_wrap(line, 1)
 
-                fy = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 1], 0) + \
-                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 1], 0)
+        # print time step total aero forces
+        for self.ts in range(self.ts_max):
+            aero_tstep = self.data.aero.timestep_info[self.ts]
+            fx, fy, fz = aero_tstep.total_steady_inertial_forces[:3] + aero_tstep.total_unsteady_inertial_forces[:3]
+            mx, my, mz = aero_tstep.total_steady_inertial_forces[3:] + aero_tstep.total_unsteady_inertial_forces[3:]
 
-                fz = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 2], 0) + \
-                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 2], 0)
-                mx, my, mz = self.data.aero.timestep_info[self.ts].total_inertial_forces[3:]
+            if self.settings['coefficients']:
                 Cfx, Cfy, Cfz, Cmx, Cmy, Cmz = self.calculate_coefficients(fx, fy, fz, mx, my, mz)
-
                 line = "{0:5d} | {1: 8.3e} | {2: 8.3e} | {3: 8.3e} | {4: 8.3e} | {5: 8.3e} | {6: 8.3e}".format(
                     self.ts, Cfx, Cfy, Cfz, Cmx, Cmy, Cmz)
-                cout.cout_wrap(line, 1)
-        else:
-            line = "{0:5s} | {1:10s} | {2:10s} | {3:10s}".format(
-                'tstep', '  fx_g', '  fy_g', '  fz_g')
-            cout.cout_wrap(line, 1)
-            for self.ts in range(self.ts_max):
-                fx = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 0], 0) + \
-                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 0], 0)
-
-                fy = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 1], 0) + \
-                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 1], 0)
-
-                fz = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 2], 0) + \
-                     np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 2], 0)
-                mx, my, mz = self.data.aero.timestep_info[self.ts].total_inertial_forces[3:]
-
+            else:
                 line = "{0:5d} | {1: 8.3e} | {2: 8.3e} | {3: 8.3e}| {1: 8.3e} | {2: 8.3e} | {3: 8.3e}".format(
                     self.ts, fx, fy, fz, mx, my, mz)
-                cout.cout_wrap(line, 1)
+
+            cout.cout_wrap(line, 1)
 
     def file_output(self, filename):
-        # assemble forces matrix
-        # (1 timestep) + (3+3 inertial steady+unsteady) + (3+3 body steady+unsteady) + (3 inertial moments) + (3 body moments)
+        # assemble forces/moments matrix
+        # (1 timestep) + (3+3 inertial steady+unsteady) + (3+3 body steady+unsteady)
         force_matrix = np.zeros((self.ts_max, 1 + 3 + 3 + 3 + 3 + 3 + 3))
+        moment_matrix = np.zeros((self.ts_max, 1 + 3 + 3 + 3 + 3 + 3 + 3))
         for self.ts in range(self.ts_max):
+            aero_tstep = self.data.aero.timestep_info[self.ts]
             i = 0
             force_matrix[self.ts, i] = self.ts
+            moment_matrix[self.ts, i] = self.ts
             i += 1
-            force_matrix[self.ts, i:i+3] = np.sum(self.data.aero.timestep_info[self.ts].inertial_steady_forces[:, 0:3], 0)
-            i += 3
-            force_matrix[self.ts, i:i+3] = np.sum(self.data.aero.timestep_info[self.ts].inertial_unsteady_forces[:, 0:3], 0)
-            i += 3
-            force_matrix[self.ts, i:i+3] = np.sum(self.data.aero.timestep_info[self.ts].body_steady_forces[:, 0:3], 0)
-            i += 3
-            force_matrix[self.ts, i:i+3] = np.sum(self.data.aero.timestep_info[self.ts].body_unsteady_forces[:, 0:3], 0)
 
+            # Steady forces/moments G
+            force_matrix[self.ts, i:i+3] = aero_tstep.total_steady_inertial_forces[:3]
+            moment_matrix[self.ts, i:i+3] = aero_tstep.total_steady_inertial_forces[3:]
             i += 3
-            force_matrix[self.ts, i:i+3] = self.data.aero.timestep_info[self.ts].total_inertial_forces[3:6]
+
+            # Unsteady forces/moments G
+            force_matrix[self.ts, i:i+3] = aero_tstep.total_unsteady_inertial_forces[:3]
+            moment_matrix[self.ts, i:i+3] = aero_tstep.total_unsteady_inertial_forces[3:]
             i += 3
-            force_matrix[self.ts, i:i+3] = self.data.aero.timestep_info[self.ts].total_body_forces[3:6]
+
+            # Steady forces/moments A
+            force_matrix[self.ts, i:i+3] = aero_tstep.total_steady_body_forces[:3]
+            moment_matrix[self.ts, i:i+3] = aero_tstep.total_steady_body_forces[3:]
+            i += 3
+
+            # Unsteady forces/moments A
+            force_matrix[self.ts, i:i+3] = aero_tstep.total_unsteady_body_forces[:3]
+            moment_matrix[self.ts, i:i+3] = aero_tstep.total_unsteady_body_forces[3:]
+
 
         header = ''
         header += 'tstep, '
@@ -227,11 +249,23 @@ class AeroForcesCalculator(BaseSolver):
         header += 'fx_unsteady_G, fy_unsteady_G, fz_unsteady_G, '
         header += 'fx_steady_a, fy_steady_a, fz_steady_a, '
         header += 'fx_unsteady_a, fy_unsteady_a, fz_unsteady_a'
-        header += 'mx_total_G, my_total_G, mz_total_G'
-        header += 'mx_total_a, my_total_a, mz_total_a'
 
-        np.savetxt(self.folder + filename,
+        np.savetxt(self.folder + 'forces_' + filename,
                    force_matrix,
+                   fmt='%i' + ', %10e'*18,
+                   delimiter=',',
+                   header=header,
+                   comments='#')
+
+        header = ''
+        header += 'tstep, '
+        header += 'mx_steady_G, my_steady_G, mz_steady_G, '
+        header += 'mx_unsteady_G, my_unsteady_G, mz_unsteady_G, '
+        header += 'mx_steady_a, my_steady_a, mz_steady_a, '
+        header += 'mx_unsteady_a, my_unsteady_a, mz_unsteady_a'
+
+        np.savetxt(self.folder + 'moments_' + filename,
+                   moment_matrix,
                    fmt='%i' + ', %10e'*18,
                    delimiter=',',
                    header=header,
