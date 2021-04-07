@@ -340,24 +340,24 @@ def jonswap_spectrum(Tp, Hs, w):
     return spectrum
 
 
-def noise_spectrum_1s(w):
+def noise_freq_1s(w):
     """
-    Apply a white noise to the spectrum to get different realisation
-    every run
+    Generates a frequency representation of a white noise
     """
+    sigma = 1. #/np.sqrt(2)
     nomega = w.shape[0]
 
     wn = np.zeros((nomega, ), dtype=np.complex)
     u1 = np.random.random(size=nomega) #+ 0j
     u2 = np.random.random(size=nomega) #+ 0j
-    wn[0] = 1. + 0j
+    wn[0] = 0. + 0j
     for iomega in range(1, nomega):
         u1w = u1[iomega]
         u2w = u2[iomega]
         wn[iomega] = np.sqrt(-2.*np.log(u1w))*(np.cos(2*np.pi*u2w) +
                              1j*np.sin(2*np.pi*u2w))
-        #wn[iomega] = 1. + 0j
-    return wn
+        # wn[iomega] = 1. + 0j
+    return wn*sigma
 
 
 def time_wave_forces(Tp, Hs, dt, time, xi, w_xi):
@@ -366,11 +366,10 @@ def time_wave_forces(Tp, Hs, dt, time, xi, w_xi):
     """
     # Compute time and frequency discretisations
     ntime_steps = time.shape[0]
-    wave_force = np.zeros((ntime_steps, 6), dtype=np.complex)
 
     nomega = ntime_steps//2 + 1
     w = np.zeros((nomega))
-    w_temp = np.fft.fftfreq(ntime_steps, d=dt)
+    w_temp = np.fft.fftfreq(ntime_steps, d=dt)*2.*np.pi
     w[:ntime_steps//2] = w_temp[:ntime_steps//2]
     if ntime_steps%2 == 0:
         w[-1] = -1*w_temp[ntime_steps//2]
@@ -379,25 +378,27 @@ def time_wave_forces(Tp, Hs, dt, time, xi, w_xi):
     nomega_2s = ntime_steps
 
     # Compute the one-sided spectrums
-    noise_1s = noise_spectrum_1s(w)
-    jonswap_1s = jonswap_spectrum(Tp, Hs, w) + 0j
+    noise_freq = noise_freq_1s(w)
+    jonswap_1s = jonswap_spectrum(Tp, Hs, w)*2.*np.pi
+    jonswap_freq = np.sqrt(2*ntime_steps/dt*jonswap_1s/2) + 0j
+    jonswap_freq[0] = np.sqrt(ntime_steps/dt*jonswap_1s[0]/2) + 0j # The DC values does not have the 2
 
     # Compute the two-sided spectrum
-    force_spectrum_2s = np.zeros((nomega_2s, 6), dtype=np.complex)
+    force_freq_2s = np.zeros((nomega_2s, 6), dtype=np.complex)
     for idim in range(6):
         for iomega in range(nomega):
             xi_interp = np.interp(w[iomega], w_xi, xi[:, idim])
-            force_spectrum_2s[iomega, idim] = (noise_1s[iomega]*
-                                               jonswap_1s[iomega]*
-                                               xi_interp)
+            force_freq_2s[iomega, idim] = (noise_freq[iomega]*
+                                           0.5*jonswap_freq[iomega]*
+                                           xi_interp)
             if not iomega == 0:
                 if not ((iomega == nomega - 1) and (nomega_2s%2 == 0)):
-                    force_spectrum_2s[-iomega, idim] = (np.conj(noise_1s[iomega])*
-                                                        jonswap_1s[iomega]*
-                                                        xi_interp)
+                    force_freq_2s[-iomega, idim] = (np.conj(noise_freq[iomega])*
+                                                    0.5*jonswap_freq[iomega]*
+                                                    np.conj(xi_interp))
 
     # Compute the inverse Fourier transform
-    force_waves = ifft(force_spectrum_2s, axis=0)
+    force_waves = ifft(force_freq_2s, axis=0)
 
     return force_waves
 
