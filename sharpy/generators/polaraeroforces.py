@@ -35,6 +35,7 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
         self.aero = None
         self.beam = None
         self.rho = None
+        self.vortex_radius = None
 
     def initialise(self, in_dict, **kwargs):
         self.settings = in_dict
@@ -43,6 +44,7 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
         self.aero = kwargs.get('aero')
         self.beam = kwargs.get('structure')
         self.rho = kwargs.get('rho')
+        self.vortex_radius = kwargs.get('vortex_radius', 1e-6)
 
     def generate(self, **params):
 
@@ -67,7 +69,6 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
         for inode in range(nnode):
             new_struct_forces[inode, :] = struct_forces[inode, :].copy()
             if aero_dict['aero_node'][inode]:
-
                 ielem, inode_in_elem = beam.node_master_elem[inode]
                 iairfoil = aero_dict['airfoil_distribution'][ielem, inode_in_elem]
                 isurf = aerogrid.struct2aero_mapping[inode][0]['i_surf']
@@ -108,12 +109,12 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
                 urel = -np.dot(cga, urel)
                 urel += np.average(aero_kstep.u_ext[isurf][:, :, i_n], axis=1)
 
+                dir_urel = algebra.unit_vector(urel)
                 if compute_induced_velocity:
                     # TODO - is it worth saving as part of time step?
                     uind = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(aero_kstep,
-                                                                                   np.array([structural_kstep.pos[inode,
-                                                                                             :] - np.array([0, 0, 1])]),
-                                                                                   vortex_radius=1e-6,
+                                                                                   target_triads=np.vstack((structural_kstep.pos[inode, :], structural_kstep.pos[inode, :])),
+                                                                                   vortex_radius=self.vortex_radius,
                                                                                    for_pos=structural_kstep.for_pos,
                                                                                    ncores=8)[0]
                     urel += uind
