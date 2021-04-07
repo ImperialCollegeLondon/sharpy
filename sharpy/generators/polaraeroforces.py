@@ -29,6 +29,11 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
     settings_types['compute_actual_aoa'] = 'bool'
     settings_default['compute_actual_aoa'] = False
 
+    settings_types['drag_from_polar'] = 'bool'
+    settings_default['drag_from_polar'] = False
+    settings_description['drag_from_polar'] = 'Take Cd directly from polar. Else, to the Cd computed by SHARPy, the ' \
+                                              'difference with the Cd from the polar (mostly profile drag) is added.'
+
     def __init__(self):
         self.settings = None
 
@@ -163,7 +168,10 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
 
                 # Recompute the forces based on the coefficients
                 lift_force = cl * algebra.unit_vector(lift_force) * coef
-                drag_force += cd * dir_urel * coef
+                if self.settings['drag_from_polar']:
+                    drag_force = cd * dir_urel * coef
+                else:
+                    drag_force += (cd - cd_sharpy) * dir_urel * coef
                 force = lift_force + drag_force
                 new_struct_forces[inode, 0:3] = np.dot(cgb.T,
                                                        force)
