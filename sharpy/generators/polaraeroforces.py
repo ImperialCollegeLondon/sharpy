@@ -1,14 +1,26 @@
 import numpy as np
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
-import sharpy.utils.correct_forces as cf
 import sharpy.utils.algebra as algebra
 import sharpy.aero.utils.uvlmlib as uvlmlib
-import ctypes as ct
 
 
 @generator_interface.generator
 class PolarAerodynamicForces(generator_interface.BaseGenerator):
+    """
+    This generator corrects the aerodynamic forces from UVLM based on the airfoil polars provided by the user in the
+    ``aero.h5`` file. Polars are entered for each airfoil, in a table comprising ``AoA, CL, CD, CM``.
+
+    These are the steps needed to correct the forces:
+
+        * The force coming from UVLM is divided into induced drag (parallel to the incoming flow velocity) and lift
+          (the remaining force).
+        * The angle of attack is computed based on that lift force and the angle of zero lift computed form the
+          airfoil polar and assuming a slope of :math:`2 \pi`
+        * The drag force is computed based on the angle of attack and the polars provided by the user
+
+
+    """
     generator_id = 'PolarCorrection'
 
     settings_types = dict()
@@ -18,27 +30,39 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
 
     settings_types['correct_lift'] = 'bool'
     settings_default['correct_lift'] = False
+    settings_description['correct_lift'] = 'Correct lift according to the polars'
 
-    # ... etc settings
     settings_types['cd_from_cl'] = 'bool'
     settings_default['cd_from_cl'] = False
+    settings_description['cd_from_cl'] = 'Interpolate the C_D for the given C_L, as opposed to getting the C_D from ' \
+                                         'the section AoA.'
 
     settings_types['compute_uind'] = 'bool'
     settings_default['compute_uind'] = False
+    settings_description['compute_uind'] = 'Compute (and include) vortex induced velocities in the angle of attack ' \
+                                           'calculation.'
+
 
     settings_types['compute_actual_aoa'] = 'bool'
     settings_default['compute_actual_aoa'] = False
+    settings_description['compute_actual_aoa'] = 'Compute the coefficients using the actual angle of attack of the ' \
+                                                 'section, as opposed to the angle necessary to provide the UVLM ' \
+                                                 'calculated C_L with an assumed lift curve slope of 2pi'
 
     settings_types['drag_from_polar'] = 'bool'
     settings_default['drag_from_polar'] = False
     settings_description['drag_from_polar'] = 'Take Cd directly from polar. Else, to the Cd computed by SHARPy, the ' \
                                               'difference with the Cd from the polar (mostly profile drag) is added.'
 
+    settings_table = settings.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options,
+                                       header_line='This generator takes in the following settings.')
+
     def __init__(self):
         self.settings = None
 
         self.aero = None
-        self.beam = None
+        self.structure = None
         self.rho = None
         self.vortex_radius = None
 
@@ -47,18 +71,27 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.aero = kwargs.get('aero')
-        self.beam = kwargs.get('structure')
+        self.structure = kwargs.get('structure')
         self.rho = kwargs.get('rho')
         self.vortex_radius = kwargs.get('vortex_radius', 1e-6)
 
     def generate(self, **params):
+        """
+        Keyword Args:
+            aero_kstep (:class:`sharpy.utils.datastructures.AeroTimeStepInfo`): Current aerodynamic substep
+            structural_kstep (:class:`sharpy.utils.datastructures.StructTimeStepInfo`): Current structural substep
+            struct_forces (np.array): Array with the aerodynamic forces mapped on the structure in the B frame of
+              reference
 
+        Returns:
+            np.array: New corrected structural forces
+        """
         aero_kstep = params['aero_kstep']
         structural_kstep = params['structural_kstep']
         struct_forces = params['struct_forces']
 
         aerogrid = self.aero
-        beam = self.beam
+        structure = self.structure
         rho = self.rho
         correct_lift = self.settings['correct_lift']
         cd_from_cl = self.settings['cd_from_cl']
@@ -84,7 +117,7 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
         for inode in range(nnode):
             new_struct_forces[inode, :] = struct_forces[inode, :].copy()
             if aero_dict['aero_node'][inode]:
-                ielem, inode_in_elem = beam.node_master_elem[inode]
+                ielem, inode_in_elem = structure.node_master_elem[inode]
                 iairfoil = aero_dict['airfoil_distribution'][ielem, inode_in_elem]
                 isurf = aerogrid.struct2aero_mapping[inode][0]['i_surf']
                 i_n = aerogrid.struct2aero_mapping[inode][0]['i_n']
