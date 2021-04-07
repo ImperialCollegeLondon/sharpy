@@ -65,6 +65,16 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
             return struct_forces
         new_struct_forces = np.zeros_like(struct_forces)
 
+        # Compute induced velocities at the structural points
+        if compute_induced_velocity:
+            uind = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(aero_kstep,
+                                                                           target_triads=structural_kstep.pos,
+                                                                           vortex_radius=self.vortex_radius,
+                                                                           for_pos=structural_kstep.for_pos,
+                                                                           ncores=8)
+        else:
+            uind = np.zeros_like(structural_kstep.pos)
+
         nnode = struct_forces.shape[0]
         for inode in range(nnode):
             new_struct_forces[inode, :] = struct_forces[inode, :].copy()
@@ -109,15 +119,7 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
                 urel = -np.dot(cga, urel)
                 urel += np.average(aero_kstep.u_ext[isurf][:, :, i_n], axis=1)
 
-                dir_urel = algebra.unit_vector(urel)
-                if compute_induced_velocity:
-                    # TODO - is it worth saving as part of time step?
-                    uind = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(aero_kstep,
-                                                                                   target_triads=np.vstack((structural_kstep.pos[inode, :], structural_kstep.pos[inode, :])),
-                                                                                   vortex_radius=self.vortex_radius,
-                                                                                   for_pos=structural_kstep.for_pos,
-                                                                                   ncores=8)[0]
-                    urel += uind
+                urel += uind[inode, :]  # u_ind will be zero if compute_uind == False
                 dir_urel = algebra.unit_vector(urel)
 
                 # Force in the G frame of reference
