@@ -232,6 +232,9 @@ class EfficiencyAerodynamicForces(generator_interface.BaseGenerator):
     """
     generator_id = 'EfficiencyCorrection'
 
+    settings_types = dict()
+    settings_default = dict()
+
     def __init__(self):
         self.aero = None
         self.structure = None
