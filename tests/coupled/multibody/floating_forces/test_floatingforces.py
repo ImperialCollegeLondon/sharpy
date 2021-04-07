@@ -106,13 +106,12 @@ class TestFloatingForces(unittest.TestCase):
         Tp = 14.656 #10.
         Hs = 5.49 #6.
         nrealisations = 100
-        dt = 1./20 # To get max freq equal to 10Hz
+        dt = 2*np.pi/4 # 1./20 To get max freq equal to 10Hz
         ntime_steps = 1000
         time = np.arange(ntime_steps)*dt
     
         # Get the zero-noise specturm
-        # w_js = np.arange(0, 4, 0.01)
-        w_js = np.arange(0, 2, 0.1)
+        w_js = np.arange(0, 4, 0.01)
         zero_noise_spectrum = ff.jonswap_spectrum(Tp, Hs, w_js)
     
         # Compute different realisations
@@ -127,17 +126,21 @@ class TestFloatingForces(unittest.TestCase):
         # Compute the spectrum of the realisations
         ns = np.zeros((ntime_steps//2, nrealisations), dtype=np.complex)
         for ireal in range(nrealisations):
-            ns[:, ireal] = fft(wave_force[:, ireal])[:ntime_steps//2]
-        w_ns = np.fft.fftfreq(ntime_steps, d=dt)[:ntime_steps//2]
+            ns[:, ireal] = dt/ntime_steps*np.abs(fft(wave_force[:, ireal])[:ntime_steps//2])**2
+            ns[1:, ireal] *= 2
+        # To rad/s
+        ns /= 2.*np.pi
+        w_ns = (np.fft.fftfreq(ntime_steps, d=dt)[:ntime_steps//2])*2.*np.pi
         # Compare the zero noise with the realisations average
-        avg_noise_spectrum = np.average(np.abs(ns), axis=1)
+        avg_noise_spectrum = np.average(ns, axis=1)
 
         for iomega in range(w_js.shape[0]):
-            if w_js[iomega] > 0.1:
-                error = (np.interp(w_js[iomega], w_ns, avg_noise_spectrum) - zero_noise_spectrum[iomega])/zero_noise_spectrum[iomega]
-                # 0.5 is a large error but otherwise I need to increment nrealisations a lot
+            error = (np.interp(w_js[iomega], w_ns, avg_noise_spectrum) - zero_noise_spectrum[iomega])
+            if error > 0.1:
+                error /= zero_noise_spectrum[iomega]
+                # 0.3 is a large error but otherwise I need to increment nrealisations a lot
                 # Use ``save_fig = True`` for visual inspection
-                self.assertLess(error, 0.5)
+                self.assertLess(error, 0.3)
             
         save_fig = False
         if save_fig:  
@@ -147,6 +150,7 @@ class TestFloatingForces(unittest.TestCase):
             ax.set_xlabel("omega [rad/s]")
             ax.set_ylabel("specturm")
             ax.set_xlim(0, 4)
+            ax.set_ylim(0, 12)
             for ireal in range(nrealisations):
                 ax.plot(w_ns, np.abs(ns[:, ireal]), 'bo')
             ax.plot(w_ns, avg_noise_spectrum, '-', label="avg")
