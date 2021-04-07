@@ -116,6 +116,7 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
         nnode = struct_forces.shape[0]
         for inode in range(nnode):
             new_struct_forces[inode, :] = struct_forces[inode, :].copy()
+            print('i_node', inode)
             if aero_dict['aero_node'][inode]:
                 ielem, inode_in_elem = structure.node_master_elem[inode]
                 iairfoil = aero_dict['airfoil_distribution'][ielem, inode_in_elem]
@@ -157,6 +158,8 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
                 urel = -np.dot(cga, urel)
                 urel += np.average(aero_kstep.u_ext[isurf][:, :, i_n], axis=1)
 
+                freestream = urel.copy()
+                print('Freestream', freestream)
                 urel += uind[inode, :]  # u_ind will be zero if compute_uind == False
                 dir_urel = algebra.unit_vector(urel)
 
@@ -168,13 +171,27 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
                 # Coefficient to change from aerodynamic coefficients to forces (and viceversa)
                 coef = 0.5 * rho * np.linalg.norm(urel) ** 2 * chord * span
 
+                # proj_sg = change_stability_axes(dir_urel, [1, 0, 0]).T
+                proj_sg = np.eye(3)
+                print('aoa as diff z', algebra.angle_between_vectors(proj_sg.T[:, 2], [0, 0, 1]) * 180 / np.pi)
+                print('dir_urel in inertial', dir_urel)
+                dir_urel = proj_sg.dot(dir_urel)  # S
+
+                print('dir_urel in stab', dir_urel)
+
                 # Divide the force in drag and lift
                 drag_force = np.dot(force, dir_urel) * dir_urel
+                print('force_g', force / coef)
+                print('drag', drag_force / coef)
+                print('u_ind', uind[inode])
+                print('u_rel', urel)
                 lift_force = force - drag_force
 
                 # Compute the associated lift
                 cl = np.linalg.norm(lift_force) / coef
                 cd_sharpy = np.linalg.norm(drag_force) / coef
+                print('cl sharpy', cl)
+                print('cd sharpy', cd_sharpy)
 
                 if cd_from_cl:
                     # Compute the drag from the UVLM computed lift
@@ -185,6 +202,7 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
                     if compute_actual_aoa:
                         # i) Compute the actual aoa given the induced velocity
                         aoa = np.arccos(dir_chord.dot(dir_urel) / np.linalg.norm(dir_urel) / np.linalg.norm(dir_chord))
+                        print('Actual AoA', aoa * 180 / np.pi)
                         cl_polar, cd, cm = polar.get_coefs(aoa)
                     else:
                         # ii) Compute the angle of attack assuming that UVLM gives a 2pi polar and using the CL calculated
@@ -201,15 +219,36 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
 
                 # Recompute the forces based on the coefficients
                 lift_force = cl * algebra.unit_vector(lift_force) * coef
-                if self.settings['drag_from_polar']:
-                    drag_force = cd * dir_urel * coef
-                else:
-                    drag_force += (cd - cd_sharpy) * dir_urel * coef
-                force = lift_force + drag_force
+                drag_force += cd * dir_urel * coef
+                print('lift_vec_dir', algebra.unit_vector(lift_force))
+                print('drag_vec_dir', algebra.unit_vector(dir_urel))
+                print('new_drag', drag_force / coef)
+                print('cd_polar only', cd)
+                force = lift_force + drag_force  # in stability axes
+                print('force_stab', force / coef)
+                force_g = proj_sg.T.dot(force)
+                print('force_inertial', force_g / coef)
                 new_struct_forces[inode, 0:3] = np.dot(cgb.T,
-                                                       force)
+                                                       force_g)
+
+                # Compute new moments
+                # pitching_moment
+                # pitching_moment = cm
+
 
         return new_struct_forces
+
+def change_stability_axes(u_new, u_freestream):
+
+    for_g = np.eye(3)
+
+    xs = algebra.unit_vector(u_new)
+    # ys = algebra.unit_vector(algebra.cross3(for_g[:, 2], xs))
+    ys = for_g[:, 1]
+    zs = algebra.unit_vector(algebra.cross3(xs, ys))
+
+    return algebra.triad2rotation(xs, ys, zs)
+
 
 
 @generator_interface.generator
@@ -282,3 +321,32 @@ class EfficiencyAerodynamicForces(generator_interface.BaseGenerator):
             new_struct_forces[inode, 3:6] *= moment_efficiency[i_elem, i_local_node, 0, :]
             new_struct_forces[inode, 3:6] += moment_efficiency[i_elem, i_local_node, 1, :]
         return new_struct_forces
+
+if __name__ == '__main__':
+    import unittest
+
+    class TestStabilityAxes(unittest.TestCase):
+
+        def test_transform(self):
+
+            u_infty = np.array([10, 0. , 0])
+
+            # beta = 0.1 * np.pi / 180
+            # alpha = -1 * np.pi / 180
+            # induced_velocity = np.array([-0.5, 0.5, -0.5]) * 1e-3  # make small on purpose so modulus is mostly constant
+            induced_velocity = np.array([0, -0.5, -1])  # make small on purpose so modulus is mostly constant
+
+            rot_sg = change_stability_axes(u_infty + induced_velocity, u_infty)
+
+            print(rot_sg)
+
+            for_g = np.eye(3)
+            for i in range(3):
+                vec = rot_sg.dot(for_g[:, i])
+                print(f'vec {i} = ', vec)
+
+
+            cgs = rot_sg.T
+
+
+    unittest.main()
