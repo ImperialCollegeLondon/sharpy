@@ -23,6 +23,10 @@ class InitialAeroelasticLoader(BaseSolver):
     settings_default['input_file'] = None
     settings_description['input_file'] = 'Input file containing the simulation data'
 
+    settings_types['include_forces'] = 'bool'
+    settings_default['include_forces'] = True
+    settings_description['include_forces'] = 'Map the forces'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -55,11 +59,14 @@ class InitialAeroelasticLoader(BaseSolver):
         # Copy structural information
         attributes = ['pos', 'pos_dot', 'pos_ddot',
                       'psi', 'psi_dot', 'psi_ddot',
-                      'for_pos', 'for_vel', 'for_acc',
-                      'mb_FoR_pos', 'mb_FoR_vel', 'mb_FoR_acc', 'mb_quat',
-                      'runtime_generated_forces',
+                      'for_pos', 'for_vel', 'for_acc', 'quat',
+                      'mb_FoR_pos', 'mb_FoR_vel', 'mb_FoR_acc', 'mb_quat']
+
+        if self.settings['include_forces']:
+            attributes.extend(['runtime_generated_forces',
                       'steady_applied_forces',
-                      'unsteady_applied_forces']
+                      'unsteady_applied_forces'])
+
         for att in attributes:
             getattr(structural_step, att)[...] = getattr(self.file_info.structure, att)
         # structural_step.pos_dot = self.file_info.structure.pos_dot
@@ -79,9 +86,12 @@ class InitialAeroelasticLoader(BaseSolver):
         # Copy aero information
         attributes = ['zeta', 'zeta_star', 'normals',
                       'gamma', 'gamma_star',
-                      'u_ext', 'u_ext_star',
-                      'dynamic_forces', 'forces',]
+                      'u_ext', 'u_ext_star',]
                       # 'dist_to_orig', 'gamma_dot', 'zeta_dot',
+
+        if self.settings['include_forces']:
+            attributes.extend(['dynamic_forces', 'forces',])
+
         for att in attributes:
             for isurf in range(aero_step.n_surf):
                 getattr(aero_step, att)[isurf][...] = getattr(self.file_info.aero, att)[isurf]
