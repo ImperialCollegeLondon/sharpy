@@ -343,10 +343,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
         num_LM_eq = self.num_LM_eq
 
         # Initialize
-        q = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
-        dqdt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
-        dqddt = np.zeros((self.sys_size + num_LM_eq,), dtype=ct.c_double, order='F')
-
         # TODO: i belive this can move into disp_and_accel2 state as self.Lambda, self.Lambda_dot
         if not num_LM_eq == 0:
             Lambda = self.Lambda.astype(dtype=ct.c_double, copy=True, order='F')
@@ -374,6 +370,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
             # Update positions and velocities
             Lambda, Lambda_dot = mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, num_LM_eq)
+
             if self.settings['write_lm'] and iteration:
                 self.write_lm_cond_num(iteration, Lambda, Lambda_dot, Lambda_ddot, cond_num, cond_num_lm)
 
