@@ -54,7 +54,7 @@ def main(args=None, sharpy_input_dict=None):
         if sharpy_input_dict is None:
             parser = argparse.ArgumentParser(prog='SHARPy', description=
             """This is the executable for Simulation of High Aspect Ratio Planes.\n
-            Imperial College London 2020""")
+            Imperial College London 2021""")
             parser.add_argument('input_filename', help='path to the *.sharpy input file', type=str, default='')
             parser.add_argument('-r', '--restart', help='restart the solution with a given snapshot', type=str,
                                 default=None)
@@ -120,7 +120,7 @@ def main(args=None, sharpy_input_dict=None):
 
     except Exception as e:
         try:
-            logdir = settings['SHARPy']['log_folder']
+            logdir = settings['SHARPy']['log_folder'] + '/' + settings['SHARPy']['case']
         except KeyError:
             logdir = './'
         except NameError:

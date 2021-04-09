@@ -50,14 +50,14 @@ class RigidDynamicPrescribedStep(BaseSolver):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # load info from dyn dictionary
-        self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
- 
+        self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'])
+
     def run(self, structural_step=None, dt=None):
 
         if structural_step is None:
             structural_step = self.data.structure.timestep_info[-1]
         if dt is None:
-            dt = self.settings['dt'].value
+            dt = self.settings['dt']
 
         if self.data.ts > 0:
             try:
@@ -78,7 +78,7 @@ class RigidDynamicPrescribedStep(BaseSolver):
         #                             dt=dt)
         self.extract_resultants(structural_step)
         if self.data.ts > 0:
-            self.data.structure.integrate_position(structural_step, self.settings['dt'].value)
+            self.data.structure.integrate_position(structural_step, self.settings['dt'])
         return self.data
 
     def add_step(self):

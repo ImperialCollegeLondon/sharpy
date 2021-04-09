@@ -69,7 +69,7 @@ class Writer(object):
         except subprocess.CalledProcessError:
             pass
         import sharpy.utils.solver_interface as solver_interface
-        solver_interface.print_available_solvers()
+        # solver_interface.print_available_solvers()
 
     def cout_quiet(self):
         self.print_screen = False

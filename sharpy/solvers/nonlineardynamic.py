@@ -51,10 +51,10 @@ class NonLinearDynamic(_BaseStructural):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # load info from dyn dictionary
-        self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
+        self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'])
 
         # allocate timestep_info
-        for i in range(self.settings['num_steps'].value):
+        for i in range(self.settings['num_steps']):
             self.data.structure.add_timestep(self.data.structure.timestep_info)
             if i>0:
                 self.data.structure.timestep_info[i].unsteady_applied_forces[:] = self.data.structure.dynamic_input[i - 1]['dynamic_forces']
@@ -64,7 +64,7 @@ class NonLinearDynamic(_BaseStructural):
     def run(self):
         prescribed_motion = False
         try:
-            prescribed_motion = self.settings['prescribed_motion'].value
+            prescribed_motion = self.settings['prescribed_motion']
         except KeyError:
             pass
         if prescribed_motion is True:
@@ -75,7 +75,6 @@ class NonLinearDynamic(_BaseStructural):
             cout.cout_wrap('Running non linear dynamic solver with RB...', 2)
             xbeamlib.xbeam_solv_couplednlndyn(self.data.structure, self.settings)
 
-        self.data.ts = self.settings['num_steps'].value
+        self.data.ts = self.settings['num_steps']
         cout.cout_wrap('...Finished', 2)
         return self.data
-

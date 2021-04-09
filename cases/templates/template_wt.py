@@ -718,8 +718,7 @@ def generate_from_excel_type02(chord_panels,
     LC1.node_in_body = tower.StructuralInformation.num_node - 1
     LC1.body = 0
     LC1.body_FoR = 1
-    LC1.rot_axisB = np.array([1., 0., 0.0])
-    LC1.rot_vel = -rotation_velocity
+    LC1.rot_vect = np.array([-1., 0., 0.])*rotation_velocity
 
     LC = []
     LC.append(LC1)
