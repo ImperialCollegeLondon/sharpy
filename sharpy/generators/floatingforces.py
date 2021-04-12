@@ -919,4 +919,4 @@ class FloatingForces(generator_interface.BaseGenerator):
         # Write output
         if self.settings['write_output']:
             self.write_output(data.ts, k, mooring_forces, mooring_yaw, hs_f_g,
-                     hd_f_qdot_g, hd_f_qdotdot_g, hd_correct_grav, wave_forces_g[it, :])
+                     hd_f_qdot_g, hd_f_qdotdot_g, hd_correct_grav, self.wave_forces_g[data.ts, :])
