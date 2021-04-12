@@ -273,10 +273,8 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
 
                 # modify moment:
                 # add viscous moment or full moment
-                # add moment at sharpy reference - need diference between ref and ea
-                # option to define ref point
                 moment_polar = cm * dir_moment * coef * chord
-                moment = moment_polar
+                moment += moment_polar
 
                 # moment due to drag
                 moment_polar_drag = algebra.cross3(
@@ -287,6 +285,7 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
 
                 # moment due to lift (if corrected)
                 if correct_lift:
+                    # add moment from scratch: cm_polar + cm_drag_polar + cl_lift_polar
                     moment = moment_polar
                     moment += moment_polar_drag
                     moment_polar_lift = algebra.cross3(
@@ -296,7 +295,6 @@ class PolarAerodynamicForces(generator_interface.BaseGenerator):
                     print('Moment due to lift', moment_polar_lift / coef / chord)
 
                 new_struct_forces[inode, 3:6] = cgb.T.dot(moment)
-
 
         return new_struct_forces
 
