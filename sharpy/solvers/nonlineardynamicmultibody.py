@@ -401,7 +401,15 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 else:
                     LM_res = 0.0
                 if (res < self.settings['min_delta']) and (LM_res < self.settings['min_delta']):
+                # if (res < self.settings['min_delta']):
                     converged = True
+            else:
+                old_Dq = np.max(np.abs(Dq[0:self.sys_size]))
+                if old_Dq == 0:
+                    print("old_Dq ==0")
+                    old_Dq = 1.
+                if num_LM_eq:
+                    LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
 
             # Relaxation
             relax_Dq = np.zeros_like(Dq)
@@ -416,10 +424,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
             if converged:
                 break
 
-            if not iteration:
-                old_Dq = np.max(np.abs(Dq[0:self.sys_size]))
-                if num_LM_eq:
-                    LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
 
         Lambda, Lambda_dot = mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, num_LM_eq)
         if self.settings['write_lm']:
