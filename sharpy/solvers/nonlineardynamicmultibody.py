@@ -49,6 +49,10 @@ class NonLinearDynamicMultibody(_BaseStructural):
     settings_default['relax_factor_lm'] = 0.
     settings_description['relax_factor_lm'] = 'Relaxation factor for Lagrange Multipliers. 0 no relaxation. 1 full relaxation'
 
+    settings_types['allow_skip_step'] = 'bool'
+    settings_default['allow_skip_step'] = False
+    settings_description['allow_skip_step'] = 'Allow skip step when NaN is found while solving the system'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -361,6 +365,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
         LM_old_Dq = 1.0
 
         converged = False
+        skip_step = False
         for iteration in range(self.settings['max_iterations']):
             # Check if the maximum of iterations has been reached
             if iteration == self.settings['max_iterations'] - 1:
@@ -395,7 +400,13 @@ class NonLinearDynamicMultibody(_BaseStructural):
             if iteration:
                 res = np.max(np.abs(Dq[0:self.sys_size]))/old_Dq
                 if np.isnan(res):
-                    raise exc.NotConvergedSolver('Multibody res = NaN')
+                    print(old_Dq)
+                    if self.settings['allow_skip_step']:
+                        skip_step = True
+                        cout.cout_wrap("Skipping step", 3)
+                        break
+                    else:
+                        raise exc.NotConvergedSolver('Multibody Dq = NaN')
                 if num_LM_eq:
                     LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
                 else:
@@ -429,6 +440,19 @@ class NonLinearDynamicMultibody(_BaseStructural):
         if self.settings['write_lm']:
             self.write_lm_cond_num(iteration, Lambda, Lambda_dot, Lambda_ddot, cond_num, cond_num_lm)
         # end: comment time stepping
+
+        if skip_step:
+            # Use the original time step
+            MB_beam, MB_tstep = mb.split_multibody(
+                self.data.structure,
+                structural_step,
+                MBdict,
+                self.data.ts)
+            # Perform rigid body motions
+            self.integrate_position(MB_beam, MB_tstep, dt)
+            for ibody in range(0, len(MB_tstep)):
+                Temp = np.linalg.inv(np.eye(4) + 0.25*algebra.quadskew(MB_tstep[ibody].for_vel[3:6])*dt)
+                MB_tstep[ibody].quat = np.dot(Temp, np.dot(np.eye(4) - 0.25*algebra.quadskew(MB_tstep[ibody].for_vel[3:6])*dt, MB_tstep[ibody].quat))
 
         # End of Newmark-beta iterations
         # self.integrate_position(MB_beam, MB_tstep, dt)
