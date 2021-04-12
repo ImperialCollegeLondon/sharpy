@@ -288,6 +288,7 @@ class Aerogrid(Grid):
                                    orientation_in=self.aero_settings['freestream_dir'],
                                    calculate_zeta_dot=True))
         # set junction boundary conditions for later phantom cell creation in UVLM
+        if "junction_boundary_condition" in self.data_dict:
         if sum(self.data_dict["junction_boundary_condition"])>0:
             self.generate_phantom_panels_at_junction(aero_tstep)
 
@@ -305,7 +306,7 @@ class Aerogrid(Grid):
             if i_surf in list_surfaces:
                 idx_local_node = list_surfaces.index(i_surf)
                 # assume that there is only one junction per surface yet
-                aero_tstep.flag_zeta_phantom[i_surf][list_local_nodes[idx_local_node]] = True
+                aero_tstep.flag_zeta_phantom[list_local_nodes[idx_local_node], i_surf] = 1
 
 
 
@@ -393,6 +394,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     if node_info['M_distribution'] == 'uniform':
         strip_coordinates_b_frame[1, :] = np.linspace(0.0, 1.0, node_info['M'] + 1)
     elif node_info['M_distribution'] == '1-cos':
+        print("Distribution = ", node_info['M_distribution'])
         domain = np.linspace(0, 1.0, node_info['M'] + 1)
         strip_coordinates_b_frame[1, :] = 0.5*(1.0 - np.cos(domain*np.pi))
     elif node_info['M_distribution'].lower() == 'user_defined':
