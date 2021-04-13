@@ -259,6 +259,6 @@ def get_elems_nodes_list(beam, ibody):
     """
     int_list = np.arange(0, beam.num_elem, 1)
     ibody_elements = int_list[beam.body_number == ibody]
-    ibody_nodes = list(set(beam.connectivities[ibody_elements, :].reshape(-1)))
-
+    ibody_nodes = np.sort(np.unique(beam.connectivities[ibody_elements, :].reshape(-1)))
+    
     return ibody_elements, ibody_nodes
