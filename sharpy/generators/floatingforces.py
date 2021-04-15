@@ -269,7 +269,7 @@ def response_freq_dep_matrix(H, omega_H, q, it_, dt):
     # Compute the inverse Fourier tranform
     f[:] = np.real(ifft(fourier_f, axis=0)[it_, :])
 
-    (T, yout, xout) = lsim(H, q[:it_ + 1, :], T, X0=X0)
+    # (T, yout, xout) = lsim(H, q[:it_ + 1, :], T, X0=X0)
 
     return f
 
@@ -767,7 +767,6 @@ class FloatingForces(generator_interface.BaseGenerator):
         # Renaming for convenience
         data = params['data']
         struct_tstep = params['struct_tstep']
-        aero_tstep = params['aero_tstep']
         force_coeff = params['force_coeff']
         k = params['fsi_substep']
 
