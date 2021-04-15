@@ -734,13 +734,9 @@ class DynamicCoupled(BaseSolver):
                 return False
 
         # convergence
-        if k > self.settings['minimum_steps'] - 1:
-            if self.res < self.settings['fsi_tolerance']:
-                if self.res_dqdt < self.settings['fsi_tolerance']:
-                    if res_forces < self.settings['fsi_tolerance']:
-                        return True
+        return k > self.settings['minimum_steps'] - 1 and \
+            all(x < self.settings['fsi_tolerance'] for x in (self.res, self.res_dqdt, res_forces))
 
-        return False
 
     def map_forces(self, aero_kstep, structural_kstep, unsteady_forces_coeff=1.0):
         # set all forces to 0
