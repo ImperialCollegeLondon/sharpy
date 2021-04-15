@@ -6,7 +6,7 @@ import sharpy.aero.utils.uvlmlib as uvlmlib
 
 
 @generator_interface.generator
-class PolarAerodynamicForces(generator_interface.BaseGenerator):
+class PolarCorrection(generator_interface.BaseGenerator):
     """
     This generator corrects the aerodynamic forces from UVLM based on the airfoil polars provided by the user in the
     ``aero.h5`` file. Polars are entered for each airfoil, in a table comprising ``AoA (rad), CL, CD, CM``.
@@ -314,7 +314,7 @@ def span_chord(i_node_surf, zeta):
 
 
 @generator_interface.generator
-class EfficiencyAerodynamicForces(generator_interface.BaseGenerator):
+class EfficiencyCorrection(generator_interface.BaseGenerator):
     """
     The efficiency and constant terms are introduced by means of the array ``airfoil_efficiency`` in the ``aero.h5``
 
