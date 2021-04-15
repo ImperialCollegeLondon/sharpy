@@ -329,11 +329,19 @@ class NonLinearDynamicMultibody(_BaseStructural):
         else:
             self.settings['dt'] = dt
 
+        if self.data.ts == 1:
+            compute_psi_local = True
+            print("Computing psi local")
+        else:
+            compute_psi_local = False
+
         if self.data.structure.ini_info.in_global_AFoR:
-            self.data.structure.ini_info.whole_structure_to_local_AFoR(self.data.structure)
+            self.data.structure.ini_info.whole_structure_to_local_AFoR(self.data.structure,
+                                                                       compute_psi_local)
 
         if structural_step.in_global_AFoR:
-            structural_step.whole_structure_to_local_AFoR(self.data.structure)
+            structural_step.whole_structure_to_local_AFoR(self.data.structure,
+                                                          compute_psi_local)
 
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
