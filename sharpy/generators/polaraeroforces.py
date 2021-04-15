@@ -11,15 +11,54 @@ class PolarCorrection(generator_interface.BaseGenerator):
     This generator corrects the aerodynamic forces from UVLM based on the airfoil polars provided by the user in the
     ``aero.h5`` file. Polars are entered for each airfoil, in a table comprising ``AoA (rad), CL, CD, CM``.
 
+    This ``generator_id = 'PolarCorrection'`` and can be used in the coupled solvers through the
+    ``correct_forces_method`` setting as:
+
+    .. python::
+        settings = dict()  # SHARPy settings
+        settings['StaticCoupled']['correct_forces_method'] = 'PolarCorrection'
+        settings['StaticCoupled']['correct_forces_settings'] = {'cd_from_cl': 'off',
+                                                                'correct_lift': 'off',
+                                                                'compute_actual_aoa': 'off',
+                                                                'compute_uind': 'off'
+                                                                'moment_from_polar': 'off'}
+
     These are the steps needed to correct the forces:
 
-        * The force coming from UVLM is divided into induced drag (parallel to the incoming flow velocity) and lift
+        1. The force coming from UVLM is divided into induced drag (parallel to the incoming flow velocity) and lift
           (the remaining force).
-        * The angle of attack is computed based on that lift force and the angle of zero lift computed form the
-          airfoil polar and assuming a slope of :math:`2 \pi`
-        * The drag force is computed based on the angle of attack and the polars provided by the user
 
+    If ``cd_from_cl == 'on'``.
+        2. The viscous drag and pitching moment is found at the computed lift coefficient and the forces and
+           moments updated
 
+    Else, the angle of attack is computed based on a few options:
+
+        If ``compute_actual_aoa == 'on'``
+
+            2. The angle of attack is computed between the free stream velocity and the
+               chord of the section. If the setting ``compute_uind == 'on'`` the vortex induced velocity (downwash) is
+               found by taking the difference between the induced velocity far upstream and downstream (20 chords).
+
+        Else, if ``compute_actual_aoa == 'off'`` (recommended):
+            2. The angle of attack is computed based on that lift force and the angle of zero lift computed from the
+               airfoil polar and assuming a slope of :math:`2 \pi`
+
+        3. The drag force is computed based on the angle of attack and the polars provided by the user
+
+        4. If ``correct_lift == 'on'``, the lift coefficient is also corrected with the polar data. Else only the
+           UVLM results are used.
+
+    The pitching moment is added in a similar manner to the viscous drag. However, if ``moment_from_polar == 'on'``
+    and ``correct_lift == 'on'``, the total moment (the one used for the FSI) is computed just from polar data,
+    overriding any moment computed in SHARPy. That is, the moment will include the polar pitching moment, and moments
+    due to lift and drag computed from the polar data.
+
+    Note:
+        Computing the induced velocity far upstream and far downstream is performance intensive and may not be a
+        robust method when multiple surfaces are present downstream or upstream, as they will impact the result.
+        It is recommended that the user chooses to use the Cd given by the aoa required to give the Cl with a 2pi lift
+        curve slope (i.e. ``compute_actual_aoa = 'off'``)
     """
     generator_id = 'PolarCorrection'
 
