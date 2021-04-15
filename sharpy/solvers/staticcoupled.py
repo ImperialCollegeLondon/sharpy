@@ -174,11 +174,6 @@ class StaticCoupled(BaseSolver):
                     self.data.aero.aero_dict)
 
                 if self.correct_forces:
-                    # struct_forces = self.correct_forces_function(self.data,
-                    #                     self.data.aero.timestep_info[self.data.ts],
-                    #                     self.data.structure.timestep_info[self.data.ts],
-                    #                     struct_forces,
-                    #                     rho=self.aero_solver.settings['rho'], correct_lift=True)
                     struct_forces = \
                         self.correct_forces_generator.generate(aero_kstep=self.data.aero.timestep_info[self.data.ts],
                                                                structural_kstep=self.data.structure.timestep_info[self.data.ts],
