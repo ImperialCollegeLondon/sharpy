@@ -493,6 +493,7 @@ class DynamicCoupled(BaseSolver):
                     structural_kstep, aero_kstep = self.process_controller_output(
                         state)
 
+            k = 0
             # compute unsteady contribution
             force_coeff = 0.0
             unsteady_contribution = False
@@ -523,7 +524,6 @@ class DynamicCoupled(BaseSolver):
             controlled_structural_kstep = structural_kstep.copy()
             controlled_aero_kstep = aero_kstep.copy()
 
-            k = 0
             for k in range(self.settings['fsi_substeps'] + 1):
                 if (k == self.settings['fsi_substeps'] and
                         self.settings['fsi_substeps']):
