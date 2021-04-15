@@ -112,37 +112,9 @@ class PolarCorrection(generator_interface.BaseGenerator):
         # Compute induced velocities at the structural points
         cga = algebra.quat2rotation(structural_kstep.quat)
         pos_g = np.array([cga.dot(structural_kstep.pos[inode]) + np.array([0, 0, 0]) for inode in range(nnode)])
-        target_test = np.zeros((100, 3))
-        target_test[:, 0] = np.linspace(-50, 50, 100)
-        # uind_test = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(aero_kstep,
-        #                                                                target_triads=target_test,
-        #                                                                vortex_radius=self.vortex_radius,
-        #                                                                for_pos=structural_kstep.for_pos,
-        #                                                                ncores=8)
-        # np.savetxt('./uind_midspan_finite.txt', np.column_stack((target_test, uind_test)))
-        # if compute_induced_velocity:
-        #     pos_pitot_upstream = np.zeros((nnode, 3))
-        #     pos_pitot_downstream = np.zeros((nnode, 3))
-        #     pos_pitot_upstream += (pos_g + np.array([-25, 0, 0]))
-        #     pos_pitot_downstream += (pos_g + np.array([45, 0, 0]))
-        #     uind_pitot = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(aero_kstep,
-        #                                                                    target_triads=np.vstack((pos_pitot_upstream,
-        #                                                                                             pos_pitot_downstream)),
-        #                                                                    vortex_radius=self.vortex_radius,
-        #                                                                    for_pos=structural_kstep.for_pos,
-        #                                                                    ncores=8)
-        #     uind_pitot_upstream = uind_pitot[:nnode]
-        #     uind_pitot_downstream = uind_pitot[nnode:]
-        #
-        #     uind_2 = uind_pitot_downstream - uind_pitot_upstream
-        #     uind_2[:, 1] *= 0  # or where bocos = -1
-        #
-        # else:
-        #     uind = np.zeros_like(structural_kstep.pos)
 
         for inode in range(nnode):
             new_struct_forces[inode, :] = struct_forces[inode, :].copy()
-            print('i_node', inode)
             if aero_dict['aero_node'][inode]:
                 ielem, inode_in_elem = structure.node_master_elem[inode]
                 iairfoil = aero_dict['airfoil_distribution'][ielem, inode_in_elem]
@@ -167,18 +139,18 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 dir_freestream = algebra.unit_vector(freestream)
                 dir_urel = algebra.unit_vector(urel)
 
-                if compute_induced_velocity:
+                if compute_induced_velocity and compute_actual_aoa:
                     # TODO: for performance improvement take this out of loop
                     chords_upstream = 20
                     chords_downstream = 20
                     pitot_upstream = pos_g[inode] - chords_upstream * chord * dir_urel
                     pitot_downstream = pos_g[inode] + chords_downstream * chord * dir_urel
-                    uind_pitot = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(aero_kstep,
-                                                                                         target_triads=np.vstack((pitot_upstream,
-                                                                                                                  pitot_downstream)),
-                                                                                         vortex_radius=self.vortex_radius,
-                                                                                         for_pos=structural_kstep.for_pos,
-                                                                                         ncores=8)
+                    uind_pitot = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(
+                        aero_kstep,
+                        target_triads=np.vstack((pitot_upstream, pitot_downstream)),
+                        vortex_radius=self.vortex_radius,
+                        for_pos=structural_kstep.for_pos,
+                        ncores=8)
                     uind_pitot_upstream = uind_pitot[0]
                     uind_pitot_downstream = uind_pitot[1]
 
@@ -200,16 +172,11 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 # Divide the force in drag and lift
                 # drag_force = np.dot(force, dir_urel) * dir_urel
                 drag_force = np.dot(force, dir_freestream) * dir_freestream
-                print('force_g', force / coef)
-                print('drag', drag_force / coef)
-                print('u_rel', urel)
                 lift_force = force - drag_force
 
                 # Compute the associated lift
                 cl = np.linalg.norm(lift_force) / coef
                 cd_sharpy = np.linalg.norm(drag_force) / coef
-                print('cl sharpy', cl)
-                print('cd sharpy', cd_sharpy)
 
                 if cd_from_cl:
                     # Compute the drag from the UVLM computed lift
@@ -220,16 +187,14 @@ class PolarCorrection(generator_interface.BaseGenerator):
                     if compute_actual_aoa:
                         # i) Compute the actual aoa given the induced velocity
                         aoa = np.arccos(dir_chord.dot(dir_urel) / np.linalg.norm(dir_urel) / np.linalg.norm(dir_chord))
-                        print('Actual AoA', aoa * 180 / np.pi)
-                        # print('AoA via Induced', aoa_section * 180 / np.pi)
                         cl_polar, cd, cm = polar.get_coefs(aoa)
                     else:
                         # ii) Compute the angle of attack assuming that UVLM gives a 2pi polar and using the CL calculated
                         # from the UVLM
                         aoa_deg_2pi = polar.get_aoa_deg_from_cl_2pi(cl)
 
-                        # Compute the coefficients assocaited to that angle of attack
-                        cl_polar, cd, cm = polar.get_coefs(aoa_deg_2pi)
+                        # Compute the coefficients associated to that angle of attack
+                        cl_polar, cd, cm = polar.get_coefs(aoa_deg_2pi * np.pi / 180)
 
                     if correct_lift:
                         # Use polar generated CL rather than UVLM computed CL
