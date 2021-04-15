@@ -20,12 +20,7 @@ def compute_xf_zf(hf, vf, l, w, EA, cb):
         Fairlead location (xf, zf) computation
     """
 
-    # Rename some terms for convenience
-    root1 = np.sqrt(1. + (vf/hf)**2)
-    root2 = np.sqrt(1. + ((vf - w*l)/hf)**2)
-    ln1 = np.log(vf/hf + root1)
-    ln2 = np.log((vf - w*l)/hf + root2)
-    lb = l - vf/w
+    root1, root2, ln1, ln2, lb = rename_terms(vf, hf, w, l)
 
     # Define if there is part of the mooring line on the bed
     if lb <= 0:
@@ -52,12 +47,7 @@ def compute_jacobian(hf, vf, l, w, EA, cb):
         in function compute_xf_zf
     """
 
-    # Rename some terms for convenience
-    root1 = np.sqrt(1. + (vf/hf)**2)
-    root2 = np.sqrt(1. + ((vf - w*l)/hf)**2)
-    ln1 = np.log(vf/hf + root1)
-    ln2 = np.log((vf - w*l)/hf + root2)
-    lb = l - vf/w
+    root1, root2, ln1, ln2, lb = rename_terms(vf, hf, w, l)
 
     # Compute their deivatives
     der_root1_hf = 0.5*(1. + (vf/hf)**2)**(-0.5)*(2*vf/hf*(-vf/hf/hf))
@@ -108,6 +98,17 @@ def compute_jacobian(hf, vf, l, w, EA, cb):
 
     return J
 
+
+def rename_terms(vf, hf, w, l):
+    """
+        Rename some terms for convenience
+    """
+    root1 = np.sqrt(1. + (vf/hf)**2)
+    root2 = np.sqrt(1. + ((vf - w*l)/hf)**2)
+    ln1 = np.log(vf/hf + root1)
+    ln2 = np.log((vf - w*l)/hf + root2)
+    lb = l - vf/w
+    return root1, root2, ln1, ln2, lb
 
 def quasisteady_mooring(xf, zf, l, w, EA, cb, hf0=None, vf0=None):
     """
