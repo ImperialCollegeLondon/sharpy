@@ -8,7 +8,6 @@ import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
-import sharpy.utils.correct_forces as cf
 import sharpy.utils.generator_interface as gen_utils
 
 @solver
