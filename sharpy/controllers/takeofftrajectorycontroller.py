@@ -132,7 +132,7 @@ class TakeOffTrajectoryController(controller_interface.BaseController):
         """
         # get current state input
         # note: with or without the -1?
-        time = (data.ts - 1)*self.settings['dt'].value
+        time = (data.ts - 1)*self.settings['dt']
         i_current = data.ts
 
         try:
@@ -177,13 +177,13 @@ class TakeOffTrajectoryController(controller_interface.BaseController):
                                                     traj_command[1],
                                                     traj_command[2]))
 
-        if self.settings['initial_ramp_length_structural_substeps'].value >= 0:
+        if self.settings['initial_ramp_length_structural_substeps'] >= 0:
             if (i_current <
-                    self.settings['initial_ramp_length_structural_substeps'].value):
+                    self.settings['initial_ramp_length_structural_substeps']):
                 controlled_state['info']['structural_substeps'] = \
                         ct.c_int(i_current - 1)
             elif (i_current ==
-                  self.settings['initial_ramp_length_structural_substeps'].value):
+                  self.settings['initial_ramp_length_structural_substeps']):
                 controlled_state['info']['structural_substeps'] = None
 
         return controlled_state
@@ -230,18 +230,3 @@ class TakeOffTrajectoryController(controller_interface.BaseController):
 
     def __exit__(self, *args):
         self.log.close()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

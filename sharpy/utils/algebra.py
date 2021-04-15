@@ -16,15 +16,23 @@ from warnings import warn
 def quat2rot(quat):
     warn('quat2rot(quat) is obsolete! Use quat2rotation(quat).T instead!', stacklevel=2)
     return quat2rotation(quat).T
+
+
 def crv2rot(psi):
     warn('crv2rot(psi) is obsolete! Use crv2rotation(psi) instead!', stacklevel=2)
     return crv2rotation(psi)
+
+
 def rot2crv(rot):
     warn('rot2crv(rot) is obsolete! Use rotation2crv(rot.T) instead!', stacklevel=2)
     return rotation2crv(rot.T)
+
+
 def triad2rot(xb,yb,zb):
     warn('triad2rot(xb,yb,zb) is obsolete! Use triad2rotation(xb,yb,zb).T instead!', stacklevel=2)
     return triad2rotation(xb,yb,zb).T
+
+
 def mat2quat(rot):
     """
     Rotation matrix to quaternion function.
@@ -42,6 +50,7 @@ def mat2quat(rot):
 
     return rotation2quat(rot.T)
 #######
+
 
 def tangent_vector(in_coord, ordering=None):
     r"""
@@ -112,7 +121,7 @@ def tangent_vector(in_coord, ordering=None):
     for inode in range(n_nodes):
         if np.dot(tangent[inode, :], fake_tangent[inode, :]) < 0:
             tangent[inode, :] *= -1
-    
+
     return tangent, polyfit_vec
 
 
@@ -237,8 +246,6 @@ def triad2rotation(xb, yb, zb):
     :return: rotation matrix Rab
     """
     return np.column_stack((xb, yb, zb))
-
-
 
 
 def rot_matrix_2d(angle):
@@ -485,6 +492,7 @@ def crv_bounds(crv_ini):
     return crv
     # return crv_ini
 
+
 def triad2crv(xb, yb, zb):
     return rotation2crv(triad2rotation(xb, yb, zb))
 
@@ -561,8 +569,7 @@ def rotation2crv(Cab):
     """
 
     if np.linalg.norm(Cab) < 1e-6:
-        raise AttributeError(\
-                 'Element Vector V is not orthogonal to reference line (51105)')
+        raise AttributeError('Element Vector V is not orthogonal to reference line (51105)')
 
     quat = rotation2quat(Cab)
     psi = quat2crv(quat)
@@ -573,7 +580,6 @@ def rotation2crv(Cab):
         psi[2] = Cab[0, 1]
 
     return crv_bounds(psi)
-
 
 
 def crv2tan(psi):
@@ -729,8 +735,6 @@ def rotation3d_x(angle):
         np.array: 3x3 rotation matrix about the x axis
 
     """
-
-
     c = np.cos(angle)
     s = np.sin(angle)
     mat = np.zeros((3, 3))
@@ -768,6 +772,7 @@ def rotation3d_y(angle):
     mat[1, :] = [0.0, 1.0, 0.0]
     mat[2, :] = [-s, 0.0,  c]
     return mat
+
 
 def rotation3d_z(angle):
     r"""
@@ -891,11 +896,11 @@ def quat2euler(quat):
     delta = quat[0]*quat[2] - quat[1]*quat[3]
 
     if np.abs(delta) > 0.9 * 0.5:
-        warn('Warning, approaching singularity. Delta %.3f for singularity at Delta=0.5')
+        warn('Warning, approaching singularity. Delta {:.3f} for singularity at Delta=0.5'.format(np.abs(delta)))
 
-    yaw = -np.arctan(2*(q0*q3+q1*q2)/(1-2*(q2**2+q3**2)))
+    yaw = np.arctan(2*(q0*q3+q1*q2)/(1-2*(q2**2+q3**2)))
     pitch = np.arcsin(2*delta)
-    roll = -np.arctan(2*(q0*q1+q2*q3)/(1-2*(q1**2+q2**2)))
+    roll = np.arctan(2*(q0*q1+q2*q3)/(1-2*(q1**2+q2**2)))
 
     return np.array([roll, pitch, yaw])
 
@@ -1054,6 +1059,7 @@ def der_CquatT_by_v(q,v):
                          [q0*vz - q1*vy + q2*vx, -q0*vy - q1*vz + q3*vx,
                                 q0*vx - q2*vz + q3*vy, q1*vx + q2*vy + q3*vz]])
 
+
 def der_Tan_by_xv(fv0,xv):
     """
     Being fv0 a cartesian rotation vector and Tan the corresponding tangential
@@ -1071,23 +1077,23 @@ def der_Tan_by_xv(fv0,xv):
         by FDs. A more compact expression may be possible.
     """
 
-    f0=np.linalg.norm(fv0)
-    sf0,cf0=np.sin(f0),np.cos(f0)
+    f0 = np.linalg.norm(fv0)
+    sf0, cf0 = np.sin(f0), np.cos(f0)
 
-    fv0_x,fv0_y,fv0_z=fv0
-    xv_x,xv_y,xv_z=xv
+    fv0_x, fv0_y, fv0_z = fv0
+    xv_x, xv_y, xv_z = xv
 
-    f0p2=f0**2
-    f0p3=f0**3
-    f0p4=f0**4
+    f0p2 = f0 ** 2
+    f0p3 = f0 ** 3
+    f0p4 = f0 ** 4
 
-    rs01=sf0/f0
-    rs03=sf0/f0p3
-    rc02=(cf0 - 1)/f0p2
-    rc04=(cf0 - 1)/f0p4
+    rs01 = sf0 / f0
+    rs03 = sf0 / f0p3
+    rc02 = (cf0 - 1) / f0p2
+    rc04 = (cf0 - 1) / f0p4
 
-    Ts02=(1 - rs01)/f0p2
-    Ts04=(1 - rs01)/f0p4
+    Ts02 = (1 - rs01) / f0p2
+    Ts04 = (1 - rs01) / f0p4
 
     # if f0<1e-8: rs01=1.0 # no need
     return np.array(
@@ -1150,6 +1156,7 @@ def der_Tan_by_xv(fv0,xv):
           xv_z*((-fv0_x**2 - fv0_y**2)*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 -
             2*fv0_z*(1 - rs01)*(-fv0_x**2 - fv0_y**2)/f0p4)]])
     # end der_Tan_by_xv
+
 
 def der_TanT_by_xv(fv0,xv):
     """
@@ -1221,7 +1228,6 @@ def der_TanT_by_xv(fv0,xv):
     return der_TanT_by_xv
 
 
-
 def der_Ccrv_by_v(fv0,v):
     r"""
     Being C=C(fv0) the rotational matrix depending on the Cartesian rotation
@@ -1263,21 +1269,8 @@ def der_CcrvT_by_v(fv0,v):
     return np.dot( skew( np.dot(Cba0,v) ),T0)
 
 
-def cross3(v,w):
-    """
-    Computes the cross product of two vectors (v and w) with size 3
-    """
-
-    res = np.zeros((3,),)
-    res[0] = v[1]*w[2] - v[2]*w[1]
-    res[1] = -v[0]*w[2] + v[2]*w[0]
-    res[2] = v[0]*w[1] - v[1]*w[0]
-
-    return res
-
-
 def der_quat_wrt_crv(quat0):
-    '''
+    """
     Provides change of quaternion, dquat, due to elementary rotation, dcrv,
     expressed as a 3 components Cartesian rotation vector such that
 
@@ -1302,11 +1295,11 @@ def der_quat_wrt_crv(quat0):
               .. math::  algebra.quat2rotation(quat0 + dquat),
 
               where dquat is the output of this function.
-    '''
+    """
 
-    Der=np.zeros((4,3))
-    Der[0,:]=-0.5*quat0[1:]
-    Der[1:,:]=-0.5*( -quat0[0]*np.eye(3) - skew(quat0[1:]) )
+    Der = np.zeros((4, 3))
+    Der[0, :] = -0.5 * quat0[1:]
+    Der[1:, :] = -0.5 * (-quat0[0] * np.eye(3) - skew(quat0[1:]))
     return Der
 
 
@@ -1387,10 +1380,6 @@ def der_Ceuler_by_v(euler, v):
     v2 = v[1]
     v3 = v[2]
 
-    # res[0, 0] = 0
-    # res[0, 1] = - v1*st*cs + v2*st*ss + v3*ct
-    # res[0, 2] = -v1*ct*ss - v2*ct*cs
-
     res[0, 0] = v2*(sp*ss + cp*st*cp) + v3*(cp*ss - sp*st*cs)
     res[0, 1] = v1*(-st*cs) + v2*(sp*ct*cs) + v3*(cp*ct*cs)
     res[0, 2] = v1*(ct*ss) + v2*(-cp*cs - sp*st*ss) + v3*(sp*cs-cp*st*ss)
@@ -1402,15 +1391,8 @@ def der_Ceuler_by_v(euler, v):
     res[2, 0] = v2*(cp*ct) + v3*(-sp*ct)
     res[2, 1] = v1*(-ct) + v2*(-sp*st) + v3*(-cp*st)
 
-    # res[1, 0] = v1*(-sp*ss + cp*st*cs) + v2*(-sp*cs - cp*st*ss) - v3*cp*ct
-    # res[1, 1] = v1*(sp*ct*cs) - v2*sp*ct*ss + v3*sp*st
-    # res[1, 2] = v1*(cp*cs - sp*st*ss) + v2*(-cp*ss - sp*st*cs)
-    #
-    # res[2, 0] = v1*(cp*ss + sp*st*cs) + v2*(cp*cs - sp*st*ss) + v3*(-sp*ct)
-    # res[2, 1] = -v1*cp*ct*cs + v2*cp*ct*ss - v3*cp*st
-    # res[2, 2] = v1*(sp*cs + cp*st*ss) + v2*(-sp*ss + cp*st*cs)
-
     return res
+
 
 def der_Peuler_by_v(euler, v):
     r"""
@@ -1500,23 +1482,12 @@ def der_Peuler_by_v(euler, v):
     v2 = v[1]
     v3 = v[2]
 
-    # res[0, 0] = v2*(-sp*ss + cp*st*cs) + v3*(cp*ss + sp*st*cs)
-    # res[0, 1] = v1*(-st*cs) + v2*(sp*ct*cs) + v3*(-cp*ct*cs)
-    # res[0, 2] = v1*(-ct*ss) + v2*(cp*cs - sp*st*ss) + v3*(sp*cs + cp*st*ss)
-
     res[0, 1] = v1*(-st*cs) + v2*(-st*ss) - v3*ct
     res[0, 2] = -v1*(ct*ss) + v2*ct*cs
-
-    # res[1, 0] = v1*0 + v2*(-sp*cs - cp*st*ss) + v3*(cp*cs - sp*st*ss)
-    # res[1, 1] = v1*(st*ss) + v2*(-sp*ct*ss) + v3*(cp*ct*ss)
-    # res[1, 2] = v1*(-ct*cs) + v2*(-cp*ss - sp*st*cs) + v3*(-sp*ss + cp*st*cs)
 
     res[1, 0] = v1*(sp*ss + cp*st*cs) + v2*(-sp*cs + cp*st*ss) + v3 * (cp*ct)
     res[1, 1] = v1*(sp*ct*cs) + v2*(sp*ct*ss) + v3*(-sp*st)
     res[1, 2] = v1*(-cp*cs - sp*st*ss) + v2*(-cp*ss + sp*st*cs)
-
-    # res[2, 0] = v1*0 + v2*(-cp*ct) + v3*(-sp*ct)
-    # res[2, 1] = v1*ct + v2*(sp*st) + v3*(-cp*st)
 
     res[2, 0] = v1*(cp*ss-sp*st*cs) + v2*(-cp*cs-sp*st*ss) + v3*(-sp*ct)
     res[2, 1] = v1*(cp*ct*cs) + v2*(cp*ct*ss) + v3*(-cp*st)
@@ -1621,6 +1592,7 @@ def der_Ceuler_by_v_NED(euler, v):
 
     return res
 
+
 def cross3(v,w):
     """
     Computes the cross product of two vectors (v and w) with size 3
@@ -1632,56 +1604,6 @@ def cross3(v,w):
     res[2] = v[0]*w[1] - v[1]*w[0]
 
     return res
-
-
-def quat2euler(quat):
-    r"""
-    Quaternion to Euler angles transformation.
-
-    Transforms a normalised quaternion :math:`\chi\longrightarrow[\phi, \theta, \psi]` to roll, pitch and yaw angles
-    respectively.
-
-    The transformation is valid away from the singularity present at:
-
-    .. math:: \Delta = \frac{1}{2}
-
-    where :math:`\Delta = q_0 q_2 - q_1 q_3`.
-
-    The transformation is carried out as follows:
-
-    .. math::
-        \psi &= \arctan{\left(2\frac{q_0q_3+q_1q_2}{1-2(q_2^2+q_3^2)}\right)} \\
-        \theta &= \arcsin(2\Delta) \\
-        \phi &= \arctan\left(2\frac{q_0q_1 + q_2q_3}{1-2(q_1^2+q_2^2)}\right)
-
-    Args:
-        quat (np.ndarray): Normalised quaternion.
-
-    Returns:
-        np.ndarray: Array containing the Euler angles :math:`[\phi, \theta, \psi]` for roll, pitch and yaw, respectively.
-
-    References:
-        Blanco, J.L. - A tutorial on SE(3) transformation parameterizations and on-manifold optimization. Technical
-        Report 012010. ETS Ingenieria Informatica. Universidad de Malaga. 2013.
-    """
-
-    assert np.abs(np.linalg.norm(quat)-1.0) < 1.e6, 'Input quaternion is not normalised'
-
-    q0 = quat[0]
-    q1 = quat[1]
-    q2 = quat[2]
-    q3 = quat[3]
-
-    delta = quat[0]*quat[2] - quat[1]*quat[3]
-
-    if np.abs(delta) > 0.9 * 0.5:
-        warn('Warning, approaching singularity. Delta %.3f for singularity at Delta=0.5'%np.abs(delta))
-
-    yaw = -np.arctan(2*(q0*q3+q1*q2)/(1-2*(q2**2+q3**2)))
-    pitch = np.arcsin(2*delta)
-    roll = -np.arctan(2*(q0*q1+q2*q3)/(1-2*(q1**2+q2**2)))
-
-    return np.array([roll, pitch, yaw])
 
 
 def deuler_dt(euler):
@@ -1960,3 +1882,94 @@ def normsq3d(v):
         np.ndarray: Square of the norm of the vector
     """
     return v[0]*v[0]+v[1]*v[1]+v[2]*v[2]
+
+
+def get_transformation_matrix(transformation):
+    r"""
+    Returns a projection matrix function between the desired frames of reference.
+
+    Examples:
+
+        The projection matrix :math:`C^GA(\chi)` expresses a vector in the body-attached
+        reference frame ``A`` in the inertial frame ``G``, which is a function of the quaternion.
+
+        .. code-block::
+
+            cga_function = get_transformation_matrix('ga')
+            cga = cga_function(quat)  # The actual projection matrix between A and G for a known quaternion
+
+
+        If the projection involves the ``G`` and ``B`` frames, the output function will take both the quaternion
+        and the CRV as arguments.
+
+        .. code-block::
+
+            cgb_function = get_transformation_matrix('gb')
+            cgb = cgb_function(psi, quat)  # The actual projection matrix between B and G for a known CRV and quaternion
+
+    Args:
+        transformation (str): Desired projection matrix function.
+
+    Returns:
+        function: Function to obtain the desired projection matrix. The function will either take the CRV, the
+          quaternion, or both as arguments.
+
+    Note:
+        If a rotation is desired, it can be achieved by transposing the resulting projection matrix.
+    """
+
+    if transformation == 'ab':
+        cab = crv2rotation
+        return cab
+    elif transformation == 'ba':
+        def cba(psi):
+            return crv2rotation(psi).T
+
+        return cba
+    elif transformation == 'ga':
+        cga = quat2rotation
+        return cga
+    elif transformation == 'ag':
+        def cag(quat):
+            return quat2rotation(quat).T
+
+        return cag
+    elif transformation == 'bg':
+        def cbg(psi, quat):
+            cag = get_transformation_matrix('ag')
+            cba = get_transformation_matrix('ba')
+            return cba(psi).dot(cag(quat))
+
+        return cbg
+    elif transformation == 'gb':
+        def cgb(psi, quat):
+            cab = get_transformation_matrix('ba')
+            cga = get_transformation_matrix('ga')
+            return cga(quat).dot(cab(psi))
+
+        return cgb
+    else:
+        raise NameError('Unknown transformation.')
+
+
+def der_skewp_skewp_v(p, v):
+    """
+    This function computes:
+
+        .. math:: \frac{d}{d\boldsymbol{p}} (\tilde{\boldsymbol{p}} \tilde{\boldsymbol{p}} v)
+    """
+    der = np.zeros((3,3))
+
+    der[0, 0] = v[1]*p[1] + v[2]*p[2]
+    der[0, 1] = -2*v[0]*p[1] + v[1]*p[0]
+    der[0, 2] = -2*v[0]*p[2] + v[2]*p[0]
+
+    der[1, 0] = v[0]*p[1] - 2*v[1]*p[0]
+    der[1, 1] = v[0]*p[0] + v[2]*p[2]
+    der[1, 2] = -2*v[1]*p[2] + v[2]*p[1]
+
+    der[2, 0] = v[0]*p[2] - 2*v[2]*p[0]
+    der[2, 1] = v[1]*p[2] - 2*v[2]*p[1]
+    der[2, 2] = v[0]*p[0] + v[1]*p[1]
+
+    return der

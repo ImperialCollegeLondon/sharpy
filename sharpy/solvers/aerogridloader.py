@@ -69,8 +69,8 @@ class AerogridLoader(BaseSolver):
     settings_default['control_surface_deflection'] = []
     settings_description['control_surface_deflection'] = 'List of control surface generators for each control surface'
 
-    settings_types['control_surface_deflection_generator_settings'] = 'list(dict)'
-    settings_default['control_surface_deflection_generator_settings'] = list(dict())
+    settings_types['control_surface_deflection_generator_settings'] = 'dict'
+    settings_default['control_surface_deflection_generator_settings'] = dict()
     settings_description['control_surface_deflection_generator_settings'] = 'List of dictionaries with the settings ' \
                                                                             'for each generator'
 
@@ -95,6 +95,8 @@ class AerogridLoader(BaseSolver):
         # aero storage
         self.aero = None
 
+        self.wake_shape_generator = None
+
     def initialise(self, data):
         self.data = data
         self.settings = data.settings[self.solver_id]
@@ -111,7 +113,7 @@ class AerogridLoader(BaseSolver):
             self.settings['wake_shape_generator'])
         self.wake_shape_generator = wake_shape_generator_type()
         self.wake_shape_generator.initialise(data,
-                        self.settings['wake_shape_generator_input'])
+                                             self.settings['wake_shape_generator_input'])
 
     def read_files(self):
         # open aero file
@@ -140,8 +142,7 @@ class AerogridLoader(BaseSolver):
                                             'zeta_star': aero_tstep.zeta_star,
                                             'gamma': aero_tstep.gamma,
                                             'gamma_star': aero_tstep.gamma_star,
-                                            'dist_to_orig': aero_tstep.dist_to_orig,
-                                            'wake_conv_vel': aero_tstep.wake_conv_vel})
+                                            'dist_to_orig': aero_tstep.dist_to_orig})
         # keep the call to the wake generator
         # because it might be needed by other solvers
         self.data.aero.wake_shape_generator = self.wake_shape_generator

@@ -1812,11 +1812,9 @@ for case in cases:
                                             'CreateSnapshot',
                                             ],
                                       'postprocessors_settings': {'BeamLoads': {}, # you need to specify the dict even if empty
-                                                                  'BeamPlot': {'folder': route + '/output/',
-                                                                               'include_rbm': 'on',
+                                                                  'BeamPlot': {'include_rbm': 'on',
                                                                                'include_applied_forces': 'on'},
                                                                   'AerogridPlot': {
-                                                                      'folder': route + '/output/',
                                                                       'include_rbm': 'on',
                                                                       'include_applied_forces': 'on',
                                                                       'minus_m_star': 0},
@@ -1853,13 +1851,11 @@ for case in cases:
             'continuous_eigenvalues': 'off',
             'dt': dt,
             'plot_eigenvalues': 'on'}
-        settings['BeamPlot'] = {'folder': route + '/output/',
-            'include_rbm': 'on',
+        settings['BeamPlot'] = {'include_rbm': 'on',
             'include_applied_forces': 'on',
             'include_forward_motion': 'off'}
 
-        settings['AerogridPlot'] = {'folder': route + '/output/',
-                                    'include_rbm': 'on',
+        settings['AerogridPlot'] = {'include_rbm': 'on',
                                     'include_forward_motion': 'off',
                                     'include_applied_forces': 'on',
                                     'minus_m_star': 0,

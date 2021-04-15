@@ -18,20 +18,27 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.exceptions as exc
 import sharpy.utils.correct_forces as cf
 import sharpy.io.network_interface as network_interface
+import sharpy.utils.generator_interface as gen_interface
 
 
 @solver
 class DynamicCoupled(BaseSolver):
     """
-    The :class:`~sharpy.solvers.dynamiccoupled.DynamicCoupled` solver couples the aerodynamic and structural solvers of choice to march forward in time
-    the aeroelastic system's solution.
+    The :class:`~sharpy.solvers.dynamiccoupled.DynamicCoupled` solver couples the aerodynamic and structural solvers
+    of choice to march forward in time the aeroelastic system's solution.
 
-    Using the :class:`~sharpy.solvers.dynamiccoupled.DynamicCoupled` solver requires that an instance of the ``StaticCoupled`` solver is called in the
-    SHARPy solution ``flow`` when defining the problem case.
+    Using the :class:`~sharpy.solvers.dynamiccoupled.DynamicCoupled` solver requires that an instance of the
+    ``StaticCoupled`` solver is called in the SHARPy solution ``flow`` when defining the problem case.
 
     Input data (from external controllers) can be received and data sent using the SHARPy network
     interface, specified through the setting ``network_settings`` of this solver. For more detail on how to send
     and receive data see the :class:`~sharpy.io.network_interface.NetworkLoader` documentation.
+
+    Changes to the structural properties or external forces that depend on the instantaneous situation of the system
+    can be applied through ``runtime_generators``. These runtime generators are parsed through dictionaries, with the
+    key being the name of the generator and the value the settings for such generator. The currently available
+    ``runtime_generators`` are :class:`~sharpy.generators.externalforces.ExternalForces` and
+    :class:`~sharpy.generators.modifystructure.ModifyStructure`.
 
     """
     solver_id = 'DynamicCoupled'
@@ -162,6 +169,12 @@ class DynamicCoupled(BaseSolver):
                                                ':class:`~sharpy.io.network_interface.NetworkLoader` for supported ' \
                                                'entries'
 
+    settings_types['runtime_generators'] = 'dict'
+    settings_default['runtime_generators'] = dict()
+    settings_description['runtime_generators'] = 'The dictionary keys are the runtime generators to be used. ' \
+                                                 'The dictionary values are dictionaries with the settings ' \
+                                                 'needed by each generator.'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
@@ -200,11 +213,14 @@ class DynamicCoupled(BaseSolver):
         self.network_loader = None
         self.set_of_variables = None
 
+        self.runtime_generators = dict()
+        self.with_runtime_generators = False
+
     def get_g(self):
         """
         Getter for ``g``, the gravity value
         """
-        return self.structural_solver.settings['gravity'].value
+        return self.structural_solver.settings['gravity']
 
     def set_g(self, new_g):
         """
@@ -216,7 +232,7 @@ class DynamicCoupled(BaseSolver):
         """
         Getter for ``rho``, the density value
         """
-        return self.aero_solver.settings['rho'].value
+        return self.aero_solver.settings['rho']
 
     def set_rho(self, new_rho):
         """
@@ -244,8 +260,8 @@ class DynamicCoupled(BaseSolver):
 
         self.dt = self.settings['dt']
         self.substep_dt = (
-            self.dt.value/(self.settings['structural_substeps'].value + 1))
-        self.initial_n_substeps = self.settings['structural_substeps'].value
+            self.dt/(self.settings['structural_substeps'] + 1))
+        self.initial_n_substeps = self.settings['structural_substeps']
 
         self.print_info = self.settings['print_info']
         if self.settings['cleanup_previous_solution']:
@@ -304,6 +320,15 @@ class DynamicCoupled(BaseSolver):
             self.network_loader = network_interface.NetworkLoader()
             self.network_loader.initialise(in_settings=self.settings['network_settings'])
 
+        # initialise runtime generators
+        self.runtime_generators = dict()
+        if self.settings['runtime_generators']:
+            self.with_runtime_generators = True
+            for id, param in self.settings['runtime_generators'].items():
+                gen = gen_interface.generator_from_string(id)
+                self.runtime_generators[id] = gen()
+                self.runtime_generators[id].initialise(param, data=self.data)
+
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
             # copy last info to first
@@ -357,8 +382,8 @@ class DynamicCoupled(BaseSolver):
                 if info_k == 'structural_substeps':
                     if info_v is not None:
                         self.substep_dt = (
-                            self.settings['dt'].value/(
-                                self.settings['structural_substeps'].value + 1))
+                            self.settings['dt']/(
+                                self.settings['structural_substeps'] + 1))
 
                 if info_k == 'structural_solver':
                     if info_v is not None:
@@ -443,7 +468,7 @@ class DynamicCoupled(BaseSolver):
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
         for self.data.ts in range(
                 len(self.data.structure.timestep_info),
-                self.settings['n_time_steps'].value + 1):
+                self.settings['n_time_steps'] + 1):
             initial_time = time.perf_counter()
 
             # network only
@@ -468,6 +493,15 @@ class DynamicCoupled(BaseSolver):
                     structural_kstep, aero_kstep = self.process_controller_output(
                         state)
 
+            # Add external forces
+            if self.with_runtime_generators:
+                params = dict()
+                params['data'] = self.data
+                params['struct_tstep'] = structural_kstep
+                params['aero_tstep'] = aero_kstep
+                for id, runtime_generator in self.runtime_generators.items():
+                    runtime_generator.generate(params)
+
             self.time_aero = 0.0
             self.time_struc = 0.0
 
@@ -477,8 +511,8 @@ class DynamicCoupled(BaseSolver):
             controlled_aero_kstep = aero_kstep.copy()
 
             k = 0
-            for k in range(self.settings['fsi_substeps'].value + 1):
-                if (k == self.settings['fsi_substeps'].value and
+            for k in range(self.settings['fsi_substeps'] + 1):
+                if (k == self.settings['fsi_substeps'] and
                         self.settings['fsi_substeps']):
                     print_res = 0 if self.res_dqdt == 0. else np.log10(self.res_dqdt)
                     cout.cout_wrap(("The FSI solver did not converge!!! residual: %f" % print_res))
@@ -496,11 +530,11 @@ class DynamicCoupled(BaseSolver):
                 # compute unsteady contribution
                 force_coeff = 0.0
                 unsteady_contribution = False
-                if self.settings['include_unsteady_force_contribution'].value:
-                    if self.data.ts > self.settings['steps_without_unsteady_force'].value:
+                if self.settings['include_unsteady_force_contribution']:
+                    if self.data.ts > self.settings['steps_without_unsteady_force']:
                         unsteady_contribution = True
-                        if k < self.settings['pseudosteps_ramp_unsteady_force'].value:
-                            force_coeff = k/self.settings['pseudosteps_ramp_unsteady_force'].value
+                        if k < self.settings['pseudosteps_ramp_unsteady_force']:
+                            force_coeff = k/self.settings['pseudosteps_ramp_unsteady_force']
                         else:
                             force_coeff = 1.
 
@@ -539,10 +573,10 @@ class DynamicCoupled(BaseSolver):
                 copy_structural_kstep = structural_kstep.copy()
                 ini_time_struc = time.perf_counter()
                 for i_substep in range(
-                        self.settings['structural_substeps'].value + 1):
+                        self.settings['structural_substeps'] + 1):
                     # run structural solver
                     coeff = ((i_substep + 1)/
-                             (self.settings['structural_substeps'].value + 1))
+                             (self.settings['structural_substeps'] + 1))
 
                     structural_kstep = self.interpolate_timesteps(
                         step0=self.data.structure.timestep_info[-1],
@@ -579,7 +613,7 @@ class DynamicCoupled(BaseSolver):
             if self.print_info:
                 print_res = 0 if self.res_dqdt == 0. else np.log10(self.res_dqdt)
                 self.residual_table.print_line([self.data.ts,
-                                                self.data.ts*self.dt.value,
+                                                self.data.ts*self.dt,
                                                 k,
                                                 self.time_struc/(self.time_aero + self.time_struc),
                                                 final_time - initial_time,
@@ -645,15 +679,15 @@ class DynamicCoupled(BaseSolver):
                          self.base_dqdt)
 
         # we don't want this to converge before introducing the gamma_dot forces!
-        if self.settings['include_unsteady_force_contribution'].value:
-            if k < self.settings['pseudosteps_ramp_unsteady_force'].value \
-                    and self.data.ts > self.settings['steps_without_unsteady_force'].value:
+        if self.settings['include_unsteady_force_contribution']:
+            if k < self.settings['pseudosteps_ramp_unsteady_force'] \
+                    and self.data.ts > self.settings['steps_without_unsteady_force']:
                 return False
 
         # convergence
-        if k > self.settings['minimum_steps'].value - 1:
-            if self.res < self.settings['fsi_tolerance'].value:
-                if self.res_dqdt < self.settings['fsi_tolerance'].value:
+        if k > self.settings['minimum_steps'] - 1:
+            if self.res < self.settings['fsi_tolerance']:
+                if self.res_dqdt < self.settings['fsi_tolerance']:
                     return True
 
         return False
@@ -711,15 +745,15 @@ class DynamicCoupled(BaseSolver):
             structural_kstep.unsteady_applied_forces = dynamic_struct_forces
 
     def relaxation_factor(self, k):
-        initial = self.settings['relaxation_factor'].value
-        if not self.settings['dynamic_relaxation'].value:
+        initial = self.settings['relaxation_factor']
+        if not self.settings['dynamic_relaxation']:
             return initial
 
-        final = self.settings['final_relaxation_factor'].value
-        if k >= self.settings['relaxation_steps'].value:
+        final = self.settings['final_relaxation_factor']
+        if k >= self.settings['relaxation_steps']:
             return final
 
-        value = initial + (final - initial)/self.settings['relaxation_steps'].value*k
+        value = initial + (final - initial)/self.settings['relaxation_steps']*k
         return value
 
     @staticmethod

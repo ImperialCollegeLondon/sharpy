@@ -13,6 +13,7 @@ cases running on SHARPy.
     example_notebooks/linear_horten
     example_notebooks/wind_turbine
     example_notebooks/cantilever/static_cantilever
+    example_notebooks/cantilever_wing
     example_notebooks/simple_airfoil
     example_notebooks/linear_system_inputs
 
@@ -23,12 +24,12 @@ Downloadable files
 * :download:`./example_notebooks/nonlinear_t-tail_HALE.ipynb`
 * :download:`./example_notebooks/linear_horten.ipynb`
 * :download:`./example_notebooks/wind_turbine.ipynb`
-* :download:`./example_notebooks/simple_airfoil.ipynb`
+* :download:`./example_notebooks/cantilever_wing.ipynb`
 * :download:`./example_notebooks/cantilever/static_cantilever.ipynb`
 * :download:`./example_notebooks/linear_system_inputs.ipynb`
 
 Input data for wind turbine: 
 
-* :download:`./example_notebooks/source/type02_db_NREL5MW_v01.xlsx`
+* :download:`./example_notebooks/source/type02_db_NREL5MW_v02.xlsx`
 
 

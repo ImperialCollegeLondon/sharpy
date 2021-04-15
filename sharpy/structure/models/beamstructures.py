@@ -72,12 +72,6 @@ class Element(object):
         # TODO implement length based on integration
         self.length = np.linalg.norm(self.coordinates_def[0, :] - self.coordinates_def[1, :])
 
-    def preferent_direction(self):
-        index = np.argmax(np.abs(self.tangent_vector_def[0, :]))
-        direction = np.zeros((3,))
-        direction[index] = 1
-        return direction
-
     def add_attributes(self, dictionary):
         for key, value in dictionary.items():
             setattr(self, key, value)
@@ -140,5 +134,3 @@ class Element(object):
             return algebra.crv2triad_vec(self.psi_def)
         else:
             return algebra.crv2triad_vec(psi)
-
-

@@ -92,7 +92,8 @@ class UVMopts(ct.Structure):
                 ("interp_coords", ct.c_uint),
                 ("filter_method", ct.c_uint),
                 ("interp_method", ct.c_uint),
-                ("yaw_slerp", ct.c_double),]
+                ("yaw_slerp", ct.c_double),
+                ("quasi_steady", ct.c_bool),]
 
     def __init__(self):
         ct.Structure.__init__(self)
@@ -110,6 +111,7 @@ class UVMopts(ct.Structure):
         self.vortex_radius = ct.c_double(vortex_radius_def)
         self.vortex_radius_wake_ind = ct.c_double(vortex_radius_def)
         self.yaw_slerp = ct.c_double(0.)
+        self.quasi_steady = ct.c_bool(False)
 
 
 class FlightConditions(ct.Structure):
@@ -143,18 +145,18 @@ def vlm_solver(ts_info, options):
     vmopts = VMopts()
     vmopts.Steady = ct.c_bool(True)
     vmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
-    vmopts.horseshoe = ct.c_bool(options['horseshoe'].value)
-    vmopts.dt = ct.c_double(options["rollup_dt"].value)
-    vmopts.n_rollup = ct.c_uint(options["n_rollup"].value)
-    vmopts.rollup_tolerance = ct.c_double(options["rollup_tolerance"].value)
-    vmopts.rollup_aic_refresh = ct.c_uint(options['rollup_aic_refresh'].value)
-    vmopts.NumCores = ct.c_uint(options['num_cores'].value)
-    vmopts.iterative_solver = ct.c_bool(options['iterative_solver'].value)
-    vmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
-    vmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
+    vmopts.horseshoe = ct.c_bool(options['horseshoe'])
+    vmopts.dt = ct.c_double(options["rollup_dt"])
+    vmopts.n_rollup = ct.c_uint(options["n_rollup"])
+    vmopts.rollup_tolerance = ct.c_double(options["rollup_tolerance"])
+    vmopts.rollup_aic_refresh = ct.c_uint(options['rollup_aic_refresh'])
+    vmopts.NumCores = ct.c_uint(options['num_cores'])
+    vmopts.iterative_solver = ct.c_bool(options['iterative_solver'])
+    vmopts.iterative_tol = ct.c_double(options['iterative_tol'])
+    vmopts.iterative_precond = ct.c_bool(options['iterative_precond'])
     vmopts.cfl1 = ct.c_bool(options['cfl1'])
-    vmopts.vortex_radius = ct.c_double(options['vortex_radius'].value)
-    vmopts.vortex_radius_wake_ind = ct.c_double(options['vortex_radius_wake_ind'].value)
+    vmopts.vortex_radius = ct.c_double(options['vortex_radius'])
+    vmopts.vortex_radius_wake_ind = ct.c_double(options['vortex_radius_wake_ind'])
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -190,14 +192,15 @@ def uvlm_init(ts_info, options):
     vmopts.horseshoe = ct.c_bool(False)
     vmopts.dt = options["dt"]
     try:
-        vmopts.n_rollup = ct.c_uint(options["steady_n_rollup"].value)
-        vmopts.rollup_tolerance = ct.c_double(options["steady_rollup_tolerance"].value)
-        vmopts.rollup_aic_refresh = ct.c_uint(options['steady_rollup_aic_refresh'].value)
+        vmopts.n_rollup = ct.c_uint(options["steady_n_rollup"])
+        vmopts.rollup_tolerance = ct.c_double(options["steady_rollup_tolerance"])
+        vmopts.rollup_aic_refresh = ct.c_uint(options['steady_rollup_aic_refresh'])
     except KeyError:
         pass
-    vmopts.NumCores = ct.c_uint(options['num_cores'].value)
-    vmopts.vortex_radius = ct.c_double(options['vortex_radius'].value)
-    vmopts.vortex_radius_wake_ind = ct.c_double(options['vortex_radius_wake_ind'].value)
+    vmopts.NumCores = ct.c_uint(options['num_cores'])
+    vmopts.vortex_radius = ct.c_double(options['vortex_radius'])
+    vmopts.vortex_radius_wake_ind = ct.c_double(options['vortex_radius_wake_ind'])
+    vmopts.quasi_steady = ct.c_bool(options['quasi_steady'])
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -232,24 +235,25 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
 
     uvmopts = UVMopts()
     if dt is None:
-        uvmopts.dt = ct.c_double(options["dt"].value)
+        uvmopts.dt = ct.c_double(options["dt"])
     else:
         uvmopts.dt = ct.c_double(dt)
-    uvmopts.NumCores = ct.c_uint(options["num_cores"].value)
+    uvmopts.NumCores = ct.c_uint(options["num_cores"])
     uvmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
     uvmopts.ImageMethod = ct.c_bool(False)
-    uvmopts.convection_scheme = ct.c_uint(options["convection_scheme"].value)
-    uvmopts.iterative_solver = ct.c_bool(options['iterative_solver'].value)
-    uvmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
-    uvmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
+    uvmopts.convection_scheme = ct.c_uint(options["convection_scheme"])
+    uvmopts.iterative_solver = ct.c_bool(options['iterative_solver'])
+    uvmopts.iterative_tol = ct.c_double(options['iterative_tol'])
+    uvmopts.iterative_precond = ct.c_bool(options['iterative_precond'])
     uvmopts.convect_wake = ct.c_bool(convect_wake)
     uvmopts.cfl1 = ct.c_bool(options['cfl1'])
-    uvmopts.vortex_radius = ct.c_double(options['vortex_radius'].value)
-    uvmopts.vortex_radius_wake_ind = ct.c_double(options['vortex_radius_wake_ind'].value)
-    uvmopts.interp_coords = ct.c_uint(options["interp_coords"].value)
-    uvmopts.filter_method = ct.c_uint(options["filter_method"].value)
-    uvmopts.interp_method = ct.c_uint(options["interp_method"].value)
-    uvmopts.yaw_slerp = ct.c_double(options["yaw_slerp"].value)
+    uvmopts.vortex_radius = ct.c_double(options['vortex_radius'])
+    uvmopts.vortex_radius_wake_ind = ct.c_double(options['vortex_radius_wake_ind'])
+    uvmopts.interp_coords = ct.c_uint(options["interp_coords"])
+    uvmopts.filter_method = ct.c_uint(options["filter_method"])
+    uvmopts.interp_method = ct.c_uint(options["interp_method"])
+    uvmopts.yaw_slerp = ct.c_double(options["yaw_slerp"])
+    uvmopts.quasi_steady = ct.c_bool(options['quasi_steady'])
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -280,7 +284,6 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
              ts_info.ct_p_gamma,
              ts_info.ct_p_gamma_star,
              ts_info.ct_p_dist_to_orig,
-             ts_info.ct_p_wake_conv_vel,
              # previous_ts_info.ct_p_gamma,
              ts_info.ct_p_normals,
              ts_info.ct_p_forces,
@@ -299,18 +302,18 @@ def uvlm_calculate_unsteady_forces(ts_info,
 
     uvmopts = UVMopts()
     if dt is None:
-        uvmopts.dt = ct.c_double(options["dt"].value)
+        uvmopts.dt = ct.c_double(options["dt"])
     else:
         uvmopts.dt = ct.c_double(dt)
-    uvmopts.NumCores = ct.c_uint(options["num_cores"].value)
+    uvmopts.NumCores = ct.c_uint(options["num_cores"])
     uvmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
     uvmopts.ImageMethod = ct.c_bool(False)
-    uvmopts.convection_scheme = ct.c_uint(options["convection_scheme"].value)
-    uvmopts.iterative_solver = ct.c_bool(options['iterative_solver'].value)
-    uvmopts.iterative_tol = ct.c_double(options['iterative_tol'].value)
-    uvmopts.iterative_precond = ct.c_bool(options['iterative_precond'].value)
+    uvmopts.convection_scheme = ct.c_uint(options["convection_scheme"])
+    uvmopts.iterative_solver = ct.c_bool(options['iterative_solver'])
+    uvmopts.iterative_tol = ct.c_double(options['iterative_tol'])
+    uvmopts.iterative_precond = ct.c_bool(options['iterative_precond'])
     uvmopts.convect_wake = ct.c_bool(convect_wake)
-    uvmopts.vortex_radius = ct.c_double(options['vortex_radius'].value)
+    uvmopts.vortex_radius = ct.c_double(options['vortex_radius'])
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -390,8 +393,8 @@ def uvlm_calculate_total_induced_velocity_at_points(ts_info,
     uvmopts = UVMopts()
     uvmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
     uvmopts.ImageMethod = ct.c_bool(False)
-    uvmopts.NumCores = ct.c_uint(ncores.value)
-    uvmopts.vortex_radius = ct.c_double(options['vortex_radius'].value)
+    uvmopts.NumCores = ct.c_uint(ncores)
+    uvmopts.vortex_radius = ct.c_double(options['vortex_radius'])
 
     npoints = target_triads.shape[0]
     uind = np.zeros((npoints, 3), dtype=ct.c_double)

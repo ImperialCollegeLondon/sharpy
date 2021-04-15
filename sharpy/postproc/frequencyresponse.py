@@ -39,10 +39,6 @@ class FrequencyResponse(solver_interface.BaseSolver):
     settings_description = dict()
     settings_options = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Output folder.'
-
     settings_types['print_info'] = 'bool'
     settings_default['print_info'] = False
     settings_description['print_info'] = 'Write output to screen.'
@@ -126,9 +122,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
         else:
             raise NotImplementedError('Unrecognised frequency spacing setting %s' % self.settings['frequency_spacing'])
 
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/frequencyresponse/'
+        self.folder = data.output_folder + '/frequencyresponse/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.caller = caller

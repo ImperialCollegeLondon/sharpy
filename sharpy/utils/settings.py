@@ -33,7 +33,7 @@ def cast(k, v, pytype, ctype, default):
     return val
 
 
-def to_custom_types(dictionary, types, default, options=dict(), no_ctype=False):
+def to_custom_types(dictionary, types, default, options=dict(), no_ctype=True):
     for k, v in types.items():
         if v == 'int':
             if no_ctype:
@@ -185,7 +185,7 @@ def to_custom_types(dictionary, types, default, options=dict(), no_ctype=False):
         elif v == 'dict':
             try:
                 if not isinstance(dictionary[k], dict):
-                    raise TypeError
+                    raise TypeError('Setting for {:s} is not a dictionary'.format(k))
             except KeyError:
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)

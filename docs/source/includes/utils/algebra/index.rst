@@ -33,6 +33,7 @@ Note:
 	./deuler_dt_NED
 	./euler2quat
 	./euler2rot
+	./get_transformation_matrix
 	./get_triad
 	./mat2quat
 	./multiply_matrices

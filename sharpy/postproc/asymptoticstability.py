@@ -36,10 +36,6 @@ class AsymptoticStability(BaseSolver):
     settings_description = dict()
     settings_options = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Output folder'
-
     settings_types['print_info'] = 'bool'
     settings_default['print_info'] = False
     settings_description['print_info'] = 'Print information and table of eigenvalues'
@@ -122,13 +118,17 @@ class AsymptoticStability(BaseSolver):
 
         self.num_evals = self.settings['num_evals']
 
-        stability_folder_path = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/stability'
-        if not os.path.exists(stability_folder_path):
-            os.makedirs(stability_folder_path)
-        self.folder = stability_folder_path
+        self.folder = data.output_folder + '/stability/'
+        if not os.path.exists(self.folder):
+            os.makedirs(self.folder)
 
-        if not os.path.exists(stability_folder_path):
-            os.makedirs(stability_folder_path)
+        if self.settings['print_info']:
+            cout.cout_wrap('Dynamical System Eigenvalues')
+            eigenvalue_description_file = self.folder + '/eigenvaluetable.txt'
+            self.eigenvalue_table = modalutils.EigenvalueTable(filename=eigenvalue_description_file)
+
+        # Output dict
+        self.data.linear.stability = dict()
 
         self.caller = caller
 
@@ -219,6 +219,9 @@ class AsymptoticStability(BaseSolver):
                     'The UVLM system is unscaled, unable to rescale the structural equations only. Rerun with a ' \
                     'normalised UVLM system.'
                 self.velocity_analysis()
+
+            self.data.linear.stability['eigenvectors'] = self.eigenvectors
+            self.data.linear.stability['eigenvalues'] = self.eigenvalues
 
         return self.data
 
@@ -430,19 +433,17 @@ class AsymptoticStability(BaseSolver):
 
             # Initialise postprocessors - new folder for each mode
             # initialise postprocessors
-            route = self.settings['folder'] + '/stability/mode_%06d/' % mode
+            route = self.folder + '/stability/mode_%06d/' % mode
             postprocessors = dict()
             postprocessor_list = ['AerogridPlot', 'BeamPlot']
             postprocessors_settings = dict()
-            postprocessors_settings['AerogridPlot'] = {'folder': route,
-                                                       'include_rbm': 'on',
-                                                       'include_applied_forces': 'on',
-                                                       'minus_m_star': 0,
-                                                       'u_inf': 1
-                                                       }
-            postprocessors_settings['BeamPlot'] = {'folder': route + '/',
-                                                   'include_rbm': 'on',
-                                                   'include_applied_forces': 'on'}
+            postprocessors_settings['AerogridPlot'] = {'include_rbm': 'on',
+                                    'include_applied_forces': 'on',
+                                    'minus_m_star': 0,
+                                    'u_inf': 1
+                                    }
+            postprocessors_settings['BeamPlot'] = {'include_rbm': 'on',
+                                    'include_applied_forces': 'on'}
 
             for postproc in postprocessor_list:
                 postprocessors[postproc] = initialise_solver(postproc)

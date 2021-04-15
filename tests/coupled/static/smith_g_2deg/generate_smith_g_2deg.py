@@ -322,7 +322,6 @@ def generate_solver_file(horseshoe=False):
                                'tolerance': 1e-9,
                                'relaxation_factor': 0.0}
     config['WriteVariablesTime'] = {'cleanup_old_solution': 'on',
-                                    'folder': route + '/output/',
                                     'structure_variables': ['pos'],
                                     'structure_nodes': [num_node_main - 1]}
 
@@ -331,32 +330,29 @@ def generate_solver_file(horseshoe=False):
                                     'aligned_grid': 'on',
                                     'mstar': 1,
                                     'freestream_dir': ['1', '0', '0'],
-                                    'wake_shape_generator': 'StraightWake',                                                                                                 
-                                    'wake_shape_generator_input': {'u_inf': u_inf,                                                                                           
-                                                                   'u_inf_direction': np.array([1., 0., 0.]),                                                              
-                                                                   'dt': main_chord/m_main/u_inf}}       
+                                    'wake_shape_generator': 'StraightWake',
+                                    'wake_shape_generator_input': {'u_inf': u_inf,
+                                                                   'u_inf_direction': np.array([1., 0., 0.]),
+                                                                   'dt': main_chord/m_main/u_inf}}
     else:
         config['AerogridLoader'] = {'unsteady': 'off',
                                     'aligned_grid': 'on',
                                     'mstar': 20,
                                     'freestream_dir': ['1', '0', '0'],
-                                    'wake_shape_generator': 'StraightWake',                                                                                                 
-                                    'wake_shape_generator_input': {'u_inf': u_inf,                                                                                           
-                                                                   'u_inf_direction': np.array([1., 0., 0.]),                                                              
+                                    'wake_shape_generator': 'StraightWake',
+                                    'wake_shape_generator_input': {'u_inf': u_inf,
+                                                                   'u_inf_direction': np.array([1., 0., 0.]),
                                                                    'dt': main_chord/m_main/u_inf}}
-    config['AerogridPlot'] = {'folder': route + '/output/',
-                              'include_rbm': 'off',
+    config['AerogridPlot'] = {'include_rbm': 'off',
                               'include_applied_forces': 'on',
                               'minus_m_star': 0
                               }
-    config['AeroForcesCalculator'] = {'folder': route + '/output/forces',
-                                      'write_text_file': 'on',
+    config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                       'text_file_name': case_name + '_aeroforces.csv',
                                       'screen_output': 'on',
                                       'unsteady': 'off'
                                       }
-    config['BeamPlot'] = {'folder': route + '/output/',
-                          'include_rbm': 'off',
+    config['BeamPlot'] = {'include_rbm': 'off',
                           'include_applied_forces': 'on'}
     config.write()
 
