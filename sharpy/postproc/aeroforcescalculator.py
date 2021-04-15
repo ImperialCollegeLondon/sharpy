@@ -6,15 +6,6 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.aero.utils.mapping as mapping
-import sharpy.utils.correct_forces as cf
-
-
-class ForcesContainer(object):
-    def __init__(self):
-        self.ts = 0
-        self.t = 0.0
-        self.forces = []
-        self.coords = []
 
 
 @solver
@@ -66,11 +57,6 @@ class AeroForcesCalculator(BaseSolver):
     settings_types['c_ref'] = 'float'
     settings_default['c_ref'] = 1
     settings_description['c_ref'] = 'Reference chord'
-
-    # settings_types['correct_forces_method'] = 'str'
-    # settings_default['correct_forces_method'] = '' # 'efficiency'
-    # settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. Check :py:mod:`sharpy.utils.correct_forces`'
-    # settings_options['correct_forces_method'] = ['efficiency', 'polars']
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
