@@ -185,8 +185,9 @@ def disp_and_accel2state(MB_beam, MB_tstep, Lambda, Lambda_dot, sys_size, num_LM
             dqddt[first_dof+ibody_num_dof+6:first_dof+ibody_num_dof+10]=dquatdt.astype(dtype=ct.c_double, order='F', copy=True)
             first_dof += ibody_num_dof + 10
 
-    q[first_dof:] = Lambda.astype(dtype=ct.c_double, order='F', copy=True)
-    dqdt[first_dof:] = Lambda_dot.astype(dtype=ct.c_double, order='F', copy=True)
+    if num_LM_eq > 0:
+        q[first_dof:] = Lambda.astype(dtype=ct.c_double, order='F', copy=True)
+        dqdt[first_dof:] = Lambda_dot.astype(dtype=ct.c_double, order='F', copy=True)
 
     return q, dqdt, dqddt
 

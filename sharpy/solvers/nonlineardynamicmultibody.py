@@ -361,8 +361,9 @@ class NonLinearDynamicMultibody(_BaseStructural):
             Lambda_dot = self.Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
             Lambda_ddot = self.Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
         else:
-            Lambda = 0
-            Lambda_dot = 0
+            Lambda = np.zeros((1,))
+            Lambda_dot = np.zeros((1,))
+            Lambda_ddot = np.zeros((1,))
 
         # Predictor step
         q, dqdt, dqddt = mb.disp_and_accel2state(MB_beam, MB_tstep, Lambda, Lambda_dot, self.sys_size, num_LM_eq)
