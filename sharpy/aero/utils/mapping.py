@@ -75,3 +75,55 @@ def aero2struct_force_mapping(aero_forces,
                     struct_forces[i_global_node, 3:6] += np.dot(cbg, algebra.cross3(chi_g, aero_forces[i_surf][0:3, i_m, i_n]))
 
     return struct_forces
+
+
+def aero2struct_total_force_mapping(aero_forces,
+                                    struct2aero_mapping,
+                                    zeta,
+                                    pos_def,
+                                    psi_def,
+                                    conn,
+                                    cag=np.eye(3)):
+    """
+    Computes the total aerodynamic forces at the beam reference frame A.
+
+    Args:
+        aero_forces (list): Aerodynamic forces from the UVLM in inertial frame of reference
+        struct2aero_mapping (dict): Structural to aerodynamic node mapping
+        zeta (list): Aerodynamic grid coordinates
+        pos_def (np.ndarray): Vector of structural node displacements
+        psi_def (np.ndarray): Vector of structural node rotations (CRVs)
+        conn (np.ndarray): Connectivities matrix
+        cag (np.ndarray): Transformation matrix between inertial and body-attached reference ``A``
+        aero_dict (dict): Dictionary containing the grid's information.
+
+    Returns:
+        np.array: Vector ``6`` containing the total aerodynamic forces and moments at the A frame, expressed
+          in ``A``.
+    """
+    n_node, _ = pos_def.shape
+    n_elem, _, _ = psi_def.shape
+    total_aero_forces = np.zeros(6)
+
+    nodes = []
+
+    for i_elem in range(n_elem):
+        for i_local_node in range(3):
+
+            i_global_node = conn[i_elem, i_local_node]
+            if i_global_node in nodes:
+                continue
+
+            nodes.append(i_global_node)
+            for mapping in struct2aero_mapping[i_global_node]:
+                i_surf = mapping['i_surf']
+                i_n = mapping['i_n']
+                _, n_m, _ = aero_forces[i_surf].shape
+
+                for i_m in range(n_m):
+                    zeta_g = zeta[i_surf][:, i_m, i_n]
+                    total_aero_forces[0:3] += cag.dot(aero_forces[i_surf][0:3, i_m, i_n])
+                    total_aero_forces[3:6] += cag.dot(aero_forces[i_surf][3:6, i_m, i_n])
+                    total_aero_forces[3:6] += cag.dot(algebra.cross3(zeta_g, aero_forces[i_surf][0:3, i_m, i_n]))
+
+    return total_aero_forces

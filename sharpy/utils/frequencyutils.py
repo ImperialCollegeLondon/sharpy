@@ -218,7 +218,7 @@ def hamiltonian(gamma, ss):
 
     Args:
         gamma (float): Evaluation point.
-        ss (sharpy.linear.src.libss.ss): Linear system.
+        ss (sharpy.linear.src.libss.StateSpace): Linear system.
 
     Returns:
         np.ndarray: Hamiltonian evaluated at ``gamma``.
@@ -257,7 +257,7 @@ def h_infinity_norm(ss, **kwargs):
         matrix. Systems and Control Letters, 14(4), 287–293. https://doi.org/10.1016/0167-6911(90)90049-Z
 
     Args:
-        ss (sharpy.linear.src.libss.ss): Multi input multi output system.
+        ss (sharpy.linear.src.libss.StateSpace): Multi input multi output system.
         **kwargs: Key-word arguments.
 
     Keyword Args:
@@ -397,7 +397,7 @@ def find_target_system(data, target_system):
         target_system (str): Desired target system.
 
     Returns:
-        sharpy.linear.src.libss.ss: State-space object of target system
+        sharpy.linear.src.libss.StateSpace: State-space object of target system
     """
 
     if target_system == 'aeroelastic':

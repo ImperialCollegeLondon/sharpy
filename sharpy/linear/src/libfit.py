@@ -461,7 +461,7 @@ def rfa_mimo(Yfull, kv, ds, tolAbs, Nnum, Nden, Dmatrix=None, NtrialMax=6, Ncpu=
 #     cfnum = np.array([4, 1.25, 1.5])
 #     cfden = np.array([2, .5, 1])
 #     A, B, C, D = tf2ss(cfnum, cfden)
-#     SS = libss.ss(A, B, C, D, dt=ds)
+#     SS = libss.StateSpace(A, B, C, D, dt=ds)
 #     Cvref = libss.freqresp(SS, kv)
 #     Cvref = Cvref[0, 0, :]
 #

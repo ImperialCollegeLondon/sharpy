@@ -11,6 +11,7 @@ import sharpy.utils.h5utils as h5
 import sharpy.rom.utils.krylovutils as krylovutils
 import warnings as warn
 import h5py
+from sharpy.linear.utils.ss_interface import LinearVector, StateVariable, InputVariable, OutputVariable
 
 @rom_interface.rom
 class Krylov(rom_interface.BaseRom):
@@ -161,7 +162,7 @@ class Krylov(rom_interface.BaseRom):
                           compress_float=True)
             h5.add_as_grp(self.ssrom, outfile,
                           grpname='ssrom',
-                          ClassesToSave=(libss.ss, ),
+                          ClassesToSave=(libss.StateSpace, ),
                           compress_float=True)
 
     def run(self, ss):
@@ -181,10 +182,10 @@ class Krylov(rom_interface.BaseRom):
         =========================  ====================  ==========================================================
 
         Args:
-            ss (sharpy.linear.src.libss.ss): State space to reduce
+            ss (sharpy.linear.src.libss.StateSpace): State space to reduce
 
         Returns:
-            (libss.ss): Reduced state space system
+            (libss.StateSpace): Reduced state space system
         """
         self.ss = ss
 
@@ -202,7 +203,13 @@ class Krylov(rom_interface.BaseRom):
 
         Ar, Br, Cr = self.__getattribute__(self.algorithm)(self.frequency, self.r)
 
-        self.ssrom = libss.ss(Ar, Br, Cr, self.ss.D, self.ss.dt)
+        self.ssrom = libss.StateSpace(Ar, Br, Cr, self.ss.D, self.ss.dt)
+        try:
+            self.ssrom.input_variables = self.ss.input_variables.copy()
+            self.ssrom.output_variables = self.ss.output_variables.copy()
+            self.ssrom.state_variables = LinearVector([StateVariable('krylov', size=self.ssrom.states, index=0)])
+        except AttributeError:
+            pass
 
         self.stable = self.check_stability(restart_arnoldi=self.restart_arnoldi)
 
@@ -710,6 +717,11 @@ class Krylov(rom_interface.BaseRom):
 
         self.W = W
         self.V = V
+
+        # for state recovery purposes
+        self.projection_gain = libss.Gain(V,
+                                          input_vars=LinearVector([InputVariable('krylov', size=V.shape[1], index=0)]),
+                                          output_vars=LinearVector.transform(self.ss.state_variables, OutputVariable))
 
         return Ar, Br, Cr
 

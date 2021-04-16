@@ -53,7 +53,7 @@ def transfer_function(SS_list, wv):
           fast on-line evaluation
 
     Args:
-        SS_list (list): List of state-space models instances of :class:`sharpy.linear.src.libss.ss` class.
+        SS_list (list): List of state-space models instances of :class:`sharpy.linear.src.libss.StateSpace` class.
         wv (list): list of interpolatory weights.
 
     Notes:
@@ -88,7 +88,7 @@ def FLB_transfer_function(SS_list, wv, U_list, VT_list, hsv_list=None, M_list=No
 
 
     Args:
-        SS_list (list): List of state-space models instances of :class:`sharpy.linear.src.libss.ss` class.
+        SS_list (list): List of state-space models instances of :class:`sharpy.linear.src.libss.StateSpace` class.
         wv (list): list of interpolatory weights.
         U_list (list): small size, thin SVD factors of Gramians square roots of each state space model (:math:`\mathbf{U}`).
         VT_list (list): small size, thin SVD factors of Gramians square roots of each state space model (:math:`\mathbf{V}^\top`).
@@ -202,7 +202,7 @@ def FLB_transfer_function(SS_list, wv, U_list, VT_list, hsv_list=None, M_list=No
         C_int += wv[ii] * np.dot(SS_list[ii].C, T_int_list[ii])
         D_int += wv[ii] * SS_list[ii].D
 
-    return libss.ss(A_int, B_int, C_int, D_int, dt=SS_list[0].dt), hsv_int
+    return libss.StateSpace(A_int, B_int, C_int, D_int, dt=SS_list[0].dt), hsv_int
 
 
 def lagrange_interpolation(x_vec, x0, interpolation_degree=None):

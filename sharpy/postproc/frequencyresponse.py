@@ -132,7 +132,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
         Computes the frequency response of the linear state-space.
 
         Args:
-            ss (sharpy.linear.src.libss.ss (Optional)): State-space object for which to compute the frequency response.
+            ss (sharpy.linear.src.libss.StateSpace (Optional)): State-space object for which to compute the frequency response.
               If not given, the response for the previously assembled systems and specified in ``target_system`` will
               be performed.
         """
@@ -140,12 +140,12 @@ class FrequencyResponse(solver_interface.BaseSolver):
 
         if ss is None:
             ss_list = [find_target_system(self.data, system_name) for system_name in self.settings['target_system']]
-        elif type(ss) is libss.ss:
+        elif type(ss) is libss.StateSpace:
             ss_list = [ss]
         elif type(ss) is list:
             ss_list = ss
         else:
-            raise TypeError('ss input must be either a libss.ss instance or a list of libss.ss')
+            raise TypeError('StateSpace input must be either a libss.StateSpace instance or a list of libss.StateSpace')
 
         for ith, system in enumerate(ss_list):
             if self.print_info:
