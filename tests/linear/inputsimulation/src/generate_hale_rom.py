@@ -710,7 +710,7 @@ def generate_linearised_system(alpha_deg):
                               'flow': flow,
                               'write_screen': 'off',
                               'write_log': 'on',
-                              'log_folder': route + '/output/' + case_name,
+                              'log_folder': route + '/output/',
                               'log_file': case_name + '.log'}
 
         settings['BeamLoader'] = {'unsteady': 'on',

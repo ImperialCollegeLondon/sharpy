@@ -8,7 +8,6 @@ import shutil
 
 class TestJupyter(unittest.TestCase):
 
-
     test_dir = os.path.abspath(os.path.dirname(__file__))
     sharpy_root = os.path.abspath(test_dir + '../../../../')
 

@@ -83,7 +83,7 @@ def generate_goland(u_inf, problem_type, rom_method_settings, **kwargs):
         'case': ws.case_name, 'route': ws.route,
         'write_screen': kwargs.get('write_screen', 'off'),
         'write_log': 'on',
-        'log_folder': abspath + '/output/' + ws.case_name + '/',
+        'log_folder': abspath + '/output/',
         'log_file': ws.case_name + '.log'}
 
     ws.config['BeamLoader'] = {
@@ -165,8 +165,7 @@ def generate_goland(u_inf, problem_type, rom_method_settings, **kwargs):
                                   'output_psi': 'on',
                                   'screen_output': 'on'}
 
-    ws.config['Modal'] = {'folder': abspath + '/output/',
-                          'NumLambda': 20,
+    ws.config['Modal'] = {'NumLambda': 20,
                           'rigid_body_modes': 'off',
                           'print_matrices': 'on',
                           'keep_linear_matrices': 'on',
@@ -216,7 +215,6 @@ def generate_goland(u_inf, problem_type, rom_method_settings, **kwargs):
                                         'rigid_body_motion': False}}
 
     ws.config['AsymptoticStability'] = {'print_info': True,
-                                        'folder': abspath + '/output/',
                                         'export_eigenvalues': 'on',
                                        }
 
@@ -226,7 +224,6 @@ def generate_goland(u_inf, problem_type, rom_method_settings, **kwargs):
                                   'postprocessors': ['BeamPlot', 'AerogridPlot'],
                                   'postprocessors_settings': {'AerogridPlot': {
                                       'u_inf': ws.u_inf,
-                                      'folder': abspath + '/output/',
                                       'include_rbm': 'on',
                                       'include_applied_forces': 'on',
                                       'minus_m_star': 0},
@@ -235,14 +232,12 @@ def generate_goland(u_inf, problem_type, rom_method_settings, **kwargs):
                                                    'include_applied_forces': 'on'}}}
 
     ws.config['FrequencyResponse'] = {'quick_plot': 'off',
-                                      'folder': abspath + '/output/',
                                       'frequency_unit': 'w',
                                       'frequency_bounds': [10, 200],
                                       'num_freqs': 200,
                                       }
 
-    ws.config['SaveParametricCase'] = {'folder': abspath + '/output/' + ws.case_name + '/',
-                                       'parameters': {
+    ws.config['SaveParametricCase'] = {'parameters': {
                                            'u_inf': u_inf,
                                        }
                                        }
