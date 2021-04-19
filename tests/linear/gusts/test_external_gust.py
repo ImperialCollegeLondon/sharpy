@@ -45,7 +45,7 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                           'flow': kwargs.get('flow', []),
                           'write_screen': 'off',
                           'write_log': 'on',
-                          'log_folder': './output/' + case_name + '/',
+                          'log_folder': './output/',
                           'log_file': case_name + '.log'}
 
     settings['BeamLoader'] = {'unsteady': 'on',
