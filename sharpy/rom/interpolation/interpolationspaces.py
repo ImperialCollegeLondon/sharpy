@@ -6,6 +6,7 @@ from scipy import linalg as sclalg
 from sharpy.linear.src import libss as libss
 from sharpy.utils import algebra as algebra
 import sharpy.rom.interpolation.projectionmethods as projectionmethods
+from sharpy.linear.utils.ss_interface import LinearVector, StateVariable, InputVariable, OutputVariable
 
 
 class InterpROM:
@@ -32,7 +33,7 @@ class InterpROM:
 
 
     Attributes:
-        ss_list (list): list of state-space models (instances of libss.ss class)
+        ss_list (list): list of state-space models (instances of libss.StateSpace class)
         VV (list): list of V matrices used to produce SS. If None, it is assumed that
           ROMs are defined over the same basis
         WWT (list): list of W^T matrices used to derive the ROMs.
@@ -84,6 +85,10 @@ class InterpROM:
         self.QQ = None     #: list: Transformation matrices to generalised coordinates
         self.QQinv = None  #: list: Transformation matrices to generalised coordinates
 
+        self.input_variables = None
+        self.state_variables = None
+        self.output_variables = None
+
     def initialise(self,
                    ss_list,
                    vv_list=None,
@@ -131,6 +136,10 @@ class InterpROM:
             assert ss_here.outputs == Ny, \
                 'State-space models do not have the same number of outputs. Current ss %g outputs, ref %g outputs' % (ss_here.outputs, Ny)
 
+        self.input_variables = self.ss_list[self.reference_case].input_variables.copy()
+        self.state_variables = self.ss_list[self.reference_case].state_variables.copy()
+        self.output_variables = self.ss_list[self.reference_case].output_variables.copy()
+
     def check_discrete_timestep(self):
         """
         Checks that the systems have the same timestep. If they don't, it converts them to continuous time.
@@ -172,7 +181,11 @@ class InterpROM:
             Cint += wv[ii] * self.CC[ii]
             Dint += wv[ii] * self.DD[ii]
 
-        return libss.ss(Aint, Bint, Cint, Dint, self.ss_list[0].dt)
+        ss = libss.StateSpace(Aint, Bint, Cint, Dint, self.ss_list[0].dt)
+        ss.input_variables = self.input_variables
+        ss.state_variables = self.state_variables
+        ss.output_variables = self.output_variables
+        return ss
 
     def project(self):
         """
@@ -252,9 +265,9 @@ class TangentInterpolation(InterpROM):
         d = self.from_tangent_manifold(d_tan, self.reference_system[3])
 
         if self.ss_list[0].dt:
-            return libss.ss(a, b, c, d, self.ss_list[0].dt)
+            return libss.StateSpace(a, b, c, d, self.ss_list[0].dt)
         else:
-            return libss.ss(a, b, c, d)
+            return libss.StateSpace(a, b, c, d)
 
     def project(self):
         r"""
@@ -578,16 +591,18 @@ class BasisInterpolation:
 
         Args:
             weights (list(float)): List of weights corresponding to each interpolation point.
-            ss (sharpy.linear.src.libss.ss): State-space of the high fidelity model at the new operating point.
+            ss (sharpy.linear.src.libss.StateSpace): State-space of the high fidelity model at the new operating point.
 
         Returns:
-            sharpy.linear.src.libss.ss: Reduced order model at the new operating point.
+            sharpy.linear.src.libss.StateSpace: Reduced order model at the new operating point.
         """
         gamma = self.interpolate_gamma(weights)
 
         v_interp = self.return_from_tangent_space(gamma)
-
-        ss.project(v_interp.T, v_interp)
+        v_interp = libss.Gain(v_interp,
+                              input_vars=LinearVector([InputVariable('interp_rom', size=v_interp.shape[1], index=0)]),
+                              output_vars=LinearVector.transform(ss.state_variables, to_type=OutputVariable))
+        ss.project(v_interp.transpose(), v_interp)
 
         return ss
 

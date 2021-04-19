@@ -1056,7 +1056,7 @@ class FlexDynamic():
                         [[self.Kin_damp[iivec, :].real],
                          [self.Kin_damp[iivec, :].imag]])
                     self.Kout = np.block([2. * U.real, (-2.) * U.imag])
-                    self.SScont = libss.ss(Ass, Bss, Css, Dss, dt=None)
+                    self.SScont = libss.StateSpace(Ass, Bss, Css, Dss, dt=None)
 
                 # build state-space model
                 input_variables = LinearVector([InputVariable('Q', size=Nmodes, index=0)])
@@ -1074,6 +1074,19 @@ class FlexDynamic():
                     self.SScont = libss.addGain(self.SScont, self.Kin, 'in')
                     self.SScont = libss.addGain(self.SScont, self.Kout, 'out')
                     self.Kin, self.Kout = None, None
+                    input_variables = LinearVector([InputVariable('forces_n',
+                                                                  size=self.Mstr.shape[0],
+                                                                  index=0)])
+
+                    output_variables = LinearVector([OutputVariable('eta', size=self.num_dof_flex, index=0),
+                                                     OutputVariable('eta_dot', size=self.num_dof_flex, index=1)])
+                    if not self.clamped:
+                        output_variables.add('beta_bar', size=self.num_dof_rig, index=0.5)
+                        output_variables.append('beta', size=self.num_dof_rig)
+
+                    self.SScont.output_variables = output_variables
+                    self.SScont.input_variables = input_variables
+                    self.SScont.state_variables = LinearVector.transform(output_variables, to_type=StateVariable)
 
             else:  # Full system
                 if self.Mstr is None:
@@ -1171,21 +1184,8 @@ class FlexDynamic():
             else:
                 b[num_dof:, :] = -minv_neg
 
-        return libss.ss(a, b, c, d, dt=None)
+        return libss.StateSpace(a, b, c, d, dt=None)
 
-                input_variables = LinearVector([InputVariable('forces_n',
-                                                              size=self.Mstr.shape[0],
-                                                              index=0)])
-
-                output_variables = LinearVector([OutputVariable('eta', size=self.num_dof_flex, index=0),
-                                                 OutputVariable('eta_dot', size=self.num_dof_flex, index=1)])
-                if not self.clamped:
-                    output_variables.add('beta_bar', size=self.num_dof_rig, index=0.5)
-                    output_variables.append('beta', size=self.num_dof_rig)
-
-                self.SScont.output_variables = output_variables
-                self.SScont.input_variables = input_variables
-                self.SScont.state_variables = LinearVector.transform(output_variables, to_type=StateVariable)
 
 
     def freqresp(self, wv=None, bode=True):
