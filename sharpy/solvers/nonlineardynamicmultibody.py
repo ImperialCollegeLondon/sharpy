@@ -35,7 +35,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
     settings_types['time_integrator'] = 'str'
     settings_default['time_integrator'] = 'NewmarkBeta'
     settings_description['time_integrator'] = 'Method to perform time integration'
-    settings_options['time_integrator'] = ['NewmarkBeta']
+    settings_options['time_integrator'] = ['NewmarkBeta', 'GeneralisedAlpha']
 
     settings_types['time_integrator_settings'] = 'dict'
     settings_default['time_integrator_settings'] = dict()
@@ -82,7 +82,11 @@ class NonLinearDynamicMultibody(_BaseStructural):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
+        settings.to_custom_types(self.settings,
+                                 self.settings_types,
+                                 self.settings_default,
+                                 self.settings_options,
+                                 no_ctype=True)
 
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(
