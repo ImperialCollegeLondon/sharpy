@@ -321,25 +321,35 @@ class StateSpace:
         """
         scale_SS(self, input_scal, output_scal, state_scal, byref=True)
 
-    def project(self, WT, V):
+    def project(self, wt, v):
         """
-        Given 2 transformation matrices, (WT,V) of shapes (Nk,self.states) and
-        (self.states,Nk) respectively, this routine projects the state space
+        Given 2 transformation matrices, ``(WT, V)`` of shapes ``(Nk, self.states)`` and
+        ``(self.states, Nk)`` respectively, this routine projects the state space
         model states according to:
 
-            Anew = WT A V
-            Bnew = WT B
-            Cnew = C V
-            Dnew = D
+
+        .. math::
+            Anew = WT A V \\
+            Bnew = WT B \\
+            Cnew = C V \\
+            Dnew = D \\
 
         The projected model has the same number of inputs/outputs as the original
         one, but Nk states.
-        """
 
-        self.A = libsp.dot(WT, libsp.dot(self.A, V))
-        self.B = libsp.dot(WT, self.B)
-        self.C = libsp.dot(self.C, V)
-        self.states = V.shape[1]
+        Args:
+            wt (Gain or np.ndarray): Left projection matrix
+            v (Gain or np.ndarray): Righty projection matrix
+        """
+        if isinstance(wt, Gain) and isinstance(v, Gain):
+            self.A = libsp.dot(wt.value, libsp.dot(self.A, v.value))
+            self.B = libsp.dot(wt.value, self.B)
+            self.C = libsp.dot(self.C, v.value)
+            self.state_variables = LinearVector.transform(v.input_variables, to_type=StateVariable)
+        else:
+            self.A = libsp.dot(wt, libsp.dot(self.A, v))
+            self.B = libsp.dot(wt, self.B)
+            self.C = libsp.dot(self.C, v)
 
     def truncate(self, N):
         """ Retains only the first N states. """
@@ -384,8 +394,15 @@ class StateSpace:
         if self.dt:
             self = disc2cont(self)
 
-    def remove_inout_channels(self, retain_channels, where):
-        remove_inout_channels(self, retain_channels, where)
+    def retain_inout_channels(self, retain_channels, where):
+        """
+        Retain selected input or output channels only.
+
+        Args:
+            retain_channels (list): List of channels to retain
+            where (str): ``in`` or ``out`` for input/output channels
+        """
+        retain_inout_channels(self, retain_channels, where)
 
     def summary(self):
         msg = 'State-space system\nStates: %g\nInputs: %g\nOutputs: %g\n' % (self.states, self.inputs, self.outputs)
@@ -613,6 +630,7 @@ class Gain:
         return Gain(self.value.T,
                     input_vars=input_variables,
                     output_vars=output_variables)
+
 
 class ss_block():
     """
@@ -971,13 +989,27 @@ def disc2cont(sys):
     return sys_ct
 
 
-def remove_inout_channels(sys, retain_channels, where):
+def retain_inout_channels(sys, retain_channels, where):
+    """
+    Retain selected input or output channels only.
+
+    Args:
+        retain_channels (list): List of channels to retain
+        where (str): ``in`` or ``out`` for input/output channels
+
+    Returns:
+        StateSpace: Updated state-space object
+    """
     retain_m = len(retain_channels)  # new number of in/out
 
     if where == 'in':
         m = sys.inputs  # current number of in/out
+        gain_input_vars = sys.input_variables
+        gain_output_vars = LinearVector.transform(sys.input_variables, to_type=OutputVariable)
     elif where == 'out':
         m = sys.outputs
+        gain_input_vars = LinearVector.transform(sys.output_variables, to_type=InputVariable)
+        gain_output_vars = sys.output_variables.copy()
     else:
         raise NameError('Argument ``where`` can only be ``in`` or ``out``.')
 
@@ -985,8 +1017,24 @@ def remove_inout_channels(sys, retain_channels, where):
     for ith, channel in enumerate(retain_channels):
         gain_matrix[ith, channel] = 1
 
+    # Go through variables...
+    for var in gain_input_vars:
+        n_vars = np.sum((np.array(retain_channels) < var.end_position) * (np.array(retain_channels) >= var.first_position))
+
+        if n_vars == 0:
+            gain_output_vars.remove(var.name)
+        else:
+            gain_output_vars.modify(var.name, size=n_vars)
+
+    gain_output_vars.update_indices()
+    gain_output_vars.update_locations()
+
+    gain_matrix = Gain(gain_matrix,
+                       input_vars=gain_input_vars,
+                       output_vars=gain_output_vars)
+
     if where == 'in':
-        sys.addGain(gain_matrix.T, where='in')
+        sys.addGain(gain_matrix.transpose(), where='in')
     elif where == 'out':
         sys.addGain(gain_matrix, where='out')
     else:

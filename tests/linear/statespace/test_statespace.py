@@ -7,6 +7,7 @@ from sharpy.linear.src import libsparse as libsp
 from sharpy.linear.src.libss import StateSpace, SSconv, compare_ss, scale_SS, Gain, random_ss, couple, join, disc2cont, series
 from sharpy.linear.utils.ss_interface import LinearVector, InputVariable, StateVariable, OutputVariable
 
+
 class Test_dlti(unittest.TestCase):
     """ Test methods into this module for DLTI systems """
 
@@ -260,6 +261,25 @@ class TestStateSpaceManipulation(unittest.TestCase):
         self.ss.remove_outputs('output2')  # size 3
 
         assert self.ss.outputs == 2, 'Number of outputs not correct'
+
+    def test_retain_channels(self):
+        """
+        Retain certain input and output channels only
+        """
+        retain_input_channels = [0, 7]
+        self.ss.retain_inout_channels(retain_input_channels, where='in')
+
+        assert self.ss.inputs == len(retain_input_channels), 'Number of inputs not correct'
+        assert self.ss.input_variables[0].size == 1, 'input1 not correct size'
+        assert self.ss.input_variables[1].name == 'input3', 'input2 not properly removed'
+
+        retain_output_channels = [0, 5]
+        self.ss.retain_inout_channels(retain_output_channels, where='out')
+        assert self.ss.outputs == len(retain_output_channels), 'Number of outputs not correct'
+        assert self.ss.output_variables[0].size == 1, 'output1 not correct size'
+        assert self.ss.output_variables[1].name == 'output3', 'output2 not properly removed'
+        assert self.ss.output_variables[1].size == 1, 'output3 not properly trimmed'
+        assert self.ss.output_variables[1].index == 1, 'output3 not properly indexed'
 
 
 class TestGains(unittest.TestCase):
