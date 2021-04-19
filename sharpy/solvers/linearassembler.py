@@ -168,9 +168,9 @@ class LinearAssembler(BaseSolver):
 
         # retain only selected inputs and outputs
         if len(self.settings['retain_inputs']) != 0:
-            self.data.linear.ss.remove_inout_channels(self.settings['retain_inputs'], where='in')
+            self.data.linear.ss.retain_inout_channels(self.settings['retain_inputs'], where='in')
         if len(self.settings['retain_outputs']) != 0:
-            self.data.linear.ss.remove_inout_channels(self.settings['retain_outputs'], where='out')
+            self.data.linear.ss.retain_inout_channels(self.settings['retain_outputs'], where='out')
 
         if len(self.settings['retain_input_variables']) != 0:
             ss = self.data.linear.ss
