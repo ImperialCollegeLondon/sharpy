@@ -1950,3 +1950,26 @@ def get_transformation_matrix(transformation):
         return cgb
     else:
         raise NameError('Unknown transformation.')
+
+
+def der_skewp_skewp_v(p, v):
+    """
+    This function computes:
+
+        .. math:: \frac{d}{d\boldsymbol{p}} (\tilde{\boldsymbol{p}} \tilde{\boldsymbol{p}} v)
+    """
+    der = np.zeros((3,3))
+
+    der[0, 0] = v[1]*p[1] + v[2]*p[2]
+    der[0, 1] = -2*v[0]*p[1] + v[1]*p[0]
+    der[0, 2] = -2*v[0]*p[2] + v[2]*p[0]
+
+    der[1, 0] = v[0]*p[1] - 2*v[1]*p[0]
+    der[1, 1] = v[0]*p[0] + v[2]*p[2]
+    der[1, 2] = -2*v[1]*p[2] + v[2]*p[1]
+
+    der[2, 0] = v[0]*p[2] - 2*v[2]*p[0]
+    der[2, 1] = v[1]*p[2] - 2*v[2]*p[1]
+    der[2, 2] = v[0]*p[0] + v[1]*p[1]
+
+    return der

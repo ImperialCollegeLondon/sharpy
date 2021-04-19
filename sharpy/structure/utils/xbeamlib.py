@@ -612,6 +612,7 @@ def xbeam_solv_state2disp(beam, tstep, cbeam3=False):
     numdof = beam.num_dof.value
     cbeam3_solv_state2disp(beam, tstep)
     if not cbeam3:
+        tstep.for_pos[0:3] = tstep.q[numdof:numdof+3].astype(dtype=ct.c_double, order='F', copy=True)
         tstep.for_vel = tstep.dqdt[numdof:numdof+6].astype(dtype=ct.c_double, order='F', copy=True)
         # tstep.for_acc = tstep.dqddt[numdof:numdof+6].astype(dtype=ct.c_double, order='F', copy=True)
         tstep.quat = algebra.unit_vector(tstep.dqdt[numdof+6:]).astype(dtype=ct.c_double, order='F', copy=True)
@@ -685,6 +686,7 @@ def cbeam3_solv_state2accel(beam, tstep):
 def xbeam_solv_disp2state(beam, tstep):
     numdof = beam.num_dof.value
     cbeam3_solv_disp2state(beam, tstep)
+    tstep.q[numdof:numdof+3] = tstep.for_pos[0:3]
     tstep.dqdt[numdof:numdof+6] = tstep.for_vel
     # tstep.dqddt[numdof:numdof+6] = tstep.for_acc
     tstep.dqdt[numdof+6:] = algebra.unit_vector(tstep.quat)

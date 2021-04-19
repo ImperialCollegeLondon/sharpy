@@ -212,11 +212,7 @@ class WriteVariablesTime(BaseSolver):
         else:
             self.settings['FoR_number'] = np.array([0], dtype=int)
 
-        if self.data.structure.timestep_info[it].in_global_AFoR:
-            tstep = self.data.structure.timestep_info[it]
-        else:
-            tstep = self.data.structure.timestep_info[it].copy()
-            tstep.whole_structure_to_global_AFoR(self.data.structure)
+        tstep = self.data.structure.timestep_info[it]
 
         for ivariable in range(len(self.settings['FoR_variables'])):
             if self.settings['FoR_variables'][ivariable] == '':
