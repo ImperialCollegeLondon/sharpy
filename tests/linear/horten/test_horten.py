@@ -297,7 +297,7 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
         'frequency_cutoff': 0,
         'export_eigenvalues': 'on',
         'num_evals': 10000,
-        'folder': output_folder}
+        'target_system': ['aeroelastic']}
 
     settings['FrequencyResponse'] = {'print_info': 'on',
                                      'frequency_bounds': [0.1, 100]}
@@ -367,7 +367,7 @@ class TestHortenWing(unittest.TestCase):
                                    M=M, N=N, Msf=Msf, trim=trim)
 
         # check first 10 eigs are zero (9 integro states + yaw)
-        eigs = data.linear.stability['eigenvalues']
+        eigs = data.linear.stability['aeroelastic'].eigenvalues
 
         np.testing.assert_allclose(np.abs(eigs[:10]), 0, atol=1e-8)
 

@@ -191,6 +191,8 @@ class AsymptoticStability(BaseSolver):
 
             eigenvalues, eigenvectors = self.sort_eigenvalues(eigenvalues, eigenvectors, self.frequency_cutoff)
 
+            self.data.linear.stability[system_name] = EigData(eigenvalues, eigenvectors)
+
             if self.settings['export_eigenvalues']:
                 self.export_eigenvalues(num_evals, eigenvalues, eigenvectors, filename=system_name)
 
@@ -220,8 +222,6 @@ class AsymptoticStability(BaseSolver):
                     'normalised UVLM system.'
                 self.velocity_analysis()
 
-            self.data.linear.stability['eigenvectors'] = self.eigenvectors
-            self.data.linear.stability['eigenvalues'] = self.eigenvalues
 
         return self.data
 
@@ -564,3 +564,11 @@ class AsymptoticStability(BaseSolver):
             fact = np.max(np.abs(omega)) / max_omega
 
         return fact
+
+
+class EigData:
+
+    def __init__(self, eigenvalues, eigenvectors):
+
+        self.eigenvalues = eigenvalues
+        self.eigenvectors = eigenvectors
