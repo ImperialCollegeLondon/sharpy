@@ -83,7 +83,7 @@ class TestGolandFlutter(unittest.TestCase):
                  ],
             'case': ws.case_name, 'route': ws.route,
             'write_screen': 'off', 'write_log': 'on',
-            'log_folder': self.route_test_dir + '/output/' + ws.case_name + '/',
+            'log_folder': self.route_test_dir + '/output/',
             'log_file': ws.case_name + '.log'}
 
         ws.config['BeamLoader'] = {
