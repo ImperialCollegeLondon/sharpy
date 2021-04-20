@@ -896,6 +896,9 @@ def generate_from_excel_type03(op_params,
 
     # Read overhang and nacelle properties from excel file
     overhang_len = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'overhang')
+    NodesOverhang = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NodesOverhang')
+    if NodesOverhang is None:
+        NodesOverhang = 3
     NacelleMass = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NacMass')
     NacelleMass_x = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NacMass_x')
     NacelleMass_z = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NacMass_z')
@@ -909,7 +912,6 @@ def generate_from_excel_type03(op_params,
     else:
         cout.cout_wrap('WARNING: Nacelle mass placed at tower top', 3)
 
-
     tower.AerodynamicInformation.set_to_zero(tower.StructuralInformation.num_node_elem,
                                             tower.StructuralInformation.num_node,
                                             tower.StructuralInformation.num_elem)
@@ -921,7 +923,7 @@ def generate_from_excel_type03(op_params,
     HubMass = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'HubMass')
 
     overhang = gc.AeroelasticInformation()
-    overhang.StructuralInformation.num_node = 3
+    overhang.StructuralInformation.num_node = NodesOverhang
     overhang.StructuralInformation.num_node_elem = 3
     overhang.StructuralInformation.compute_basic_num_elem()
     node_pos = np.zeros((overhang.StructuralInformation.num_node, 3), )
@@ -930,9 +932,9 @@ def generate_from_excel_type03(op_params,
     node_pos[:, 2] = np.linspace(0., overhang_len*np.cos(tilt*deg2rad), overhang.StructuralInformation.num_node)
     # TODO: change the following by real values
     # Same properties as the last element of the tower
-    cout.cout_wrap("WARNING: Using the structural properties of the last tower section for the overhang", 3)
-    oh_mass_per_unit_length = tower.StructuralInformation.mass_db[-1, 0, 0]
-    oh_mass_iner = tower.StructuralInformation.mass_db[-1, 3, 3]
+    cout.cout_wrap("WARNING: Using the structural properties (*0.1) of the last tower section for the overhang", 3)
+    oh_mass_per_unit_length = tower.StructuralInformation.mass_db[-1, 0, 0]/10.
+    oh_mass_iner = tower.StructuralInformation.mass_db[-1, 3, 3]/10.
     oh_EA = tower.StructuralInformation.stiffness_db[-1, 0, 0]
     oh_GA = tower.StructuralInformation.stiffness_db[-1, 1, 1]
     oh_GJ = tower.StructuralInformation.stiffness_db[-1, 3, 3]
