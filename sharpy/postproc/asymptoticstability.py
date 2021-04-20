@@ -128,7 +128,12 @@ class AsymptoticStability(BaseSolver):
             self.eigenvalue_table = modalutils.EigenvalueTable(filename=eigenvalue_description_file)
 
         # Output dict
-        self.data.linear.stability = dict()
+        try:
+            self.data.linear.stability = dict()
+        except AttributeError:
+            import sharpy.utils.datastructures as datastructures
+            self.data.linear = datastructures.Linear(None, None)
+            self.data.linear.stability = dict()
 
         self.caller = caller
 
@@ -163,14 +168,14 @@ class AsymptoticStability(BaseSolver):
         else:
             not_scaled = True  # If the state space is an external input (i.e. not part of PreSHARPy), assume it is
             # not scaled
-            if type(ss) is libss.ss:
+            if type(ss) is libss.StateSpace:
                 ss_list = [ss]
                 system_name_list = ['']
             elif type(ss) is list:
                 ss_list = ss
                 system_name_list = ['system{:g}'.format(sys_number) for sys_number in len(ss_list)]
             else:
-                raise TypeError('ss input must be either a libss.ss instance or a list of libss.ss')
+                raise TypeError('ss input must be either a libss.StateSpace instance or a list of libss.StateSpace')
 
         for ith, system in enumerate(ss_list):
             if ss is not None:
@@ -300,6 +305,8 @@ class AsymptoticStability(BaseSolver):
             f.create_dataset('eigenvalues', data=eigenvalues[:num_evals], dtype=complex)
             f.create_dataset('eigenvectors', data=eigenvectors[:, :num_evals], dtype=complex)
             f.create_dataset('num_eigenvalues', data=num_evals, dtype=int)
+
+        cout.cout_wrap('\tSaved results to {:s}'.format(stability_folder_path), 1)
 
     def velocity_analysis(self):
         """
