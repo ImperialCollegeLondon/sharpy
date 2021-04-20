@@ -895,17 +895,19 @@ class FloatingForces(generator_interface.BaseGenerator):
 
             L = self.floating_data['hydrodynamics']['CD_spar_length']
             avg_dir = algebra.unit_vector(vel_g + 0.5*omega_g*L)
-            vel_g = algebra.unit_vector(vel_g)
-            omega_g = algebra.unit_vector(omega_g)
- 
-            drag_force = ((vel_g + omega_g*L)**3 - 
-                          (vel_g + omega_g*0.)**3)*avg_dir
-            drag_force *= 0.5*self.water_density*self.cd*self.floating_data['hydrodynamics']['spar_diameter']/3./omega_g
-            struct_tstep.runtime_generated_forces[self.floating_data['hydrodynamics']['CD_node'], 0:3] += np.dot(cbg, force_coeff*drag_force)
+            vel_g = np.linalg.norm(vel_g)
+            omega_g = np.linalg.norm(omega_g)
+
+            drag_force = np.zeros((6)) 
+            if ((not vel_g == 0) or (not omega_g == 0)):
+                drag_force[0:3] = ((vel_g + omega_g*L)**3 - 
+                                  (vel_g + omega_g*0.)**3)*avg_dir
+                drag_force[0:3] *= 0.5*self.water_density*self.cd*self.floating_data['hydrodynamics']['spar_diameter']/3./omega_g
+                struct_tstep.runtime_generated_forces[self.floating_data['hydrodynamics']['CD_node'], 0:3] += np.dot(cbg, force_coeff*drag_force[0:3])
     
-            drag_moment = 0.5*vel_g**2*L**2 + (2./3)*vel_g*omega_g*L**3 + 0.25*omega_g**2*L**4
-            drag_moment *= 0.5*self.water_density*self.cd*self.floating_data['hydrodynamics']['spar_diameter']
-            struct_tstep.runtime_generated_forces[self.floating_data['hydrodynamics']['CD_node'], 3:6] += np.dot(cbg, force_coeff*drag_moment)
+                drag_force[3:6] = 0.5*vel_g**2*L**2 + (2./3)*vel_g*omega_g*L**3 + 0.25*omega_g**2*L**4
+                drag_force[3:6] *= 0.5*self.water_density*self.cd*self.floating_data['hydrodynamics']['spar_diameter']
+                struct_tstep.runtime_generated_forces[self.floating_data['hydrodynamics']['CD_node'], 3:6] += np.dot(cbg, force_coeff*drag_force[3:6])
 
         else:
             for inode in range(self.floating_data['hydrodynamics']['CD_first_node'], self.floating_data['hydrodynamics']['CD_last_node'] + 1):
