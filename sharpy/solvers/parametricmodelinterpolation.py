@@ -234,6 +234,7 @@ class ParametricModelInterpolation(BaseSolver):
         self.postproc_output_folder = dict()
 
         self.input_cases = list()
+        self.folder = None
 
     def initialise(self, data):
 
@@ -248,6 +249,8 @@ class ParametricModelInterpolation(BaseSolver):
             settings.to_custom_types(self.interpolation_settings[k], self.interpolation_settings_types,
                                      self.interpolation_settings_default, self.interpolation_settings_options,
                                      no_ctype=True)
+
+        self.folder = self.data.output_folder
 
         self.rom_library = pmorlibrary.ROMLibrary()
 
@@ -320,7 +323,7 @@ class ParametricModelInterpolation(BaseSolver):
         interpolated_roms = pmorlibrary.InterpolatedROMLibrary()
 
         if not self.settings['cleanup_previous_cases']:
-            interpolated_roms.load_previous_cases(self.data.settings['SHARPy']['log_folder'] + './pmor_summary.txt')
+            interpolated_roms.load_previous_cases(self.folder + './pmor_summary.txt')
 
         input_list = [case for case in self.input_cases if case not in interpolated_roms.parameter_list]
         for case_number, case in enumerate(input_list):
@@ -348,7 +351,7 @@ class ParametricModelInterpolation(BaseSolver):
                         os.makedirs(self.postprocessors[postproc].folder)
                     self.postprocessors[postproc].run(ss=ss)
 
-        interpolated_roms.write_summary(self.data.settings['SHARPy']['log_folder'] + './pmor_summary.txt')
+        interpolated_roms.write_summary(self.folder + './pmor_summary.txt')
         self.data.interp_rom = interpolated_roms
 
         return self.data
