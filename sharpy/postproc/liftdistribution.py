@@ -54,8 +54,9 @@ class LiftDistribution(BaseSolver):
                                    self.data.aero.timestep_info[self.data.ts])
         return self.data
 
-    def lift_distribution(self, struct_tstep, aero_tstep):        
+    def lift_distribution(self, struct_tstep, aero_tstep):
         # Force mapping
+        rot = algebra.quat2rotation(struct_tstep.quat)
         forces = mapping.aero2struct_force_mapping(
             aero_tstep.forces + aero_tstep.dynamic_forces,
             self.data.aero.struct2aero_mapping,
@@ -72,11 +73,12 @@ class LiftDistribution(BaseSolver):
         header= "x,y,z,fz"
         # get aero forces
         lift_distribution = np.zeros((N_nodes, numb_col))
-        for inode in range(self.data.structure.num_node):
-            lift_distribution[inode,4]=np.linalg.norm(forces[inode, 0:3])  # forces
-            lift_distribution[inode,3]=struct_tstep.pos[inode, 2]  #z
-            lift_distribution[inode,2]=struct_tstep.pos[inode, 1]  #y
-            lift_distribution[inode,1]=struct_tstep.pos[inode, 0]  #x
+        for inode in range(N_nodes):
+            if self.data.aero.aero_dict['aero_node'][inode]:
+                lift_distribution[inode,3]=np.dot(rot.T, forces[inode, :3])[2]  # lift force (z direction in A frame or B frame)
+                lift_distribution[inode,2]=struct_tstep.pos[inode, 2]  #z
+                lift_distribution[inode,1]=struct_tstep.pos[inode, 1]  #y
+                lift_distribution[inode,0]=struct_tstep.pos[inode, 0]  #x
             
         # Export lift distribution data
         np.savetxt(self.settings["folder"]+'/lift_distribution.txt', lift_distribution, fmt='%10e,'*(numb_col-1)+'%10e', delimiter = ", ", header= header)
