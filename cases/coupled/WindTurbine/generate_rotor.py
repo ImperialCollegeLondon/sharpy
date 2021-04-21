@@ -80,6 +80,15 @@ SimInfo.solvers['BeamLoader']['unsteady'] = 'on'
 SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
 SimInfo.solvers['AerogridLoader']['mstar'] = mstar
 SimInfo.solvers['AerogridLoader']['freestream_dir'] = np.array([0.,0.,0.])
+SimInfo.solvers['AerogridLoader']['wake_shape_generator'] = 'HelicoidalWake'
+SimInfo.solvers['AerogridLoader']['wake_shape_generator_input'] = {'u_inf': WSP,
+                                                                   'u_inf_direction': SimInfo.solvers['SteadyVelocityField']['u_inf_direction'],
+                                                                   'rotation_velocity': rotation_velocity*np.array([0., 0., 1.]),
+                                                                   'dt': dt,
+                                                                   'dphi1': dphi,
+                                                                   'ndphi1': mstar,
+                                                                   'r': 1.,
+                                                                   'dphimax': 10*deg2rad}
 
 SimInfo.solvers['NonLinearStatic']['max_iterations'] = 200
 SimInfo.solvers['NonLinearStatic']['num_load_steps'] = 1
