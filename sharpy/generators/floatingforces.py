@@ -707,7 +707,7 @@ class FloatingForces(generator_interface.BaseGenerator):
 
 
     def write_output(self, ts, k, mooring, mooring_yaw, hydrostatic,
-                     hydrodynamic_qdot, hydrodynamic_qdotdot, hd_correct_grav, waves):
+                     hydrodynamic_qdot, hydrodynamic_qdotdot, hd_correct_grav, drag, waves):
 
         output = dict()
         output['ts'] = ts
@@ -721,6 +721,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         output['hydrodynamic_qdot'] = hydrodynamic_qdot
         output['hydrodynamic_qdotdot'] = hydrodynamic_qdotdot
         output['hydrodynamic_correct_grav'] = hd_correct_grav
+        output['drag'] = drag
         output['waves'] = waves
 
         fid = h5.File(self.log_filename, 'a')
@@ -744,6 +745,7 @@ class FloatingForces(generator_interface.BaseGenerator):
             print("hydrodynamic_qdot: ", hydrodynamic_qdot)
             print("hydrodynamic_qdotdot: ", hydrodynamic_qdotdot)
             print("hydrodynamic_correct_grav: ", hd_correct_grav)
+            print("drag: ", drag)
             print("waves: ", waves)
 
         return
@@ -884,8 +886,9 @@ class FloatingForces(generator_interface.BaseGenerator):
 
         # Nonlinear drag coefficeint
         if self.settings['concentrate_spar']:
-            spar_node_pos = np.linspace(-self.floating_data['hydrodynamics']['CD_spar_length'], 0, 100) + struct_tstep.pos[self.floating_data['hydrodynamics']['CD_node'], :]
-            spar_node_pos_dot = np.zeros((100))
+            spar_node_pos = np.zeros((100, 3)) + struct_tstep.pos[self.floating_data['hydrodynamics']['CD_node'], :]
+            spar_node_pos[:, 0] += np.linspace(-self.floating_data['hydrodynamics']['CD_spar_length'], 0, 100)
+            spar_node_pos_dot = np.zeros((100, 3))
         else:
             spar_node_pos = struct_tstep.pos[self.floating_data['hydrodynamics']['CD_first_node'] : self.floating_data['hydrodynamics']['CD_last_node'] + 1, :]
             spar_node_pos_dot = struct_tstep.pos_dot[self.floating_data['hydrodynamics']['CD_first_node'] : self.floating_data['hydrodynamics']['CD_last_node'] + 1, :]
@@ -920,8 +923,8 @@ class FloatingForces(generator_interface.BaseGenerator):
                           self.floating_data['hydrodynamics']['spar_diameter']*
                           self.cd)
 
-            r = spar_node_pos[inode, :] - struct_tstep[self.floating_data['hydrodynamics']['CD_node'], :]
-            drag_moment = np.corss(r, drag_force)
+            r = spar_node_pos[inode, :] - struct_tstep.pos[self.floating_data['hydrodynamics']['CD_node'], :]
+            drag_moment = np.cross(r, drag_force)
             total_drag_force[0:3] += drag_force
             total_drag_force[3:6] += drag_moment
             if self.settings['concentrate_spar']:
@@ -941,4 +944,4 @@ class FloatingForces(generator_interface.BaseGenerator):
         # Write output
         if self.settings['write_output']:
             self.write_output(data.ts, k, mooring_forces, mooring_yaw, hs_f_g,
-                     hd_f_qdot_g, hd_f_qdotdot_g, hd_correct_grav, self.wave_forces_g[data.ts, :])
+                     hd_f_qdot_g, hd_f_qdotdot_g, hd_correct_grav, total_drag_force, self.wave_forces_g[data.ts, :])
