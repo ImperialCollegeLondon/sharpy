@@ -70,7 +70,7 @@ class NotValidSetting(DefaultValueBaseException):
             print(message)
         else:
             cout.cout_wrap.print_separator(3)
-            cout.cout_wrap(message, 3)
+            cout.cout_wrap(message, 4)
             cout.cout_wrap.print_separator(3)
 
 
@@ -79,3 +79,18 @@ class SolverNotFound(Exception):
         message = 'The solver %s cannot be found in the list of solvers. Ensure you have spelt the solver name ' \
                   'correctly.' % solver_name
         super().__init__(message)
+
+
+class NotRecognisedSetting(DefaultValueBaseException):
+    """
+    Raised when a setting is not recognised
+    """
+    def __init__(self, setting, value=None, message=''):
+        message = 'Unrecognised setting {:s}. Please check input file and/or documentation'.format(setting)
+        super().__init__(variable=None, value=None, message=message)
+        if cout.cout_wrap is None:
+            print(message)
+        else:
+            cout.cout_wrap.print_separator(3)
+            cout.cout_wrap(message, 4)
+            cout.cout_wrap.print_separator(3)

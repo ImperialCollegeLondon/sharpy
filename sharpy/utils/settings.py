@@ -198,7 +198,7 @@ def to_custom_types(dictionary, types, default, options=dict(), no_ctype=True):
 
     for k in dictionary.keys():
         if k not in list(types.keys()):
-            cout.cout_wrap('Warning - Unrecognised setting: %s. Please check input file and/or documentation.' % k, 3)
+            raise exceptions.NotRecognisedSetting(k)
 
 
 def check_settings_in_options(settings, settings_types, settings_options):
