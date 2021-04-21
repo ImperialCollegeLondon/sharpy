@@ -164,6 +164,7 @@ def vlm_solver(ts_info, options):
     flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
 
     p_rbm_vel_g = options['rbm_vel_g'].ctypes.data_as(ct.POINTER(ct.c_double))
+    p_centre_rot_g = options['centre_rot_g'].ctypes.data_as(ct.POINTER(ct.c_double))
 
     ts_info.generate_ctypes_pointers()
     run_VLM(ct.byref(vmopts),
@@ -177,7 +178,8 @@ def vlm_solver(ts_info, options):
             ts_info.ct_p_gamma,
             ts_info.ct_p_gamma_star,
             ts_info.ct_p_forces,
-            p_rbm_vel_g)
+            p_rbm_vel_g,
+            p_centre_rot_g)
     ts_info.remove_ctypes_pointers()
 
 
@@ -266,6 +268,7 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
     rbm_vel[0:3] = np.dot(struct_ts_info.cga(), rbm_vel[0:3])
     rbm_vel[3:6] = np.dot(struct_ts_info.cga(), rbm_vel[3:6])
     p_rbm_vel = rbm_vel.ctypes.data_as(ct.POINTER(ct.c_double))
+    p_centre_rot = options['centre_rot'].ctypes.data_as(ct.POINTER(ct.c_double))
 
     i = ct.c_uint(i_iter)
     ts_info.generate_ctypes_pointers()
@@ -281,6 +284,7 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
              ts_info.ct_p_zeta_star,
              ts_info.ct_p_zeta_dot,
              p_rbm_vel,
+             p_centre_rot,
              ts_info.ct_p_gamma,
              ts_info.ct_p_gamma_star,
              ts_info.ct_p_dist_to_orig,

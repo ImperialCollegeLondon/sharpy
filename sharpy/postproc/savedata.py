@@ -6,10 +6,8 @@ import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.h5utils as h5utils
+from sharpy.presharpy.presharpy import PreSharpy
 
-
-# Define basic numerical types
-# BasicNumTypes=(float,float32,float64,int,int32,int64,complex)
 
 @solver
 class SaveData(BaseSolver):
@@ -55,6 +53,10 @@ class SaveData(BaseSolver):
     settings_description['save_linear_uvlm'] = 'Save linear UVLM state space system. Use with caution when dealing with ' \
                                                'large systems.'
 
+    settings_types['save_wake'] = 'bool'
+    settings_default['save_wake'] = True
+    settings_description['save_wake'] = 'Save aero wake classes.'
+
     settings_types['save_rom'] = 'bool'
     settings_default['save_rom'] = False
     settings_description['save_rom'] = 'Saves the ROM matrices and the reduced order model'
@@ -93,7 +95,6 @@ class SaveData(BaseSolver):
                                        settings_options=settings_options)
 
     def __init__(self):
-        import sharpy
 
         self.settings = None
         self.data = None
@@ -106,7 +107,7 @@ class SaveData(BaseSolver):
 
         ### specify which classes are saved as hdf5 group
         # see initialise and add_as_grp
-        self.ClassesToSave = (sharpy.presharpy.presharpy.PreSharpy,)
+        self.ClassesToSave = (PreSharpy,)
 
     def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
@@ -164,6 +165,12 @@ class SaveData(BaseSolver):
             if self.settings['save_aero']:
                 self.ClassesToSave += (sharpy.aero.models.aerogrid.Aerogrid,
                                        sharpy.utils.datastructures.AeroTimeStepInfo,)
+                if not self.settings['save_wake']:
+                    self.settings['skip_attr'].append('zeta_star')
+                    self.settings['skip_attr'].append('u_ext_star')
+                    self.settings['skip_attr'].append('gamma_star')
+                    self.settings['skip_attr'].append('dist_to_orig')
+                    self.settings['skip_attr'].append('wake_conv_vel')
 
             if self.settings['save_struct']:
                 self.ClassesToSave += (

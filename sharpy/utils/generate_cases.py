@@ -167,6 +167,11 @@ def read_column_sheet_type01(excel_file_name, excel_sheet, column_name):
     excel_db = pd.read_excel(xls, sheet_name=excel_sheet)
     num_elem = excel_db.index.stop - 2
 
+    try:
+        excel_db[column_name]
+    except KeyError:
+        return None
+
     if excel_db[column_name][1] == 'one_int':
         var = excel_db[column_name][2]
     elif excel_db[column_name][1] == 'one_float':
@@ -346,6 +351,9 @@ class StructuralInformation():
         self.lumped_mass = None
         self.lumped_mass_inertia = None
         self.lumped_mass_position = None
+        self.lumped_mass_mat = None
+        self.lumped_mass_mat_nodes = None
+
 
     def copy(self):
         """
@@ -378,11 +386,15 @@ class StructuralInformation():
             copied.lumped_mass = self.lumped_mass.astype(dtype=float, copy=True)
             copied.lumped_mass_inertia = self.lumped_mass_inertia.astype(dtype=float, copy=True)
             copied.lumped_mass_position = self.lumped_mass_position.astype(dtype=float, copy=True)
+        if isinstance(self.lumped_mass_mat_nodes, np.ndarray):
+            copied.lumped_mass_mat_nodes = self.lumped_mass_mat_nodes.astype(dtype=int, copy=True)
+            copied.lumped_mass_mat = self.lumped_mass_mat.astype(dtype=float, copy=True)
 
         return copied
 
     def set_to_zero(self, num_node_elem, num_node, num_elem,
-                    num_mass_db=None, num_stiffness_db=None, num_lumped_mass=0):
+                    num_mass_db=None, num_stiffness_db=None, num_lumped_mass=0,
+                    num_lumped_mass_mat=0):
         """
         set_to_zero
 
@@ -395,6 +407,7 @@ class StructuralInformation():
             num_mass_db (int): number of different mass matrices in the case
             num_stiffness_db (int): number of different stiffness matrices in the case
             num_lumped_mass (int): number of lumped masses in the case
+            num_lumped_mass_mat (int): number of lumped masses given as matrices
         """
 
         if num_mass_db is None:
@@ -425,6 +438,10 @@ class StructuralInformation():
                                                 dtype=float)
             self.lumped_mass_position = np.zeros((num_lumped_mass, 3),
                                                  dtype=float)
+        if not num_lumped_mass_mat == 0:
+            self.lumped_mass_mat_nodes = np.zeros((num_lumped_mass_mat,), dtype=int)
+            self.lumped_mass_mat = np.zeros((num_lumped_mass_mat, 6, 6), dtype=float)
+
 
     def generate_full_structure(self,
                                 num_node_elem,
@@ -444,7 +461,9 @@ class StructuralInformation():
                                 lumped_mass_nodes=None,
                                 lumped_mass=None,
                                 lumped_mass_inertia=None,
-                                lumped_mass_position=None):
+                                lumped_mass_position=None,
+                                lumped_mass_mat_nodes=None,
+                                lumped_mass_mat=None):
         """
         generate_full_structure
 
@@ -469,6 +488,8 @@ class StructuralInformation():
             lumped_mass (np.array): value of the lumped masses
             lumped_mass_inertia (np.array): inertia of the lumped masses
             lumped_mass_position (np.array): position of the lumped masses
+            lumped_mass_mat_nodes (np.array): nodes with lumped masses given by matrices
+            lumped_mass_mat (np.array): value of the lumped masses given by matrices
         """
 
         self.num_node_elem = num_node_elem
@@ -491,6 +512,10 @@ class StructuralInformation():
             self.lumped_mass = lumped_mass
             self.lumped_mass_inertia = lumped_mass_inertia
             self.lumped_mass_position = lumped_mass_position
+        if isinstance(self.lumped_mass_mat_nodes, np.ndarray):
+            self.lumped_mass_mat_nodes = lumped_mass_mat_nodes
+            self.lumped_mass_mat = lumped_mass_mat
+
 
     def generate_1to1_from_vectors(self,
                                     num_node_elem,
@@ -501,7 +526,8 @@ class StructuralInformation():
                                     mass_db,
                                     frame_of_reference_delta,
                                     vec_node_structural_twist,
-                                    num_lumped_mass=0):
+                                    num_lumped_mass=0,
+                                    num_lumped_mass_mat=0):
 
         self.num_node_elem = num_node_elem
         self.num_node = num_node
@@ -514,6 +540,7 @@ class StructuralInformation():
         self.mass_db = mass_db
         self.create_frame_of_reference_delta(y_BFoR=frame_of_reference_delta)
         self.structural_twist = from_node_list_to_elem_matrix(vec_node_structural_twist, self.connectivities)
+        self.boundary_conditions = np.zeros((self.num_node,), dtype=int)
         self.beam_number = np.zeros((self.num_elem,), dtype=int)
         self.body_number = np.zeros((self.num_elem,), dtype=int)
         self.app_forces = np.zeros((self.num_node, 6), dtype=float)
@@ -522,6 +549,10 @@ class StructuralInformation():
             self.lumped_mass = np.zeros((num_lumped_mass,), dtype=float)
             self.lumped_mass_inertia = np.zeros((num_lumped_mass, 3, 3), dtype=float)
             self.lumped_mass_position = np.zeros((num_lumped_mass, 3), dtype=float)
+        if not num_lumped_mass_mat == 0:
+            self.lumped_mass_mat_nodes = np.zeros((num_lumped_mass_mat,), dtype=int)
+            self.lumped_mass_mat = np.zeros((num_lumped_mass_mat, 6, 6), dtype=float)
+
 
     def create_frame_of_reference_delta(self, y_BFoR='y_AFoR'):
         """
@@ -686,7 +717,8 @@ class StructuralInformation():
                                   EI,
                                   num_node_elem=3,
                                   y_BFoR='y_AFoR',
-                                  num_lumped_mass=0):
+                                  num_lumped_mass=0,
+                                  num_lumped_mass_mat=0):
         """
         generate_uniform_sym_beam
 
@@ -718,7 +750,8 @@ class StructuralInformation():
                                    EI,
                                    num_node_elem,
                                    y_BFoR,
-                                   num_lumped_mass)
+                                   num_lumped_mass,
+                                   num_lumped_mass_mat)
 
     def generate_uniform_beam(self,
                               node_pos,
@@ -735,7 +768,8 @@ class StructuralInformation():
                               EIz,
                               num_node_elem=3,
                               y_BFoR='y_AFoR',
-                              num_lumped_mass=0):
+                              num_lumped_mass=0,
+                              num_lumped_mass_mat=0):
         """
         generate_uniform_beam
 
@@ -757,12 +791,14 @@ class StructuralInformation():
             num_node_elem (int): number of nodes per element
             y_BFoR (str): orientation of the yB axis
             num_lumped_mass (int): number of lumped masses
+            num_lumped_mass_mat (int): number of lumped masses given as matrices
         """
         self.num_node = len(node_pos)
         self.num_node_elem = num_node_elem
         self.compute_basic_num_elem()
 
-        self.set_to_zero(self.num_node_elem, self.num_node, self.num_elem, 1, 1, num_lumped_mass)
+        self.set_to_zero(self.num_node_elem, self.num_node, self.num_elem, 1, 1,
+                         num_lumped_mass, num_lumped_mass_mat)
         self.coordinates = node_pos
         self.create_simple_connectivities()
         # self.create_mass_db_from_vector(np.ones((num_elem,),)*mass_per_unit_length,
@@ -790,6 +826,7 @@ class StructuralInformation():
         self.create_frame_of_reference_delta(y_BFoR)
         self.boundary_conditions = np.zeros((self.num_node), dtype=int)
 
+
     def assembly_structures(self, *args):
         """
         assembly_structures
@@ -811,6 +848,7 @@ class StructuralInformation():
         total_num_mass = self.mass_db.shape[0]
 
         for structure_to_add in args:
+
             self.coordinates = np.concatenate((self.coordinates, structure_to_add.coordinates), axis=0)
             self.connectivities = np.concatenate((self.connectivities, structure_to_add.connectivities + total_num_node), axis=0)
             assert self.num_node_elem == structure_to_add.num_node_elem, "num_node_elem does NOT match"
@@ -835,6 +873,12 @@ class StructuralInformation():
                 self.lumped_mass = structure_to_add.lumped_mass
                 self.lumped_mass_inertia = structure_to_add.lumped_mass_inertia
                 self.lumped_mass_position = structure_to_add.lumped_mass_position
+            if isinstance(self.lumped_mass_mat_nodes, np.ndarray) and isinstance(structure_to_add.lumped_mass_mat_nodes, np.ndarray):
+                self.lumped_mass_mat_nodes = np.concatenate((self.lumped_mass_mat_nodes, structure_to_add.lumped_mass_mat_nodes + total_num_node), axis=0)
+                self.lumped_mass_mat = np.concatenate((self.lumped_mass_mat, structure_to_add.lumped_mass_mat), axis=0)
+            elif isinstance(structure_to_add.lumped_mass_mat_nodes, np.ndarray):
+                self.lumped_mass_mat_nodes = structure_to_add.lumped_mass_mat_nodes + total_num_node
+                self.lumped_mass_mat = structure_to_add.lumped_mass_mat
 
             total_num_stiff += structure_to_add.stiffness_db.shape[0]
             total_num_mass += structure_to_add.mass_db.shape[0]
@@ -919,6 +963,9 @@ class StructuralInformation():
                 h5file.create_dataset('lumped_mass', data=self.lumped_mass)
                 h5file.create_dataset('lumped_mass_inertia', data=self.lumped_mass_inertia)
                 h5file.create_dataset('lumped_mass_position', data=self.lumped_mass_position)
+            if isinstance(self.lumped_mass_mat_nodes, np.ndarray):
+                h5file.create_dataset('lumped_mass_mat_nodes', data=self.lumped_mass_mat_nodes)
+                h5file.create_dataset('lumped_mass_mat', data=self.lumped_mass_mat)
 
 
 ######################################################################
@@ -1442,7 +1489,7 @@ class AeroelasticInformation():
         self.StructuralInformation.assembly_structures(*list_of_SI)
         self.AerodynamicInformation.assembly_aerodynamics(*list_of_AI)
 
-    def remove_duplicated_points(self, tol):
+    def remove_duplicated_points(self, tol, skip=[]):
         """
         remove_duplicated_points
 
@@ -1450,6 +1497,7 @@ class AeroelasticInformation():
 
         Args:
             tol (float): tolerance. Maximum distance between nodes to be merged
+            skip (list): nodes to keep (do not remove)
 
         Notes:
             This function will not work if an element or an aerdoynamic surface is completely eliminated
@@ -1475,9 +1523,10 @@ class AeroelasticInformation():
         # Fill the first three columns
         for inode in range(self.StructuralInformation.num_node):
             for iprev_node in range(inode):
-                if (np.linalg.norm(
+                if ((np.linalg.norm(
                     self.StructuralInformation.coordinates[inode, :] -
-                    self.StructuralInformation.coordinates[iprev_node, :]) < tol):
+                    self.StructuralInformation.coordinates[iprev_node, :]) < tol) and (
+                       inode not in skip)):
                     cout.cout_wrap(("WARNING: Replacing node %d by node %d" % (inode, iprev_node)), 3)
                     replace_matrix[inode, 0] = iprev_node
                     replace_matrix[inode, 1], replace_matrix[inode, 2] = (
@@ -1643,35 +1692,32 @@ class SimulationInformation():
 
         # TODO: I am sure this can be done in a better way
         for solver in aux_names:
-            self.solvers[solver] = {}
-            if not solver == 'PreSharpy':
-                try:
-                    aux_solver = solver_interface.solver_from_string(solver)
-                except:
-                    aux_solver = generator_interface.generator_from_string(solver)
-                    # TODO: remove this try/except when generators are rewriten as solvers with class attributes instead of instance attributes
-                    aux_solver.__init__(aux_solver)
+            if solver == 'PreSharpy':
+                solver_name = 'SHARPy'
+            else:
+                solver_name = solver
+            self.solvers[solver_name] = {}
+            try:
+                aux_solver = solver_interface.solver_from_string(solver)
+            except:
+                aux_solver = generator_interface.generator_from_string(solver)
+                # TODO: remove this try/except when generators are rewriten as solvers with class attributes instead of instance attributes
+                aux_solver.__init__(aux_solver)
 
-                if aux_solver.settings_default == {}:
-                    aux_solver.__init__(aux_solver)
+            if aux_solver.settings_default == {}:
+                aux_solver.__init__(aux_solver)
 
-                for key, value in aux_solver.settings_default.items():
-                    self.solvers[solver][key] = deepcopy(value)
+            for key, value in aux_solver.settings_default.items():
+                self.solvers[solver_name][key] = deepcopy(value)
 
         # # MAIN
-        self.solvers['SHARPy'] = {'flow': '',
-                                  'case': 'default_case_name',
-                                  'route': '',
-                                  'write_screen': 'on',
-                                  'write_log': 'off',
-                                  'log_folder': './output',
-                                  'log_file': 'log'}
-
-        self.solvers['SaveData'] = {'folder': './output',
-                                   'save_aero': True,
-                                   'save_struct': True,
-                                   # 'skip_attr': dict(),
-                                   'compress_float': False}
+        # self.solvers['SHARPy'] = {'flow': '',
+        #                           'case': 'default_case_name',
+        #                           'route': '',
+        #                           'write_screen': 'on',
+        #                           'write_log': 'off',
+        #                           'log_folder': './output',
+        #                           'log_file': 'log'}
 
     def check(self):
 
