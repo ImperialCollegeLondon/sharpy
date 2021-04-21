@@ -490,11 +490,9 @@ def generate_solver_file(horseshoe=False):
                                                                                      'controlled_surfaces': 0,
                                                                                      'time_history_input_file': 'pitch.csv'}},
                                           'postprocessors': ['BeamPlot', 'AerogridPlot'],
-                                          'postprocessors_settings': {'BeamPlot': {'folder': route + '/output/',
-                                                                                   'include_rbm': 'on',
+                                          'postprocessors_settings': {'BeamPlot': {'include_rbm': 'on',
                                                                                    'include_applied_forces': 'on'},
                                                                       'AerogridPlot': {
-                                                                          'folder': route + '/output/',
                                                                           'include_rbm': 'on',
                                                                           'include_applied_forces': 'on',
                                                                           'minus_m_star': 0}},
@@ -520,25 +518,17 @@ def generate_solver_file(horseshoe=False):
                                     'aligned_grid': 'on',
                                     'mstar': int(m_main*wake_length),
                                     'freestream_dir': ['1', '0', '0']}
-    config['AerogridPlot'] = {'folder': route + '/output/',
-                              'include_rbm': 'on',
+    config['AerogridPlot'] = {'include_rbm': 'on',
                               'include_applied_forces': 'on',
                               'minus_m_star': 0
                               }
-    config['AeroForcesCalculator'] = {'folder': route + '/output/forces',
-                                      'write_text_file': 'on',
+    config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                       'text_file_name': case_name + '_aeroforces.csv',
                                       'screen_output': 'on',
                                       'unsteady': 'off'
                                       }
-    config['BeamPlot'] = {'folder': route + '/output/',
-                          'include_rbm': 'on',
+    config['BeamPlot'] = {'include_rbm': 'on',
                           'include_applied_forces': 'on'}
-    config['BeamCsvOutput'] = {'folder': route + '/output/',
-                               'output_pos': 'on',
-                               'output_psi': 'on',
-                               'output_for_pos': 'on',
-                               'screen_output': 'off'}
     config.write()
 
 

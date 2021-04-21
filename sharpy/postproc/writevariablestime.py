@@ -28,10 +28,6 @@ class WriteVariablesTime(BaseSolver):
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output/'
-    settings_description['folder'] = 'Output folder directory'
-
     settings_types['delimiter'] = 'str'
     settings_default['delimiter'] = ' '
     settings_description['delimiter'] = 'Delimiter to be used in the output file'
@@ -102,7 +98,7 @@ class WriteVariablesTime(BaseSolver):
     def __init__(self):
         self.settings = None
         self.data = None
-        self.dir = 'output/'
+        self.folder = None
 
         self.n_velocity_field_points = None
         self.velocity_field_points = None
@@ -117,9 +113,9 @@ class WriteVariablesTime(BaseSolver):
             self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-        self.dir = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/WriteVariablesTime/'
-        if not os.path.isdir(self.dir):
-            os.makedirs(self.dir)
+        self.folder = data.output_folder + '/WriteVariablesTime/'
+        if not os.path.isdir(self.folder):
+            os.makedirs(self.folder)
 
         # Check inputs
         if not ((len(self.settings['aero_panels_isurf']) == len(self.settings['aero_panels_im'])) and (len(self.settings['aero_panels_isurf']) == len(self.settings['aero_panels_in']))):
@@ -139,7 +135,7 @@ class WriteVariablesTime(BaseSolver):
         # Initialise files with headers and clean them if required
         for ivariable in range(len(self.settings['FoR_variables'])):
             for ifor in range(len(self.settings['FoR_number'])):
-                filename = self.dir + "FoR_" + '%02d' % self.settings['FoR_number'][ifor] + "_" + self.settings['FoR_variables'][ivariable] + ".dat"
+                filename = self.folder + "FoR_" + '%02d' % self.settings['FoR_number'][ifor] + "_" + self.settings['FoR_variables'][ivariable] + ".dat"
                 if self.settings['cleanup_old_solution']:
                     if os.path.isfile(filename):
                         os.remove(filename)
@@ -148,7 +144,7 @@ class WriteVariablesTime(BaseSolver):
         for ivariable in range(len(self.settings['structure_variables'])):
             for inode in range(len(self.settings['structure_nodes'])):
                 node = self.settings['structure_nodes'][inode]
-                filename = self.dir + "struct_" + self.settings['structure_variables'][ivariable] + "_node" + str(node) + ".dat"
+                filename = self.folder + "struct_" + self.settings['structure_variables'][ivariable] + "_node" + str(node) + ".dat"
                 if self.settings['cleanup_old_solution']:
                     if os.path.isfile(filename):
                         os.remove(filename)
@@ -159,7 +155,7 @@ class WriteVariablesTime(BaseSolver):
                 i_surf = self.settings['aero_panels_isurf'][ipanel]
                 i_m = self.settings['aero_panels_im'][ipanel]
                 i_n = self.settings['aero_panels_in'][ipanel]
-                filename = self.dir + "aero_" + self.settings['aero_panels_variables'][ivariable] + "_panel" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
+                filename = self.folder + "aero_" + self.settings['aero_panels_variables'][ivariable] + "_panel" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
                 if self.settings['cleanup_old_solution']:
                     if os.path.isfile(filename):
                         os.remove(filename)
@@ -170,7 +166,7 @@ class WriteVariablesTime(BaseSolver):
                 i_surf = self.settings['aero_nodes_isurf'][inode]
                 i_m = self.settings['aero_nodes_im'][inode]
                 i_n = self.settings['aero_nodes_in'][inode]
-                filename = self.dir + "aero_" + self.settings['aero_nodes_variables'][ivariable] + "_node" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
+                filename = self.folder + "aero_" + self.settings['aero_nodes_variables'][ivariable] + "_node" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
                 if self.settings['cleanup_old_solution']:
                     if os.path.isfile(filename):
                         os.remove(filename)
@@ -178,7 +174,7 @@ class WriteVariablesTime(BaseSolver):
         # Velocity field variables at points
         for ivariable in range(len(self.settings['vel_field_variables'])):
             for ipoint in range(self.n_vel_field_points):
-                filename = self.dir + "vel_field_" + self.settings['vel_field_variables'][ivariable] + "_point" + str(ipoint) + ".dat"
+                filename = self.folder + "vel_field_" + self.settings['vel_field_variables'][ivariable] + "_point" + str(ipoint) + ".dat"
                 if self.settings['cleanup_old_solution']:
                     if os.path.isfile(filename):
                         os.remove(filename)
@@ -216,17 +212,13 @@ class WriteVariablesTime(BaseSolver):
         else:
             self.settings['FoR_number'] = np.array([0], dtype=int)
 
-        if self.data.structure.timestep_info[it].in_global_AFoR:
-            tstep = self.data.structure.timestep_info[it]
-        else:
-            tstep = self.data.structure.timestep_info[it].copy()
-            tstep.whole_structure_to_global_AFoR(self.data.structure)
+        tstep = self.data.structure.timestep_info[it]
 
         for ivariable in range(len(self.settings['FoR_variables'])):
             if self.settings['FoR_variables'][ivariable] == '':
                 continue
             for ifor in range(len(self.settings['FoR_number'])):
-                filename = self.dir + "FoR_" + '%02d' % self.settings['FoR_number'][ifor] + "_" + self.settings['FoR_variables'][ivariable] + ".dat"
+                filename = self.folder + "FoR_" + '%02d' % self.settings['FoR_number'][ifor] + "_" + self.settings['FoR_variables'][ivariable] + ".dat"
 
                 with open(filename, 'a') as fid:
                     var = np.atleast_2d(getattr(tstep, self.settings['FoR_variables'][ivariable]))
@@ -248,14 +240,14 @@ class WriteVariablesTime(BaseSolver):
             num_indices = len(var.shape)
             if num_indices == 1:
                 # Beam global variables (i.e. not node dependant)
-                filename = self.dir + "struct_" + self.settings['structure_variables'][ivariable] + ".dat"
+                filename = self.folder + "struct_" + self.settings['structure_variables'][ivariable] + ".dat"
                 with open(filename, 'a') as fid:
                     self.write_nparray_to_file(fid, self.data.ts, var, self.settings['delimiter'])
 
             else:  # These variables have nodal values (i.e the number of indices is either 2 or 3)
                 for inode in range(len(self.settings['structure_nodes'])):
                     node = self.settings['structure_nodes'][inode]
-                    filename = self.dir + "struct_" + self.settings['structure_variables'][ivariable] + "_node" + str(node) + ".dat"
+                    filename = self.folder + "struct_" + self.settings['structure_variables'][ivariable] + "_node" + str(node) + ".dat"
                     with open(filename, 'a') as fid:
                         if num_indices == 2:
                             self.write_nparray_to_file(fid, self.data.ts, var[node,:], self.settings['delimiter'])
@@ -273,7 +265,7 @@ class WriteVariablesTime(BaseSolver):
                 i_m = self.settings['aero_panels_im'][ipanel]
                 i_n = self.settings['aero_panels_in'][ipanel]
 
-                filename = self.dir + "aero_" + self.settings['aero_panels_variables'][ivariable] + "_panel" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
+                filename = self.folder + "aero_" + self.settings['aero_panels_variables'][ivariable] + "_panel" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
 
                 with open(filename, 'a') as fid:
                     var = getattr(self.data.aero.timestep_info[it], self.settings['aero_panels_variables'][ivariable])
@@ -289,7 +281,7 @@ class WriteVariablesTime(BaseSolver):
                 i_m = self.settings['aero_nodes_im'][inode]
                 i_n = self.settings['aero_nodes_in'][inode]
 
-                filename = self.dir + "aero_" + self.settings['aero_nodes_variables'][ivariable] + "_node" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
+                filename = self.folder + "aero_" + self.settings['aero_nodes_variables'][ivariable] + "_node" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
 
                 with open(filename, 'a') as fid:
                     var = getattr(self.data.aero.timestep_info[it], self.settings['aero_nodes_variables'][ivariable])
@@ -301,12 +293,12 @@ class WriteVariablesTime(BaseSolver):
                 uext = [np.zeros((3, self.n_vel_field_points, 1))]
                 self.velocity_generator.generate({'zeta': self.vel_field_points,
                                     'for_pos': tstep.for_pos[0:3],
-                                    't': self.data.ts*self.caller.settings['dt'].value,
+                                    't': self.data.ts*self.caller.settings['dt'],
                                     'is_wake': False,
                                     'override': True},
                                     uext)
                 for ipoint in range(self.n_vel_field_points):
-                    filename = self.dir + "vel_field_" + self.settings['vel_field_variables'][ivariable] + "_point" + str(ipoint) + ".dat"
+                    filename = self.folder + "vel_field_" + self.settings['vel_field_variables'][ivariable] + "_point" + str(ipoint) + ".dat"
                     with open(filename, 'a') as fid:
                         self.write_nparray_to_file(fid, self.data.ts, uext[0][:,ipoint,0], self.settings['delimiter'])
 
@@ -315,13 +307,13 @@ class WriteVariablesTime(BaseSolver):
     def write_nparray_to_file(self, fid, ts, nparray, delimiter):
 
         fid.write("%d%s" % (ts,delimiter))
-        for idim in range(np.shape(nparray)[0]):
+        for idim in range(nparray.shape[0]):
             try:
-                for jdim in range(np.shape(nparray)[1]):
+                for jdim in range(nparray.shape[1] - 1):
                     fid.write("%e%s" % (nparray[idim, jdim],delimiter))
+                fid.write("%e" % (nparray[idim, -1]))
             except IndexError:
                 fid.write("%e%s" % (nparray[idim],delimiter))
-
 
         fid.write("\n")
 
