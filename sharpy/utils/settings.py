@@ -196,9 +196,16 @@ def to_custom_types(dictionary, types, default, options=dict(), no_ctype=True):
 
     check_settings_in_options(dictionary, types, options)
 
+    unrecognised_settings = []
     for k in dictionary.keys():
         if k not in list(types.keys()):
-            raise exceptions.NotRecognisedSetting(k)
+            unrecognised_settings.append(exceptions.NotRecognisedSetting(k))
+
+    for setting in unrecognised_settings:
+        cout.cout_wrap(repr(setting), 4)
+
+    if unrecognised_settings:
+        raise Exception(unrecognised_settings)
 
 
 def check_settings_in_options(settings, settings_types, settings_options):
