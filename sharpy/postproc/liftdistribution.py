@@ -79,6 +79,43 @@ class LiftDistribution(BaseSolver):
                 lift_distribution[inode,2]=struct_tstep.pos[inode, 2]  #z
                 lift_distribution[inode,1]=struct_tstep.pos[inode, 1]  #y
                 lift_distribution[inode,0]=struct_tstep.pos[inode, 0]  #x
-            
+
+        if self.settings["normalise"]: 
+            # get lift coefficient           
+            strip_area = self.calculate_panel_area(aero_tstep)  
+            # TODO: add nondimensional spanwise column y/s
+            header += ",cl"
+            numb_col += 1
+            lift_distribution = np.concatenate((lift_distribution, np.zeros((N_nodes,1))), axis=1)
+            for inode in range(N_nodes):                
+                if self.data.aero.aero_dict['aero_node'][inode]:               
+                    local_node = self.data.aero.struct2aero_mapping[inode][0]["i_n"]             
+                    ielem, _ = self.data.structure.node_master_elem[inode]                    
+                    i_surf = int(self.data.aero.surface_distribution[ielem])
+                    lift_distribution[inode,4] = lift_distribution[inode,3]/(self.settings['q_ref']*\
+                            strip_area[i_surf][local_node]) # cl
+
         # Export lift distribution data
         np.savetxt(self.settings["folder"]+'/lift_distribution.txt', lift_distribution, fmt='%10e,'*(numb_col-1)+'%10e', delimiter = ", ", header= header)
+    
+    def calculate_panel_area(self, aero_tstep):
+        # Function to get the panel area (TODO: Better description)
+        strip_area = []
+        for i_surf in range(self.data.aero.n_surf):
+            N_panel = self.data.aero.aero_dimensions[i_surf][1]
+            array_panel_area = np.zeros((N_panel))
+            # the area is calculated for all chordwise panels together
+            for i_panel in range(N_panel):
+                array_panel_area[i_panel] = algebra.panel_area(
+                    aero_tstep.zeta[i_surf][:, -1, i_panel],
+                    aero_tstep.zeta[i_surf][:, 0, i_panel], 
+                    aero_tstep.zeta[i_surf][:, 0, i_panel+1], 
+                    aero_tstep.zeta[i_surf][:, -1, i_panel+1])
+            # assume each strip shares half of each adjacent panel
+            strip_area.append(np.zeros((N_panel+1)))
+            strip_area[i_surf][:-1] = abs(np.roll(array_panel_area[:],1)+array_panel_area[:]).reshape(-1)
+            strip_area[i_surf][0] = abs(array_panel_area[0])            
+            strip_area[i_surf][-1] = abs(array_panel_area[-1])         
+            strip_area[i_surf][:] /= 2
+        
+        return strip_area
