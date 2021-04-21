@@ -85,7 +85,7 @@ class LiftDistribution(BaseSolver):
 
         if self.settings["coefficients"]: 
             # get lift coefficient           
-            strip_area = self.calculate_panel_area(aero_tstep)  
+            strip_area = self.calculate_strip_area(aero_tstep)  
             # TODO: add nondimensional spanwise column y/s
             header += ",cl"
             numb_col += 1
@@ -105,7 +105,7 @@ class LiftDistribution(BaseSolver):
         # Export lift distribution data
         np.savetxt(os.path.join(self.folder,self.settings['text_file_name']), lift_distribution, fmt='%10e,'*(numb_col-1)+'%10e', delimiter = ", ", header= header)
     
-    def calculate_panel_area(self, aero_tstep):
+    def calculate_strip_area(self, aero_tstep):
         # Function to get the panel area (TODO: Better description)
         strip_area = []
         for i_surf in range(self.data.aero.n_surf):
