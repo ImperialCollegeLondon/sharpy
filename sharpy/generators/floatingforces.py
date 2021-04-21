@@ -885,58 +885,51 @@ class FloatingForces(generator_interface.BaseGenerator):
 
         # Nonlinear drag coefficeint
         if self.settings['concentrate_spar']:
-            
-            ielem, inode_in_elem = data.structure.node_master_elem[self.floating_data['hydrodynamics']['CD_node']]
+            spar_node_pos = np.linspace(-self.floating_data['hydrodynamics']['CD_spar_length'], 0, 100) + struct_tstep.pos[self.floating_data['hydrodynamics']['CD_node'], :]
+            spar_node_pos_dot = np.zeros((100))
+        else:
+            spar_node_pos = struct_tstep.pos[self.floating_data['hydrodynamics']['CD_first_node'] : self.floating_data['hydrodynamics']['CD_last_node'] + 1, :]
+            spar_node_pos_dot = struct_tstep.pos_dot[self.floating_data['hydrodynamics']['CD_first_node'] : self.floating_data['hydrodynamics']['CD_last_node'] + 1, :]
+        
+        total_drag_force = np.zeros((6))
+        for inode in range(len(spar_node_pos)):
+    
+            if self.settings['concentrate_spar']:
+                ielem, inode_in_elem = data.structure.node_master_elem[inode + self.floating_data['hydrodynamics']['CD_node']]
+            else:
+                ielem, inode_in_elem = data.structure.node_master_elem[inode + self.floating_data['hydrodynamics']['CD_first_node']]
             cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
             cbg = np.dot(cab.T, cga.T)
-            
-            vel_g = np.dot(cga, struct_tstep.for_vel[0:3])*np.array([0., 1., 1.])
-            omega_g = np.dot(cga, struct_tstep.for_vel[3:6])*np.array([0., 1., 1.])
 
-            L = self.floating_data['hydrodynamics']['CD_spar_length']
-            avg_dir = algebra.unit_vector(vel_g + 0.5*omega_g*L)
-            vel_g = np.linalg.norm(vel_g)
-            omega_g = np.linalg.norm(omega_g)
+            if inode == 0:
+                delta_x = 0.5*np.linalg.norm(spar_node_pos[1, :] - spar_node_pos[0, :])
+            elif inode == len(spar_node_pos) - 1:
+                delta_x = 0.5*np.linalg.norm(spar_node_pos[inode, :] - spar_node_pos[inode - 1, :])
+            else:
+                delta_x = 0.5*np.linalg.norm(spar_node_pos[inode + 1, :] - spar_node_pos[inode - 1, :])
 
-            drag_force = np.zeros((6)) 
-            if ((not vel_g == 0) or (not omega_g == 0)):
-                drag_force[0:3] = ((vel_g + omega_g*L)**3 - 
-                                  (vel_g + omega_g*0.)**3)*avg_dir
-                drag_force[0:3] *= 0.5*self.water_density*self.cd*self.floating_data['hydrodynamics']['spar_diameter']/3./omega_g
-                struct_tstep.runtime_generated_forces[self.floating_data['hydrodynamics']['CD_node'], 0:3] += np.dot(cbg, force_coeff*drag_force[0:3])
-    
-                drag_force[3:6] = 0.5*vel_g**2*L**2 + (2./3)*vel_g*omega_g*L**3 + 0.25*omega_g**2*L**4
-                drag_force[3:6] *= 0.5*self.water_density*self.cd*self.floating_data['hydrodynamics']['spar_diameter']
-                struct_tstep.runtime_generated_forces[self.floating_data['hydrodynamics']['CD_node'], 3:6] += np.dot(cbg, force_coeff*drag_force[3:6])
+            vel_a = (struct_tstep.for_vel[0:3] +
+                     np.cross(struct_tstep.for_vel[3:6], spar_node_pos[inode, :]) +
+                     spar_node_pos_dot[inode, :])
 
-        else:
-            for inode in range(self.floating_data['hydrodynamics']['CD_first_node'], self.floating_data['hydrodynamics']['CD_last_node'] + 1):
+            # Remove velocity along the x axis
+            vel_b = np.dot(cab.T, vel_a)
+            vel_b[0] = 0.
+            vel_g = np.dot(cbg.T, vel_b)
 
-                ielem, inode_in_elem = data.structure.node_master_elem[inode]
-                cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
-                cbg = np.dot(cab.T, cga.T)
+            drag_force = (-0.5*self.water_density*np.linalg.norm(vel_g)*vel_g*delta_x*
+                          self.floating_data['hydrodynamics']['spar_diameter']*
+                          self.cd)
 
-                if inode == 0:
-                    delta_x = 0.5*np.linalg.norm(struct_tstep.pos[1, :] - struct_tstep.pos[0, :])
-                elif inode == data.structure.num_node - 1:
-                    delta_x = 0.5*np.linalg.norm(struct_tstep.pos[inode, :] - struct_tstep.pos[inode - 1, :])
-                else:
-                    delta_x = 0.5*np.linalg.norm(struct_tstep.pos[inode + 1, :] - struct_tstep.pos[inode - 1, :])
-
-                vel_a = (struct_tstep.for_vel[0:3] +
-                         np.cross(struct_tstep.for_vel[3:6], struct_tstep.pos[inode, :]) +
-                         struct_tstep.pos_dot[inode, :])
-
-                # Remove velocity along the x axis
-                vel_b = np.dot(cab.T, vel_a)
-                vel_b[0] = 0.
-                vel_g = np.dot(cbg.T, vel_b)
-
-                drag_force = (-0.5*self.water_density*np.linalg.norm(vel_g)*vel_g*delta_x*
-                              self.floating_data['hydrodynamics']['spar_diameter']*
-                              self.cd)
-
-                struct_tstep.runtime_generated_forces[inode, 0:3] += np.dot(cbg, force_coeff*drag_force)
+            r = spar_node_pos[inode, :] - struct_tstep[self.floating_data['hydrodynamics']['CD_node'], :]
+            drag_moment = np.corss(r, drag_force)
+            total_drag_force[0:3] += drag_force
+            total_drag_force[3:6] += drag_moment
+            if self.settings['concentrate_spar']:
+                struct_tstep.runtime_generated_forces[self.floating_data['hydrodynamics']['CD_node'], 0:3] += np.dot(cbg, force_coeff*drag_force)
+                struct_tstep.runtime_generated_forces[self.floating_data['hydrodynamics']['CD_node'], 3:6] += np.dot(cbg, force_coeff*drag_moment)
+            else:
+                struct_tstep.runtime_generated_forces[inode + self.floating_data['hydrodynamics']['CD_first_node'], 0:3] += np.dot(cbg, force_coeff*drag_force)
 
         # Wave loading
         ielem, inode_in_elem = data.structure.node_master_elem[self.wave_forces_node]
