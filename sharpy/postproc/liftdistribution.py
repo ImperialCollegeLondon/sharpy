@@ -66,16 +66,17 @@ class LiftDistribution(BaseSolver):
             self.data.structure.connectivities,
             struct_tstep.cag(),
             self.data.aero.aero_dict)
-
+        # Prepare output matrix and file 
+        N_nodes = self.data.structure.num_node
+        numb_col = 4
+        header= "x,y,z,fz"
         # get aero forces
-        lift_distribution = np.zeros((self.data.structure.num_node, 5))
+        lift_distribution = np.zeros((N_nodes, numb_col))
         for inode in range(self.data.structure.num_node):
             lift_distribution[inode,4]=np.linalg.norm(forces[inode, 0:3])  # forces
             lift_distribution[inode,3]=struct_tstep.pos[inode, 2]  #z
             lift_distribution[inode,2]=struct_tstep.pos[inode, 1]  #y
             lift_distribution[inode,1]=struct_tstep.pos[inode, 0]  #x
-            ielem, inode_in_elem = data.structure.node_master_elem[inode]
-            lift_distribution[inode,0]=self.data.aero.surface_distribution[ielem]
-
+            
         # Export lift distribution data
-        np.savetxt(self.settings["folder"]+'/lift_distribution.txt', lift_distribution, fmt='%i' + ', %10e'*4, delimiter = ", ", header= "i_surf, x,y,z, fz")
+        np.savetxt(self.settings["folder"]+'/lift_distribution.txt', lift_distribution, fmt='%10e,'*(numb_col-1)+'%10e', delimiter = ", ", header= header)
