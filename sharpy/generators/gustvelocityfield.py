@@ -457,12 +457,6 @@ class GustVelocityField(generator_interface.BaseGenerator):
 
         self.gust = dict_of_gusts[self.settings['gust_shape']]()
 
-        # backward compatibility
-        temp_settings = self.settings['gust_parameters'].copy()
-        for key, value in self.settings.items():
-            if not key == 'gust_parameters':
-                temp_settings[key] = value
-
         self.u_inf = self.settings['u_inf']
         self.u_inf_direction = self.settings['u_inf_direction']
 
@@ -470,7 +464,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
         self.gust.u_inf = self.u_inf
         self.gust.u_inf_direction = self.u_inf_direction
 
-        self.gust.initialise(temp_settings)
+        self.gust.initialise(self.settings['gust_parameters'])
 
     def generate(self, params, uext):
         zeta = params['zeta']
