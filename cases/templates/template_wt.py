@@ -132,7 +132,8 @@ def spar_from_excel_type04(op_params,
     # Generate the spar
     if options['concentrate_spar']:
         mtower = wt.StructuralInformation.mass_db[0, 0, 0]
-        
+        iyawtower = wt.StructuralInformation.mass_db[0, 3, 3]       
+ 
         PlatformTotalMass = gc.read_column_sheet_type01(excel_file_name,
                                                  excel_sheet_parameters,
                                                  'PlatformTotalMass')
@@ -159,11 +160,18 @@ def spar_from_excel_type04(op_params,
         # iner_mat[5, 5] = PlatformIroll       
     
         mpoint = PlatformTotalMass - mtower*TowerBaseHeight
-        IyawPoint = PlatformIyawCM - (1./6)*mtower*TowerBaseHeight**2
-        IpitchPoint = PlatformIpitchCM + PlatformTotalMass*PlatformCMbelowSWL**2 - (1./3)*mtower*TowerBaseHeight**2
-        IrollPoint = PlatformIrollCM + PlatformTotalMass*PlatformCMbelowSWL**2 - (1./3)*mtower*TowerBaseHeight**2
+        # IyawPoint = PlatformIyawCM - (1./6)*mtower*TowerBaseHeight**2
+        # IpitchPoint = PlatformIpitchCM + PlatformTotalMass*PlatformCMbelowSWL**2 - (1./3)*mtower*TowerBaseHeight**2
+        # IrollPoint = PlatformIrollCM + PlatformTotalMass*PlatformCMbelowSWL**2 - (1./3)*mtower*TowerBaseHeight**2
+        IyawPoint = PlatformIyawCM - (1./6)*mtower*TowerBaseHeight**3 - iyawtower
+        IpitchPoint = PlatformIpitchCM + PlatformTotalMass*PlatformCMbelowSWL**2 - (1./3)*mtower*TowerBaseHeight**3
+        IrollPoint = PlatformIrollCM + PlatformTotalMass*PlatformCMbelowSWL**2 - (1./3)*mtower*TowerBaseHeight**3
+        xpoint = (PlatformTotalMass*PlatformCMbelowSWL + 0.5*mtower*TowerBaseHeight**2)/mpoint
+ 
         iner_mat = np.zeros((6,6))
         iner_mat[0:3, 0:3] = mpoint*np.eye(3)
+        iner_mat[0:3, 3:6] = -mpoint*algebra.skew(np.array([-xpoint, 0, 0]))
+        iner_mat[3:6, 0:3] = -iner_mat[0:3, 3:6]
         iner_mat[3, 3] = IyawPoint       
         iner_mat[4, 4] = IpitchPoint       
         iner_mat[5, 5] = IrollPoint
@@ -932,6 +940,9 @@ def generate_from_excel_type03(op_params,
     node_pos[:, 2] = np.linspace(0., overhang_len*np.cos(tilt*deg2rad), overhang.StructuralInformation.num_node)
     # TODO: change the following by real values
     # Same properties as the last element of the tower
+    # cout.cout_wrap("WARNING: Using the structural properties of the last tower section for the overhang", 3)
+    # oh_mass_per_unit_length = tower.StructuralInformation.mass_db[-1, 0, 0]
+    # oh_mass_iner = tower.StructuralInformation.mass_db[-1, 3, 3]
     cout.cout_wrap("WARNING: Using the structural properties (*0.1) of the last tower section for the overhang", 3)
     oh_mass_per_unit_length = tower.StructuralInformation.mass_db[-1, 0, 0]/10.
     oh_mass_iner = tower.StructuralInformation.mass_db[-1, 3, 3]/10.
