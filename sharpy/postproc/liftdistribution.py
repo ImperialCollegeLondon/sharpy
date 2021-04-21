@@ -6,6 +6,7 @@ import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.aero.utils.mapping as mapping
+import sharpy.utils.algebra as algebra
 
 
 @solver
