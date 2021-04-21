@@ -78,7 +78,8 @@ class LiftDistribution(BaseSolver):
         lift_distribution = np.zeros((N_nodes, numb_col))
         for inode in range(N_nodes):
             if self.data.aero.aero_dict['aero_node'][inode]:
-                lift_distribution[inode,3]=np.dot(rot.T, forces[inode, :3])[2]  # lift force (z direction in A frame or B frame)
+                # transform forces from B to A frame
+                lift_distribution[inode,3]=np.dot(rot.T, forces[inode, :3])[2]  # lift force
                 lift_distribution[inode,2]=struct_tstep.pos[inode, 2]  #z
                 lift_distribution[inode,1]=struct_tstep.pos[inode, 1]  #y
                 lift_distribution[inode,0]=struct_tstep.pos[inode, 0]  #x
