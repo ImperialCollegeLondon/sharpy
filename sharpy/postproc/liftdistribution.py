@@ -93,7 +93,11 @@ class LiftDistribution(BaseSolver):
                     ielem, _ = self.data.structure.node_master_elem[inode]                    
                     i_surf = int(self.data.aero.surface_distribution[ielem])
                     lift_distribution[inode,4] = lift_distribution[inode,3]/(self.settings['q_ref']*\
-                            strip_area[i_surf][local_node]) # cl
+                            strip_area[i_surf][local_node]) # cl                           
+                            
+                    # Check if shared nodes from different surfaces exist (e.g. two wings joining at symmetry plane)
+                    # Leads to error since panel area just donates for half the panel size while lift forces is summed up
+                    lift_distribution[inode,4] /= len(self.data.aero.struct2aero_mapping[inode])
 
         # Export lift distribution data
         np.savetxt(self.settings["folder"]+'/lift_distribution.txt', lift_distribution, fmt='%10e,'*(numb_col-1)+'%10e', delimiter = ", ", header= header)
