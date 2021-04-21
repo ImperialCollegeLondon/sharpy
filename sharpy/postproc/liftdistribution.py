@@ -106,7 +106,9 @@ class LiftDistribution(BaseSolver):
         np.savetxt(os.path.join(self.folder,self.settings['text_file_name']), lift_distribution, fmt='%10e,'*(numb_col-1)+'%10e', delimiter = ", ", header= header)
     
     def calculate_strip_area(self, aero_tstep):
-        # Function to get the panel area (TODO: Better description)
+        # Function to get the area of a strip, which has half of the panel area
+        # of each adjacent panel. For one strip, all chordwise panels (from leading
+        # to trailing edge) connected to the beam node are accounted.
         strip_area = []
         for i_surf in range(self.data.aero.n_surf):
             N_panel = self.data.aero.aero_dimensions[i_surf][1]
