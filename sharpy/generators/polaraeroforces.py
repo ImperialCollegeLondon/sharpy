@@ -3,6 +3,7 @@ import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.aero.utils.uvlmlib as uvlmlib
+from sharpy.utils.generate_cases import get_aoacl0_from_camber
 
 
 @generator_interface.generator
@@ -17,7 +18,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
     .. python::
         settings = dict()  # SHARPy settings
         settings['StaticCoupled']['correct_forces_method'] = 'PolarCorrection'
-        settings['StaticCoupled']['correct_forces_settings'] = {'cd_from_cl': 'off',
+        settings['StaticCoupled']['correct_forces_settings'] = {'cd_from_cl': 'off',  # recommended settings (default)
                                                                 'correct_lift': 'off',
                                                                 'compute_actual_aoa': 'off',
                                                                 'compute_uind': 'off'
@@ -42,7 +43,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
 
         Else, if ``compute_actual_aoa == 'off'`` (recommended):
             2. The angle of attack is computed based on that lift force and the angle of zero lift computed from the
-               airfoil polar and assuming a slope of :math:`2 \pi`
+               airfoil polar and taking the potential flow lift curve slope of :math:`2 \pi`
 
         3. The drag force is computed based on the angle of attack and the polars provided by the user
 
@@ -79,14 +80,14 @@ class PolarCorrection(generator_interface.BaseGenerator):
     settings_types['compute_uind'] = 'bool'
     settings_default['compute_uind'] = False
     settings_description['compute_uind'] = 'Compute (and include) vortex induced velocities in the angle of attack ' \
-                                           'calculation.'
+                                           'calculation. (use for comparison. Not recommended).'
 
     settings_types['compute_actual_aoa'] = 'bool'
     settings_default['compute_actual_aoa'] = False
     settings_description['compute_actual_aoa'] = 'Compute the coefficients using the angle of attack of the ' \
                                                  'section (between the chord and the flow velocity, ' \
                                                  'as opposed to the angle necessary to provide the UVLM ' \
-                                                 'calculated C_L with an assumed lift curve slope of 2pi'
+                                                 'calculated C_L using potential flow theory lift curve slope of 2pi '
 
     settings_types['moment_from_polar'] = 'bool'
     settings_default['moment_from_polar'] = False
@@ -164,6 +165,8 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 cab = algebra.crv2rotation(structural_kstep.psi[ielem, inode_in_elem, :])
                 cgb = np.dot(cga, cab)
 
+                airfoil_coords = aerogrid.aero_dict['airfoils'][str(aero_dict['airfoil_distribution'][ielem, inode_in_elem])]
+
                 dir_span, span, dir_chord, chord = span_chord(i_n, aero_kstep.zeta[isurf])
 
                 # Define the relative velocity and its direction
@@ -228,12 +231,14 @@ class PolarCorrection(generator_interface.BaseGenerator):
                         aoa = np.arccos(dir_chord.dot(dir_urel) / np.linalg.norm(dir_urel) / np.linalg.norm(dir_chord))
                         cl_polar, cd, cm = polar.get_coefs(aoa)
                     else:
-                        # ii) Compute the angle of attack assuming that UVLM gives a 2pi polar and using the CL calculated
-                        # from the UVLM
-                        aoa_deg_2pi = polar.get_aoa_deg_from_cl_2pi(cl)
+                        # ii) Compute the effective angle of attack from potential flow theory. The local lift curve
+                        # slope is 2pi and the zero-lift angle of attack is given by thin airfoil theory. From this,
+                        # the effective angle of attack is computed for the section and includes 3D effects.
+                        aoa_0cl = get_aoacl0_from_camber(airfoil_coords[:, 0], airfoil_coords[:, 1])
+                        aoa = cl / 2 / np.pi + aoa_0cl
 
                         # Compute the coefficients associated to that angle of attack
-                        cl_polar, cd, cm = polar.get_coefs(aoa_deg_2pi * np.pi / 180)
+                        cl_polar, cd, cm = polar.get_coefs(aoa)
 
                     if correct_lift:
                         # Use polar generated CL rather than UVLM computed CL
