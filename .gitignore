@@ -92,6 +92,10 @@ ENV/
 *.txt
 *.h5
 
+# Emacs stuff
+\#*#
+
+
 # project dependant stuff
 lib/*.so
 output/*
