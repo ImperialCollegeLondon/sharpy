@@ -132,7 +132,6 @@ def spar_from_excel_type04(op_params,
     # Generate the spar
     if options['concentrate_spar']:
         mtower = wt.StructuralInformation.mass_db[0, 0, 0]
-        iyawtower = wt.StructuralInformation.mass_db[0, 3, 3]       
  
         PlatformTotalMass = gc.read_column_sheet_type01(excel_file_name,
                                                  excel_sheet_parameters,
@@ -163,7 +162,7 @@ def spar_from_excel_type04(op_params,
         # IyawPoint = PlatformIyawCM - (1./6)*mtower*TowerBaseHeight**2
         # IpitchPoint = PlatformIpitchCM + PlatformTotalMass*PlatformCMbelowSWL**2 - (1./3)*mtower*TowerBaseHeight**2
         # IrollPoint = PlatformIrollCM + PlatformTotalMass*PlatformCMbelowSWL**2 - (1./3)*mtower*TowerBaseHeight**2
-        IyawPoint = PlatformIyawCM - (1./6)*mtower*TowerBaseHeight**3 - iyawtower
+        IyawPoint = PlatformIyawCM - (1./6)*mtower*TowerBaseHeight**3
         IpitchPoint = PlatformIpitchCM + PlatformTotalMass*PlatformCMbelowSWL**2 - (1./3)*mtower*TowerBaseHeight**3
         IrollPoint = PlatformIrollCM + PlatformTotalMass*PlatformCMbelowSWL**2 - (1./3)*mtower*TowerBaseHeight**3
         xpoint = (PlatformTotalMass*PlatformCMbelowSWL + 0.5*mtower*TowerBaseHeight**2)/mpoint
