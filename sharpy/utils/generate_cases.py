@@ -315,6 +315,16 @@ def list_methods(class_instance, print_info=True, clean=True):
     return list
 
 
+def set_variable_dict(dictionary, variable, set_value):
+
+    if variable in dictionary:
+        dictionary[variable] = set_value
+
+    for key, value in dictionary.items():
+        if isinstance(value, dict):
+            set_variable_dict(value, variable, set_value)
+
+
 ######################################################################
 ###############  STRUCTURAL INFORMATION  #############################
 ######################################################################
@@ -1750,7 +1760,8 @@ class SimulationInformation():
         # self.solvers['StepUvlm']['velocity_field_input'] = {'u_inf': norm,
         #                                                     'u_inf_direction': unit_vector}
 
-    def set_variable_all_dicts(self, variable, value):
+
+    def set_variable_all_dicts(self, variable, set_value):
         """
         set_variable_all_dicts
 
@@ -1758,11 +1769,9 @@ class SimulationInformation():
 
         Args:
             variable (str): variable name
-            value ( ): value
+            set_value ( ): value
         """
-        for solver in self.solvers:
-            if variable in self.solvers[solver]:
-                self.solvers[solver][variable] = value
+        set_variable_dict(self.solvers, variable, set_value)
 
     def generate_solver_file(self):
         """
