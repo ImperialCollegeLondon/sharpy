@@ -28,6 +28,7 @@ from copy import deepcopy
 import sharpy.utils.algebra as algebra
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.generator_interface as generator_interface
+import sharpy.utils.controller_interface as controller_interface
 import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
 import sharpy.utils.cout_utils as cout
 
@@ -1685,39 +1686,17 @@ class SimulationInformation():
         """
 
         self.solvers = dict()
-        # cout.start_writer()
-        aux_names = solver_interface.dictionary_of_solvers(print_info=False)
-        # cout.finish_writer()
-        aux_names.update(generator_interface.dictionary_of_generators(print_info=False))
+        aux_solvers = solver_interface.dictionary_of_solvers(print_info=False)
+        aux_solvers.update(generator_interface.dictionary_of_generators(print_info=False))
+        aux_solvers.update(controller_interface.dictionary_of_controllers(print_info=False))
 
-        # TODO: I am sure this can be done in a better way
-        for solver in aux_names:
+        for solver in aux_solvers:
             if solver == 'PreSharpy':
                 solver_name = 'SHARPy'
             else:
                 solver_name = solver
-            self.solvers[solver_name] = {}
-            try:
-                aux_solver = solver_interface.solver_from_string(solver)
-            except:
-                aux_solver = generator_interface.generator_from_string(solver)
-                # TODO: remove this try/except when generators are rewriten as solvers with class attributes instead of instance attributes
-                aux_solver.__init__(aux_solver)
-
-            if aux_solver.settings_default == {}:
-                aux_solver.__init__(aux_solver)
-
-            for key, value in aux_solver.settings_default.items():
-                self.solvers[solver_name][key] = deepcopy(value)
-
-        # # MAIN
-        # self.solvers['SHARPy'] = {'flow': '',
-        #                           'case': 'default_case_name',
-        #                           'route': '',
-        #                           'write_screen': 'on',
-        #                           'write_log': 'off',
-        #                           'log_folder': './output',
-        #                           'log_file': 'log'}
+            self.solvers[solver_name] = deepcopy(aux_solvers[solver])
+            
 
     def check(self):
 
@@ -1729,6 +1708,7 @@ class SimulationInformation():
                 if key not in default.solvers[solver]:
                     raise RuntimeError(("solver '%s' has no key named '%s'" % (solver, key)))
 
+
     def define_num_steps(self, num_steps):
         """
         define_num_steps
@@ -1739,44 +1719,12 @@ class SimulationInformation():
             num_steps (int): number of steps
         """
 
-        solver_names = solver_interface.dictionary_of_solvers(print_info=False)
-        for solver in solver_names:
-            if not solver == 'PreSharpy':
-                if 'n_time_steps' in self.solvers[solver]:
-                    self.solvers[solver]['n_time_steps'] = num_steps
-                if 'num_steps' in self.solvers[solver]:
-                    self.solvers[solver]['num_steps'] = num_steps
+        for solver in self.solvers:
+            if 'n_time_steps' in self.solvers[solver]:
+                self.solvers[solver]['n_time_steps'] = num_steps
+            if 'num_steps' in self.solvers[solver]:
+                self.solvers[solver]['num_steps'] = num_steps
 
-        # TODO:Maybe it would be convenient to use the same name for all the solvers
-        # try:
-        #     self.solvers["DynamicCoupled"]['n_time_steps'] = num_steps
-        # except KeyError:
-        #     pass
-        # # self.solvers["DynamicPrescribedCoupled"]['n_time_steps'] = num_steps
-        # try:
-        #     self.solvers["StepUvlm"]['n_time_steps'] = num_steps
-        # except KeyError:
-        #     pass
-        # try:
-        #     self.solvers['NonLinearDynamicMultibody']['num_steps'] = num_steps
-        # except KeyError:
-        #     pass
-        # try:
-        #     self.solvers['NonLinearDynamicCoupledStep']['num_steps'] = num_steps
-        # except KeyError:
-        #     pass
-        # try:
-        #     self.solvers['NonLinearDynamicPrescribedStep']['num_steps'] = num_steps
-        # except KeyError:
-        #     pass
-        # try:
-        #     self.solvers['RigidDynamicPrescribedStep']['num_steps'] = num_steps
-        # except KeyError:
-        #     pass
-        # try:
-        #     self.solvers['SteadyHelicoidalWake']['n_time_steps'] = num_steps
-        # except KeyError:
-        #     pass
 
     def define_uinf(self, unit_vector, norm):
         """
