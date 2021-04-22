@@ -124,10 +124,10 @@ class LinearBeam(BaseElement):
     settings_default['remove_sym_modes'] = False
     settings_description['remove_sym_modes'] = 'Remove symmetric modes if wing is clamped'
 
-    # Temporary - include as part of StabilityDerivatives PostProc
     settings_types['remove_rigid_states'] = 'bool'
     settings_default['remove_rigid_states'] = False
-    settings_description['remove_rigid_states'] = 'WIP - For Stability Derivatives - Remove RIGID STATES from SS'
+    settings_description['remove_rigid_states'] = '(For Stability Derivatives) - Remove RIGID STATES from SS leaving' \
+                                                  ' input/output channels unchanged'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
@@ -239,18 +239,7 @@ class LinearBeam(BaseElement):
             self.ss.C = self.ss.C[:, num_rig_dof:]
             self.ss.state_variables.modify('q', size=self.ss.state_variables[0].size - num_rig_dof)
             self.ss.state_variables.update_locations()
-            #
-            # # import pdb; pdb.set_trace()
-            # # To remove the yaw mode state
-            # # retain_state = np.zeros((self.ss.states - 1, self.ss.states))
-            # # retain_state[:8+11, :8+11] = np.eye(8+11)
-            # # retain_state[8+11:, 9+11:] = np.eye(self.ss.states - 9 - 11)
-            # # self.ss.A = retain_state.dot(self.ss.A.dot(retain_state.T))
-            # # self.ss.B = retain_state.dot(self.ss.B)
-            # # self.ss.C = self.ss.C.dot(retain_state.T)
-            # self.ss.state_variables.modify('q_dot', size=self.ss.state_variables[1].size - 1)
-            # # self.ss.state_variables.update_locations()
-            #
+
             retain_state = np.zeros((self.ss.states - 9, self.ss.states))
             retain_state[:self.ss.state_variables[0].size, :self.ss.state_variables[0].size] = \
                 np.eye(self.ss.state_variables[0].size)
