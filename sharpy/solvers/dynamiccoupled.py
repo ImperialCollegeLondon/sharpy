@@ -16,7 +16,6 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.utils.exceptions as exc
-import sharpy.utils.generator_interface as gen_utils
 import sharpy.io.network_interface as network_interface
 import sharpy.utils.generator_interface as gen_interface
 
@@ -317,7 +316,7 @@ class DynamicCoupled(BaseSolver):
         # Define the function to correct aerodynamic forces
         if self.settings['correct_forces_method'] is not '':
             self.correct_forces = True
-            self.correct_forces_generator = gen_utils.generator_from_string(self.settings['correct_forces_method'])()
+            self.correct_forces_generator = gen_interface.generator_from_string(self.settings['correct_forces_method'])()
             self.correct_forces_generator.initialise(in_dict=self.settings['correct_forces_settings'],
                                                      aero=self.data.aero,
                                                      structure=self.data.structure,
@@ -779,10 +778,6 @@ class DynamicCoupled(BaseSolver):
                 self.correct_forces_generator.generate(aero_kstep=aero_kstep,
                                                        structural_kstep=structural_kstep,
                                                        struct_forces=struct_forces)
-            # dynamic_struct_forces = self.correct_forces_function(self.data,
-            #                                                      aero_kstep,
-            #                                                      structural_kstep,
-            #                                                      dynamic_struct_forces)
 
         aero_kstep.aero_steady_forces_beam_dof = struct_forces
         

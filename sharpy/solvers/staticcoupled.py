@@ -8,7 +8,7 @@ import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
-import sharpy.utils.generator_interface as gen_utils
+import sharpy.utils.generator_interface as gen_interface
 
 @solver
 class StaticCoupled(BaseSolver):
@@ -125,7 +125,7 @@ class StaticCoupled(BaseSolver):
         # Define the function to correct aerodynamic forces
         if self.settings['correct_forces_method'] is not '':
             self.correct_forces = True
-            self.correct_forces_generator = gen_utils.generator_from_string(self.settings['correct_forces_method'])()
+            self.correct_forces_generator = gen_interface.generator_from_string(self.settings['correct_forces_method'])()
             self.correct_forces_generator.initialise(in_dict=self.settings['correct_forces_settings'],
                                                      aero=self.data.aero,
                                                      structure=self.data.structure,
