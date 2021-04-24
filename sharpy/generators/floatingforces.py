@@ -460,6 +460,14 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_default['cd_multiplier'] = 1.
     settings_description['cd_multiplier'] = 'Multiply the drag coefficient by this number to increase dissipation'
 
+    settings_types['add_damp_diag'] = 'list(float)'
+    settings_default['add_damp_diag'] = [0., 0., 0., 0., 0., 0.]
+    settings_description['add_damp_diag'] = 'Diagonal terms to include in the additional damping matrix'
+    
+    settings_types['add_damp_ts'] = 'int'
+    settings_default['add_damp_ts'] = 0
+    settings_description['add_damp_ts'] = 'Timesteps in which ``add_damp_diag`` will be used'
+    
     settings_types['method_matrices_freq'] = 'str'
     settings_default['method_matrices_freq'] = 'constant'
     settings_description['method_matrices_freq'] = 'Method to compute frequency-dependent matrices'
@@ -840,7 +848,10 @@ class FloatingForces(generator_interface.BaseGenerator):
         hs_f_g = self.buoy_F0 - np.dot(self.buoy_rest_mat, self.q[data.ts, :])
 
         if not force_coeff == 0.:
-            hd_f_qdot_g = -np.dot(self.floating_data['hydrodynamics']['additional_damping'], self.qdot[data.ts, :])
+            add_damp = self.floating_data['hydrodynamics']['additional_damping'].copy()
+            if data.ts < self.settings['add_damp_ts']:
+                add_damp += np.diag(self.settings['add_damp_diag'])
+            hd_f_qdot_g = -np.dot(add_damp, self.qdot[data.ts, :])
 
             if ((self.settings['method_matrices_freq'] == 'constant') or
                  (data.ts < self.settings['steps_constant_matrices'])):
