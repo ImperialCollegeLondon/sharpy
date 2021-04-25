@@ -5,6 +5,8 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.utils.h5utils as h5utils
+import sharpy.utils.exceptions as exceptions
+
 
 @solver
 class InitialAeroelasticLoader(BaseSolver):
@@ -68,20 +70,13 @@ class InitialAeroelasticLoader(BaseSolver):
                       'unsteady_applied_forces'])
 
         for att in attributes:
-            getattr(structural_step, att)[...] = getattr(self.file_info.structure, att)
-        # structural_step.pos_dot = self.file_info.structure.pos_dot
-        # structural_step.pos_ddot = self.file_info.structure.pos_ddot
-        # structural_step.psi = self.file_info.structure.psi
-        # structural_step.psi_dot = self.file_info.structure.psi_dot
-        # structural_step.psi_ddot = self.file_info.structure.psi_ddot
-#
-        # structural_step.for_pos = self.file_info.structure.for_pos
-        # structural_step.for_vel = self.file_info.structure.for_vel
-        # structural_step.for_acc = self.file_info.structure.for_acc
-        # structural_step.quat = self.file_info.structure.quat
-
-        # Copy multibody information
-        # mb_FoR_pos vel acc quat
+            new_attr = getattr(structural_step, att)
+            db_attr = getattr(self.file_info.structure, att)
+            if new_attr.shape == db_attr.shape:
+                new_attr[...] = db_attr
+            else:
+                error_msg = "Non matching shapes in attribute %s" % att
+                exceptions.NotValidInputFile(error_msg)
 
         # Copy aero information
         attributes = ['zeta', 'zeta_star', 'normals',
@@ -94,6 +89,12 @@ class InitialAeroelasticLoader(BaseSolver):
 
         for att in attributes:
             for isurf in range(aero_step.n_surf):
-                getattr(aero_step, att)[isurf][...] = getattr(self.file_info.aero, att)[isurf]
+                new_attr = getattr(aero_step, att)[isurf]
+                db_attr = getattr(self.file_info.aero, att)[isurf]
+                if new_attr.shape == db_attr.shape:
+                    new_attr[...] = db_attr
+                else:
+                    error_msg = "Non matching shapes in attribute %s" % att
+                    exceptions.NotValidInputFile(error_msg)
 
         return self.data
