@@ -84,6 +84,12 @@ class NonLinearDynamicMultibody(_BaseStructural):
         self.data.structure.add_unsteady_information(
             self.data.structure.dyn_dict, self.settings['num_steps'])
 
+        # Initialise time integrator
+        self.time_integrator = solver_interface.initialise_solver(
+            self.settings['time_integrator'])
+        self.time_integrator.initialise(
+            self.data, self.settings['time_integrator_settings'])
+
         # Define the number of equations
         self.lc_list = lagrangeconstraints.initialize_constraints(self.data.structure.ini_mb_dict)
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
