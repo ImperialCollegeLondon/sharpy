@@ -288,8 +288,7 @@ class Aerogrid(Grid):
                                    orientation_in=self.aero_settings['freestream_dir'],
                                    calculate_zeta_dot=True))
         # set junction boundary conditions for later phantom cell creation in UVLM
-        if "junction_boundary_condition" in self.data_dict:
-        if sum(self.data_dict["junction_boundary_condition"])>0:
+        if "junction_boundary_condition" in self.data_dict and sum(self.data_dict["junction_boundary_condition"])>0:
             self.generate_phantom_panels_at_junction(aero_tstep)
 
 
