@@ -69,7 +69,7 @@ class LiftDistribution(BaseSolver):
             self.data.structure.node_master_elem,
             self.data.structure.connectivities,
             struct_tstep.cag(),
-            self.data.aero.aero_dict)
+            self.data.aero.data_dict)
         # Prepare output matrix and file 
         N_nodes = self.data.structure.num_node
         numb_col = 4
@@ -77,7 +77,7 @@ class LiftDistribution(BaseSolver):
         # get aero forces
         lift_distribution = np.zeros((N_nodes, numb_col))
         for inode in range(N_nodes):
-            if self.data.aero.aero_dict['aero_node'][inode]:
+            if self.data.aero.data_dict['aero_node'][inode]:
                 # transform forces from B to A frame
                 lift_distribution[inode,3]=np.dot(rot.T, forces[inode, :3])[2]  # lift force
                 lift_distribution[inode,2]=struct_tstep.pos[inode, 2]  #z
@@ -92,7 +92,7 @@ class LiftDistribution(BaseSolver):
             numb_col += 1
             lift_distribution = np.concatenate((lift_distribution, np.zeros((N_nodes,1))), axis=1)
             for inode in range(N_nodes):                
-                if self.data.aero.aero_dict['aero_node'][inode]:               
+                if self.data.aero.data_dict['aero_node'][inode]:               
                     local_node = self.data.aero.struct2aero_mapping[inode][0]["i_n"]             
                     ielem, _ = self.data.structure.node_master_elem[inode]                    
                     i_surf = int(self.data.aero.surface_distribution[ielem])
@@ -112,7 +112,7 @@ class LiftDistribution(BaseSolver):
         # to trailing edge) connected to the beam node are accounted.
         strip_area = []
         for i_surf in range(self.data.aero.n_surf):
-            N_panel = self.data.aero.aero_dimensions[i_surf][1]
+            N_panel = self.data.aero.dimensions[i_surf][1]
             array_panel_area = np.zeros((N_panel))
             # the area is calculated for all chordwise panels together
             for i_panel in range(N_panel):
