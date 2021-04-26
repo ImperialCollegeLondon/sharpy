@@ -505,7 +505,8 @@ class Model:
                 self.model_labels = ['']
             else:
                 
-                self.iteration = Iterations(self.model_dict['iterate_vars'])
+                self.iteration = Iterations(self.model_dict['iterate_vars'],
+                                            self.model_dict['iterate_type'])
                 self.num_models = self.iteration.num_combinations
                 self.model_labels = self.iteration.labels(**self.model_dict['iterate_labels'])
                 self.dict2iterate = self.iteration.get_combinations_dict()
@@ -835,8 +836,15 @@ class Simulation:
 
 class Iterations:
 
-    def __init__(self,var2iterate):
+    """
+    Class that manages iterations from the variables to iterate, vars2iterate,
+    the type of iteration, full factorial and design of experiments implemented so far,
+    to the labels and values corresponding to each iteration
+    """
+    
+    def __init__(self,var2iterate,iter_type='full_factorial'):
 
+        self.iter_type = iter_type
         if isinstance(var2iterate,list):
             self.varl = var2iterate
         elif isinstance(var2iterate,dict):
@@ -845,10 +853,17 @@ class Iterations:
             self.var_names = [k for k in var2iterate.keys()]
         self.num_var = len(self.varl)
         self.shape_var = [len(i) for i in self.varl]
-        self.num_combinations = np.prod(self.shape_var)
+        if self.iter_type == 'full_factorial':
+            self.num_combinations = np.prod(self.shape_var)
+        elif self.iter_type == 'DoE':
+            self.num_combinations = self.shape_var[0]
+            
+    def get_combinations_FF(self):
         
-    def get_combinations(self):
-
+        """
+        List with all combinations from full factorial experiment
+        """
+        
         self.varl_combinations = []
         self.varl_index = []
         for i in range(self.num_combinations):
@@ -859,16 +874,38 @@ class Iterations:
                 else:
                     n = np.prod(self.shape_var[:j])
                 l = int(i/n)
-                comb_i.append(l%self.shape_var[j])
+                comb_i.append(l%self.shape_var[j])    # indices of the combinations
 
             self.varl_combinations.append([self.varl[k][comb_i[k]] for k in range(self.num_var)])
             self.varl_index.append(comb_i)
         #self.num_combinations = len(self.varl_combinations)
         return self.varl_combinations
-    
+
+    def get_combinations_DoE(self):
+        
+        """
+        List with all combinations from full factorial experiment
+        """
+        
+        self.varl_combinations = []
+        self.varl_index = []
+        for k in range(self.num_combinations):
+            self.varl_combinations.append([self.varl[j][k] for j in range(self.num_var)])
+            self.varl_index.append([k for j in range(self.num_var)])
+        #self.num_combinations = len(self.varl_combinations)
+        return self.varl_combinations
+
     def get_combinations_dict(self):
 
-        varl_combinations = self.get_combinations()
+        """
+        List of all the combinations in the iteration and
+        formed of dictionaries with keys the name of the variables
+        """
+
+        if self.iter_type == 'full_factorial':
+            varl_combinations = self.get_combinations_FF()
+        elif self.iter_type == 'DoE':
+            varl_combinations = self.get_combinations_DoE()
         self.vard_combinations = []
         for i in range(self.num_combinations):
             dic = dict()
@@ -879,6 +916,10 @@ class Iterations:
     
     def label_name(self, num2keep=3, space='_', print_name_var=1):
 
+        """
+        Labels for the iteration with the name of the variable followed its value or index
+        """
+        
         dic1 = self.get_combinations_dict()
         label = []
         for ni in range(self.num_combinations):
@@ -921,3 +962,6 @@ class Iterations:
             return self.label_name(**kwargs)
         elif label_type == 'number':
             return self.label_number(**kwargs)
+
+    def write_vars2text():
+        pass

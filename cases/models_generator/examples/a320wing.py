@@ -88,6 +88,7 @@ g1c['wing_l2'] = {'symmetric': {'component':'wing_r2'}}
 
 g1mm = {'model_name':'A320mock',
         'model_route':sharpy_dir+'/cases/models_generator/examples/wing_plantform',
+        'iterate_type': 'full_factorial',
         'iterate_vars': {'wing_r2*geometry-sweep':np.linspace(sweep1,sweep1*1.5,2),
                          'wing_r2*geometry-length':np.linspace(14,18.,3)},
         'iterate_labels': {'label_type':'number',
