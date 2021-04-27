@@ -175,8 +175,6 @@ class PolarCorrection(generator_interface.BaseGenerator):
                                                                             structural_kstep.for_vel[:],
                                                                             cga,
                                                                             aero_kstep.u_ext[isurf][:, :, i_n])
-                freestream = urel.copy()
-                dir_freestream = algebra.unit_vector(freestream)
 
                 if compute_induced_velocity and compute_actual_aoa:
                     # This is really to ensure computing the induced downwash and finding the ratio between the actual
@@ -198,7 +196,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
                     if structure.boundary_conditions[inode] == -1:
                         uind_2[1] *= 0
                     urel += uind_2
-                dir_urel = algebra.unit_vector(urel)
+                    dir_urel = algebra.unit_vector(urel)
 
                 # Coefficient to change from aerodynamic coefficients to forces (and viceversa)
                 coef = 0.5 * rho * np.linalg.norm(urel) ** 2 * chord * span
