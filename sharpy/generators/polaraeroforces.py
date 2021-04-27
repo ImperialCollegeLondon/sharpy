@@ -182,7 +182,8 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 dir_urel = algebra.unit_vector(urel)
 
                 if compute_induced_velocity and compute_actual_aoa:
-                    # TODO: for performance improvement take this out of loop
+                    # This is really to ensure computing the induced downwash and finding the ratio between the actual
+                    # cl and the cl2d to find the effective angle of attack gives the same results.
                     chords_upstream = 20
                     chords_downstream = 20
                     pitot_upstream = pos_g[inode] - chords_upstream * chord * dir_urel
@@ -202,22 +203,18 @@ class PolarCorrection(generator_interface.BaseGenerator):
                     urel += uind_2
                 dir_urel = algebra.unit_vector(urel)
 
-                # Force in the G frame of reference
-                force = np.dot(cgb,
-                               struct_forces[inode, 0:3])
-                moment = cgb.dot(struct_forces[inode, 3:6])
-                dir_force = algebra.unit_vector(force)
-
                 # Coefficient to change from aerodynamic coefficients to forces (and viceversa)
                 coef = 0.5 * rho * np.linalg.norm(urel) ** 2 * chord * span
 
-                # Divide the force in drag and lift
-                # drag_force = np.dot(force, dir_urel) * dir_urel
-                drag_force = np.dot(force, dir_freestream) * dir_freestream
-                lift_force = force - drag_force
+                # Stability axes - projects forces in B onto S
+                c_bs = local_stability_axes(cgb.T.dot(dir_urel), cgb.T.dot(dir_chord))
+                forces_s = c_bs.T.dot(struct_forces[inode, :3])
+                moment_s = c_bs.T.dot(struct_forces[inode, 3:])
+                drag_force = forces_s[0]
+                lift_force = forces_s[2]
 
                 # Compute the associated lift
-                cl = np.linalg.norm(lift_force) / coef
+                cl = np.sign(lift_force) * np.linalg.norm(lift_force) / coef
                 cd_sharpy = np.linalg.norm(drag_force) / coef
 
                 if cd_from_cl:
@@ -236,7 +233,6 @@ class PolarCorrection(generator_interface.BaseGenerator):
                         # the effective angle of attack is computed for the section and includes 3D effects.
                         aoa_0cl = get_aoacl0_from_camber(airfoil_coords[:, 0], airfoil_coords[:, 1])
                         aoa = cl / 2 / np.pi + aoa_0cl
-
                         # Compute the coefficients associated to that angle of attack
                         cl_polar, cd, cm = polar.get_coefs(aoa)
 
@@ -244,44 +240,68 @@ class PolarCorrection(generator_interface.BaseGenerator):
                         # Use polar generated CL rather than UVLM computed CL
                         cl = cl_polar
 
-                # Recompute the forces based on the coefficients
-                lift_force = cl * algebra.unit_vector(lift_force) * coef
-                drag_force += cd * dir_urel * coef
-                force = lift_force + drag_force
-                new_struct_forces[inode, 0:3] = np.dot(cgb.T,
-                                                       force)
+                # Recompute the forces based on the coefficients (side force is uncorrected)
+                forces_s[0] += cd * coef  # add viscous drag to induced drag from UVLM
+                forces_s[2] = cl * coef
 
-                # Compute new moments
-                # pitching_moment
+                new_struct_forces[inode, 0:3] = c_bs.dot(forces_s)
+
+                # Pitching moment
+                # The panels are shifted by 0.25 of a panel aft from the leading edge
                 panel_shift = 0.25 * (aero_kstep.zeta[isurf][:, 1, i_n] - aero_kstep.zeta[isurf][:, 0, i_n])
                 ref_point = aero_kstep.zeta[isurf][:, 0, i_n] + 0.25 * chord * dir_chord - panel_shift
-                dir_moment = algebra.unit_vector(algebra.cross3(algebra.unit_vector(lift_force), dir_urel))
-                pitching_moment_sharpy_ref = moment.dot(dir_moment) * algebra.unit_vector(dir_moment)
 
-                # modify moment:
-                # add viscous moment or full moment
-                moment_polar = cm * dir_moment * coef * chord
-                moment += moment_polar
+                # viscous contribution (pure moment)
+                moment_s[1] += cm * coef * chord
 
                 # moment due to drag
-                moment_polar_drag = algebra.cross3(
-                    ref_point - pos_g[inode], cd * dir_urel * coef
-                )
-                moment += moment_polar_drag
+                arm = cgb.T.dot(ref_point - pos_g[inode])  # in B frame
+                moment_polar_drag = algebra.cross3(c_bs.T.dot(arm), cd * dir_urel * coef)  # in S frame
+                moment_s += moment_polar_drag
 
                 # moment due to lift (if corrected)
                 if correct_lift and moment_from_polar:
                     # add moment from scratch: cm_polar + cm_drag_polar + cl_lift_polar
-                    moment = moment_polar
-                    moment += moment_polar_drag
-                    moment_polar_lift = algebra.cross3(
-                        ref_point - pos_g[inode], lift_force
-                    )
-                    moment += moment_polar_lift
+                    moment_s = np.zeros(3)
+                    moment_s[1] = cm * coef * chord
+                    moment_s += moment_polar_drag
+                    moment_polar_lift = algebra.cross3(c_bs.T.dot(arm), forces_s[2] * np.array([0, 0, 1]))
+                    moment_s += moment_polar_lift
 
-                new_struct_forces[inode, 3:6] = cgb.T.dot(moment)
+                new_struct_forces[inode, 3:6] = c_bs.dot(moment_s)
 
         return new_struct_forces
+
+
+def local_stability_axes(dir_urel, dir_chord):
+    """
+    Rotates the body axes onto stability axes. This rotation is equivalent to the projection of a vector in S onto B.
+
+    The stability axes are defined as:
+
+        * ``x_s``: parallel to the free stream
+
+        * ``z_s``: perpendicular to the free stream and part of the plane formed by the local chord and the vertical
+          body axis ``z_b``.
+
+        * ``y_s``: completes the set
+
+    Args:
+        dir_urel (np.array): Unit vector in the direction of the free stream velocity expressed in B frame.
+        dir_chord (np.array): Unit vector in the direction of the local chord expressed in B frame.
+
+    Returns:
+        np.array: Rotation matrix from B to S, equivalent to the projection matrix :math:`C^{BS}` that projects a
+        vector from S onto B.
+    """
+    xs = dir_urel
+
+    zb = np.array([0, 0, 1.])
+    zs = algebra.cross3(algebra.cross3(dir_chord, zb), dir_urel)
+
+    ys = -algebra.cross3(xs, zs)
+
+    return algebra.triad2rotation(xs, ys, zs)
 
 
 def span_chord(i_node_surf, zeta):
@@ -393,3 +413,33 @@ class EfficiencyCorrection(generator_interface.BaseGenerator):
             new_struct_forces[inode, 3:6] += moment_efficiency[i_elem, i_local_node, 1, :]
         return new_struct_forces
 
+if __name__ == '__main__':
+    import unittest
+
+    class TestStab(unittest.TestCase):
+
+        def test_stability(self):
+
+            dir_urel = np.array([1, 0, 0])
+            dir_chord = np.array([1, 0, 0])
+
+            alpha = 4 * np.pi / 180
+
+            # rotate the freestream
+            dir_urel = algebra.rotation3d_y(alpha).T.dot(dir_urel)
+
+            print('Free stream, coming from below: ', dir_urel)
+
+            # Stability axes
+            c_bs = local_stability_axes(dir_urel, dir_chord)
+
+            print('Stability Axes')
+            print(c_bs)
+
+            for i in range(3):
+                print(f'Ax {i} in B', c_bs.dot(np.eye(3)[i]))
+
+            print('Project xS onto B')
+            print(c_bs.dot(np.array([1, 0, 0])))
+
+    unittest.main()
