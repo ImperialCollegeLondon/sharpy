@@ -315,6 +315,14 @@ Item by item:
     For more information on how these factors are included in the mapping terms
     see :func:`sharpy.aero.utils.mapping.aero2struct_force_mapping`.
 
+* ``polars`` Group (optional): Use airfoil polars to correct aerodynamic forces.
+
+    This is an optional group to add if correcting the aerodynamic forces using airfoil polars is desired. A polar
+    should be included for each airfoil defined. Each entry consists of a 4-column table. The first column corresponds
+    to the angle of attack (in radians) and then the ``C_L``, ``C_D`` and ``C_M``. If different airfoils are used a
+    linear interpolation will be used for in-between sections.
+
+
 Time-varying force input file (``.dyn.h5``)
 -------------------------------------------
 
