@@ -170,15 +170,11 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 dir_span, span, dir_chord, chord = span_chord(i_n, aero_kstep.zeta[isurf])
 
                 # Define the relative velocity and its direction
-                urel = (structural_kstep.pos_dot[inode, :] +
-                        structural_kstep.for_vel[0:3] +
-                        algebra.cross3(structural_kstep.for_vel[3:6], structural_kstep.pos[inode, :]))
-                urel = -np.dot(cga, urel)
-                urel += np.average(aero_kstep.u_ext[isurf][:, :, i_n], axis=1)
-
-                freestream = urel.copy()
-                dir_freestream = algebra.unit_vector(freestream)
-                dir_urel = algebra.unit_vector(urel)
+                urel, dir_urel = magnitude_and_direction_of_relative_velocity(structural_kstep.pos[inode, :],
+                                                                            structural_kstep.pos_dot[inode, :], 
+                                                                            structural_kstep.for_vel[:],
+                                                                            cga,
+                                                                            aero_kstep.u_ext[isurf][:, :, i_n])
 
                 if compute_induced_velocity and compute_actual_aoa:
                     # This is really to ensure computing the induced downwash and finding the ratio between the actual
@@ -200,7 +196,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
                     if structure.boundary_conditions[inode] == -1:
                         uind_2[1] *= 0
                     urel += uind_2
-                dir_urel = algebra.unit_vector(urel)
+                    dir_urel = algebra.unit_vector(urel)
 
                 # Coefficient to change from aerodynamic coefficients to forces (and viceversa)
                 coef = 0.5 * rho * np.linalg.norm(urel) ** 2 * chord * span
@@ -271,6 +267,28 @@ class PolarCorrection(generator_interface.BaseGenerator):
 
         return new_struct_forces
 
+
+def magnitude_and_direction_of_relative_velocity(displacement, displacement_vel, for_vel, cga, uext):
+    """
+    Calculates the magnitude and direction of the relative velocity ``u_rel``
+
+    Args:
+        displacement (np.array): Unit vector in the direction of the free stream velocity expressed in B frame.
+        displacement_vel (np.array): Unit vector in the direction of the local chord expressed in B frame.
+        for_vel (np.array): ``A`` frame of reference (FoR) velocity. Expressed in A FoR
+        cga (np.array): Rotation vector from FoR ``G`` to FoR ``A``
+        uext (np.array): Background flow velocity on solid grid nodes
+    Returns:
+        tuple: ``u_rel``, ``dir_u_rel``
+    """
+    urel = (displacement_vel+
+            for_vel[0:3] +
+            algebra.cross3(for_vel[3:6], displacement))
+    urel = -np.dot(cga, urel)
+    urel += np.average(uext, axis=1)
+
+    dir_urel = algebra.unit_vector(urel)
+    return urel, dir_urel
 
 def local_stability_axes(dir_urel, dir_chord):
     """
