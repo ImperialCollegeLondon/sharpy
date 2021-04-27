@@ -32,10 +32,6 @@ class LiftDistribution(BaseSolver):
     settings_types['coefficients'] = 'bool'
     settings_description['coefficients'] = 'Calculate aerodynamic lift coefficients'
 
-    settings_types['q_ref'] = 'float'
-    settings_default['q_ref'] = 1
-    settings_description['q_ref'] = 'Reference dynamic pressure'
-
     settings_types['rho'] = 'float'
     settings_default['rho'] = 1.225
     settings_description['rho'] = 'Reference freestream density'
