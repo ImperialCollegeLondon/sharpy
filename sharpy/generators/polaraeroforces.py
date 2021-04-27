@@ -172,8 +172,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 # Define the relative velocity and its direction
                 urel = (structural_kstep.pos_dot[inode, :] +
                         structural_kstep.for_vel[0:3] +
-                        np.cross(structural_kstep.for_vel[3:6],
-                                 structural_kstep.pos[inode, :]))
+                        algebra.cross3(structural_kstep.for_vel[3:6], structural_kstep.pos[inode, :]))
                 urel = -np.dot(cga, urel)
                 urel += np.average(aero_kstep.u_ext[isurf][:, :, i_n], axis=1)
 
