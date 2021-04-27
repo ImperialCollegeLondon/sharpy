@@ -7,6 +7,7 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.aero.utils.mapping as mapping
 import sharpy.utils.algebra as algebra
+import sharpy.generators.polaraeroforces as polaraeroforces
 
 
 @solver
@@ -35,6 +36,10 @@ class LiftDistribution(BaseSolver):
     settings_default['q_ref'] = 1
     settings_description['q_ref'] = 'Reference dynamic pressure'
 
+    settings_types['rho'] = 'float'
+    settings_default['rho'] = 1.225
+    settings_description['rho'] = 'Reference freestream density'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
     def __init__(self):
@@ -59,7 +64,6 @@ class LiftDistribution(BaseSolver):
 
     def lift_distribution(self, struct_tstep, aero_tstep):
         # Force mapping
-        rot = algebra.quat2rotation(struct_tstep.quat)
         forces = mapping.aero2struct_force_mapping(
             aero_tstep.forces + aero_tstep.dynamic_forces,
             self.data.aero.struct2aero_mapping,
@@ -76,29 +80,43 @@ class LiftDistribution(BaseSolver):
         header= "x,y,z,fz"
         # get aero forces
         lift_distribution = np.zeros((N_nodes, numb_col))
-        for inode in range(N_nodes):
-            if self.data.aero.aero_dict['aero_node'][inode]:
-                # transform forces from B to A frame
-                lift_distribution[inode,3]=np.dot(rot.T, forces[inode, :3])[2]  # lift force
-                lift_distribution[inode,2]=struct_tstep.pos[inode, 2]  #z
-                lift_distribution[inode,1]=struct_tstep.pos[inode, 1]  #y
-                lift_distribution[inode,0]=struct_tstep.pos[inode, 0]  #x
-
-        if self.settings["coefficients"]: 
-            # get lift coefficient           
-            strip_area = self.calculate_strip_area(aero_tstep)  
+        # get rotation matrix
+        cga = algebra.quat2rotation(struct_tstep.quat)
+        if self.settings["coefficients"]:  
             # TODO: add nondimensional spanwise column y/s
             header += ",cl"
             numb_col += 1
             lift_distribution = np.concatenate((lift_distribution, np.zeros((N_nodes,1))), axis=1)
-            for inode in range(N_nodes):                
-                if self.data.aero.aero_dict['aero_node'][inode]:               
-                    local_node = self.data.aero.struct2aero_mapping[inode][0]["i_n"]             
-                    ielem, _ = self.data.structure.node_master_elem[inode]                    
-                    i_surf = int(self.data.aero.surface_distribution[ielem])
-                    lift_distribution[inode,4] = lift_distribution[inode,3]/(self.settings['q_ref']*\
-                            strip_area[i_surf][local_node]) # cl                           
-                            
+        
+        for inode in range(N_nodes):
+            if self.data.aero.aero_dict['aero_node'][inode]:
+                local_node = self.data.aero.struct2aero_mapping[inode][0]["i_n"] 
+                ielem, inode_in_elem = self.data.structure.node_master_elem[inode]                    
+                i_surf = int(self.data.aero.surface_distribution[ielem])
+
+                # get c_gb                
+                cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem, :])
+                cgb = np.dot(cga, cab)
+
+                urel, dir_urel = polaraeroforces.magnitude_and_direction_of_relative_velocity(struct_tstep.pos[inode, :],
+                                                                            struct_tstep.pos_dot[inode, :], 
+                                                                            struct_tstep.for_vel[:],
+                                                                            cga,
+                                                                            aero_tstep.u_ext[i_surf][:, :, local_node]) 
+                
+                # Get the chord direction
+                dir_span, span, dir_chord, chord= polaraeroforces.span_chord(local_node, aero_tstep.zeta[i_surf])
+                # Stability axes - projects forces in B onto S
+                c_bs = polaraeroforces.local_stability_axes(cgb.T.dot(dir_urel), cgb.T.dot(dir_chord))
+                lift_force = c_bs.T.dot(forces[inode, :3])[2]                
+
+                lift_distribution[inode,3]= lift_force #np.dot(rot.T, forces[inode, :3])[2]  # lift force
+                lift_distribution[inode,2]=struct_tstep.pos[inode, 2]  #z
+                lift_distribution[inode,1]=struct_tstep.pos[inode, 1]  #y
+                lift_distribution[inode,0]=struct_tstep.pos[inode, 0]  #x
+                if self.settings["coefficients"]:
+                    lift_distribution[inode,4] =  np.sign(lift_force) * np.linalg.norm(lift_force)\
+                        /(0.5 * self.settings['rho'] * np.linalg.norm(urel)**2 * span *chord) #strip_area[i_surf][local_node])
                     # Check if shared nodes from different surfaces exist (e.g. two wings joining at symmetry plane)
                     # Leads to error since panel area just donates for half the panel size while lift forces is summed up
                     lift_distribution[inode,4] /= len(self.data.aero.struct2aero_mapping[inode])
@@ -106,26 +124,3 @@ class LiftDistribution(BaseSolver):
         # Export lift distribution data
         np.savetxt(os.path.join(self.folder,self.settings['text_file_name']), lift_distribution, fmt='%10e,'*(numb_col-1)+'%10e', delimiter = ", ", header= header)
     
-    def calculate_strip_area(self, aero_tstep):
-        # Function to get the area of a strip, which has half of the panel area
-        # of each adjacent panel. For one strip, all chordwise panels (from leading
-        # to trailing edge) connected to the beam node are accounted.
-        strip_area = []
-        for i_surf in range(self.data.aero.n_surf):
-            N_panel = self.data.aero.aero_dimensions[i_surf][1]
-            array_panel_area = np.zeros((N_panel))
-            # the area is calculated for all chordwise panels together
-            for i_panel in range(N_panel):
-                array_panel_area[i_panel] = algebra.panel_area(
-                    aero_tstep.zeta[i_surf][:, -1, i_panel],
-                    aero_tstep.zeta[i_surf][:, 0, i_panel], 
-                    aero_tstep.zeta[i_surf][:, 0, i_panel+1], 
-                    aero_tstep.zeta[i_surf][:, -1, i_panel+1])
-            # assume each strip shares half of each adjacent panel
-            strip_area.append(np.zeros((N_panel+1)))
-            strip_area[i_surf][:-1] = abs(np.roll(array_panel_area[:],1)+array_panel_area[:]).reshape(-1)
-            strip_area[i_surf][0] = abs(array_panel_area[0])            
-            strip_area[i_surf][-1] = abs(array_panel_area[-1])         
-            strip_area[i_surf][:] /= 2
-        
-        return strip_area
