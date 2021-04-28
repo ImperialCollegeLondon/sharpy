@@ -934,7 +934,10 @@ class FloatingForces(generator_interface.BaseGenerator):
                           self.floating_data['hydrodynamics']['spar_diameter']*
                           self.cd)
 
-            r = spar_node_pos[inode, :] - struct_tstep.pos[self.floating_data['hydrodynamics']['CD_node'], :]
+            if self.settings['concentrate_spar']:
+                r = spar_node_pos[inode, :] - struct_tstep.pos[self.floating_data['hydrodynamics']['CD_node'], :]
+            else:
+                r = spar_node_pos[inode, :] - struct_tstep.pos[self.floating_data['hydrostatics']['node'], :]
             drag_moment = np.cross(r, drag_force)
             total_drag_force[0:3] += drag_force
             total_drag_force[3:6] += drag_moment
