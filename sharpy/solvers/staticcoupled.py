@@ -8,7 +8,7 @@ import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
-import sharpy.utils.correct_forces as cf
+import sharpy.utils.generator_interface as gen_interface
 
 @solver
 class StaticCoupled(BaseSolver):
@@ -61,9 +61,20 @@ class StaticCoupled(BaseSolver):
     settings_description['relaxation_factor'] = 'Relaxation parameter in the FSI iteration. 0 is no relaxation and -> 1 is very relaxed'
 
     settings_types['correct_forces_method'] = 'str'
-    settings_default['correct_forces_method'] = '' # 'efficiency'
-    settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. Check :py:mod:`sharpy.utils.correct_forces`'
-    settings_options['correct_forces_method'] = ['efficiency', 'polars']
+    settings_default['correct_forces_method'] = ''
+    settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. ' \
+                                                    'See :py:mod:`sharpy.generators.polaraeroforces`'
+    settings_options['correct_forces_method'] = ['EfficiencyCorrection', 'PolarCorrection']
+
+    settings_types['correct_forces_settings'] = 'dict'
+    settings_default['correct_forces_settings'] = {}
+    settings_description['correct_forces_settings'] = 'Settings for corrected forces evaluation'
+
+    settings_types['runtime_generators'] = 'dict'
+    settings_default['runtime_generators'] = dict()
+    settings_description['runtime_generators'] = 'The dictionary keys are the runtime generators to be used. ' \
+                                                 'The dictionary values are dictionaries with the settings ' \
+                                                 'needed by each generator.'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
@@ -80,7 +91,10 @@ class StaticCoupled(BaseSolver):
         self.residual_table = None
 
         self.correct_forces = False
-        self.correct_forces_function = None
+        self.correct_forces_generator = None
+
+        self.runtime_generators = dict()
+        self.with_runtime_generators = False
 
     def initialise(self, data, input_dict=None):
         self.data = data
@@ -111,7 +125,21 @@ class StaticCoupled(BaseSolver):
         # Define the function to correct aerodynamic forces
         if self.settings['correct_forces_method'] is not '':
             self.correct_forces = True
-            self.correct_forces_function = cf.dict_of_corrections[self.settings['correct_forces_method']]
+            self.correct_forces_generator = gen_interface.generator_from_string(self.settings['correct_forces_method'])()
+            self.correct_forces_generator.initialise(in_dict=self.settings['correct_forces_settings'],
+                                                     aero=self.data.aero,
+                                                     structure=self.data.structure,
+                                                     rho=self.settings['aero_solver_settings']['rho'],
+                                                     vortex_radius=self.settings['aero_solver_settings']['vortex_radius'])
+
+        # initialise runtime generators
+        self.runtime_generators = dict()
+        if self.settings['runtime_generators']:
+            self.with_runtime_generators = True
+            for id, param in self.settings['runtime_generators'].items():
+                gen = gen_interface.generator_from_string(id)
+                self.runtime_generators[id] = gen()
+                self.runtime_generators[id].initialise(param, data=self.data)
 
     def increase_ts(self):
         self.data.ts += 1
@@ -163,11 +191,25 @@ class StaticCoupled(BaseSolver):
                     self.data.aero.aero_dict)
 
                 if self.correct_forces:
-                    struct_forces = self.correct_forces_function(self.data,
-                                        self.data.aero.timestep_info[self.data.ts],
-                                        self.data.structure.timestep_info[self.data.ts],
-                                        struct_forces,
-                                        rho=self.aero_solver.settings['rho'])
+                    struct_forces = \
+                        self.correct_forces_generator.generate(aero_kstep=self.data.aero.timestep_info[self.data.ts],
+                                                               structural_kstep=self.data.structure.timestep_info[self.data.ts],
+                                                               struct_forces=struct_forces)
+                self.data.aero.timestep_info[self.data.ts].aero_steady_forces_beam_dof = struct_forces
+                
+                # Add external forces
+                if self.with_runtime_generators:
+                    self.data.structure.timestep_info[self.data.ts].runtime_generated_forces.fill(0.)
+                    params = dict()
+                    params['data'] = self.data
+                    params['struct_tstep'] = self.data.structure.timestep_info[self.data.ts]
+                    params['aero_tstep'] = self.data.aero.timestep_info[self.data.ts]
+                    params['force_coeff'] = 0.
+                    params['fsi_substep'] = -i_iter
+                    for id, runtime_generator in self.runtime_generators.items():
+                        runtime_generator.generate(params)
+
+                    struct_forces += self.data.structure.timestep_info[self.data.ts].runtime_generated_forces
 
                 if not self.settings['relaxation_factor'] == 0.:
                     if i_iter == 0:

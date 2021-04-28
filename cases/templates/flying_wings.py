@@ -78,7 +78,8 @@ class FlyingWing():
                  physical_time=2,
                  route='.',
                  case_name='flying_wing',
-                 RollNodes=False):
+                 RollNodes=False,
+                 polar_file=None):
 
         ### parametrisation
         assert n_surfaces < 3, "use 1 or 2 surfaces only!"
@@ -126,6 +127,10 @@ class FlyingWing():
         self.root_airfoil_M = 0
         self.tip_airfoil_P = 0
         self.tip_airfoil_M = 0
+
+        self.polars = None # list of polar for each airfoil
+        if polar_file is not None:
+            self.load_polar(polar_file)
 
         # Numerics for dynamic simulations
         self.dt_factor = 1
@@ -187,6 +192,19 @@ class FlyingWing():
 
         self.lumped_mass[0] = 5.
         self.lumped_mass_position[0] = np.array([0, 0.25, 0])
+
+    def load_polar(self, file):
+        """
+        Read polar from Airfoil Tools polar txt file
+
+        Args:
+            file (str):
+        """
+        polar_raw_data = np.loadtxt(file, skiprows=12)
+        self.polars = np.column_stack((polar_raw_data[:, 0] * np.pi / 180, # aoa
+                                       polar_raw_data[:, 1], # cl
+                                       polar_raw_data[:, 2], # cd
+                                       polar_raw_data[:, 4])) #cm
 
     def update_derived_params(self):
         ### Derived
@@ -686,6 +704,11 @@ class FlyingWing():
                     'control_surface_hinge_coord', data=self.control_surface_hinge_coord
                 )
 
+            if self.polars is not None:
+                polars_group = h5file.create_group('polars')
+                for i_airfoil in range(len(self.Airfoils_surf)):
+                    polars_group.create_dataset('{:g}'.format(i_airfoil), data=self.polars)
+
     def generate_fem_file(self):
 
         assert hasattr(self, 'conn_glob'), \
@@ -1067,7 +1090,8 @@ class QuasiInfinite(FlyingWing):
                  n_surfaces=1,
                  route='.',
                  case_name='qsinf',
-                 RollNodes=False):
+                 RollNodes=False,
+                 polar_file=None):
         super().__init__(M=M, N=N,
                          Mstar_fact=Mstar_fact,
                          u_inf=u_inf,
@@ -1082,7 +1106,8 @@ class QuasiInfinite(FlyingWing):
                          n_surfaces=n_surfaces,
                          route=route,
                          case_name=case_name,
-                         RollNodes=RollNodes)
+                         RollNodes=RollNodes,
+                         polar_file=polar_file)
         self.c_ref = main_chord
         self.main_ea = 0.5
         self.main_cg = 0.5
