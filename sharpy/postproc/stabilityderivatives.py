@@ -149,6 +149,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
             self.data.linear.linear_system.update(self.settings['u_inf'])
 
         for target_system in ['aerodynamic', 'aeroelastic']:
+            print('-------- CURRENT SYSTEM ---------', target_system)
             state_space = self.get_state_space(target_system)
             current_derivative = derivatives[target_system]
 
@@ -364,6 +365,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         # second term in the stability derivative expression
         stab_der_trans2 = cga.dot(H0[:3, :3].real.dot(cga.T.dot(algebra.der_Peuler_by_v(euler0 * 0, v0))))
 
+        import pdb; pdb.set_trace()
         stab_der_mom = algebra.der_Ceuler_by_v(euler0, m0a)
         stab_der_mom2 = cga.dot(H0[3:6, :3].real.dot(cga.T.dot(algebra.der_Peuler_by_v(euler0 * 0, v0))))
 

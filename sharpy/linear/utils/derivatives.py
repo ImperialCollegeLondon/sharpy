@@ -349,6 +349,8 @@ class DerivativeSet:
         stab_der_trans2 = cga.dot(delta_nodal_forces[:3, :])
         stab_der_mom2 = cga.dot(delta_nodal_forces[3:, :])
 
+        import pdb; pdb.set_trace()
+
         self.matrix[:3, :] = stab_der_trans + stab_der_trans2
         self.matrix[3:6, :] = stab_der_mom + stab_der_mom2
 

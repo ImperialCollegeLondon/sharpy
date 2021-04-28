@@ -154,6 +154,9 @@ class PolarCorrection(generator_interface.BaseGenerator):
         cga = algebra.quat2rotation(structural_kstep.quat)
         pos_g = np.array([cga.dot(structural_kstep.pos[inode]) + np.array([0, 0, 0]) for inode in range(nnode)])
 
+        aero_kstep.polar_coeff = np.zeros((nnode, 6))
+        aero_kstep.stability_transform = np.zeros((nnode, 3, 3))
+
         for inode in range(nnode):
             new_struct_forces[inode, :] = struct_forces[inode, :].copy()
             if aero_dict['aero_node'][inode]:
@@ -265,6 +268,21 @@ class PolarCorrection(generator_interface.BaseGenerator):
                     moment_s += moment_polar_lift
 
                 new_struct_forces[inode, 3:6] = c_bs.dot(moment_s)
+
+                linear_force_coeffs = forces_s / c_bs.T.dot(struct_forces[inode, :3])
+                linear_moment_coeffs = moment_s / c_bs.T.dot(struct_forces[inode, 3:])
+
+                # print('New forces = ', forces_s / coef)
+                # print('Old forces = ', c_bs.T.dot(struct_forces[inode, :3]) / coef)
+
+                print('Forces Coef', linear_force_coeffs)
+                print('Moments coef', linear_moment_coeffs)
+                aero_kstep.polar_coeff[inode] = np.concatenate((linear_force_coeffs, linear_moment_coeffs))
+                orig_forces = np.concatenate((c_bs.T.dot(struct_forces[inode, :3]), c_bs.T.dot(struct_forces[inode, 3:])))
+                for ind in range(6):
+                    if np.abs(orig_forces[ind]) < 1e-4:
+                        aero_kstep.polar_coeff[inode, ind] = 0
+                aero_kstep.stability_transform[inode] = c_bs
 
         return new_struct_forces
 
