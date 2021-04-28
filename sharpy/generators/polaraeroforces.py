@@ -3,6 +3,7 @@ import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.aero.utils.uvlmlib as uvlmlib
+from sharpy.aero.utils.utils import magnitude_and_direction_of_relative_velocity, local_stability_axes, span_chord
 from sharpy.utils.generate_cases import get_aoacl0_from_camber
 
 
@@ -171,10 +172,10 @@ class PolarCorrection(generator_interface.BaseGenerator):
 
                 # Define the relative velocity and its direction
                 urel, dir_urel = magnitude_and_direction_of_relative_velocity(structural_kstep.pos[inode, :],
-                                                                            structural_kstep.pos_dot[inode, :], 
-                                                                            structural_kstep.for_vel[:],
-                                                                            cga,
-                                                                            aero_kstep.u_ext[isurf][:, :, i_n])
+                                                                              structural_kstep.pos_dot[inode, :],
+                                                                              structural_kstep.for_vel[:],
+                                                                              cga,
+                                                                              aero_kstep.u_ext[isurf][:, :, i_n])
 
                 if compute_induced_velocity and compute_actual_aoa:
                     # This is really to ensure computing the induced downwash and finding the ratio between the actual
@@ -266,97 +267,6 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 new_struct_forces[inode, 3:6] = c_bs.dot(moment_s)
 
         return new_struct_forces
-
-
-def magnitude_and_direction_of_relative_velocity(displacement, displacement_vel, for_vel, cga, uext):
-    """
-    Calculates the magnitude and direction of the relative velocity ``u_rel``
-
-    Args:
-        displacement (np.array): Unit vector in the direction of the free stream velocity expressed in B frame.
-        displacement_vel (np.array): Unit vector in the direction of the local chord expressed in B frame.
-        for_vel (np.array): ``A`` frame of reference (FoR) velocity. Expressed in A FoR
-        cga (np.array): Rotation vector from FoR ``G`` to FoR ``A``
-        uext (np.array): Background flow velocity on solid grid nodes
-    Returns:
-        tuple: ``u_rel``, ``dir_u_rel``
-    """
-    urel = (displacement_vel+
-            for_vel[0:3] +
-            algebra.cross3(for_vel[3:6], displacement))
-    urel = -np.dot(cga, urel)
-    urel += np.average(uext, axis=1)
-
-    dir_urel = algebra.unit_vector(urel)
-    return urel, dir_urel
-
-def local_stability_axes(dir_urel, dir_chord):
-    """
-    Rotates the body axes onto stability axes. This rotation is equivalent to the projection of a vector in S onto B.
-
-    The stability axes are defined as:
-
-        * ``x_s``: parallel to the free stream
-
-        * ``z_s``: perpendicular to the free stream and part of the plane formed by the local chord and the vertical
-          body axis ``z_b``.
-
-        * ``y_s``: completes the set
-
-    Args:
-        dir_urel (np.array): Unit vector in the direction of the free stream velocity expressed in B frame.
-        dir_chord (np.array): Unit vector in the direction of the local chord expressed in B frame.
-
-    Returns:
-        np.array: Rotation matrix from B to S, equivalent to the projection matrix :math:`C^{BS}` that projects a
-        vector from S onto B.
-    """
-    xs = dir_urel
-
-    zb = np.array([0, 0, 1.])
-    zs = algebra.cross3(algebra.cross3(dir_chord, zb), dir_urel)
-
-    ys = -algebra.cross3(xs, zs)
-
-    return algebra.triad2rotation(xs, ys, zs)
-
-
-def span_chord(i_node_surf, zeta):
-    """
-    Retrieve the local span and local chord
-
-    Args:
-        i_node_surf (int): Node index in aerodynamic surface
-        zeta (np.array): Aerodynamic surface coordinates ``(3 x n_chord x m_span)``
-
-    Returns:
-        tuple: ``dir_span``, ``span``, ``dir_chord``, ``chord``
-    """
-    N = zeta.shape[2] - 1 # spanwise vertices in surface (-1 for index)
-
-    # Deal with the extremes
-    if i_node_surf == 0:
-        node_p = 1
-        node_m = 0
-    elif i_node_surf == N:
-        node_p = N
-        node_m = N - 1
-    else:
-        node_p = i_node_surf + 1
-        node_m = i_node_surf - 1
-
-    # Define the span and the span direction
-    dir_span = 0.5 * (zeta[:, 0, node_p] - zeta[:, 0, node_m])
-
-    span = np.linalg.norm(dir_span)
-    dir_span = algebra.unit_vector(dir_span)
-
-    # Define the chord and the chord direction
-    dir_chord = zeta[:, -1, i_node_surf] - zeta[:, 0, i_node_surf]
-    chord = np.linalg.norm(dir_chord)
-    dir_chord = algebra.unit_vector(dir_chord)
-
-    return dir_span, span, dir_chord, chord
 
 
 @generator_interface.generator
