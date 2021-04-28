@@ -2,12 +2,11 @@ import os
 
 import numpy as np
 
-import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.aero.utils.mapping as mapping
 import sharpy.utils.algebra as algebra
-import sharpy.generators.polaraeroforces as polaraeroforces
+import sharpy.aero.utils.utils as aeroutils
 
 
 @solver
@@ -38,6 +37,7 @@ class LiftDistribution(BaseSolver):
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
         self.settings = None
         self.data = None
@@ -73,50 +73,52 @@ class LiftDistribution(BaseSolver):
         # Prepare output matrix and file 
         N_nodes = self.data.structure.num_node
         numb_col = 4
-        header= "x,y,z,fz"
+        header = "x,y,z,fz"
         # get aero forces
         lift_distribution = np.zeros((N_nodes, numb_col))
         # get rotation matrix
         cga = algebra.quat2rotation(struct_tstep.quat)
-        if self.settings["coefficients"]:  
+        if self.settings["coefficients"]:
             # TODO: add nondimensional spanwise column y/s
             header += ",cl"
             numb_col += 1
-            lift_distribution = np.concatenate((lift_distribution, np.zeros((N_nodes,1))), axis=1)
-        
+            lift_distribution = np.concatenate((lift_distribution, np.zeros((N_nodes, 1))), axis=1)
+
         for inode in range(N_nodes):
             if self.data.aero.aero_dict['aero_node'][inode]:
-                local_node = self.data.aero.struct2aero_mapping[inode][0]["i_n"] 
-                ielem, inode_in_elem = self.data.structure.node_master_elem[inode]                    
+                local_node = self.data.aero.struct2aero_mapping[inode][0]["i_n"]
+                ielem, inode_in_elem = self.data.structure.node_master_elem[inode]
                 i_surf = int(self.data.aero.surface_distribution[ielem])
 
                 # get c_gb                
                 cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem, :])
                 cgb = np.dot(cga, cab)
 
-                urel, dir_urel = polaraeroforces.magnitude_and_direction_of_relative_velocity(struct_tstep.pos[inode, :],
-                                                                            struct_tstep.pos_dot[inode, :], 
-                                                                            struct_tstep.for_vel[:],
-                                                                            cga,
-                                                                            aero_tstep.u_ext[i_surf][:, :, local_node]) 
-                
-                # Get the chord direction
-                dir_span, span, dir_chord, chord= polaraeroforces.span_chord(local_node, aero_tstep.zeta[i_surf])
-                # Stability axes - projects forces in B onto S
-                c_bs = polaraeroforces.local_stability_axes(cgb.T.dot(dir_urel), cgb.T.dot(dir_chord))
-                lift_force = c_bs.T.dot(forces[inode, :3])[2]                
+                urel, dir_urel = aeroutils.magnitude_and_direction_of_relative_velocity(struct_tstep.pos[inode, :],
+                                                                                        struct_tstep.pos_dot[inode, :],
+                                                                                        struct_tstep.for_vel[:],
+                                                                                        cga,
+                                                                                        aero_tstep.u_ext[i_surf][:, :,
+                                                                                        local_node])
 
-                lift_distribution[inode,3]= lift_force #np.dot(rot.T, forces[inode, :3])[2]  # lift force
-                lift_distribution[inode,2]=struct_tstep.pos[inode, 2]  #z
-                lift_distribution[inode,1]=struct_tstep.pos[inode, 1]  #y
-                lift_distribution[inode,0]=struct_tstep.pos[inode, 0]  #x
+                # Get the chord direction
+                dir_span, span, dir_chord, chord = aeroutils.span_chord(local_node, aero_tstep.zeta[i_surf])
+                # Stability axes - projects forces in B onto S
+                c_bs = aeroutils.local_stability_axes(cgb.T.dot(dir_urel), cgb.T.dot(dir_chord))
+                lift_force = c_bs.T.dot(forces[inode, :3])[2]
+
+                lift_distribution[inode, 3] = lift_force
+                lift_distribution[inode, 2] = struct_tstep.pos[inode, 2]  # z
+                lift_distribution[inode, 1] = struct_tstep.pos[inode, 1]  # y
+                lift_distribution[inode, 0] = struct_tstep.pos[inode, 0]  # x
                 if self.settings["coefficients"]:
-                    lift_distribution[inode,4] =  np.sign(lift_force) * np.linalg.norm(lift_force)\
-                        /(0.5 * self.settings['rho'] * np.linalg.norm(urel)**2 * span *chord) #strip_area[i_surf][local_node])
+                    lift_distribution[inode, 4] = np.sign(lift_force) * np.linalg.norm(lift_force) \
+                                                  / (0.5 * self.settings['rho'] * np.linalg.norm(
+                        urel) ** 2 * span * chord)  # strip_area[i_surf][local_node])
                     # Check if shared nodes from different surfaces exist (e.g. two wings joining at symmetry plane)
                     # Leads to error since panel area just donates for half the panel size while lift forces is summed up
-                    lift_distribution[inode,4] /= len(self.data.aero.struct2aero_mapping[inode])
+                    lift_distribution[inode, 4] /= len(self.data.aero.struct2aero_mapping[inode])
 
         # Export lift distribution data
-        np.savetxt(os.path.join(self.folder,self.settings['text_file_name']), lift_distribution, fmt='%10e,'*(numb_col-1)+'%10e', delimiter = ", ", header= header)
-    
+        np.savetxt(os.path.join(self.folder, self.settings['text_file_name']), lift_distribution,
+                   fmt='%10e,' * (numb_col - 1) + '%10e', delimiter=", ", header=header)
