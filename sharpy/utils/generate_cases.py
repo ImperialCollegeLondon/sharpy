@@ -325,6 +325,19 @@ def set_variable_dict(dictionary, variable, set_value):
             set_variable_dict(value, variable, set_value)
 
 
+def define_or_concatenate(variable, value, axis=0):
+    """
+    if variable is None, value is assigned
+    If variable is an array, value is concatenated along axis
+    """
+    if variable is None:
+        variable = value
+    else:
+        variable = np.concatenate((variable, value), axis=axis)
+    
+    return variable
+
+
 ######################################################################
 ###############  STRUCTURAL INFORMATION  #############################
 ######################################################################
@@ -836,6 +849,38 @@ class StructuralInformation():
                                         np.array([EIz]))
         self.create_frame_of_reference_delta(y_BFoR)
         self.boundary_conditions = np.zeros((self.num_node), dtype=int)
+
+
+    def add_lumped_mass(self, node, mass=None, inertia=None, pos=None, mat=None):
+        """
+        Add lumped mass to structure
+        
+        node(int): Node where the lumped mass is to be placed
+
+        For lumped masses:
+        mass(float): Mass
+        inertia(np.array): 3x3 inertia matrix
+        pos(np.array): 3 coordinates of the mass position
+        
+        For lumped masses described as a 6x6 matrix:
+        mat(np.array): 6x6 mass and inertia matrix
+        """
+
+        if (mass is not None) and (inertia is not None):
+            if pos is None:
+                pos = np.zeros((3))
+            if mat is not None:
+                raise ValueError("mass, inertia and mat cannot be defined at the same time")
+
+            self.lumped_mass_nodes = define_or_concatenate(self.lumped_mass_nodes, np.array([node]), axis=0)
+            self.lumped_mass = define_or_concatenate(self.lumped_mass, np.array([mass]), axis=0)
+            self.lumped_mass_inertia = define_or_concatenate(self.lumped_mass_inertia, np.array([inertia]), axis=0)
+            self.lumped_mass_position = define_or_concatenate(self.lumped_mass_position, np.array([pos]), axis=0)
+
+        elif (mat is not None):
+            
+            self.lumped_mass_mat_nodes = define_or_concatenate(self.lumped_mass_mat_nodes, np.array([node]), axis=0)
+            self.lumped_mass_mat = define_or_concatenate(self.lumped_mass_mat, np.array([mat]), axis=0)
 
 
     def assembly_structures(self, *args):

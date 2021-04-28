@@ -901,11 +901,7 @@ def generate_from_excel_type03(op_params,
     tower.StructuralInformation.boundary_conditions = np.zeros((tower.StructuralInformation.num_node), dtype = int)
     tower.StructuralInformation.boundary_conditions[0] = 1
 
-    # Read overhang and nacelle properties from excel file
-    overhang_len = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'overhang')
-    NodesOverhang = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NodesOverhang')
-    if NodesOverhang is None:
-        NodesOverhang = 3
+    # Nacelle properties from excel file
     NacelleMass = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NacMass')
     NacelleMass_x = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NacMass_x')
     NacelleMass_z = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NacMass_z')
@@ -923,39 +919,39 @@ def generate_from_excel_type03(op_params,
                                             tower.StructuralInformation.num_node,
                                             tower.StructuralInformation.num_elem)
 
-    # Assembly overhang with the tower
-    # numberOfBlades = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NumBl')
+    # Overhang
     tilt = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'ShftTilt')*deg2rad
-    # cone = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'Cone')*deg2rad
-    HubMass = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'HubMass')
-
-    overhang = gc.AeroelasticInformation()
-    overhang.StructuralInformation.num_node = NodesOverhang
-    overhang.StructuralInformation.num_node_elem = 3
-    overhang.StructuralInformation.compute_basic_num_elem()
-    node_pos = np.zeros((overhang.StructuralInformation.num_node, 3), )
-    node_pos[:, 0] += tower.StructuralInformation.coordinates[-1, 0]
-    node_pos[:, 0] += np.linspace(0., -overhang_len*np.sin(tilt*deg2rad), overhang.StructuralInformation.num_node)
-    node_pos[:, 2] = np.linspace(0., overhang_len*np.cos(tilt*deg2rad), overhang.StructuralInformation.num_node)
-    # TODO: change the following by real values
-    # Same properties as the last element of the tower
-    # cout.cout_wrap("WARNING: Using the structural properties of the last tower section for the overhang", 3)
-    # oh_mass_per_unit_length = tower.StructuralInformation.mass_db[-1, 0, 0]
-    # oh_mass_iner = tower.StructuralInformation.mass_db[-1, 3, 3]
-    cout.cout_wrap("WARNING: Using the structural properties (*0.1) of the last tower section for the overhang", 3)
-    oh_mass_per_unit_length = tower.StructuralInformation.mass_db[-1, 0, 0]/10.
-    oh_mass_iner = tower.StructuralInformation.mass_db[-1, 3, 3]/10.
-    oh_EA = tower.StructuralInformation.stiffness_db[-1, 0, 0]
-    oh_GA = tower.StructuralInformation.stiffness_db[-1, 1, 1]
-    oh_GJ = tower.StructuralInformation.stiffness_db[-1, 3, 3]
-    oh_EI = tower.StructuralInformation.stiffness_db[-1, 4, 4]
-    if not HubMass is None:
-        num_lumped_mass_overhang = 1
+    if not tilt == 0.:        
+        raise NonImplementedError("Non-zero tilt not supported")
+    NodesOverhang = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NodesOverhang')
+    overhang_len = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'overhang')
+    if NodesOverhang == 0:
+        with_overhang = False
     else:
-        cout.cout_wrap('WARNING: HubMass not found', 3)
-        num_lumped_mass_overhang = 0
+        with_overhang = True
 
-    overhang.StructuralInformation.generate_uniform_sym_beam(node_pos,
+        overhang = gc.AeroelasticInformation()
+        overhang.StructuralInformation.num_node = NodesOverhang
+        overhang.StructuralInformation.num_node_elem = 3
+        overhang.StructuralInformation.compute_basic_num_elem()
+        node_pos = np.zeros((overhang.StructuralInformation.num_node, 3), )
+        node_pos[:, 0] += tower.StructuralInformation.coordinates[-1, 0]
+        node_pos[:, 0] += np.linspace(0., -overhang_len*np.sin(tilt*deg2rad), overhang.StructuralInformation.num_node)
+        node_pos[:, 2] = np.linspace(0., overhang_len*np.cos(tilt*deg2rad), overhang.StructuralInformation.num_node)
+        # TODO: change the following by real values
+        # Same properties as the last element of the tower
+        # cout.cout_wrap("WARNING: Using the structural properties of the last tower section for the overhang", 3)
+        # oh_mass_per_unit_length = tower.StructuralInformation.mass_db[-1, 0, 0]
+        # oh_mass_iner = tower.StructuralInformation.mass_db[-1, 3, 3]
+        cout.cout_wrap("WARNING: Using the structural properties (*0.1) of the last tower section for the overhang", 3)
+        oh_mass_per_unit_length = tower.StructuralInformation.mass_db[-1, 0, 0]/10.
+        oh_mass_iner = tower.StructuralInformation.mass_db[-1, 3, 3]/10.
+        oh_EA = tower.StructuralInformation.stiffness_db[-1, 0, 0]
+        oh_GA = tower.StructuralInformation.stiffness_db[-1, 1, 1]
+        oh_GJ = tower.StructuralInformation.stiffness_db[-1, 3, 3]
+        oh_EI = tower.StructuralInformation.stiffness_db[-1, 4, 4]
+    
+        overhang.StructuralInformation.generate_uniform_sym_beam(node_pos,
                                                             oh_mass_per_unit_length,
                                                             oh_mass_iner,
                                                             oh_EA,
@@ -964,25 +960,38 @@ def generate_from_excel_type03(op_params,
                                                             oh_EI,
                                                             num_node_elem=3,
                                                             y_BFoR='y_AFoR',
-                                                            num_lumped_mass=num_lumped_mass_overhang)
+                                                            num_lumped_mass=0)
+    
+        overhang.StructuralInformation.boundary_conditions[-1] = -1
 
-    overhang.StructuralInformation.boundary_conditions = np.zeros((overhang.StructuralInformation.num_node), dtype=int)
-    overhang.StructuralInformation.boundary_conditions[-1] = -1
-
-    if not HubMass is None:
-        # Include hub mass
-        overhang.StructuralInformation.lumped_mass_nodes = np.array([overhang.StructuralInformation.num_node - 1], dtype=int)
-        overhang.StructuralInformation.lumped_mass = np.array([HubMass], dtype=float)
-
-    overhang.AerodynamicInformation.set_to_zero(overhang.StructuralInformation.num_node_elem,
+        overhang.AerodynamicInformation.set_to_zero(overhang.StructuralInformation.num_node_elem,
                                                 overhang.StructuralInformation.num_node,
                                                 overhang.StructuralInformation.num_elem)
 
-    tower.assembly(overhang)
-    tower.remove_duplicated_points(tol_remove_points)
+        tower.assembly(overhang)
+        tower.remove_duplicated_points(tol_remove_points)
+        tower.StructuralInformation.body_number *= 0
+
     for inode in range(len(hub_nodes)):
         hub_nodes[inode] += tower.StructuralInformation.num_node
-    tower.StructuralInformation.body_number *= 0
+    
+    # Hub mass
+    HubMass = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'HubMass')
+    if HubMass is not None:
+        if with_overhang:
+            tower.StructuralInformation.add_lumped_mass(tower.StructuralInformation.num_node -1,
+                                  HubMass,
+                                  inertia=np.zeros((3, 3)),
+                                  pos=np.zeros((3)))
+        else:
+            n_hub_nodes = len(hub_nodes)
+            for inode_hub in range(n_hub_nodes):
+                rotor.StructuralInformation.add_lumped_mass(hub_nodes[inode_hub],
+                                      HubMass/n_hub_nodes,
+                                      inertia=np.zeros((3, 3)),
+                                      pos=np.zeros((3)))
+    else:
+        cout.cout_wrap('WARNING: HubMass not found', 3)
 
     ######################################################################
     ##  WIND TURBINE
@@ -990,6 +999,8 @@ def generate_from_excel_type03(op_params,
     # Assembly the whole case
     wt = tower.copy()
     hub_position = tower.StructuralInformation.coordinates[-1, :]
+    if not with_overhang:
+        hub_position += np.array([0., 0., overhang_len])
     rotor.StructuralInformation.coordinates += hub_position
     wt.assembly(rotor)
 
@@ -1008,7 +1019,12 @@ def generate_from_excel_type03(op_params,
         LC1.node_in_body = tower.StructuralInformation.num_node - 1
         LC1.body = 0
         LC1.body_FoR = iblade + 1
-        LC1.rot_vect = np.array([-1., 0., 0.])*rotation_velocity
+        if with_overhang:
+            LC1.rot_vect = np.array([-1., 0., 0.])*rotation_velocity
+            LC1.rel_posB = np.zeros((3))
+        else:
+            LC1.rot_vect = np.array([0., 0., 1.])*rotation_velocity
+            LC1.rel_posB = np.array([0., 0., overhang_len])
         LC.append(LC1)
 
     # Define the multibody infromation for the tower and the rotor
@@ -1026,9 +1042,7 @@ def generate_from_excel_type03(op_params,
     for iblade in range(numberOfBlades):
         MB2 = gc.BodyInformation()
         MB2.body_number = iblade + 1
-        MB2.FoR_position = np.array([tower.StructuralInformation.coordinates[-1, 0],
-                                     tower.StructuralInformation.coordinates[-1, 1], tower.StructuralInformation.coordinates[-1, 2],
-                                     0.0, 0.0, 0.0])
+        MB2.FoR_position = np.concatenate((hub_position, np.zeros((3))))
         MB2.FoR_velocity = np.array([0., 0., 0., 0., 0., rotation_velocity])
         MB2.FoR_acceleration = np.zeros((6,),)
         MB2.FoR_movement = 'free'

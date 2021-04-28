@@ -955,11 +955,12 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         node_body (int): body number of the "node"
         FoR_body (int): body number of the "FoR"
         rot_vect (np.ndarray): Rotation velocity vector in the node B FoR
+        rel_posB (np.ndarray): Relative position between the node and the frame of reference in the node B FoR
     """
     _lc_id = 'hinge_node_FoR_constant_vel'
 
     def __init__(self):
-        self.required_parameters = ['node_in_body', 'body', 'body_FoR', 'rot_vect']
+        self.required_parameters = ['node_in_body', 'body', 'body_FoR', 'rot_vect', 'rel_posB']
         self._n_eq = 6
 
     def get_n_eq(self):
@@ -971,6 +972,7 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         self.node_body = MBdict_entry['body']
         self.FoR_body = MBdict_entry['body_FoR']
         self.rot_axisB = ag.unit_vector(MBdict_entry['rot_vect'])
+        self.rel_posB = MBdict_entry['rel_posB']
         self._ieq = ieq
         self.indep = []
         self.scalingFactor = set_value_or_default(MBdict_entry, "scalingFactor", 1.)
@@ -1022,7 +1024,14 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         return
 
     def dynamicpost(self, lc_list, MB_beam, MB_tstep):
-        MB_tstep[self.FoR_body].for_pos[0:3] = np.dot(MB_tstep[self.node_body].cga(), MB_tstep[self.node_body].pos[self.node_number,:]) + MB_tstep[self.node_body].for_pos[0:3]
+        
+        ielem, inode_in_elem = MB_beam[self.node_body].node_master_elem[self.node_number]
+        node_cga = MB_tstep[self.node_body].cga()
+        cab = ag.crv2rotation(MB_tstep[self.node_body].psi[ielem, inode_in_elem, :])
+
+        MB_tstep[self.FoR_body].for_pos[0:3] = (np.dot(node_cga,
+                                                       MB_tstep[self.node_body].pos[self.node_number,:] + np.dot(cab, self.rel_posB)) +
+                                                MB_tstep[self.node_body].for_pos[0:3])
 
         # ielem, inode_in_elem = MB_beam[self.node_body].node_master_elem[self.node_number]
         # node_cga = MB_tstep[self.node_body].cga()
