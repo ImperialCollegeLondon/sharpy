@@ -9,6 +9,7 @@ import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.cout_utils as cout
 import sharpy.structure.utils.xbeamlib as xbeamlib
 import sharpy.utils.multibody as mb
+import sharpy.utils.algebra as algebra
 import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
 import sharpy.utils.exceptions as exc
 
@@ -53,6 +54,14 @@ class NonLinearDynamicMultibody(_BaseStructural):
     settings_default['allow_skip_step'] = False
     settings_description['allow_skip_step'] = 'Allow skip step when NaN is found while solving the system'
 
+    settings_types['rigid_bodies'] = 'bool'
+    settings_default['rigid_bodies'] = False
+    settings_description['rigid_bodies'] = 'Set to zero the changes in flexible degrees of freedom (not very efficient)'
+
+    settings_types['zero_ini_dot_ddot'] = 'bool'
+    settings_default['zero_ini_dot_ddot'] = False
+    settings_description['zero_ini_dot_ddot'] = 'Set to zero the position and crv derivatives at the first time step'
+    
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -148,6 +157,20 @@ class NonLinearDynamicMultibody(_BaseStructural):
         for ibody in range(self.data.structure.num_bodies):
             if (MBdict['body_%02d' % ibody]['FoR_movement'] == 'free'):
                 self.sys_size += 10
+
+    def define_rigid_dofs(self, MB_beam):
+
+        self.n_rigid_dofs = 0
+        self.rigid_dofs = []
+       
+        first_dof = 0 
+        for ibody in range(len(MB_beam)):
+            last_dof = first_dof + MB_beam[ibody].num_dof.value
+            if MB_beam[ibody].FoR_movement == 'free':
+                self.n_rigid_dofs += 10
+                self.rigid_dofs += (np.arange(10, dtype=int) + last_dof).tolist()
+                last_dof += 10
+            first_dof = last_dof + 0
 
     def assembly_MB_eq_system(self, MB_beam, MB_tstep, ts, dt, Lambda, Lambda_dot, MBdict):
         """
@@ -347,6 +370,16 @@ class NonLinearDynamicMultibody(_BaseStructural):
             structural_step.whole_structure_to_local_AFoR(self.data.structure,
                                                           compute_psi_local)
 
+        if self.data.ts == 1 and self.settings['zero_ini_dot_ddot']:
+            self.data.structure.ini_info.pos_dot *= 0.
+            self.data.structure.ini_info.pos_ddot *= 0.
+            self.data.structure.ini_info.psi_dot *= 0.
+            self.data.structure.ini_info.psi_ddot *= 0.
+            structural_step.pos_dot *= 0.
+            structural_step.pos_ddot *= 0.
+            structural_step.psi_dot *= 0.
+            structural_step.psi_ddot *= 0.
+        
         self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
         MB_beam, MB_tstep = mb.split_multibody(
@@ -354,6 +387,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
             structural_step,
             MBdict,
             self.data.ts)
+
+        self.define_rigid_dofs(MB_beam)
 
         # Lagrange multipliers parameters
         num_LM_eq = self.num_LM_eq
@@ -407,7 +442,19 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 cond_num = np.linalg.cond(Asys[:self.sys_size, :self.sys_size])
                 cond_num_lm = np.linalg.cond(Asys)
 
-            Dq = np.linalg.solve(Asys, -Q)
+            if self.settings['rigid_bodies']:
+                rigid_LM_dofs = self.rigid_dofs + (np.arange(self.num_LM_eq, dtype=int) + self.sys_size).tolist()
+                # rigid_Asys = np.zeros((self.n_rigid_dofs + self.num_LM_eq, self.n_rigid_dofsi + self.num_LM_eq))
+                # rigid_Q = np.zeros((self.n_rigid_dofs + self.num_LM_eq,))
+
+                rigid_Asys = Asys[np.ix_(rigid_LM_dofs, rigid_LM_dofs)].copy()
+                rigid_Q = Q[rigid_LM_dofs].copy()
+                rigid_Dq = np.linalg.solve(rigid_Asys, -rigid_Q)
+                Dq = np.zeros((self.sys_size + self.num_LM_eq))
+                Dq[rigid_LM_dofs] = rigid_Dq.copy()
+                
+            else:
+                Dq = np.linalg.solve(Asys, -Q)
 
             # Evaluate convergence
             if iteration:
