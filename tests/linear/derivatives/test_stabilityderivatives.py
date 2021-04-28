@@ -342,7 +342,7 @@ class TestLinearDerivatives(unittest.TestCase):
                 case_name_db.append(case.case_name)
                 case_name = case.case_name
             nlin_forces = np.loadtxt(self.route_test_dir +
-                                     '/output/{:s}/forces/aeroforces.txt'.format(case_name),
+                                     '/output/{:s}/forces/forces_aeroforces.txt'.format(case_name),
                                      skiprows=1,
                                      delimiter=',')
             nlin_forces_g[ith, :3] = nlin_forces[1:4]
