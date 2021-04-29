@@ -842,7 +842,7 @@ class Iterations:
     to the labels and values corresponding to each iteration
     """
     
-    def __init__(self,var2iterate,iter_type='full_factorial'):
+    def __init__(self,var2iterate,iter_type='Full_Factorial'):
 
         self.iter_type = iter_type
         if isinstance(var2iterate,list):
@@ -853,7 +853,7 @@ class Iterations:
             self.var_names = [k for k in var2iterate.keys()]
         self.num_var = len(self.varl)
         self.shape_var = [len(i) for i in self.varl]
-        if self.iter_type == 'full_factorial':
+        if self.iter_type == 'Full_Factorial':
             self.num_combinations = np.prod(self.shape_var)
         elif self.iter_type == 'DoE':
             self.num_combinations = self.shape_var[0]
@@ -902,7 +902,7 @@ class Iterations:
         formed of dictionaries with keys the name of the variables
         """
 
-        if self.iter_type == 'full_factorial':
+        if self.iter_type == 'Full_Factorial':
             varl_combinations = self.get_combinations_FF()
         elif self.iter_type == 'DoE':
             varl_combinations = self.get_combinations_DoE()
