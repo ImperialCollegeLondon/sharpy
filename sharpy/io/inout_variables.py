@@ -67,7 +67,7 @@ class Variable:
                                                             variable.shape))
                 raise IndexError
         elif self.name == 'dt':
-            value = data.settings['DynamicCoupled']['dt'].value
+            value = data.settings['DynamicCoupled']['dt']
         elif self.name == 'nt':
             value = len(data.structure.timestep_info[:timestep_index]) - 1  # (-1) needed since first time step is idx 0
         elif self.panel is not None:

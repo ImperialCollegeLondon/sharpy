@@ -32,10 +32,6 @@ class AsymptoticStability(BaseSolver):
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Output folder'
-
     settings_types['print_info'] = 'bool'
     settings_default['print_info'] = False
     settings_description['print_info'] = 'Print information and table of eigenvalues'
@@ -111,17 +107,13 @@ class AsymptoticStability(BaseSolver):
 
         self.num_evals = self.settings['num_evals']
 
-        stability_folder_path = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/stability'
-        if not os.path.exists(stability_folder_path):
-            os.makedirs(stability_folder_path)
-        self.folder = stability_folder_path
-
-        if not os.path.exists(stability_folder_path):
-            os.makedirs(stability_folder_path)
+        self.folder = data.output_folder + '/stability/'
+        if not os.path.exists(self.folder):
+            os.makedirs(self.folder)
 
         if self.settings['print_info']:
             cout.cout_wrap('Dynamical System Eigenvalues')
-            eigenvalue_description_file = stability_folder_path + '/eigenvaluetable.txt'
+            eigenvalue_description_file = self.folder + '/eigenvaluetable.txt'
             self.eigenvalue_table = modalutils.EigenvalueTable(filename=eigenvalue_description_file)
 
         # Output dict
@@ -220,13 +212,11 @@ class AsymptoticStability(BaseSolver):
             num_evals: Number of eigenvalues to save
         """
 
-        stability_folder_path = self.folder
-
         num_evals = min(num_evals, self.eigenvalues.shape[0])
 
-        np.savetxt(stability_folder_path + '/eigenvalues.dat', self.eigenvalues[:num_evals].view(float).reshape(-1, 2))
-        np.savetxt(stability_folder_path + '/eigenvectors_r.dat', self.eigenvectors.real[:, :num_evals])
-        np.savetxt(stability_folder_path + '/eigenvectors_i.dat', self.eigenvectors.imag[:, :num_evals])
+        np.savetxt(self.folder + '/eigenvalues.dat', self.eigenvalues[:num_evals].view(float).reshape(-1, 2))
+        np.savetxt(self.folder + '/eigenvectors_r.dat', self.eigenvectors.real[:, :num_evals])
+        np.savetxt(self.folder + '/eigenvectors_i.dat', self.eigenvectors.imag[:, :num_evals])
 
     def print_eigenvalues(self):
         """
@@ -350,18 +340,16 @@ class AsymptoticStability(BaseSolver):
 
             # Initialise postprocessors - new folder for each mode
             # initialise postprocessors
-            route = self.settings['folder'] + '/stability/mode_%06d/' % mode
+            route = self.folder + '/stability/mode_%06d/' % mode
             postprocessors = dict()
             postprocessor_list = ['AerogridPlot', 'BeamPlot']
             postprocessors_settings = dict()
-            postprocessors_settings['AerogridPlot'] = {'folder': route,
-                                    'include_rbm': 'on',
+            postprocessors_settings['AerogridPlot'] = {'include_rbm': 'on',
                                     'include_applied_forces': 'on',
                                     'minus_m_star': 0,
                                     'u_inf': 1
                                     }
-            postprocessors_settings['BeamPlot'] = {'folder': route + '/',
-                                    'include_rbm': 'on',
+            postprocessors_settings['BeamPlot'] = {'include_rbm': 'on',
                                     'include_applied_forces': 'on'}
 
             for postproc in postprocessor_list:

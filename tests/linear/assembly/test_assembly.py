@@ -16,6 +16,8 @@ import sharpy.linear.src.assembly as assembly
 import sharpy.linear.src.multisurfaces as multisurfaces
 import sharpy.linear.src.surface as surface
 import sharpy.utils.algebra as algebra
+import sharpy.utils.cout_utils as cout
+import sharpy.sharpy_main
 
 
 np.set_printoptions(linewidth=200, precision=3)
@@ -1038,8 +1040,9 @@ class Test_assembly(unittest.TestCase):
 
     def test_wake_prop(self):
 
+        self.start_writer()
         MS = self.MS
-        C_list, Cstar_list = assembly.wake_prop(MS.Surfs, MS.Surfs_star)
+        C_list, Cstar_list = assembly.wake_prop(MS)
 
         n_surf = len(MS.Surfs)
         for ss in range(n_surf):
@@ -1060,6 +1063,19 @@ class Test_assembly(unittest.TestCase):
 
             assert np.max(np.abs(gvec - gvec_ref)) < 1e-15, \
                 'Prop. from trailing edge not correct'
+
+
+    def start_writer(self):
+        # Over write writer with print_file False to avoid I/O errors
+        global cout_wrap
+        cout_wrap = cout.Writer()
+        # cout_wrap.initialise(print_screen=False, print_file=False)
+        cout_wrap.cout_quiet()
+        sharpy.utils.cout_utils.cout_wrap = cout_wrap
+
+
+    def tearDown(self):
+        cout.finish_writer()
 
 
 if __name__ == '__main__':

@@ -281,7 +281,7 @@ def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
 
     # Check whether rigid body motion is selected
     # Skip rigid body modes
-    if data.settings['Modal']['rigid_body_modes'].value:
+    if data.settings['Modal']['rigid_body_modes']:
         num_rigid_body = 10
     else:
         num_rigid_body = 0
@@ -500,4 +500,3 @@ def assert_modes_mass_normalised(phi, m, tolerance, raise_error=False):
             raise e
         else:
             cout.cout_wrap('Eigenvectors are not mass normalised', 3)
-

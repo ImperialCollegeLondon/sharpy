@@ -89,6 +89,212 @@ def create_blade_coordinates(num_node, node_r, node_y, node_z):
 
 
 ######################################################################
+# FROM excel type04
+######################################################################
+def spar_from_excel_type04(op_params,
+                            geom_params,
+                            excel_description,
+                            options):
+    """
+    spar_from_excel_type04
+
+    Function needed to generate a spar floating wind turbine rotor from an excel database type04.
+    Rotor + tower + floating spar
+
+    Args:
+        op_param (dict): Dictionary with operating parameters
+        geom_param (dict): Dictionray with geometical parameters
+        excel_description (dict): Dictionary describing the sheets of the excel file
+        option (dict): Dictionary with the different options for the wind turbine generation
+
+    Returns:
+        floating (sharpy.utils.generate_cases.AeroelasticInfromation): Aeroelastic information of the spar floating wind turbine
+    """
+
+    # Generate the tower + rotor
+    wt, LC, MB, hub_node = generate_from_excel_type03(op_params,
+                                    geom_params,
+                                    excel_description,
+                                    options)
+
+    # Remove base clam
+    wt.StructuralInformation.boundary_conditions[0] = 0
+
+    excel_file_name = excel_description['excel_file_name']
+    excel_sheet_parameters = excel_description['excel_sheet_parameters']
+    excel_sheet_structural_spar = excel_description['excel_sheet_structural_spar']
+    tol_remove_points = geom_params['tol_remove_points']
+
+    # Generate the spar
+    SparHeight = gc.read_column_sheet_type01(excel_file_name,
+                                             excel_sheet_parameters,
+                                             'SparHeight')
+    SparBallastMass = gc.read_column_sheet_type01(excel_file_name,
+                                                  excel_sheet_parameters,
+                                                  'SparBallastMass')
+    SparBallastDepth = gc.read_column_sheet_type01(excel_file_name,
+                                                   excel_sheet_parameters,
+                                                   'SparBallastDepth')
+
+    # Read from excel file
+    SparHtFract = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_spar, 'SparHtFract')
+    SparMassDen = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_spar, 'SparMassDen')
+    SparFAStif = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_spar, 'SparFAStif')
+    SparSSStif = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_spar, 'SparSSStif')
+    SparGJStif = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_spar, 'SparGJStif')
+    SparEAStif = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_spar, 'SparEAStif')
+    SparFAIner = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_spar, 'SparFAIner')
+    SparSSIner = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_spar, 'SparSSIner')
+    SparFAcgOf = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_spar, 'SparFAcgOf')
+    SparSScgOf = gc.read_column_sheet_type01(excel_file_name, excel_sheet_structural_spar, 'SparSScgOf')
+
+    ElevationSpar = SparHtFract*SparHeight
+    spar = gc.AeroelasticInformation()
+    spar.StructuralInformation.num_elem = len(ElevationSpar) - 2
+    spar.StructuralInformation.num_node_elem = 3
+    spar.StructuralInformation.compute_basic_num_node()
+
+    # Interpolate excel variables into the correct locations
+    node_r, elem_r = create_node_radial_pos_from_elem_centres(ElevationSpar,
+                                    spar.StructuralInformation.num_node,
+                                    spar.StructuralInformation.num_elem,
+                                    spar.StructuralInformation.num_node_elem)
+
+    # Stiffness
+    elem_EA = np.interp(elem_r, ElevationSpar, SparEAStif)
+    elem_EIz = np.interp(elem_r, ElevationSpar, SparSSStif)
+    elem_EIy = np.interp(elem_r, ElevationSpar, SparFAStif)
+    elem_GJ = np.interp(elem_r, ElevationSpar, SparGJStif)
+    # Stiffness: estimate unknown properties
+    cout.cout_wrap.print_file = False
+    cout.cout_wrap('WARNING: The poisson cofficient is assumed equal to 0.3', 3)
+    cout.cout_wrap('WARNING: Cross-section area is used as shear area', 3)
+    poisson_coef = 0.3
+    elem_GAy = elem_EA/2.0/(1.0+poisson_coef)
+    elem_GAz = elem_EA/2.0/(1.0+poisson_coef)
+
+    # Inertia
+    elem_mass_per_unit_length = np.interp(elem_r, ElevationSpar, SparMassDen)
+    elem_mass_iner_y = np.interp(elem_r, ElevationSpar, SparFAIner)
+    elem_mass_iner_z = np.interp(elem_r, ElevationSpar, SparSSIner)
+    # TODO: check yz axis and Flap-edge
+    elem_pos_cg_B = np.zeros((spar.StructuralInformation.num_elem, 3),)
+    elem_pos_cg_B[:, 1] = np.interp(elem_r, ElevationSpar, SparSScgOf)
+    elem_pos_cg_B[:, 2] = np.interp(elem_r, ElevationSpar, SparFAcgOf)
+
+    # Stiffness: estimate unknown properties
+    cout.cout_wrap('WARNING: Using perpendicular axis theorem to compute the inertia around xB', 3)
+    elem_mass_iner_x = elem_mass_iner_y + elem_mass_iner_z
+
+    # Create the tower
+    spar.StructuralInformation.create_mass_db_from_vector(elem_mass_per_unit_length, elem_mass_iner_x, elem_mass_iner_y, elem_mass_iner_z, elem_pos_cg_B)
+    spar.StructuralInformation.create_stiff_db_from_vector(elem_EA, elem_GAy, elem_GAz, elem_GJ, elem_EIy, elem_EIz)
+
+    coordinates = np.zeros((spar.StructuralInformation.num_node, 3),)
+    coordinates[:, 0] = node_r
+
+    spar.StructuralInformation.generate_1to1_from_vectors(
+        num_node_elem=spar.StructuralInformation.num_node_elem,
+        num_node=spar.StructuralInformation.num_node,
+        num_elem=spar.StructuralInformation.num_elem,
+        coordinates=coordinates,
+        stiffness_db=spar.StructuralInformation.stiffness_db,
+        mass_db=spar.StructuralInformation.mass_db,
+        frame_of_reference_delta='y_AFoR',
+        vec_node_structural_twist=np.zeros((spar.StructuralInformation.num_node,),),
+        num_lumped_mass=1)
+
+    spar.StructuralInformation.boundary_conditions[0] = -1
+    spar.StructuralInformation.boundary_conditions[-1] = 1
+
+    # Include ballast mass
+    dist = np.abs(coordinates[:, 0] + SparBallastDepth)
+    min_dist = np.amin(dist)
+    loc_min = np.where(dist == min_dist)[0]
+
+    cout.cout_wrap("Ballast at node %d at position %f" % (loc_min, coordinates[loc_min, 0]), 2)
+
+    spar.StructuralInformation.lumped_mass_nodes[0] = loc_min
+    spar.StructuralInformation.lumped_mass[0] = SparBallastMass
+    spar.StructuralInformation.lumped_mass_inertia[0] = np.zeros((3,3))
+    spar.StructuralInformation.lumped_mass_position[0] = np.zeros((3,))
+
+    spar.AerodynamicInformation.set_to_zero(spar.StructuralInformation.num_node_elem,
+                                        spar.StructuralInformation.num_node,
+                                        spar.StructuralInformation.num_elem)
+
+    # Generate tower base
+    TowerBaseHeight = gc.read_column_sheet_type01(excel_file_name,
+                                                  excel_sheet_parameters,
+                                                  'TowerBaseHeight')
+    NodesBase = gc.read_column_sheet_type01(excel_file_name,
+                                                  excel_sheet_parameters,
+                                                  'NodesBase')
+
+
+    base = gc.AeroelasticInformation()
+    base.StructuralInformation.num_node = NodesBase
+    base.StructuralInformation.num_node_elem = 3
+    base.StructuralInformation.compute_basic_num_elem()
+
+    node_coord = np.zeros((base.StructuralInformation.num_node, 3))
+    node_coord[:, 0] = np.linspace(0., TowerBaseHeight, base.StructuralInformation.num_node)
+
+    base_stiffness_db = np.zeros((base.StructuralInformation.num_elem, 6, 6))
+    base_mass_db = np.zeros((base.StructuralInformation.num_elem, 6, 6))
+    vec_node_structural_twist = np.zeros((base.StructuralInformation.num_node,))
+
+    for ielem in range(base.StructuralInformation.num_elem):
+        base_stiffness_db[ielem, :, :] = spar.StructuralInformation.stiffness_db[-1, :, :]
+        base_mass_db[ielem, :, :] = spar.StructuralInformation.mass_db[-1, :, :]
+    # for ielem in range(base.StructuralInformation.num_elem):
+    #     inode_cent = 2*ielem + 1
+    #     rel_dist_to_spar = node_coord[inode_cent, 0]/TowerBaseHeight
+    #     rel_dist_to_base = (node_coord[-1, 0] - node_coord[inode_cent, 0])/TowerBaseHeight
+    #     base_stiffness_db[ielem, :, :] = (spar.StructuralInformation.stiffness_db[0, :, :]*rel_dist_to_base +
+    #                                   wt.StructuralInformation.stiffness_db[0, :, :]*rel_dist_to_spar)
+    #     base_mass_db[ielem, :, :] = (spar.StructuralInformation.mass_db[0, :, :]*rel_dist_to_base +
+    #                                   wt.StructuralInformation.mass_db[0, :, :]*rel_dist_to_spar)
+
+    base.StructuralInformation.generate_1to1_from_vectors(
+                            base.StructuralInformation.num_node_elem,
+                            base.StructuralInformation.num_node,
+                            base.StructuralInformation.num_elem,
+                            node_coord,
+                            base_stiffness_db,
+                            base_mass_db,
+                            'y_AFoR',
+                            vec_node_structural_twist,
+                            num_lumped_mass=0)
+
+    base.StructuralInformation.boundary_conditions[0] = 1
+    base.StructuralInformation.body_number *= 0
+
+    base.AerodynamicInformation.set_to_zero(base.StructuralInformation.num_node_elem,
+                                        base.StructuralInformation.num_node,
+                                        base.StructuralInformation.num_elem)
+
+    # Assembly
+    spar.assembly(base)
+    spar.remove_duplicated_points(1e-6)
+    spar.StructuralInformation.body_number *= 0
+    nodes_spar = spar.StructuralInformation.num_node + 0
+    skip = [hub_node + nodes_spar]
+    wt.StructuralInformation.coordinates[:, 0] += TowerBaseHeight
+    spar.assembly(wt)
+    spar.remove_duplicated_points(1e-6, skip=skip)
+    for ielem in range(spar.StructuralInformation.num_elem):
+        if not spar.StructuralInformation.body_number[ielem] == 0:
+            spar.StructuralInformation.body_number[ielem] -= 1
+
+    # Update Lagrange Constraints and Multibody information
+    LC[0].node_in_body += nodes_spar - 1
+    MB[0].FoR_movement = 'free'
+    MB[1].FoR_position[0] += TowerBaseHeight
+
+    return spar, LC, MB
+
+######################################################################
 # FROM excel type03
 ######################################################################
 def rotor_from_excel_type03(in_op_params,
@@ -96,9 +302,9 @@ def rotor_from_excel_type03(in_op_params,
                             in_excel_description,
                             in_options):
     """
-    generate_from_excel_type03_db
+    rotor_from_excel_type03
 
-    Function needed to generate a wind turbine from an excel database type03
+    Function needed to generate a wind turbine rotor from an excel database type03
 
     Args:
         op_param (dict): Dictionary with operating parameters
@@ -495,70 +701,37 @@ def rotor_from_excel_type03(in_op_params,
     return rotor
 
 
-def generate_from_excel_type02(chord_panels,
-                                rotation_velocity,
-                                pitch_deg,
-                                excel_file_name='database_excel_type02.xlsx',
-                                excel_sheet_parameters='parameters',
-                                excel_sheet_structural_blade='structural_blade',
-                                excel_sheet_discretization_blade='discretization_blade',
-                                excel_sheet_aero_blade='aero_blade',
-                                excel_sheet_airfoil_info='airfoil_info',
-                                excel_sheet_airfoil_coord='airfoil_coord',
-                                excel_sheet_structural_tower='structural_tower',
-                                m_distribution='uniform',
-                                h5_cross_sec_prop=None,
-                                n_points_camber=100,
-                                tol_remove_points=1e-3,
-                                user_defined_m_distribution_type=None,
-                                wsp=0.,
-                                dt=0.):
-    """
-    generate_from_excel_type02
+def generate_from_excel_type03(op_params,
+                                   geom_params,
+                                   excel_description,
+                                   options):
 
-    Function needed to generate a wind turbine from an excel database according to OpenFAST inputs
+    """
+    generate_from_excel_type03
+
+    Function needed to generate a wind turbine (tower + rotor) from an excel database type03.
+    See ``rotor_from_excel_type03'' for more information.
 
     Args:
-        chord_panels (int): Number of panels on the blade surface in the chord direction
-        rotation_velocity (float): Rotation velocity of the rotor
-        pitch_deg (float): pitch angle in degrees
-        excel_file_name (str):
-        excel_sheet_structural_blade (str):
-        excel_sheet_aero_blade (str):
-        excel_sheet_airfoil_coord (str):
-        excel_sheet_parameters (str):
-        excel_sheet_structural_tower (str):
-        m_distribution (str):
-        n_points_camber (int): number of points to define the camber of the airfoil,
-        tol_remove_points (float): maximum distance to remove adjacent points
-        user_defined_m_distribution_type (string): type of distribution of the chordwise panels when 'm_distribution' == 'user_defined'
-        camber_effects_on_twist (bool): When true plain airfoils are used and the blade is twisted and preloaded based on thin airfoil theory
-        wsp (float): wind speed (It may be needed for discretisation purposes)
-        dt (float): time step (It may be needed for discretisation purposes)
+        op_param (dict): Dictionary with operating parameters
+        geom_param (dict): Dictionray with geometical parameters
+        excel_description (dict): Dictionary describing the sheets of the excel file
+        option (dict): Dictionary with the different options for the wind turbine generation
 
     Returns:
-        wt (sharpy.utils.generate_cases.AeroelasticInfromation): Aeroelastic infrmation of the wind turbine
-        LC (list): list of all the Lagrange constraints needed in the cases (sharpy.utils.generate_cases.LagrangeConstraint)
-        MB (list): list of the multibody information of each body (sharpy.utils.generate_cases.BodyInfrmation)
+        wt (sharpy.utils.generate_cases.AeroelasticInfromation): Aeroelastic information of the wind turbine (tower + rotor)
     """
+    rotor = rotor_from_excel_type03(op_params,
+                                    geom_params,
+                                    excel_description,
+                                    options)
 
-    rotor = rotor_from_excel_type02(chord_panels,
-                                  rotation_velocity,
-                                  pitch_deg,
-                                  excel_file_name=excel_file_name,
-                                  excel_sheet_parameters=excel_sheet_parameters,
-                                  excel_sheet_structural_blade=excel_sheet_structural_blade,
-                                  excel_sheet_discretization_blade=excel_sheet_discretization_blade,
-                                  excel_sheet_aero_blade=excel_sheet_aero_blade,
-                                  excel_sheet_airfoil_info=excel_sheet_airfoil_info,
-                                  excel_sheet_airfoil_coord=excel_sheet_airfoil_coord,
-                                  m_distribution=m_distribution,
-                                  h5_cross_sec_prop=h5_cross_sec_prop,
-                                  n_points_camber=n_points_camber,
-                                  tol_remove_points=tol_remove_points,
-                                  user_defined_m_distribution_type=user_defined_m_distribution_type,
-                                  wsp=0.,
-                                  dt=0.)
+
+    excel_file_name = excel_description['excel_file_name']
+    excel_sheet_parameters = excel_description['excel_sheet_parameters']
+    excel_sheet_structural_tower = excel_description['excel_sheet_structural_tower']
+    tol_remove_points = geom_params['tol_remove_points']
+    rotation_velocity = op_params['rotation_velocity']
 
     ######################################################################
     ## TOWER
@@ -641,13 +814,19 @@ def generate_from_excel_type02(chord_panels,
 
     # Read overhang and nacelle properties from excel file
     overhang_len = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'overhang')
-    # HubMass = gc.read_column_sheet_type01(excel_file_name, excel_sheet_nacelle, 'HubMass')
     NacelleMass = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NacMass')
+    NacelleMass_x = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NacMass_x')
+    NacelleMass_z = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NacMass_z')
     # NacelleYawIner = gc.read_column_sheet_type01(excel_file_name, excel_sheet_nacelle, 'NacelleYawIner')
 
     # Include nacelle mass
     tower.StructuralInformation.lumped_mass_nodes = np.array([tower.StructuralInformation.num_node - 1], dtype=int)
     tower.StructuralInformation.lumped_mass = np.array([NacelleMass], dtype=float)
+    if not NacelleMass_x is None and not NacelleMass_z is None:
+        tower.StructuralInformation.lumped_mass_position = np.array([np.array([NacelleMass_z, 0, NacelleMass_x])], dtype=float)
+    else:
+        cout.cout_wrap('WARNING: Nacelle mass placed at tower top', 3)
+
 
     tower.AerodynamicInformation.set_to_zero(tower.StructuralInformation.num_node_elem,
                                             tower.StructuralInformation.num_node,
@@ -657,6 +836,7 @@ def generate_from_excel_type02(chord_panels,
     # numberOfBlades = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NumBl')
     tilt = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'ShftTilt')*deg2rad
     # cone = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'Cone')*deg2rad
+    HubMass = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'HubMass')
 
     overhang = gc.AeroelasticInformation()
     overhang.StructuralInformation.num_node = 3
@@ -664,8 +844,8 @@ def generate_from_excel_type02(chord_panels,
     overhang.StructuralInformation.compute_basic_num_elem()
     node_pos = np.zeros((overhang.StructuralInformation.num_node, 3), )
     node_pos[:, 0] += tower.StructuralInformation.coordinates[-1, 0]
-    node_pos[:, 0] += np.linspace(0., overhang_len*np.sin(tilt*deg2rad), overhang.StructuralInformation.num_node)
-    node_pos[:, 2] = np.linspace(0., -overhang_len*np.cos(tilt*deg2rad), overhang.StructuralInformation.num_node)
+    node_pos[:, 0] += np.linspace(0., -overhang_len*np.sin(tilt*deg2rad), overhang.StructuralInformation.num_node)
+    node_pos[:, 2] = np.linspace(0., overhang_len*np.cos(tilt*deg2rad), overhang.StructuralInformation.num_node)
     # TODO: change the following by real values
     # Same properties as the last element of the tower
     cout.cout_wrap("WARNING: Using the structural properties of the last tower section for the overhang", 3)
@@ -675,6 +855,12 @@ def generate_from_excel_type02(chord_panels,
     oh_GA = tower.StructuralInformation.stiffness_db[-1, 1, 1]
     oh_GJ = tower.StructuralInformation.stiffness_db[-1, 3, 3]
     oh_EI = tower.StructuralInformation.stiffness_db[-1, 4, 4]
+    if not HubMass is None:
+        num_lumped_mass_overhang = 1
+    else:
+        cout.cout_wrap('WARNING: HubMass not found', 3)
+        num_lumped_mass_overhang = 0
+
     overhang.StructuralInformation.generate_uniform_sym_beam(node_pos,
                                                             oh_mass_per_unit_length,
                                                             oh_mass_iner,
@@ -684,10 +870,15 @@ def generate_from_excel_type02(chord_panels,
                                                             oh_EI,
                                                             num_node_elem=3,
                                                             y_BFoR='y_AFoR',
-                                                            num_lumped_mass=0)
+                                                            num_lumped_mass=num_lumped_mass_overhang)
 
     overhang.StructuralInformation.boundary_conditions = np.zeros((overhang.StructuralInformation.num_node), dtype=int)
     overhang.StructuralInformation.boundary_conditions[-1] = -1
+
+    if not HubMass is None:
+        # Include hub mass
+        overhang.StructuralInformation.lumped_mass_nodes = np.array([overhang.StructuralInformation.num_node - 1], dtype=int)
+        overhang.StructuralInformation.lumped_mass = np.array([HubMass], dtype=float)
 
     overhang.AerodynamicInformation.set_to_zero(overhang.StructuralInformation.num_node_elem,
                                                 overhang.StructuralInformation.num_node,
@@ -695,6 +886,8 @@ def generate_from_excel_type02(chord_panels,
 
     tower.assembly(overhang)
     tower.remove_duplicated_points(tol_remove_points)
+    hub_node = tower.StructuralInformation.num_node
+    tower.StructuralInformation.body_number *= 0
 
     ######################################################################
     ##  WIND TURBINE
@@ -718,8 +911,7 @@ def generate_from_excel_type02(chord_panels,
     LC1.node_in_body = tower.StructuralInformation.num_node - 1
     LC1.body = 0
     LC1.body_FoR = 1
-    LC1.rot_axisB = np.array([1., 0., 0.0])
-    LC1.rot_vel = -rotation_velocity
+    LC1.rot_vect = np.array([-1., 0., 0.])*rotation_velocity
 
     LC = []
     LC.append(LC1)
@@ -748,7 +940,7 @@ def generate_from_excel_type02(chord_panels,
     ######################################################################
     ## RETURN
     ######################################################################
-    return wt, LC, MB
+    return wt, LC, MB, hub_node
 
 
 ######################################################################
@@ -811,3 +1003,63 @@ def rotor_from_excel_type02(chord_panels,
                                    options)
 
     return rotor
+
+
+def generate_from_excel_type02(chord_panels,
+                                rotation_velocity,
+                                pitch_deg,
+                                excel_file_name='database_excel_type02.xlsx',
+                                excel_sheet_parameters='parameters',
+                                excel_sheet_structural_blade='structural_blade',
+                                excel_sheet_discretization_blade='discretization_blade',
+                                excel_sheet_aero_blade='aero_blade',
+                                excel_sheet_airfoil_info='airfoil_info',
+                                excel_sheet_airfoil_coord='airfoil_coord',
+                                excel_sheet_structural_tower='structural_tower',
+                                m_distribution='uniform',
+                                h5_cross_sec_prop=None,
+                                n_points_camber=100,
+                                tol_remove_points=1e-3,
+                                user_defined_m_distribution_type=None,
+                                camber_effect_on_twist=False,
+                                wsp=0.,
+                                dt=0.):
+
+    # Warning for back compatibility
+    cout.cout_wrap('generate_from_excel_type02 is obsolete! rotor_from_excel_type03 instead!', 3)
+
+    # Assign values to dictionaries
+    op_params = {}
+    op_params['rotation_velocity'] = rotation_velocity
+    op_params['pitch_deg'] = pitch_deg
+    op_params['wsp'] = wsp
+    op_params['dt'] = dt
+
+    geom_params = {}
+    geom_params['chord_panels'] = chord_panels
+    geom_params['tol_remove_points'] = tol_remove_points
+    geom_params['n_points_camber'] = n_points_camber
+    geom_params['h5_cross_sec_prop'] = h5_cross_sec_prop
+    geom_params['m_distribution'] = m_distribution
+
+    options = {}
+    options['camber_effect_on_twist'] = camber_effect_on_twist
+    options['user_defined_m_distribution_type'] = user_defined_m_distribution_type
+    options['include_polars'] = False
+
+    excel_description = {}
+    excel_description['excel_file_name'] = excel_file_name
+    excel_description['excel_sheet_parameters'] = excel_sheet_parameters
+    excel_description['excel_sheet_structural_tower'] = excel_sheet_structural_tower
+    excel_description['excel_sheet_structural_blade'] = excel_sheet_structural_blade
+    excel_description['excel_sheet_discretization_blade'] = excel_sheet_discretization_blade
+    excel_description['excel_sheet_aero_blade'] = excel_sheet_aero_blade
+    excel_description['excel_sheet_airfoil_info'] = excel_sheet_airfoil_info
+    excel_description['excel_sheet_airfoil_chord'] = excel_sheet_airfoil_coord
+
+    wt = generate_from_excel_type03(op_params,
+                                   geom_params,
+                                   excel_description,
+                                   options)
+
+    return wt
