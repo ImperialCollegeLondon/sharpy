@@ -243,10 +243,13 @@ class Modal(BaseSolver):
             FullMglobal, FullCglobal, FullKglobal, FullQ = xbeamlib.xbeam3_asbly_dynamic(self.data.structure,
                                           self.data.structure.timestep_info[self.data.ts],
                                           full_matrix_settings)
+
+            cg = modalutils.cg(FullMglobal)
         else:
             xbeamlib.cbeam3_solv_modal(self.data.structure,
                                        self.settings, self.data.ts,
                                        FullMglobal, FullCglobal, FullKglobal)
+            cg = None
 
         # Print matrices
         if self.settings['print_matrices']:
@@ -445,6 +448,9 @@ class Modal(BaseSolver):
             outdict['Kin_damp'] = Kin_damp
         if not self.settings['use_undamped_modes']:
             outdict['eigenvectors_left'] = eigenvectors_left
+
+        if cg is not None:
+            outdict['cg'] = cg
 
         if self.settings['keep_linear_matrices']:
             outdict['M'] = FullMglobal

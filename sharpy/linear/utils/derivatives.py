@@ -40,7 +40,9 @@ class Derivatives:
         if target_system is not None:
             self.filename = target_system + '_' + self.filename
 
-    def initialise_derivatives(self, state_space, steady_forces, quat, v0, phi=None):
+        self.cg = None
+
+    def initialise_derivatives(self, state_space, steady_forces, quat, v0, phi=None, cg=None, tpa=None):
         """
         Initialises the required class attributes for all derivative calculations/
 
@@ -102,7 +104,8 @@ class Derivatives:
 
         self.transfer_function = H0[np.ix_(output_indices, input_indices)].real
 
-        # return H0
+        self.cg = cg
+        self.tpa = tpa
 
     def save(self, output_route):
         with h5py.File(output_route + '/' + self.filename.replace('.txt', '.h5'), 'w') as f:
@@ -135,6 +138,19 @@ class Derivatives:
             outfile.write('\t{:4f}\t\t\t # Free stream density\n'.format(rho))
             outfile.write('\t{:4f}\t\t\t # Alpha [deg]\n'.format(euler_orient[1]))
             outfile.write('\t{:4f}\t\t\t # Beta [deg]\n'.format(euler_orient[2]))
+
+            if self.cg is not None:
+                outfile.write(separator)
+                outfile.write('Centre of Gravity:\n')
+                lab = ('x', 'y', 'z')
+                for i in range(3):
+                    outfile.write('\t{:s}_A = {:.4f}\t\t\t # [m]\n'.format(lab[i], self.cg[i]))
+
+                if self.tpa is not None:
+                    outfile.write('Principal Axes Directions (expressed in the A frame):\n')
+                    for i in range(3):
+                        outfile.write('\t{:s}_ppal in A = [{:.4f}, {:.4f}, {:.4f}]\t\t\t\n'.format(
+                            lab[i], *self.tpa.dot(np.eye(3)[:, i])))
 
             outfile.write(separator)
             outfile.write('\nReference Dimensions:\n')

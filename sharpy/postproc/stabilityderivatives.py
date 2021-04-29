@@ -13,13 +13,6 @@ class StabilityDerivatives(solver_interface.BaseSolver):
     """
     Outputs the stability derivatives of a free-flying aircraft
 
-    Warnings:
-        Under Development
-
-    To Do:
-        * Coefficient of stability derivatives
-        * Option to output in NED frame
-
     """
     solver_id = 'StabilityDerivatives'
     solver_classification = 'post-processor'
@@ -112,29 +105,13 @@ class StabilityDerivatives(solver_interface.BaseSolver):
                                                                   static_state=self.steady_aero_forces(),
                                                                   target_system='aeroelastic')
 
+
     def run(self, online=False):
 
         # TODO: consider running all required solvers inside this one to keep the correct settings
         # i.e: run Modal, Linear Ass
 
         derivatives = self.data.linear.derivatives
-        # Y_freq = self.uvlm_steady_state_transfer_function()
-        # angle_ders = self.angle_derivatives(Y_freq)
-        # derivatives.dict_of_derivatives['force_angle_velocity'] = angle_ders[0]
-        # derivatives.dict_of_derivatives['force_angle'] = angle_ders[1]
-        # derivatives.dict_of_derivatives['force_angle_body'] = angle_ders[2]
-        # derivatives.dict_of_derivatives['force_velocity'] = self.body_derivatives(Y_freq)
-        # derivatives.dict_of_derivatives['force_cs_body'] = self.control_surface_derivatives(Y_freq)
-        # derivatives.save(self.settings['folder'])
-
-        # derivatives_dimensional, derivatives_coeff = self.derivatives(Y_freq)
-
-        # self.export_derivatives(np.hstack((derivatives_coeff[:, :6], derivatives_coeff[:, -2:])))
-        # self.data.linear.derivatives.savetxt(self.folder)
-        # angle_derivative_set.print(derivative_filename=self.folder + '/stability_derivatives.txt')
-
-
-        # >>>>>>>> New methods
         if self.data.linear.linear_system.beam.sys.modal:
             phi = self.data.linear.linear_system.linearisation_vectors['mode_shapes'].real
         else:
@@ -143,6 +120,11 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         steady_forces = self.data.linear.linear_system.linearisation_vectors['forces_aero_beam_dof']
         v0 = self.get_freestream_velocity()
         quat = self.data.linear.tsstruct0.quat
+
+        try:
+            tpa = self.data.linear.tsstruct0.modal['t_pa']
+        except KeyError:
+            tpa = None
 
         if self.data.linear.linear_system.uvlm.scaled:
             raise NotImplementedError('Stability Derivatives not yet implented for scaled system')
@@ -156,16 +138,18 @@ class StabilityDerivatives(solver_interface.BaseSolver):
                                                       steady_forces,
                                                       quat,
                                                       v0,
-                                                      phi)
+                                                      phi,
+                                                      self.data.linear.tsstruct0.modal['cg'],
+                                                      tpa=tpa)
             current_derivative.dict_of_derivatives['force_angle_velocity'] = current_derivative.new_derivative(
                 'stability',
                 'angle_derivatives',
                 'Force/Angle via velocity')
 
-            current_derivative.dict_of_derivatives['force_angle_angle'] = current_derivative.new_derivative(
-                'stability',
-                'angle_derivatives_tb',
-                'Force/Angle via Track Body')
+            # current_derivative.dict_of_derivatives['force_angle_angle'] = current_derivative.new_derivative(
+            #     'stability',
+            #     'angle_derivatives_tb',
+            #     'Force/Angle via Track Body')
 
             current_derivative.dict_of_derivatives['force_velocity'] = current_derivative.new_derivative(
                 'body',
@@ -607,66 +591,6 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         table_coeff.print_line([labels_der[7]] + list(derivatives_g[:, -1]))
 
         return der_matrix, derivatives_g
-
-    def export_derivatives(self, der_matrix_g):
-
-        folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/stability/'
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-        filename = 'stability_derivatives.txt'
-
-        u_inf = self.settings['u_inf'].value
-        s_ref = self.settings['S_ref'].value
-        b_ref = self.settings['b_ref'].value
-        c_ref = self.settings['c_ref'].value
-        rho = self.data.linear.tsaero0.rho
-        euler_orient = algebra.quat2euler(self.data.linear.tsstruct0.quat) * 180/np.pi
-
-        labels_der = {0: 'u',
-                           1: 'v',
-                           2: 'w',
-                           3: 'p',
-                           4: 'q',
-                           5: 'r',
-                      6: 'alpha',
-                      7: 'beta'}
-
-        labels_out = {0: 'C_D',
-                      1: 'C_Y',
-                      2: 'C_L',
-                      3: 'C_l',
-                      4: 'C_m',
-                      5: 'C_n'}
-
-        separator = '\n' + 80*'#' + '\n'
-
-        with open(folder + '/' + filename, mode='w') as outfile:
-            outfile.write('SHARPy Stability Derivatives Analysis\n')
-
-            outfile.write('State:\n')
-            outfile.write('\t%.4f\t\t\t # Free stream velocity\n' % u_inf)
-            outfile.write('\t%.4f\t\t\t # Free stream density\n' % rho)
-            outfile.write('\t%.4f\t\t\t # Alpha [deg]\n' % euler_orient[1])
-            outfile.write('\t%.4f\t\t\t # Beta [deg]\n' % euler_orient[2])
-
-            outfile.write(separator)
-            outfile.write('\nReference Dimensions:\n')
-            outfile.write('\t%.4f\t\t\t # Reference planform area\n' % s_ref)
-            outfile.write('\t%.4f\t\t\t # Reference chord\n' % c_ref)
-            outfile.write('\t%.4f\t\t\t # Reference span\n' % b_ref)
-
-            outfile.write(separator)
-            outfile.write('\nCoefficients:\n')
-            coeffs = self.static_state()
-            for i in range(3):
-                outfile.write('\t%.4f\t\t\t # %s\n' % (coeffs[i], labels_out[i]))
-
-            outfile.write(separator)
-            for k, v in labels_der.items():
-                outfile.write('%s derivatives:\n' % v)
-                for i in range(6):
-                    outfile.write('\t%.4f\t\t\t # %s_%s derivative\n' % (der_matrix_g[i, k], labels_out[i], labels_der[k]))
-                outfile.write(separator)
 
     def steady_aero_forces(self):
         fx = np.sum(self.data.aero.timestep_info[0].inertial_steady_forces[:, 0], 0) + \
