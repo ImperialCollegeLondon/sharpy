@@ -90,10 +90,6 @@ class StaticTrim(BaseSolver):
     settings_default['save_info'] = False
     settings_description['save_info'] = 'Save trim results to text file'
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output/'
-    settings_description['folder'] = 'Output location for trim results'
-
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -116,6 +112,7 @@ class StaticTrim(BaseSolver):
         self.trimmed_values = np.zeros((3,))
 
         self.table = None
+        self.folder = None
 
     def initialise(self, data):
         self.data = data
@@ -125,12 +122,12 @@ class StaticTrim(BaseSolver):
         self.solver = solver_interface.initialise_solver(self.settings['solver'])
         self.solver.initialise(self.data, self.settings['solver_settings'])
 
-        folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/statictrim/'
-        if not os.path.exists(folder):
-            os.makedirs(folder)
+        self.folder = data.output_folder + '/statictrim/'
+        if not os.path.exists(self.folder):
+            os.makedirs(self.folder)
 
         self.table = cout.TablePrinter(10, 8, ['g', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f'],
-                                       filename=folder+'trim_iterations.txt')
+                                       filename=self.folder+'trim_iterations.txt')
         self.table.print_header(['iter', 'alpha[deg]', 'elev[deg]', 'thrust', 'Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz'])
 
     def increase_ts(self):
@@ -152,6 +149,9 @@ class StaticTrim(BaseSolver):
 
         if modal_exists:
             self.data.structure.timestep_info[-1].modal = modal
+
+        if self.settings['save_info']:
+            np.savetxt(self.folder + '/trim_values.txt', self.trimmed_values)
 
         return self.data
 
@@ -178,8 +178,8 @@ class StaticTrim(BaseSolver):
         Returns:
             np.array: array of trim values for angle of attack, control surface deflection and thrust.
         """
-        for self.i_iter in range(self.settings['max_iter'].value + 1):
-            if self.i_iter == self.settings['max_iter'].value:
+        for self.i_iter in range(self.settings['max_iter'] + 1):
+            if self.i_iter == self.settings['max_iter']:
                 raise Exception('The Trim routine reached max iterations without convergence!')
 
             self.input_history.append([])
@@ -193,10 +193,10 @@ class StaticTrim(BaseSolver):
             # the first iteration requires computing gradients
             if not self.i_iter:
                 # add to input history the initial estimation
-                self.input_history[self.i_iter][0] = self.settings['initial_alpha'].value
-                self.input_history[self.i_iter][1] = (self.settings['initial_deflection'].value +
-                                                      self.settings['initial_alpha'].value)
-                self.input_history[self.i_iter][2] = self.settings['initial_thrust'].value
+                self.input_history[self.i_iter][0] = self.settings['initial_alpha']
+                self.input_history[self.i_iter][1] = (self.settings['initial_deflection'] +
+                                                      self.settings['initial_alpha'])
+                self.input_history[self.i_iter][2] = self.settings['initial_thrust']
 
                 # compute output
                 (self.output_history[self.i_iter][0],
@@ -214,29 +214,29 @@ class StaticTrim(BaseSolver):
 
                 # compute gradients
                 # dfz/dalpha
-                (l, m, d) = self.evaluate(self.input_history[self.i_iter][0] + self.settings['initial_angle_eps'].value,
+                (l, m, d) = self.evaluate(self.input_history[self.i_iter][0] + self.settings['initial_angle_eps'],
                                           self.input_history[self.i_iter][1],
                                           self.input_history[self.i_iter][2])
 
                 self.gradient_history[self.i_iter][0] = ((l - self.output_history[self.i_iter][0]) /
-                                                         self.settings['initial_angle_eps'].value)
+                                                         self.settings['initial_angle_eps'])
 
                 # dm/dgamma
                 (l, m, d) = self.evaluate(self.input_history[self.i_iter][0],
-                                          self.input_history[self.i_iter][1] + self.settings['initial_angle_eps'].value,
+                                          self.input_history[self.i_iter][1] + self.settings['initial_angle_eps'],
                                           self.input_history[self.i_iter][2])
 
                 self.gradient_history[self.i_iter][1] = ((m - self.output_history[self.i_iter][1]) /
-                                                         self.settings['initial_angle_eps'].value)
+                                                         self.settings['initial_angle_eps'])
 
                 # dfx/dthrust
                 (l, m, d) = self.evaluate(self.input_history[self.i_iter][0],
                                           self.input_history[self.i_iter][1],
                                           self.input_history[self.i_iter][2] +
-                                          self.settings['initial_thrust_eps'].value)
+                                          self.settings['initial_thrust_eps'])
 
                 self.gradient_history[self.i_iter][2] = ((d - self.output_history[self.i_iter][2]) /
-                                                         self.settings['initial_thrust_eps'].value)
+                                                         self.settings['initial_thrust_eps'])
 
                 continue
 
@@ -276,10 +276,10 @@ class StaticTrim(BaseSolver):
                                                       (self.output_history[self.i_iter - 1][2] /
                                                        self.gradient_history[self.i_iter - 1][2]))
 
-            if self.settings['relaxation_factor'].value:
+            if self.settings['relaxation_factor']:
                 for i_dim in range(3):
-                    self.input_history[self.i_iter][i_dim] = (self.input_history[self.i_iter][i_dim]*(1 - self.settings['relaxation_factor'].value) +
-                                                              self.input_history[self.i_iter][i_dim]*self.settings['relaxation_factor'].value)
+                    self.input_history[self.i_iter][i_dim] = (self.input_history[self.i_iter][i_dim]*(1 - self.settings['relaxation_factor']) +
+                                                              self.input_history[self.i_iter][i_dim]*self.settings['relaxation_factor'])
 
             # evaluate
             (self.output_history[self.i_iter][0],
@@ -333,7 +333,7 @@ class StaticTrim(BaseSolver):
                                 thrust,
                                 self.settings['thrust_nodes'],
                                 deflection_gamma - alpha,
-                                self.settings['tail_cs_index'].value)
+                                self.settings['tail_cs_index'])
         # run the solver
         self.solver.run()
         # extract resultants

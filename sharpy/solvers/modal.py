@@ -32,10 +32,6 @@ class Modal(BaseSolver):
     settings_default['print_info'] = True
     settings_description['print_info'] = 'Write status to screen'
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Output folder'
-
     # solution options
     settings_types['rigid_body_modes'] = 'bool'
     settings_default['rigid_body_modes'] = False
@@ -122,11 +118,11 @@ class Modal(BaseSolver):
                                  self.settings_types,
                                  self.settings_default)
 
-        self.rigid_body_motion = self.settings['rigid_body_modes'].value
+        self.rigid_body_motion = self.settings['rigid_body_modes']
 
         self.data.ts = len(self.data.structure.timestep_info) - 1
-        if self.settings['use_custom_timestep'].value > -1:
-            self.data.ts = self.settings['use_custom_timestep'].value
+        if self.settings['use_custom_timestep'] > -1:
+            self.data.ts = self.settings['use_custom_timestep']
 
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(
@@ -134,13 +130,10 @@ class Modal(BaseSolver):
                                             self.data.ts)
 
         # create folder for containing files if necessary
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
-        self.folder = (self.settings['folder'] + '/' +
-                       self.data.settings['SHARPy']['case'] +
-                       '/beam_modal_analysis/')
+        self.folder = data.output_folder + '/beam_modal_analysis/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
+
         self.filename_freq = (self.folder +
                               'tstep' + ("%06d" % self.data.ts) +
                               '_ModalFrequencies.dat')
@@ -255,7 +248,7 @@ class Modal(BaseSolver):
                                        FullMglobal, FullCglobal, FullKglobal)
 
         # Print matrices
-        if self.settings['print_matrices'].value:
+        if self.settings['print_matrices']:
             np.savetxt(self.folder + "Mglobal.dat", FullMglobal, fmt='%.12f',
                        delimiter='\t', newline='\n')
             np.savetxt(self.folder + "Cglobal.dat", FullCglobal, fmt='%.12f',
@@ -264,7 +257,7 @@ class Modal(BaseSolver):
                        delimiter='\t', newline='\n')
 
         # Check if the damping matrix is zero (issue working)
-        if self.settings['use_undamped_modes'].value:
+        if self.settings['use_undamped_modes']:
             zero_FullCglobal = True
             for i,j in itertools.product(range(num_dof),range(num_dof)):
                 if np.absolute(FullCglobal[i, j]) > np.finfo(float).eps:
@@ -280,11 +273,11 @@ class Modal(BaseSolver):
         #         elif(np.absolute(FullCglobal[i, j] + FullCglobal[j, i]) > np.finfo(float).eps):
         #             skewsymmetric_FullCglobal = False
 
-        NumLambda = min(num_dof, self.settings['NumLambda'].value)
+        NumLambda = min(num_dof, self.settings['NumLambda'])
 
-        if self.settings['use_undamped_modes'].value:
+        if self.settings['use_undamped_modes']:
 
-            # Solve for eigenvalues (with unit eigenvectors)            
+            # Solve for eigenvalues (with unit eigenvectors)
             eigenvalues,eigenvectors=np.linalg.eig(
                                        np.linalg.solve(FullMglobal,FullKglobal))
             eigenvectors_left=None
@@ -315,10 +308,10 @@ class Modal(BaseSolver):
             freq_damped = freq_natural * np.sqrt(1-damping**2)
 
             # Order & downselect complex conj:
-            # this algorithm assumes that complex conj eigenvalues appear consecutively 
+            # this algorithm assumes that complex conj eigenvalues appear consecutively
             # in eigenvalues. For symmetrical systems, this relies  on the fact that:
-            # - complex conj eigenvalues have the same absolute value (to machine 
-            # precision) 
+            # - complex conj eigenvalues have the same absolute value (to machine
+            # precision)
             # - couples of eigenvalues with multiplicity higher than 1, show larger
             # numerical difference
             order = np.argsort(freq_damped)[:2*NumLambda]
@@ -344,9 +337,9 @@ class Modal(BaseSolver):
             freq_damped = freq_damped[include]
             eigenvalues = eigenvalues[include]
             if self.settings['continuous_eigenvalues']:
-                if self.settings['dt'].value == 0.:
+                if self.settings['dt'] == 0.:
                     raise ValueError('Cannot compute the continuous eigenvalues without a dt value')
-                eigenvalues = np.log(eigenvalues)/self.settings['dt'].value
+                eigenvalues = np.log(eigenvalues)/self.settings['dt']
 
             order = order[include]
             damping = damping[order]
@@ -388,7 +381,7 @@ class Modal(BaseSolver):
                 warnings.warn('Unable to import matplotlib, skipping plot')
 
         # Write dat files
-        if self.settings['write_dat'].value:
+        if self.settings['write_dat']:
             if type(eigenvalues) == complex:
                 np.savetxt(self.folder + "eigenvalues.dat", eigenvalues.view(float).reshape(-1, 2), fmt='%.12f',
                            delimiter='\t', newline='\n')
@@ -398,7 +391,7 @@ class Modal(BaseSolver):
             np.savetxt(self.folder + "eigenvectors.dat", eigenvectors[:num_dof].real,
                        fmt='%.12f', delimiter='\t', newline='\n')
 
-            if not self.settings['use_undamped_modes'].value:
+            if not self.settings['use_undamped_modes']:
                 np.savetxt(self.folder + 'frequencies.dat', freq_damped[:NumLambda],
                            fmt='%e', delimiter='\t', newline='\n')
             else:
@@ -409,7 +402,7 @@ class Modal(BaseSolver):
                        fmt='%e', delimiter='\t', newline='\n')
 
         # Write vtk
-        if self.settings['write_modes_vtk'].value:
+        if self.settings['write_modes_vtk']:
             try:
                 self.data.aero
                 aero_model = True
@@ -425,7 +418,7 @@ class Modal(BaseSolver):
                     self.filename_shapes,
                     self.settings['max_rotation_deg'],
                     self.settings['max_displacement'],
-                    ts=self.settings['use_custom_timestep'].value)
+                    ts=self.settings['use_custom_timestep'])
 
         outdict = dict()
 
@@ -448,10 +441,10 @@ class Modal(BaseSolver):
             outdict['Ccut'] = Ccut
         if Kin_damp is not None:
             outdict['Kin_damp'] = Kin_damp
-        if not self.settings['use_undamped_modes']:    
+        if not self.settings['use_undamped_modes']:
             outdict['eigenvectors_left'] = eigenvectors_left
 
-        if self.settings['keep_linear_matrices'].value:
+        if self.settings['keep_linear_matrices']:
             outdict['M'] = FullMglobal
             outdict['C'] = FullCglobal
             outdict['K'] = FullKglobal

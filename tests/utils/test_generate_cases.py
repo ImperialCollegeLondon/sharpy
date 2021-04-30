@@ -63,7 +63,7 @@ class TestGenerateCases(unittest.TestCase):
                     'n_points_camber': 100,
                     'm_distribution': 'uniform'}
 
-        excel_description = {'excel_file_name': route + '../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v01.xlsx',
+        excel_description = {'excel_file_name': route + '../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v02.xlsx',
                             'excel_sheet_parameters': 'parameters',
                             'excel_sheet_structural_blade': 'structural_blade',
                             'excel_sheet_discretization_blade': 'discretization_blade',
@@ -101,7 +101,7 @@ class TestGenerateCases(unittest.TestCase):
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.solvers['SHARPy']['route'] = route
         SimInfo.solvers['SHARPy']['write_log'] = True
-        SimInfo.solvers['SHARPy']['log_folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
+        SimInfo.solvers['SHARPy']['log_folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
         SimInfo.set_variable_all_dicts('dt', dt)
         SimInfo.set_variable_all_dicts('rho', air_density)
 
@@ -140,7 +140,7 @@ class TestGenerateCases(unittest.TestCase):
         SimInfo.solvers['StaticUvlm']['rollup_tolerance'] = 1e-8
         SimInfo.solvers['StaticUvlm']['rbm_vel_g'] = np.array([0., 0., 0.,
                                                                0., 0., rotation_velocity])
-        
+
         SimInfo.solvers['StepUvlm']['convection_scheme'] = 2
         SimInfo.solvers['StepUvlm']['num_cores'] = 1
         SimInfo.solvers['StepUvlm']['cfl1'] = False
@@ -163,9 +163,6 @@ class TestGenerateCases(unittest.TestCase):
         SimInfo.solvers['DynamicCoupled']['dynamic_relaxation'] = False
         SimInfo.solvers['DynamicCoupled']['relaxation_steps'] = 0
 
-        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['BeamPlot']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
-        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['AerogridPlot']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
-        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['SaveData']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
         SimInfo.define_num_steps(time_steps)
 
         # Define dynamic simulation
@@ -199,7 +196,7 @@ class TestGenerateCases(unittest.TestCase):
                            case + '.dyn.h5',
                            case + '.fem.h5',
                            case + '.sharpy',
-                           'log']
+                           '/output/' + case + '/log']
 
         for f in files_to_delete:
             os.remove(solver_path + f)

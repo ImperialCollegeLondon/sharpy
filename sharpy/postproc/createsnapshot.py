@@ -64,9 +64,6 @@ class CreateSnapshot(BaseSolver):
         self.settings_default['compression'] = ''
         # TODO not yet implemented
 
-        self.settings_types['folder'] = 'str'
-        self.settings_default['folder'] = './snapshots/'
-
         self.settings_types['symlink'] = 'bool'
         self.settings_default['symlink'] = True
 
@@ -76,6 +73,7 @@ class CreateSnapshot(BaseSolver):
 
         self.filename = None
         self.caller = None
+        self.folder = None
 
     def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
@@ -86,11 +84,12 @@ class CreateSnapshot(BaseSolver):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # create folder for containing files if necessary
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
+        self.folder = data.output_folder + '/aero/'
+        if not os.path.exists(self.folder):
+            os.makedirs(self.folder)
 
         # snapshot prefix
-        self.filename = (self.settings['folder'] + '/' +
+        self.filename = (self.folder + '/' +
                          self.data.settings['SHARPy']['case'] +
                          '.snapshot')
         self.caller = caller
@@ -102,9 +101,9 @@ class CreateSnapshot(BaseSolver):
 
     def run(self, online=True):
         self.ts = self.data.ts
-        if self.ts % self.settings['frequency'].value == 0:
+        if self.ts % self.settings['frequency'] == 0:
             # clean older files
-            if self.settings['keep'].value:
+            if self.settings['keep']:
                 self.delete_previous_snapshots()
 
             # create file
@@ -123,11 +122,11 @@ class CreateSnapshot(BaseSolver):
         return self.data
 
     def delete_previous_snapshots(self):
-        n_keep = self.settings['keep'].value - 1
+        n_keep = self.settings['keep'] - 1
 
         # get list of files in directory
-        files = [f for f in os.listdir(self.settings['folder'])
-                 if os.path.isfile(os.path.join(self.settings['folder'], f))]
+        files = [f for f in os.listdir(self.folder)
+                 if os.path.isfile(os.path.join(self.folder, f))]
 
         # arrange by name
         files.sort()
@@ -142,4 +141,4 @@ class CreateSnapshot(BaseSolver):
         del files[len(files) - n_keep:]
 
         for file in files:
-            os.unlink(os.path.abspath(self.settings['folder'] + '/' + file))
+            os.unlink(os.path.abspath(self.folder + '/' + file))

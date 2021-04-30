@@ -31,11 +31,6 @@ goland.read_structure(path2goland+'/'+goland_fem)
 goland.read_aero(path2goland+'/'+goland_aero)
 goland.read_sim(path2goland+'/'+goland_sharpy)
 
-goland2 = gm.Sharpy_data(['read_structure','read_aero','simulation'])
-goland2.read_structure('/mnt/work/Programs/sharpy/runs_goland/golandz0_0_0/golandz.fem.h5')
-goland2.read_aero('/mnt/work/Programs/sharpy/runs_goland/golandz0_0_0/golandz.aero.h5')
-goland2.read_sim('/mnt/work/Programs/sharpy/runs_goland/golandz0_0_0/golandz.sharpy')
-
 # aeroelasticity parameters
 main_ea = 0.33
 main_cg = 0.43
@@ -67,7 +62,7 @@ mass[0, 3:, :3] = -m_chi_cg
 g1c = dict()
 g1c['workflow'] = ['create_structure','create_aero']
 g1c['geometry'] = {'length':6.096,
-                   'num_node':17,
+                   'num_node':9,
                    'direction':None,
                    'node0':[0., 0., 0.],
                    'sweep':0.,
@@ -77,22 +72,23 @@ g1c['fem'] = {'stiffness_db':stiffness,
               'frame_of_reference_delta':[-1.,0.,0.]}
 g1c['aero'] = {'chord':c_ref,
               'elastic_axis':main_ea,
-              'surface_m':16}
+               'surface_m':8}
 
 comp1 = gm.Components('wing1','sharpy',['sharpy'],g1c)
 g1cm = {'wing1':g1c}
 g1mm = {'model_name':'goland',
         'model_route':sharpy_dir+'/cases/models_generator/examples/goland_wing',
-        'iterate_vars': {'wing1*geometry-sweep':np.linspace(0.,30*np.pi/180,3),
-                         'wing1*geometry-length':6.096*np.linspace(0.8,2.,3),
-                         'wing1*fem-sigma':[0.8,1.,1.2,]},
+        'iterate_type': 'Full_Factorial',
+        'iterate_vars': {'wing1*geometry-sweep':np.linspace(0.,24*np.pi/180,3),
+                         'wing1*geometry-length':6.096*np.linspace(0.8,1.2,3),
+                         'wing1*aero-chord':c_ref*np.array([np.linspace(1.,1.,3),np.linspace(0.85,1.15,3)]).T},
         'iterate_labels': {'label_type':'number',
                            'print_name_var':0}}
 
 g1sm = {'sharpy': {'simulation_input':None,
                    'default_module':'sharpy.routines.flutter',
                    'default_solution':'sol_145',
-                   'default_solution_vars': {'panels_wake':16*5,
+                   'default_solution_vars': {'panels_wake':8*5,
                                              'num_modes':5,
                                              'rho':1.02,
                                              'u_inf':0.01,
@@ -107,14 +103,46 @@ g1sm = {'sharpy': {'simulation_input':None,
                                                      'AerogridPlot',
                                                      'Modal',
                                                      'LinearAssembler',
-                                                     'AsymptoticStability'],
+                                                     'AsymptoticStability',
+                                                     'PickleData'],
                                              'AerogridPlot':{'folder':'./runs',
                                                              'include_rbm': 'off',
                                                              'include_applied_forces': 'off',
-                                                             'minus_m_star': 0}},
+                                                             'minus_m_star': 0},
+                                             'PickleData': {'folder':'./runs'},
+                                             'LinearAssembler':{'linear_system_settings':{'aero_settings':{'use_sparse':False,
+                                                                                                           'rom_method':[],
+                                                                                                           'rom_method_settings':{'Balanced':{'algorithm':'FrequencyLimited'}}},
+                                                                                          'beam_settings':{'modal_projection': 'off',
+                                                                                                           'inout_coords': 'nodes'}},
+                                                                'inout_coordinates':'nodes'}},
                    'default_sharpy':{},
                    'model_route':None}}
 
 g1 = gm.Model('sharpy',['sharpy'], model_dict=g1mm, components_dict=g1cm,
               simulation_dict=g1sm)
 g1.run()
+
+
+import pickle
+with open('/mnt/work/Programs/sharpy/cases/models_generator/examples/goland_wing/goland1_1_1/goland.pkl', 'rb') as restart_file:
+    dataf2 = pickle.load(restart_file)
+
+path2goland='/mnt/work/Programs/sharpy/cases/models_generator/examples/goland_wing/goland0_0_0/'
+goland_sharpy = 'goland.sharpy'
+goland = gm.Sharpy_data(['read_structure','read_aero','simulation'])
+#goland.read_structure(path2goland+'/'+goland_fem)
+#goland.read_aero(path2goland+'/'+goland_aero)
+goland.read_sim(path2goland+'/'+goland_sharpy)
+
+
+# import matplotlib.pyplot as plt
+
+# fig, ax = plt.subplots()
+
+# min_val, max_val = 0, 15
+
+# data_plot = dataf2.linear.linear_system.uvlm.ss.C[:64*2,:64*2]
+# plt.figure()
+# plt.imshow(data_plot, alpha=0.8,cmap=plt.cm.Blues)
+# plt.show()

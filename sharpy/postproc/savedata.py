@@ -6,10 +6,8 @@ import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.h5utils as h5utils
+from sharpy.presharpy.presharpy import PreSharpy
 
-
-# Define basic numerical types
-# BasicNumTypes=(float,float32,float64,int,int32,int64,complex)
 
 @solver
 class SaveData(BaseSolver):
@@ -38,10 +36,6 @@ class SaveData(BaseSolver):
     settings_description = dict()
     settings_options = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Folder to save data'
-
     settings_types['save_aero'] = 'bool'
     settings_default['save_aero'] = True
     settings_description['save_aero'] = 'Save aerodynamic classes.'
@@ -58,6 +52,10 @@ class SaveData(BaseSolver):
     settings_default['save_linear_uvlm'] = False
     settings_description['save_linear_uvlm'] = 'Save linear UVLM state space system. Use with caution when dealing with ' \
                                                'large systems.'
+
+    settings_types['save_wake'] = 'bool'
+    settings_default['save_wake'] = True
+    settings_description['save_wake'] = 'Save aero wake classes.'
 
     settings_types['save_rom'] = 'bool'
     settings_default['save_rom'] = False
@@ -97,7 +95,6 @@ class SaveData(BaseSolver):
                                        settings_options=settings_options)
 
     def __init__(self):
-        import sharpy
 
         self.settings = None
         self.data = None
@@ -110,7 +107,7 @@ class SaveData(BaseSolver):
 
         ### specify which classes are saved as hdf5 group
         # see initialise and add_as_grp
-        self.ClassesToSave = (sharpy.presharpy.presharpy.PreSharpy,)
+        self.ClassesToSave = (PreSharpy,)
 
     def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
@@ -121,7 +118,7 @@ class SaveData(BaseSolver):
 
         settings.to_custom_types(self.settings,
                                  self.settings_types, self.settings_default, options=self.settings_options)
-        
+
         # Add these anyway - therefore if you add your own skip_attr you don't have to retype all of these
         self.settings['skip_attr'].extend(['fortran',
                                             'airfoils',
@@ -143,9 +140,7 @@ class SaveData(BaseSolver):
         self.ts_max = self.data.ts + 1
 
         # create folder for containing files if necessary
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/savedata/'
+        self.folder = data.output_folder + '/savedata/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.filename = self.folder + self.data.settings['SHARPy']['case'] + '.data.h5'
@@ -170,6 +165,12 @@ class SaveData(BaseSolver):
             if self.settings['save_aero']:
                 self.ClassesToSave += (sharpy.aero.models.aerogrid.Aerogrid,
                                        sharpy.utils.datastructures.AeroTimeStepInfo,)
+                if not self.settings['save_wake']:
+                    self.settings['skip_attr'].append('zeta_star')
+                    self.settings['skip_attr'].append('u_ext_star')
+                    self.settings['skip_attr'].append('gamma_star')
+                    self.settings['skip_attr'].append('dist_to_orig')
+                    self.settings['skip_attr'].append('wake_conv_vel')
 
             if self.settings['save_struct']:
                 self.ClassesToSave += (
@@ -302,11 +303,7 @@ class SaveData(BaseSolver):
                                SkipAttr=settings['skip_attr'],
                                compress_float=settings['compress_float'])
         if settings['save_struct']:
-            if data.structure.timestep_info[ts].in_global_AFoR:
-                tstep = data.structure.timestep_info[ts]
-            else:
-                tstep = data.structure.timestep_info[data.ts].copy()
-                tstep.whole_structure_to_global_AFoR(data.structure)
+            tstep = data.structure.timestep_info[ts]
 
             h5utils.add_as_grp(tstep,
                                hdfile['data']['structure']['timestep_info'],
