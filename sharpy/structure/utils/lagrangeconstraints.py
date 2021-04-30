@@ -413,6 +413,64 @@ def equal_lin_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, 
     return ieq
 
 
+def equal_rot_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q):
+    """
+    This function generates the stiffness and damping matrices and the independent vector associated to a constraint that
+    imposes equal rotation velocities between a node and a frame of reference
+
+    See ``LagrangeConstraints`` for the description of variables
+
+    Args:
+        node_number (int): number of the "node" within its own body
+        node_body (int): body number of the "node"
+        node_FoR_dof (int): position of the first degree of freedom of the FoR to which the "node" belongs
+        node_dof (int): position of the first degree of freedom associated to the "node"
+        FoR_body (int): body number of the "FoR"
+        FoR_dof (int): position of the first degree of freedom associated to the "FoR"
+    """
+
+    num_LM_eq_specific = 3
+    Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
+
+    # Simplify notation
+    ielem, inode_in_elem = MB_beam[node_body].node_master_elem[node_number]
+    node_cga = MB_tstep[node_body].cga()
+    node_FoR_wa = MB_tstep[node_body].for_vel[3:6]
+    psi = MB_tstep[node_body].psi[ielem,inode_in_elem,:]
+    cab = ag.crv2rotation(psi)
+    tan = ag.crv2tan(psi)
+
+    FoR_cga = MB_tstep[FoR_body].cga()
+    FoR_wa = MB_tstep[FoR_body].for_vel[3:6]
+
+    Bnh[:, node_dof+3:node_dof+6] += tan.copy()
+    Bnh[:, FoR_dof+3:FoR_dof+6] -= ag.multiply_matrices(cab.T, node_cga.T, FoR_cga)
+    if MB_beam[node_body].FoR_movement == 'free':
+        Bnh[:, node_FoR_dof+3:node_FoR_dof+6] += cab.T
+
+    LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
+    LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
+
+    LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq+num_LM_eq_specific])
+    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*(np.dot(tan, MB_tstep[node_body].psi_dot[ielem, inode_in_elem, :]) +
+                                                                         np.dot(cab.T, node_FoR_wa) -
+                                                                         ag.multiply_matrices(cab.T, node_cga.T, FoR_cga, FoR_wa))
+
+    LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += scalingFactor*ag.der_TanT_by_xv(psi, Lambda_dot[ieq:ieq+num_LM_eq_specific])
+    if MB_beam[node_body].FoR_movement == 'free':
+        LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] += scalingFactor*ag.der_Ccrv_by_v(psi, Lambda_dot[ieq:ieq+num_LM_eq_specific])
+    
+    LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] -= scalingFactor*ag.der_Ccrv_by_v(psi,
+                                                                                       ag.multiply_matrices(node_cga, FoR_cga.T, Lambda_dot[ieq:ieq+num_LM_eq_specific]))
+
+    LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] -= scalingFactor*np.dot(cab, ag.der_Cquat_by_v(MB_tstep[node_body].quat,
+                                                                                                 np.dot(FoR_cga.T, Lambda_dot[ieq:ieq+num_LM_eq_specific])))
+    LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] -= scalingFactor*ag.multiply_matrices(cab, node_cga, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat,
+                                                                                                               Lambda_dot[ieq:ieq+num_LM_eq_specific]))
+
+    ieq += 3
+    return ieq
+
 def def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q, indep):
     """
     This function generates the stiffness and damping matrices and the independent vector associated to a joint that
@@ -1451,8 +1509,7 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
 
         # Define the equations
         ieq = equal_lin_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
-        ieq = def_rot_axis_FoR_wrt_node_xyz(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, np.array([1., 0., 0.]), self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q, [1, 2])
-        ieq = def_rot_vel_mod_FoR_wrt_node(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, 0, 0., self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
+        ieq = equal_rot_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
 
         return
 
