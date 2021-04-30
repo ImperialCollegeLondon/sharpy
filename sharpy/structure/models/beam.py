@@ -580,6 +580,18 @@ class Beam(BaseStructure):
                         ibody_beam.lumped_mass_position = np.concatenate((ibody_beam.lumped_mass_position ,np.array([self.lumped_mass_position[inode]])), axis=0)
                         ibody_beam.n_lumped_mass += 1
 
+        if not self.lumped_mass_mat is None:
+            is_first = True
+            for inode in range(len(self.lumped_mass_mat_nodes)):
+                if self.lumped_mass_mat_nodes[inode] in ibody_nodes:
+                    if is_first:
+                        is_first = False
+                        ibody_beam.lumped_mass_mat_nodes = int_list_nodes[ibody_nodes == self.lumped_mass_mat_nodes[inode]]
+                        ibody_beam.lumped_mass_mat = np.array([self.lumped_mass_mat[inode, :, :]])
+                    else:
+                        ibody_beam.lumped_mass_mat_nodes = np.concatenate((ibody_beam.lumped_mass_mat_nodes , int_list_nodes[ibody_nodes == self.lumped_mass_mat_nodes[inode]]), axis=0)
+                        ibody_beam.lumped_mass_mat = np.concatenate((ibody_beam.lumped_mass_mat ,np.array([self.lumped_mass_mat[inode, :, :]])), axis=0)
+
         ibody_beam.steady_app_forces = self.steady_app_forces[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
 
         ibody_beam.num_bodies = 1
