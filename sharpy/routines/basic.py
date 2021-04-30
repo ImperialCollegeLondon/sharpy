@@ -47,6 +47,19 @@ def print_rom(rom, indent=4):
         dic1[k] = rom1.settings_description[k], roms[rom][k]
     print(json.dumps(dic1, indent=indent,sort_keys=True))
 
+def check_solvers_defaults():
+    solvers = copy.deepcopy(solver_interface.dictionary_of_solvers())
+    dic1 = dict()
+    for s in solvers.keys():
+        solver1 = solver_interface.solver_from_string(s)
+        for k in solvers[s].keys():
+            try:
+                dic1[k] = solver1.settings_description[k], solvers[s][k]
+            except KeyError as err:
+                print(s)
+                print(err)
+                print('\n')
+            
     
 def sol_0(panels_wake,
             flow=[],
