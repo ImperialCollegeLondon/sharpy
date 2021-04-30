@@ -116,7 +116,6 @@ def spar_from_excel_type04(op_params,
                                     geom_params,
                                     excel_description,
                                     options)
-
     # Remove base clam
     wt.StructuralInformation.boundary_conditions[0] = 0
 
@@ -180,7 +179,7 @@ def spar_from_excel_type04(op_params,
         base_stiffness_bot = 100*base_stiffness_top
         base_mass_bot = base_mass_top
 
-        num_lumped_mass_mat = 0
+        num_lumped_mass_mat = 1
 
     else:
         SparHeight = gc.read_column_sheet_type01(excel_file_name,
@@ -971,9 +970,6 @@ def generate_from_excel_type03(op_params,
         tower.assembly(overhang)
         tower.remove_duplicated_points(tol_remove_points)
         tower.StructuralInformation.body_number *= 0
-
-    for inode in range(len(hub_nodes)):
-        hub_nodes[inode] += tower.StructuralInformation.num_node
     
     # Hub mass
     HubMass = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'HubMass')
@@ -992,6 +988,9 @@ def generate_from_excel_type03(op_params,
                                       pos=np.zeros((3)))
     else:
         cout.cout_wrap('WARNING: HubMass not found', 3)
+
+    for inode in range(len(hub_nodes)):
+        hub_nodes[inode] += tower.StructuralInformation.num_node
 
     ######################################################################
     ##  WIND TURBINE
