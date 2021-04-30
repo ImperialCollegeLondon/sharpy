@@ -947,7 +947,7 @@ class Iterations:
                 if not print_name_var:
                     k = ''
                 #for j in 
-                name += k +str(list(self.varl[j]).index(i))
+                name += k +str(self.varl_index[ni][j])
                 name+= space
                 j+=1
             if space:

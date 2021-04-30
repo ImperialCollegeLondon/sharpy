@@ -79,9 +79,9 @@ g1cm = {'wing1':g1c}
 g1mm = {'model_name':'goland',
         'model_route':sharpy_dir+'/cases/models_generator/examples/goland_wing',
         'iterate_type': 'Full_Factorial',
-        'iterate_vars': {'wing1*geometry-sweep':np.linspace(0.,40*np.pi/180,2),
-                         'wing1*geometry-length':6.096*np.linspace(0.1,2.5,2),
-                         'wing1*fem-sigma':[1.,10.]},
+        'iterate_vars': {'wing1*geometry-sweep':np.linspace(0.,24*np.pi/180,3),
+                         'wing1*geometry-length':6.096*np.linspace(0.8,1.2,3),
+                         'wing1*aero-chord':c_ref*np.array([np.linspace(1.,1.,3),np.linspace(0.85,1.15,3)]).T},
         'iterate_labels': {'label_type':'number',
                            'print_name_var':0}}
 
@@ -136,13 +136,13 @@ goland = gm.Sharpy_data(['read_structure','read_aero','simulation'])
 goland.read_sim(path2goland+'/'+goland_sharpy)
 
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
-fig, ax = plt.subplots()
+# fig, ax = plt.subplots()
 
-min_val, max_val = 0, 15
+# min_val, max_val = 0, 15
 
-data_plot = dataf2.linear.linear_system.uvlm.ss.C[:64*2,:64*2]
-plt.figure()
-plt.imshow(data_plot, alpha=0.8,cmap=plt.cm.Blues)
-plt.show()
+# data_plot = dataf2.linear.linear_system.uvlm.ss.C[:64*2,:64*2]
+# plt.figure()
+# plt.imshow(data_plot, alpha=0.8,cmap=plt.cm.Blues)
+# plt.show()
