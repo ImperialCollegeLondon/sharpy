@@ -456,31 +456,13 @@ class NonLinearDynamicMultibody(_BaseStructural):
             else:
                 Dq = np.linalg.solve(Asys, -Q)
 
-            # Evaluate convergence
-            if iteration:
-                res = np.max(np.abs(Dq[0:self.sys_size]))/old_Dq
-                if np.isnan(res):
-                    print(old_Dq)
-                    if self.settings['allow_skip_step']:
-                        skip_step = True
-                        cout.cout_wrap("Skipping step", 3)
-                        break
-                    else:
-                        raise exc.NotConvergedSolver('Multibody Dq = NaN')
-                if num_LM_eq:
-                    LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
-                else:
-                    LM_res = 0.0
-                if (res < self.settings['min_delta']) and (LM_res < self.settings['min_delta']):
-                # if (res < self.settings['min_delta']):
-                    converged = True
-            else:
-                old_Dq = np.max(np.abs(Dq[0:self.sys_size]))
-                if old_Dq == 0:
-                    print("old_Dq ==0")
-                    old_Dq = 1.
-                if num_LM_eq:
-                    LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
+            #if (not np.isnan(Dq).any()) and (not (Dq == 0.).all()):
+            #    msg = ("k:%d pos_min:%d min:%e pos_max:%d max:%e" % (iteration,
+            #                                                    np.where(Dq == np.min(Dq))[0],
+            #                                                    np.min(Dq),
+            #                                                    np.where(Dq == np.max(Dq))[0],
+            #                                                    np.max(Dq)))
+            #    print(msg)
 
             # Relaxation
             relax_Dq = np.zeros_like(Dq)
@@ -492,9 +474,38 @@ class NonLinearDynamicMultibody(_BaseStructural):
             # Corrector step
             self.time_integrator.corrector(q, dqdt, dqddt, relax_Dq)
 
-            if converged:
-                break
+            # Reference values for convergence
+            if iteration == 0:
+                old_Dq = np.max(np.abs(Dq[0:self.sys_size]))
+                if num_LM_eq:
+                    LM_old_Dq = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))
+                else:
+                    LM_old_Dq = 0.
+                # Change the reference values
+                if old_Dq == 0:
+                    old_Dq = 1.
+                if LM_old_Dq == 0:
+                    LM_old_Dq = 1.
 
+            # Evaluate convergence
+            res = np.max(np.abs(Dq[0:self.sys_size]))/old_Dq
+            if np.isnan(res):
+                print(old_Dq)
+                if self.settings['allow_skip_step']:
+                    skip_step = True
+                    cout.cout_wrap("Skipping step", 3)
+                    break
+                else:
+                    raise exc.NotConvergedSolver('Multibody Dq = NaN')
+            if num_LM_eq:
+                LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
+            else:
+                LM_res = 0.0
+           
+            if (res < self.settings['min_delta']) and (LM_res < self.settings['min_delta']):
+            # if (res < self.settings['min_delta']):
+                converged = True
+                break
 
         Lambda, Lambda_dot = mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, num_LM_eq)
         if self.settings['write_lm']:
