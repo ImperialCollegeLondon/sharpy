@@ -46,7 +46,7 @@ def split_multibody(beam, tstep, mb_data_dict, ts):
         ibody_beam.FoR_movement = mb_data_dict['body_%02d' % ibody]['FoR_movement']
 
         if ts == 1:
-            ibody_beam.compute_psi_local_AFoR(for0_pos, for0_vel, quat0)
+            ibody_beam.ini_info.compute_psi_local_AFoR(for0_pos, for0_vel, quat0)
             ibody_tstep.compute_psi_local_AFoR(for0_pos, for0_vel, quat0)
             ibody_beam.ini_info.change_to_local_AFoR(for0_pos, for0_vel, quat0)
         ibody_tstep.change_to_local_AFoR(for0_pos, for0_vel, quat0)
@@ -86,9 +86,9 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
 
     update_mb_dB_before_merge(tstep, MB_tstep)
 
-    quat0 = tstep[0].quat.astype(dtype=ct.c_double, order='F', copy=True)
-    for0_pos = tstep[0].for_pos.astype(dtype=ct.c_double, order='F', copy=True)
-    for0_vel = tstep[0].for_vel.astype(dtype=ct.c_double, order='F', copy=True)
+    quat0 = MB_tstep[0].quat.astype(dtype=ct.c_double, order='F', copy=True)
+    for0_pos = MB_tstep[0].for_pos.astype(dtype=ct.c_double, order='F', copy=True)
+    for0_vel = MB_tstep[0].for_vel.astype(dtype=ct.c_double, order='F', copy=True)
 
     for ibody in range(beam.num_bodies):
         MB_tstep[ibody].change_to_global_AFoR(for0_pos, for0_vel, quat0)
