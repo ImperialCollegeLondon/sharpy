@@ -33,6 +33,10 @@ def split_multibody(beam, tstep, mb_data_dict, ts):
     MB_beam = []
     MB_tstep = []
 
+    quat0 = tstep.quat.astype(dtype=ct.c_double, order='F', copy=True)
+    for0_pos = tstep.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
+    for0_vel = tstep.for_vel.astype(dtype=ct.c_double, order='F', copy=True)
+
     for ibody in range(beam.num_bodies):
         ibody_beam = None
         ibody_tstep = None
@@ -41,6 +45,11 @@ def split_multibody(beam, tstep, mb_data_dict, ts):
 
         ibody_beam.FoR_movement = mb_data_dict['body_%02d' % ibody]['FoR_movement']
 
+        if ts == 1:
+            ibody_beam.compute_psi_local_AFoR(for0_pos, for0_vel, quat0)
+            ibody_tstep.compute_psi_local_AFoR(for0_pos, for0_vel, quat0)
+            ibody_beam.ini_info.change_to_local_AFoR(for0_pos, for0_vel, quat0)
+        ibody_tstep.change_to_local_AFoR(for0_pos, for0_vel, quat0)
         #if ts == 1:
         #    ibody_beam.ini_info.pos_dot *= 0
         #    ibody_beam.timestep_info.pos_dot *= 0
@@ -77,6 +86,13 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
 
     update_mb_dB_before_merge(tstep, MB_tstep)
 
+    quat0 = tstep[0].quat.astype(dtype=ct.c_double, order='F', copy=True)
+    for0_pos = tstep[0].for_pos.astype(dtype=ct.c_double, order='F', copy=True)
+    for0_vel = tstep[0].for_vel.astype(dtype=ct.c_double, order='F', copy=True)
+
+    for ibody in range(beam.num_bodies):
+        MB_tstep[ibody].change_to_global_AFoR(for0_pos, for0_vel, quat0)
+
     first_dof = 0
     for ibody in range(beam.num_bodies):
         # Renaming for clarity
@@ -88,7 +104,9 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
         tstep.pos_dot[ibody_nodes,:] = MB_tstep[ibody].pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.pos_ddot[ibody_nodes,:] = MB_tstep[ibody].pos_ddot.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.psi[ibody_elems,:,:] = MB_tstep[ibody].psi.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.psi_local[ibody_elems,:,:] = MB_tstep[ibody].psi_local.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.psi_dot[ibody_elems,:,:] = MB_tstep[ibody].psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.psi_dot_local[ibody_elems,:,:] = MB_tstep[ibody].psi_dot_local.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.psi_ddot[ibody_elems,:,:] = MB_tstep[ibody].psi_ddot.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.gravity_forces[ibody_nodes,:] = MB_tstep[ibody].gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.steady_applied_forces[ibody_nodes,:] = MB_tstep[ibody].steady_applied_forces.astype(dtype=ct.c_double, order='F', copy=True)
@@ -151,7 +169,7 @@ def disp_and_accel2state(MB_beam, MB_tstep, Lambda, Lambda_dot, sys_size, num_LM
         MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
         Lambda(np.ndarray): Lagrange multipliers of holonomic constraints
         Lambda_dot(np.ndarray): Lagrange multipliers of non-holonomic constraints
-    
+
         sys_size(int): number of degrees of freedom of the system of equations not accounting for lagrange multipliers
         num_LM_eq(int): Number of equations associated to the Lagrange Multipliers
 
@@ -205,9 +223,9 @@ def state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, num_LM_eq):
         q(np.ndarray): Vector of states
     	dqdt(np.ndarray): Time derivatives of states
         dqddt(np.ndarray): Second time derivatives of states
-        
+
         num_LM_eq(int): Number of equations associated to the Lagrange Multipliers
-        
+
         Lambda(np.ndarray): Lagrange multipliers of holonomic constraints
         Lambda_dot(np.ndarray): Lagrange multipliers of non-holonomic constraints
 
@@ -258,8 +276,8 @@ def get_elems_nodes_list(beam, ibody):
             ibody_nodes (list): List of nodes that belong the ``ibody``
 
     """
-    int_list = np.arange(0, beam.num_elem, 1)
+    int_list = np.arange(beam.num_elem)
     ibody_elements = int_list[beam.body_number == ibody]
     ibody_nodes = np.sort(np.unique(beam.connectivities[ibody_elements, :].reshape(-1)))
-    
+
     return ibody_elements, ibody_nodes

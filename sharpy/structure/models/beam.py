@@ -112,8 +112,8 @@ class Beam(BaseStructure):
         # connectivity information
         self.connectivities = in_data['connectivities'].astype(dtype=ct.c_int, order='F')
 
-        self.global_nodes_num = list(set(self.connectivities.reshape(-1)))
-        self.global_elems_num = np.arange(0, self.num_elem, 1)
+        self.global_nodes_num = np.sort(np.unique(beam.connectivities[ibody_elements, :].reshape(-1)))
+        self.global_elems_num = np.arange(self.num_elem)
 
         # stiffness data
         self.elem_stiffness = in_data['elem_stiffness'].copy()

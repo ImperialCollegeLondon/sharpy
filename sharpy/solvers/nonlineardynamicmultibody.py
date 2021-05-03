@@ -61,7 +61,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
     settings_types['zero_ini_dot_ddot'] = 'bool'
     settings_default['zero_ini_dot_ddot'] = False
     settings_description['zero_ini_dot_ddot'] = 'Set to zero the position and crv derivatives at the first time step'
-    
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -162,8 +162,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         self.n_rigid_dofs = 0
         self.rigid_dofs = []
-       
-        first_dof = 0 
+
+        first_dof = 0
         for ibody in range(len(MB_beam)):
             last_dof = first_dof + MB_beam[ibody].num_dof.value
             if MB_beam[ibody].FoR_movement == 'free':
@@ -194,7 +194,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
             MB_Asys (np.ndarray): Matrix of the systems of equations
             MB_Q (np.ndarray): Vector of the systems of equations
         """
-        self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
         MB_M = np.zeros((self.sys_size, self.sys_size), dtype=ct.c_double, order='F')
         MB_C = np.zeros((self.sys_size, self.sys_size), dtype=ct.c_double, order='F')
@@ -356,31 +355,19 @@ class NonLinearDynamicMultibody(_BaseStructural):
         else:
             self.settings['dt'] = dt
 
-        if self.data.ts == 1:
-            compute_psi_local = True
-            print("Computing psi local")
-        else:
-            compute_psi_local = False
+        #if self.data.ts == 1:
+        #    compute_psi_local = True
+        #    print("Computing psi local")
+        #else:
+        #    compute_psi_local = False
 
-        if self.data.structure.ini_info.in_global_AFoR:
-            self.data.structure.ini_info.whole_structure_to_local_AFoR(self.data.structure,
-                                                                       compute_psi_local)
-
-        if structural_step.in_global_AFoR:
-            structural_step.whole_structure_to_local_AFoR(self.data.structure,
-                                                          compute_psi_local)
-
-        if self.data.ts == 1 and self.settings['zero_ini_dot_ddot']:
-            self.data.structure.ini_info.pos_dot *= 0.
-            self.data.structure.ini_info.pos_ddot *= 0.
-            self.data.structure.ini_info.psi_dot *= 0.
-            self.data.structure.ini_info.psi_ddot *= 0.
-            structural_step.pos_dot *= 0.
-            structural_step.pos_ddot *= 0.
-            structural_step.psi_dot *= 0.
-            structural_step.psi_ddot *= 0.
-        
-        self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
+        #if self.data.structure.ini_info.in_global_AFoR:
+        #    self.data.structure.ini_info.whole_structure_to_local_AFoR(self.data.structure,
+        #                                                               compute_psi_local)
+#
+        #if structural_step.in_global_AFoR:
+        #    structural_step.whole_structure_to_local_AFoR(self.data.structure,
+        #                                                  compute_psi_local)
 
         MB_beam, MB_tstep = mb.split_multibody(
             self.data.structure,
@@ -389,9 +376,20 @@ class NonLinearDynamicMultibody(_BaseStructural):
             self.data.ts)
 
         self.define_rigid_dofs(MB_beam)
-
-        # Lagrange multipliers parameters
         num_LM_eq = self.num_LM_eq
+
+        if self.data.ts == 1 and self.settings['zero_ini_dot_ddot']:
+            for ibody in range(len(MB_tstep)):
+                MB_beam[ibody].ini_info.pos_dot *= 0.
+                MB_beam[ibody].ini_info.pos_ddot *= 0.
+                MB_beam[ibody].ini_info.psi_dot *= 0.
+                MB_beam[ibody].ini_info.psi_dot_local *= 0.
+                MB_beam[ibody].ini_info.psi_ddot *= 0.
+                MB_tstep[ibody].pos_dot *= 0.
+                MB_tstep[ibody].pos_ddot *= 0.
+                MB_tstep[ibody].psi_dot *= 0.
+                MB_tstep[ibody].psi_dot_local *= 0.
+                MB_tstep[ibody].psi_ddot *= 0.
 
         # Initialize
         # TODO: i belive this can move into disp_and_accel2 state as self.Lambda, self.Lambda_dot
@@ -452,7 +450,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 rigid_Dq = np.linalg.solve(rigid_Asys, -rigid_Q)
                 Dq = np.zeros((self.sys_size + self.num_LM_eq))
                 Dq[rigid_LM_dofs] = rigid_Dq.copy()
-                
+
             else:
                 Dq = np.linalg.solve(Asys, -Q)
 
@@ -501,7 +499,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 LM_res = np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))/LM_old_Dq
             else:
                 LM_res = 0.0
-           
+
             if (res < self.settings['min_delta']) and (LM_res < self.settings['min_delta']):
             # if (res < self.settings['min_delta']):
                 converged = True
@@ -534,8 +532,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 xbeamlib.cbeam3_correct_gravity_forces(MB_beam[ibody], MB_tstep[ibody], self.settings)
         mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, dt)
 
-        if not structural_step.in_global_AFoR:
-            structural_step.whole_structure_to_global_AFoR(self.data.structure)
+        # if not structural_step.in_global_AFoR:
+        #     structural_step.whole_structure_to_global_AFoR(self.data.structure)
 
         self.Lambda = Lambda.astype(dtype=ct.c_double, copy=True, order='F')
         self.Lambda_dot = Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
