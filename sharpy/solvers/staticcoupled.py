@@ -71,6 +71,10 @@ class StaticCoupled(BaseSolver):
     settings_description['runtime_generators'] = 'The dictionary keys are the runtime generators to be used. ' \
                                                  'The dictionary values are dictionaries with the settings ' \
                                                  'needed by each generator.'
+    
+    settings_types['nonlifting_body_interaction'] = 'bool'
+    settings_default['nonlifting_body_interaction'] = False
+    settings_description['nonlifting_body_interaction'] = 'Consider forces induced by nonlifting bodies'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
@@ -187,6 +191,18 @@ class StaticCoupled(BaseSolver):
                                         self.data.structure.timestep_info[self.data.ts],
                                         struct_forces,
                                         rho=self.aero_solver.settings['rho'])
+                                        
+                if self.settings['nonlifting_body_interaction']:
+                    struct_forces +=  mapping.aero2struct_force_mapping(
+                        self.data.nonlifting_body.timestep_info[self.data.ts].forces,
+                        self.data.nonlifting_body.struct2aero_mapping,
+                        self.data.nonlifting_body.timestep_info[self.data.ts].zeta,
+                        self.data.structure.timestep_info[self.data.ts].pos,
+                        self.data.structure.timestep_info[self.data.ts].psi,
+                        self.data.structure.node_master_elem,
+                        self.data.structure.connectivities,
+                        self.data.structure.timestep_info[self.data.ts].cag(),
+                        self.data.nonlifting_body.data_dict)
 
                 # Add external forces
                 if self.with_runtime_generators:
