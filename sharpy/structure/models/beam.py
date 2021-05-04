@@ -451,7 +451,7 @@ class Beam(BaseStructure):
         for elem in self.elements:
             for inode in range(elem.n_nodes):
                 if elem.rbmass is not None:
-                    rbmass_temp[elem.ielem, inode, :, :] = elem.rbmass[inode, :, :]
+                    rbmass_temp[elem.ielem, inode, :, :] += elem.rbmass[inode, :, :]
         self.fortran['rbmass'] = rbmass_temp.astype(dtype=ct.c_double, order='F')
 
         if self.settings['unsteady']:
@@ -625,7 +625,7 @@ class Beam(BaseStructure):
 
         ibody_beam.generate_master_structure()
 
-        if ibody_beam.lumped_mass is not None:
+        if ibody_beam.lumped_mass is not None or ibody_beam.lumped_mass_mat is not None:
             ibody_beam.lump_masses()
 
         ibody_beam.generate_fortran()

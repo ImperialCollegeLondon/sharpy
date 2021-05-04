@@ -635,6 +635,13 @@ class FloatingForces(generator_interface.BaseGenerator):
 
         self.added_mass_in_mass_matrix = self.settings['added_mass_in_mass_matrix']
         if self.added_mass_in_mass_matrix:
+            if data.structure.lumped_mass_mat is None:
+                data_structure.lumped_mass_mat_nodes = np.array([self.buoyancy_node])
+                data_structure.lumped_mass_mat = np.array([self.hd_added_mass_const])
+            else:
+                data.structure.lumped_mass_mat_nodes = np.concatenate((data.structure.lumped_mass_mat_nodes, np.array([self.buoyancy_node])), axis=0)
+                data.structure.lumped_mass_mat = np.concatenate((data.structure.lumped_mass_mat, np.array([self.hd_added_mass_const])), axis=0)
+        
             data.structure.add_lumped_mass_to_element(self.buoyancy_node,
                                                       self.hd_added_mass_const)
             data.structure.generate_fortran()
