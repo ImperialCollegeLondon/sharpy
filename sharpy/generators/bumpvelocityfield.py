@@ -30,6 +30,7 @@ class BumpVelocityField(generator_interface.BaseGenerator):
 
     """
     generator_id = 'BumpVelocityField'
+    generator_classification = 'velocity-field'
 
     settings_types = dict()
     settings_default = dict()

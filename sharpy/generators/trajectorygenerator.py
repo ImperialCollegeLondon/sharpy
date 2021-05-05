@@ -18,6 +18,7 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
     It is usually called from a ``Controller`` module.
     """
     generator_id = 'TrajectoryGenerator'
+    generator_classification = 'utils'
 
     settings_types = dict()
     settings_default = dict()
@@ -246,6 +247,3 @@ def constant_acceleration_travel_time(s_e, s_dot_e):
 
 def linear_acceleration_travel_time(s_e, s_dot_e):
     return 3.0*s_e/s_dot_e
-
-
-

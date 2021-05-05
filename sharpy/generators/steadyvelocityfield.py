@@ -30,6 +30,7 @@ class SteadyVelocityField(generator_interface.BaseGenerator):
 
     """
     generator_id = 'SteadyVelocityField'
+    generator_classification = 'velocity-field'
 
     settings_types = dict()
     settings_default = dict()
