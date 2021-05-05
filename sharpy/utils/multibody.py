@@ -37,6 +37,10 @@ def split_multibody(beam, tstep, mb_data_dict, ts):
     for0_pos = tstep.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
     for0_vel = tstep.for_vel.astype(dtype=ct.c_double, order='F', copy=True)
 
+    ini_quat0 = beam.ini_info.quat.astype(dtype=ct.c_double, order='F', copy=True)
+    ini_for0_pos = beam.ini_info.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
+    ini_for0_vel = beam.ini_info.for_vel.astype(dtype=ct.c_double, order='F', copy=True)
+    
     for ibody in range(beam.num_bodies):
         ibody_beam = None
         ibody_tstep = None
@@ -45,10 +49,10 @@ def split_multibody(beam, tstep, mb_data_dict, ts):
 
         ibody_beam.FoR_movement = mb_data_dict['body_%02d' % ibody]['FoR_movement']
 
+        ibody_beam.ini_info.compute_psi_local_AFoR(ini_for0_pos, ini_for0_vel, ini_quat0)
+        ibody_beam.ini_info.change_to_local_AFoR(ini_for0_pos, ini_for0_vel, ini_quat0)
         if ts == 1:
-            ibody_beam.ini_info.compute_psi_local_AFoR(for0_pos, for0_vel, quat0)
             ibody_tstep.compute_psi_local_AFoR(for0_pos, for0_vel, quat0)
-            ibody_beam.ini_info.change_to_local_AFoR(for0_pos, for0_vel, quat0)
         ibody_tstep.change_to_local_AFoR(for0_pos, for0_vel, quat0)
         #if ts == 1:
         #    ibody_beam.ini_info.pos_dot *= 0
