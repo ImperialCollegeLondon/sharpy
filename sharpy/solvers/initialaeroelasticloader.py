@@ -65,7 +65,8 @@ class InitialAeroelasticLoader(BaseSolver):
                       'mb_FoR_pos', 'mb_FoR_vel', 'mb_FoR_acc', 'mb_quat']
 
         if self.settings['include_forces']:
-            attributes.extend(['runtime_generated_forces',
+            attributes.extend(['runtime_steady_forces',
+                      'runtime_unsteady_forces',
                       'steady_applied_forces',
                       'unsteady_applied_forces'])
 

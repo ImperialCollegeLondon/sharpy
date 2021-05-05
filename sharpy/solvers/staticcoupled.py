@@ -191,17 +191,17 @@ class StaticCoupled(BaseSolver):
 
                 # Add external forces
                 if self.with_runtime_generators:
-                    self.data.structure.timestep_info[self.data.ts].runtime_generated_forces.fill(0.)
+                    self.data.structure.timestep_info[self.data.ts].runtime_steady_forces.fill(0.)
+                    self.data.structure.timestep_info[self.data.ts].runtime_unsteady_forces.fill(0.)
                     params = dict()
                     params['data'] = self.data
                     params['struct_tstep'] = self.data.structure.timestep_info[self.data.ts]
                     params['aero_tstep'] = self.data.aero.timestep_info[self.data.ts]
-                    params['force_coeff'] = 0.
                     params['fsi_substep'] = -i_iter
                     for id, runtime_generator in self.runtime_generators.items():
                         runtime_generator.generate(params)
 
-                    struct_forces += self.data.structure.timestep_info[self.data.ts].runtime_generated_forces
+                    struct_forces += self.data.structure.timestep_info[self.data.ts].runtime_steady_forces
 
                 if not self.settings['relaxation_factor'] == 0.:
                     if i_iter == 0:

@@ -493,25 +493,14 @@ class DynamicCoupled(BaseSolver):
                     structural_kstep, aero_kstep = self.process_controller_output(
                         state)
 
-            k = 0
-            # compute unsteady contribution
-            force_coeff = 0.0
-            unsteady_contribution = False
-            if self.settings['include_unsteady_force_contribution']:
-                if self.data.ts > self.settings['steps_without_unsteady_force']:
-                    unsteady_contribution = True
-                    if 0 < self.settings['pseudosteps_ramp_unsteady_force']:
-                        force_coeff = k/self.settings['pseudosteps_ramp_unsteady_force']
-                    else:
-                        force_coeff = 1.
             # Add external forces
             if self.with_runtime_generators:
-                structural_kstep.runtime_generated_forces.fill(0.)
+                structural_kstep.runtime_steady_forces.fill(0.)
+                structural_kstep.runtime_unsteady_forces.fill(0.)
                 params = dict()
                 params['data'] = self.data
                 params['struct_tstep'] = structural_kstep
                 params['aero_tstep'] = aero_kstep
-                params['force_coeff'] = force_coeff
                 params['fsi_substep'] = -1
                 for id, runtime_generator in self.runtime_generators.items():
                     runtime_generator.generate(params)
@@ -552,15 +541,16 @@ class DynamicCoupled(BaseSolver):
                         else:
                             force_coeff = 1.
 
-                previous_runtime_generated_forces = structural_kstep.runtime_generated_forces.astype(dtype=ct.c_double, order='F', copy=True)
+                previous_runtime_steady_forces = structural_kstep.runtime_steady_forces.astype(dtype=ct.c_double, order='F', copy=True)
+                previous_runtime_unsteady_forces = structural_kstep.runtime_unsteady_forces.astype(dtype=ct.c_double, order='F', copy=True)
                 # Add external forces
                 if self.with_runtime_generators:
-                    structural_kstep.runtime_generated_forces.fill(0.)
+                    structural_kstep.runtime_steady_forces.fill(0.)
+                    structural_kstep.runtime_unsteady_forces.fill(0.)
                     params = dict()
                     params['data'] = self.data
                     params['struct_tstep'] = structural_kstep
                     params['aero_tstep'] = aero_kstep
-                    params['force_coeff'] = force_coeff
                     params['fsi_substep'] = k
                     for id, runtime_generator in self.runtime_generators.items():
                         runtime_generator.generate(params)
@@ -575,8 +565,10 @@ class DynamicCoupled(BaseSolver):
 
                 previous_kstep = structural_kstep.copy()
                 structural_kstep = controlled_structural_kstep.copy()
-                structural_kstep.runtime_generated_forces = previous_kstep.runtime_generated_forces.astype(dtype=ct.c_double, order='F', copy=True)
-                previous_kstep.runtime_generated_forces = previous_runtime_generated_forces.astype(dtype=ct.c_double, order='F', copy=True)
+                structural_kstep.runtime_steady_forces = previous_kstep.runtime_steady_forces.astype(dtype=ct.c_double, order='F', copy=True)
+                structural_kstep.runtime_unsteady_forces = previous_kstep.runtime_unsteady_forces.astype(dtype=ct.c_double, order='F', copy=True)
+                previous_kstep.runtime_steady_forces = previous_runtime_steady_forces.astype(dtype=ct.c_double, order='F', copy=True)
+                previous_kstep.runtime_unsteady_forces = previous_runtime_unsteady_forces.astype(dtype=ct.c_double, order='F', copy=True)
 
                 # move the aerodynamic surface according the the structural one
                 self.aero_solver.update_custom_grid(structural_kstep,
@@ -705,7 +697,8 @@ class DynamicCoupled(BaseSolver):
             if self.base_dqdt == 0:
                 self.base_dqdt = 1.
             if with_runtime_generators:
-                self.base_res_forces = np.linalg.norm(tstep.runtime_generated_forces)
+                self.base_res_forces = np.linalg.norm(tstep.runtime_steady_forces +
+                                                      tstep.runtime_unsteady_forces)
                 if self.base_res_forces == 0:
                     self.base_res_forces = 1.
             return False
@@ -723,9 +716,11 @@ class DynamicCoupled(BaseSolver):
                          self.base_dqdt)
 
         if with_runtime_generators:
-            res_forces = (np.linalg.norm(tstep.runtime_generated_forces -
-                                        previous_tstep.runtime_generated_forces)/
-                         self.base_res_forces)
+            res_forces = (np.linalg.norm(tstep.runtime_steady_forces -
+                                        previous_tstep.runtime_steady_forces +
+                                        tstep.runtime_unsteady_forces -
+                                        previous_tstep.runtime_unsteady_forces)/
+                                        self.base_res_forces)
         else:
             res_forces = 0.
 
@@ -760,7 +755,7 @@ class DynamicCoupled(BaseSolver):
             self.data.structure.connectivities,
             structural_kstep.cag(),
             self.data.aero.aero_dict)
-        dynamic_struct_forces = unsteady_forces_coeff*mapping.aero2struct_force_mapping(
+        dynamic_struct_forces = mapping.aero2struct_force_mapping(
             aero_kstep.dynamic_forces,
             self.data.aero.struct2aero_mapping,
             aero_kstep.zeta,
@@ -782,18 +777,18 @@ class DynamicCoupled(BaseSolver):
             #                                                      structural_kstep,
             #                                                      dynamic_struct_forces)
 
-        # prescribed forces + aero forces
-        structural_kstep.steady_applied_forces = (
-            (struct_forces + self.data.structure.ini_info.steady_applied_forces).
-            astype(dtype=ct.c_double, order='F', copy=True))
-        try:
-            structural_kstep.unsteady_applied_forces = (
-                (dynamic_struct_forces + self.data.structure.dynamic_input[max(self.data.ts - 1, 0)]['dynamic_forces'] +
-                 structural_kstep.runtime_generated_forces).
-                astype(dtype=ct.c_double, order='F', copy=True))
-        except KeyError:
-            structural_kstep.unsteady_applied_forces = (dynamic_struct_forces +
-                                                        structural_kstep.runtime_generated_forces)
+        # prescribed forces + aero forces + runtime generated
+        structural_kstep.steady_applied_forces += struct_forces
+        structural_kstep.steady_applied_forces += self.data.structure.ini_info.steady_applied_forces
+        structural_kstep.steady_applied_forces += structural_kstep.runtime_steady_forces
+
+        structural_kstep.unsteady_applied_forces += dynamic_struct_forces
+        if len(self.data.structure.dynamic_input) > 0:
+            structural_kstep.unsteady_applied_forces += self.data.structure.dynamic_input[max(self.data.ts - 1, 0)]['dynamic_forces']
+        structural_kstep.unsteady_applied_forces += structural_kstep.runtime_unsteady_forces
+
+        # Apply unsteady force coefficient
+        structural_kstep.unsteady_applied_forces *= unsteady_forces_coeff
 
     def relaxation_factor(self, k):
         initial = self.settings['relaxation_factor']
@@ -850,8 +845,10 @@ def relax(beam, timestep, previous_timestep, coeff):
             coeff*previous_timestep.steady_applied_forces)
     timestep.unsteady_applied_forces = ((1.0 - coeff)*timestep.unsteady_applied_forces +
             coeff*previous_timestep.unsteady_applied_forces)
-    timestep.runtime_generated_forces = ((1.0 - coeff)*timestep.runtime_generated_forces +
-            coeff*previous_timestep.runtime_generated_forces)
+    timestep.runtime_steady_forces = ((1.0 - coeff)*timestep.runtime_steady_forces +
+            coeff*previous_timestep.runtime_steady_forces)
+    timestep.runtime_unsteady_forces = ((1.0 - coeff)*timestep.runtime_unsteady_forces +
+            coeff*previous_timestep.runtime_unsteady_forces)
 
 
 def normalise_quaternion(tstep):

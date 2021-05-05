@@ -40,7 +40,7 @@ def split_multibody(beam, tstep, mb_data_dict, ts):
     ini_quat0 = beam.ini_info.quat.astype(dtype=ct.c_double, order='F', copy=True)
     ini_for0_pos = beam.ini_info.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
     ini_for0_vel = beam.ini_info.for_vel.astype(dtype=ct.c_double, order='F', copy=True)
-    
+
     for ibody in range(beam.num_bodies):
         ibody_beam = None
         ibody_tstep = None
@@ -115,7 +115,8 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
         tstep.gravity_forces[ibody_nodes,:] = MB_tstep[ibody].gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.steady_applied_forces[ibody_nodes,:] = MB_tstep[ibody].steady_applied_forces.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.unsteady_applied_forces[ibody_nodes,:] = MB_tstep[ibody].unsteady_applied_forces.astype(dtype=ct.c_double, order='F', copy=True)
-        tstep.runtime_generated_forces[ibody_nodes,:] = MB_tstep[ibody].runtime_generated_forces.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.runtime_steady_forces[ibody_nodes,:] = MB_tstep[ibody].runtime_steady_forces.astype(dtype=ct.c_double, order='F', copy=True)
+        tstep.runtime_unsteady_forces[ibody_nodes,:] = MB_tstep[ibody].runtime_unsteady_forces.astype(dtype=ct.c_double, order='F', copy=True)
         # TODO: Do I need a change in FoR for the following variables? Maybe for the FoR ones.
         tstep.forces_constraints_nodes[ibody_nodes,:] = MB_tstep[ibody].forces_constraints_nodes.astype(dtype=ct.c_double, order='F', copy=True)
         tstep.forces_constraints_FoR[ibody, :] = MB_tstep[ibody].forces_constraints_FoR[ibody, :].astype(dtype=ct.c_double, order='F', copy=True)
