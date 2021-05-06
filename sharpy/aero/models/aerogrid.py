@@ -393,7 +393,6 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
     if node_info['M_distribution'] == 'uniform':
         strip_coordinates_b_frame[1, :] = np.linspace(0.0, 1.0, node_info['M'] + 1)
     elif node_info['M_distribution'] == '1-cos':
-        print("Distribution = ", node_info['M_distribution'])
         domain = np.linspace(0, 1.0, node_info['M'] + 1)
         strip_coordinates_b_frame[1, :] = 0.5*(1.0 - np.cos(domain*np.pi))
     elif node_info['M_distribution'].lower() == 'user_defined':
