@@ -2,6 +2,7 @@ from sharpy.utils.sharpydir import SharpyDir
 import sharpy.utils.ctypes_utils as ct_utils
 
 import ctypes as ct
+from ctypes import *
 import numpy as np
 import platform
 import os
@@ -9,6 +10,8 @@ from sharpy.utils.constants import NDIM, vortex_radius_def
 
 UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/UVLM/lib/', 'libuvlm')
 
+# TODO: Combine VMOpts and UVMOpts (Class + inheritance)?
+# TODO: Combine solver functions (e.g. vlm solver is able to start nonlifting only, lifitng only, nonlifting and lifting coupled) 
 
 class VMopts(ct.Structure):
     """ctypes definition for VMopts class
@@ -21,11 +24,16 @@ class VMopts(ct.Structure):
             bool NewAIC;
             double DelTime;
             bool Rollup;
+            bool only_lifting;
+            bool only_nonlifting;
             unsigned int NumCores;
             unsigned int NumSurfaces;
+            unsigned int NumSurfacesNonlifting;
             bool cfl1;
             double vortex_radius;
             double vortex_radius_wake_ind;
+            double* centre_rot_g[3];
+            double* rbm_vel_g[6];
         };
     """
     _fields_ = [("ImageMethod", ct.c_bool),
@@ -35,8 +43,11 @@ class VMopts(ct.Structure):
                 ("NewAIC", ct.c_bool),
                 ("DelTime", ct.c_double),
                 ("Rollup", ct.c_bool),
+                ("only_lifting", ct.c_bool),
+                ("only_nonlifting", ct.c_bool),
                 ("NumCores", ct.c_uint),
                 ("NumSurfaces", ct.c_uint),
+                ("NumSurfacesNonlifting", ct.c_uint),
                 ("dt", ct.c_double),
                 ("n_rollup", ct.c_uint),
                 ("rollup_tolerance", ct.c_double),
@@ -46,7 +57,11 @@ class VMopts(ct.Structure):
                 ("iterative_precond", ct.c_bool),
                 ("cfl1", ct.c_bool),
                 ("vortex_radius", ct.c_double),
-                ("vortex_radius_wake_ind", ct.c_double)]
+                ("vortex_radius_wake_ind", ct.c_double),
+                ("centre_rot_g", ct.c_double * 3),
+                ("rbm_vel_g", ct.c_double * 6)]
+    
+
 
     def __init__(self):
         ct.Structure.__init__(self)
@@ -57,8 +72,11 @@ class VMopts(ct.Structure):
         self.NewAIC = ct.c_bool(False)  # legacy var
         self.DelTime = ct.c_double(1.0)
         self.Rollup = ct.c_bool(False)
+        self.only_lifting = ct.c_bool(False)
+        self.only_nonlifting = ct.c_bool(False)
         self.NumCores = ct.c_uint(4)
         self.NumSurfaces = ct.c_uint(1)
+        self.NumSurfacesNonlifting = ct.c_uint(0)
         self.dt = ct.c_double(0.01)
         self.n_rollup = ct.c_uint(0)
         self.rollup_tolerance = ct.c_double(1e-5)
@@ -69,6 +87,7 @@ class VMopts(ct.Structure):
         self.cfl1 = ct.c_bool(True)
         self.vortex_radius = ct.c_double(vortex_radius_def)
         self.vortex_radius_wake_ind = ct.c_double(vortex_radius_def)
+        self.centre_rot_g = np.ctypeslib.as_ctypes(np.zeros((3)))
         self.rbm_vel_g = np.ctypeslib.as_ctypes(np.zeros((6)))
 
 
@@ -76,6 +95,7 @@ class UVMopts(ct.Structure):
     _fields_ = [("dt", ct.c_double),
                 ("NumCores", ct.c_uint),
                 ("NumSurfaces", ct.c_uint),
+                ("NumSurfacesNonlifting", ct.c_uint),
                 # ("steady_n_rollup", ct.c_uint),
                 # ("steady_rollup_tolerance", ct.c_double),
                 # ("steady_rollup_aic_refresh", ct.c_uint),
@@ -85,7 +105,9 @@ class UVMopts(ct.Structure):
                 ("iterative_solver", ct.c_bool),
                 ("iterative_tol", ct.c_double),
                 ("iterative_precond", ct.c_bool),
-                ("convect_wake", ct.c_bool),
+                ("convect_wake", ct.c_bool),                
+                ("only_lifting", ct.c_bool),
+                ("only_nonlifting", ct.c_bool),           
                 ("cfl1", ct.c_bool),
                 ("vortex_radius", ct.c_double),
                 ("vortex_radius_wake_ind", ct.c_double),
@@ -93,13 +115,16 @@ class UVMopts(ct.Structure):
                 ("filter_method", ct.c_uint),
                 ("interp_method", ct.c_uint),
                 ("yaw_slerp", ct.c_double),
-                ("quasi_steady", ct.c_bool),]
+                ("quasi_steady", ct.c_bool),
+                ("centre_rot_g", ct.c_double * 3),
+                ("rbm_vel_g", ct.c_double * 6)]
 
     def __init__(self):
         ct.Structure.__init__(self)
         self.dt = ct.c_double(0.01)
         self.NumCores = ct.c_uint(4)
         self.NumSurfaces = ct.c_uint(1)
+        self.NumSurfacesNonlifting = ct.c_uint(0)
         self.convection_scheme = ct.c_uint(2)
         # self.Mstar = ct.c_uint(10)
         self.ImageMethod = ct.c_bool(False)
@@ -112,6 +137,8 @@ class UVMopts(ct.Structure):
         self.vortex_radius_wake_ind = ct.c_double(vortex_radius_def)
         self.yaw_slerp = ct.c_double(0.)
         self.quasi_steady = ct.c_bool(False)
+        self.centre_rot_g = np.ctypeslib.as_ctypes(np.zeros((3)))
+        self.rbm_vel_g = np.ctypeslib.as_ctypes(np.zeros((6)))
 
 
 class FlightConditions(ct.Structure):
