@@ -736,7 +736,9 @@ class DynamicCoupled(BaseSolver):
             return False
 
         # Check the special case of no aero and no runtime generators
-        if aero_solver.lower() == "noaero" and not with_runtime_generators:
+        if (aero_solver.lower() == "noaero"\
+             or struct_solver.lower()  == "nostructural")\
+            and not with_runtime_generators:
             return True
 
         # relative residuals
