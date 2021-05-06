@@ -50,6 +50,9 @@ class StaticUvlm(BaseSolver):
     settings_default['nonlifting_body_interactions'] = False
     settings_description['nonlifting_body_interactions'] = 'Consider nonlifting body interactions'
 
+    settings_types['only_nonlifting'] = 'bool'
+    settings_default['only_nonlifting'] = False
+    settings_description['only_nonlifting'] = 'Consider only nonlifting bodies'
     settings_types['num_cores'] = 'int'
     settings_default['num_cores'] = 0
     settings_description['num_cores'] = 'Number of cores to use in the VLM lib'
@@ -151,16 +154,30 @@ class StaticUvlm(BaseSolver):
                                             'gamma_star': aero_tstep.gamma_star,
                                             'dist_to_orig': aero_tstep.dist_to_orig})
 
-       # check if nonlifting body interactions have to be considered
-        if self.settings['nonlifting_body_interactions']:
+        # check if nonlifting body interactions have to be considered
+        if not self.settings['nonlifting_body_interactions']:
+            self.velocity_generator.generate({'zeta': self.data.nonlifting_body.timestep_info[self.data.ts].zeta,
+                                            'override': True,
+                                            'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
+                                            self.data.nonlifting_body.timestep_info[self.data.ts].u_ext)
+            uvlmlib.vlm_solver_nonlifting_body(self.data.nonlifting_body.timestep_info[self.data.ts],
+                                            self.settings)
+        elif self.settings['nonlifting_body_interactions']:
             # generate uext
             self.velocity_generator.generate({'zeta': self.data.nonlifting_body.timestep_info[self.data.ts].zeta,
-                                              'override': True,
-                                              'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
-                                             self.data.nonlifting_body.timestep_info[self.data.ts].u_ext)
-            uvlmlib.vlm_solver_nonlifting_body(self.data.nonlifting_body.timestep_info[self.data.ts],
-                                               self.settings)
-        else:
+                                            'override': True,
+                                            'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
+                                            self.data.nonlifting_body.timestep_info[self.data.ts].u_ext)
+            # generate uext
+            self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
+                                            'override': True,
+                                            'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},  
+                                            self.data.aero.timestep_info[self.data.ts].u_ext)
+            # grid orientation
+            uvlmlib.vlm_solver_lifting_and_nonlifting_bodies(self.data.aero.timestep_info[self.data.ts],
+                                                            self.data.nonlifting_body.timestep_info[self.data.ts],
+                                                            self.settings)
+        else:        
             # generate uext
             self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
                                               'override': True,
