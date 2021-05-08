@@ -247,8 +247,6 @@ def run(polar, infinite_wing, compute_uind, main_ea, high_re, case_route_root, o
     case_route = case_route_root + '/' + case_header + '/'
     output_route = output_route_root + '/' + case_header + '/'
     for alpha in np.linspace(-5, 5, 6):
-    # for alpha in [0]:
-        print(alpha)
         case_name = '{:s}_alpha{:04g}'.format(case_header,
                                               alpha * 100).replace('-', 'M')
         generate_infinite_wing(case_name, alpha,
