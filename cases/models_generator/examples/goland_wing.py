@@ -5,6 +5,7 @@ import importlib
 import cases.models_generator.gen_main as gm
 import sharpy.utils.algebra as algebra
 importlib.reload(gm)
+from functools import partial
 
 #############################
 # Read goland wing from docs #
@@ -16,20 +17,20 @@ for i in range(len(split_path)):
         break
     
 sharpy_dir = sys.path[ind]
-path2goland = sharpy_dir + '/docs/source/content/example_notebooks/cases'
-goland_files = os.listdir(path2goland)
-for i in goland_files:
-    if 'goland' in i and 'sharpy' in i:
-        goland_sharpy = i
-    elif 'goland' in i and 'fem' in i:
-        goland_fem = i
-    elif 'goland' in i and 'aero' in i:
-        goland_aero = i
+# path2goland = sharpy_dir + '/docs/source/content/example_notebooks/cases'
+# goland_files = os.listdir(path2goland)
+# for i in goland_files:
+#     if 'goland' in i and 'sharpy' in i:
+#         goland_sharpy = i
+#     elif 'goland' in i and 'fem' in i:
+#         goland_fem = i
+#     elif 'goland' in i and 'aero' in i:
+#         goland_aero = i
         
-goland = gm.Sharpy_data(['read_structure','read_aero','simulation'])
-goland.read_structure(path2goland+'/'+goland_fem)
-goland.read_aero(path2goland+'/'+goland_aero)
-goland.read_sim(path2goland+'/'+goland_sharpy)
+# goland = gm.Sharpy_data(['read_structure','read_aero','simulation'])
+# goland.read_structure(path2goland+'/'+goland_fem)
+# goland.read_aero(path2goland+'/'+goland_aero)
+# goland.read_sim(path2goland+'/'+goland_sharpy)
 
 # aeroelasticity parameters
 main_ea = 0.33
@@ -76,12 +77,13 @@ g1c['aero'] = {'chord':c_ref,
 
 comp1 = gm.Components('wing1','sharpy',['sharpy'],g1c)
 g1cm = {'wing1':g1c}
-g1mm = {'model_name':'goland',
-        'model_route':sharpy_dir+'/cases/models_generator/examples/goland_wing',
+g1mm = {'model_name':'goland_b',
+        'model_route':'/mnt/work/Programs/runs/goland_wing',#sharpy_dir+'/cases/models_generator/examples/goland_wing',
         'iterate_type': 'Full_Factorial',
-        'iterate_vars': {'wing1*geometry-sweep':np.linspace(0.,40*np.pi/180,2),
-                         'wing1*geometry-length':6.096*np.linspace(0.1,2.5,2),
-                         'wing1*fem-sigma':[1.,10.]},
+        'iterate_vars': {'wing1*geometry-sweep':np.linspace(15.5*np.pi/180,19.5*np.pi/180,5),   #np.linspace(15*np.pi/180,20*np.pi/180,6)
+                         'wing1*geometry-length':6.096*np.linspace(1.025,1.275,6),  #6.096*np.linspace(1,1.3,7)
+                         'wing1*aero-chord':c_ref*np.array([np.linspace(1.,1.,2),np.linspace(0.9,0.95,2)]).T},
+        #c_ref*np.array([np.linspace(1.,1.,3),np.linspace(0.85,1.,3)]).T}
         'iterate_labels': {'label_type':'number',
                            'print_name_var':0}}
 
@@ -123,26 +125,3 @@ g1 = gm.Model('sharpy',['sharpy'], model_dict=g1mm, components_dict=g1cm,
               simulation_dict=g1sm)
 g1.run()
 
-
-import pickle
-with open('/mnt/work/Programs/sharpy/cases/models_generator/examples/goland_wing/goland1_1_1/goland.pkl', 'rb') as restart_file:
-    dataf2 = pickle.load(restart_file)
-
-path2goland='/mnt/work/Programs/sharpy/cases/models_generator/examples/goland_wing/goland0_0_0/'
-goland_sharpy = 'goland.sharpy'
-goland = gm.Sharpy_data(['read_structure','read_aero','simulation'])
-#goland.read_structure(path2goland+'/'+goland_fem)
-#goland.read_aero(path2goland+'/'+goland_aero)
-goland.read_sim(path2goland+'/'+goland_sharpy)
-
-
-import matplotlib.pyplot as plt
-
-fig, ax = plt.subplots()
-
-min_val, max_val = 0, 15
-
-data_plot = dataf2.linear.linear_system.uvlm.ss.C[:64*2,:64*2]
-plt.figure()
-plt.imshow(data_plot, alpha=0.8,cmap=plt.cm.Blues)
-plt.show()

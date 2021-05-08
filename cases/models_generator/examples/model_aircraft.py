@@ -4,7 +4,15 @@ import importlib
 import cases.models_generator.gen_main as gm
 import sharpy.utils.algebra as algebra
 importlib.reload(gm)
+import sys
 
+split_path = [sys.path[i].split('/') for i in [0,1,2]]
+for i in range(len(split_path)):
+    if 'sharpy' in split_path[i]:
+        ind = i
+        break
+    
+sharpy_dir = sys.path[ind]
 # aeroelasticity parameters
 main_ea = 0.33
 main_cg = 0.43
@@ -111,7 +119,7 @@ g1c['horizontal_tail_left'] = {'symmetric': {'component':'horizontal_tail_right'
 
 g1mm = {'model_name':'A320mock',
         'model_route':sharpy_dir+'/cases/models_generator/examples/aircraft0',
-        'iterate_vars': {},
+        'iterate_type': 'Full_Factorial',
         'iterate_vars': {'wing_r*geometry-sweep':np.pi/180*np.array([0,20,40]),
                          'wing_r*geometry-length':np.linspace(14,18.,3)},
         'iterate_labels': {'label_type':'number',
