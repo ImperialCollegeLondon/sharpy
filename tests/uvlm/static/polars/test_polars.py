@@ -23,7 +23,7 @@ class InfiniteWing:
 class TestAirfoilPolars(unittest.TestCase):
     route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
-    polar_data = np.loadtxt('xf-naca0018-il-50000.txt', skiprows=12)
+    polar_data = np.loadtxt(route_test_dir + '/xf-naca0018-il-50000.txt', skiprows=12)
 
     def test_infinite_wing(self):
         """
@@ -35,14 +35,14 @@ class TestAirfoilPolars(unittest.TestCase):
 
         wing = InfiniteWing()
 
-        gw.run(polar=True,
-               compute_uind=False,
+        gw.run(compute_uind=False,
                infinite_wing=True,
                main_ea=0.25,
                high_re=False,
                case_route_root=cases_route,
                output_route_root=output_route,
-               use2pi=True)
+               use2pi=True,
+               polar_file=self.route_test_dir + '/xf-naca0018-il-50000.txt')
 
         case_header = gw.get_case_header(polar=True,
                                          infinite_wing=True,

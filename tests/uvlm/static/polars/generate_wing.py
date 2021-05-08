@@ -224,19 +224,18 @@ def get_case_header(polar, infinite_wing, compute_uind, high_re, main_ea, use2pi
     return case_header
 
 
-def run(polar, infinite_wing, compute_uind, main_ea, high_re, case_route_root, output_route_root, use2pi=False):
+def run(infinite_wing, compute_uind, main_ea, high_re, case_route_root, output_route_root, use2pi=False,
+        polar_file=None):
     flow = ['BeamLoader',
             'AerogridLoader',
             'StaticCoupled',
             'AeroForcesCalculator',
             'SaveParametricCase']
 
-    if polar:
-        polar_file = './xf-naca0018-il-50000.txt'
-        if high_re:
-            polar_file = './xf-naca0018-il-1000000.txt'
+    if polar_file is not None:
+        polar = True
     else:
-        polar_file = None
+        polar = False
 
     if not infinite_wing:
         ar = 8
