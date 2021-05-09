@@ -780,7 +780,9 @@ class DynamicCoupled(BaseSolver):
                                                        struct_forces=struct_forces)
 
         aero_kstep.aero_steady_forces_beam_dof = struct_forces
-        
+        structural_kstep.postproc_node['aero_steady_forces'] = struct_forces
+        structural_kstep.postproc_node['aero_unsteady_forces'] = dynamic_struct_forces
+
         # prescribed forces + aero forces
         structural_kstep.steady_applied_forces = (
             (struct_forces + self.data.structure.ini_info.steady_applied_forces).
