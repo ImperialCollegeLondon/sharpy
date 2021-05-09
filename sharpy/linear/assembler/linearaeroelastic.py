@@ -88,6 +88,9 @@ class LinearAeroelastic(ss_interface.BaseElement):
         self.Crs = None
         self.Crr = None
 
+        self.correct_forces = False
+        self.correct_forces_generator = None
+
     def initialise(self, data):
 
         try:
@@ -131,7 +134,22 @@ class LinearAeroelastic(ss_interface.BaseElement):
             self.linearisation_vectors[k] = v
 
         self.get_gebm2uvlm_gains(data)
-        self.data = data
+
+        # correct forces generators
+        try:
+            data.settings['StaticCoupled']['correct_forces_method']
+        except KeyError:
+            self.correct_forces = False
+        else:
+            if data.settings['StaticCoupled']['correct_forces_method'] is not '':
+                import sharpy.utils.generator_interface as gen_interface
+                self.correct_forces = True
+                self.correct_forces_generator = gen_interface.generator_from_string(data.settings['StaticCoupled']['correct_forces_method'])()
+                self.correct_forces_generator.initialise(in_dict=data.settings['StaticCoupled']['correct_forces_settings'],
+                                                         aero=data.aero,
+                                                         structure=data.structure,
+                                                         rho=self.settings['aero_settings']['density'],
+                                                         vortex_radius=self.settings['aero_settings']['vortex_radius'])
 
     def assemble(self):
         r"""
@@ -228,11 +246,15 @@ class LinearAeroelastic(ss_interface.BaseElement):
             self.couplings['Ksa'] = gain_ksa
             self.couplings['Kas'] = gain_kas
 
-            polar_matrix_disp, polar_matrix_vel = self.polar_gains(self.data, uvlm.ss)
-            uvlm.ss.D *= 0
-            uvlm.ss.C *= 0
-            uvlm.ss.D[:, :polar_matrix_disp.shape[1]] = polar_matrix_disp
-            uvlm.ss.D[:, -polar_matrix_vel.shape[1]:] = polar_matrix_vel
+            if self.correct_forces:
+                polar_gain_value = self.correct_forces_generator.generate_linear(beam=beam,
+                                                                                 tsstruct0=beam.sys.tsstruct0,
+                                                                                 tsaero0=uvlm.tsaero0)
+                polar_gain = libss.Gain(polar_gain_value,
+                                        input_vars=LinearVector.transform(uvlm.ss.output_variables,
+                                                                          to_type=InputVariable),
+                                        output_vars=uvlm.ss.output_variables.copy())
+                uvlm.ss.addGain(polar_gain, where='out')
 
             if self.settings['beam_settings']['modal_projection'] is True and \
                     self.settings['beam_settings']['inout_coords'] == 'modes':
