@@ -3,7 +3,10 @@ import numpy as np
 from sharpy.utils.constants import deg2rad
 
 
-class polar(object):
+class Polar:
+    """
+    Airfoil polar object
+    """
 
     def __init__(self):
 
@@ -11,7 +14,13 @@ class polar(object):
         self.aoa_cl0_deg = None
 
     def initialise(self, table):
+        """
+        Initialise polar
 
+        Args:
+            table (np.ndarray): 4-column array containing ``aoa`` (rad), ``cl``, ``cd`` and ``cm``
+
+        """
         # Store the table
         if (np.diff(table[:, 0]) > 0.).all():
             self.table = table
@@ -86,7 +95,7 @@ class polar(object):
                                        self.table[:, 0],
                                        self.table[:, icol])
 
-        new_polar = polar()
+        new_polar = Polar()
         new_polar.initialise(table)
         return new_polar
 
@@ -138,6 +147,6 @@ def interpolate(polar1, polar2, coef=0.5):
 
     table = (1. - coef)*new_polar1.table + coef*new_polar2.table
 
-    new_polar = polar()
+    new_polar = Polar()
     new_polar.initialise(table)
     return new_polar

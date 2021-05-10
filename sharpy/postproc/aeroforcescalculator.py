@@ -120,13 +120,13 @@ class AeroForcesCalculator(BaseSolver):
 
             # Forces expressed in the beam degrees of freedom
             try:
-                steady_forces_b = self.data.aero.timestep_info[self.ts].aero_steady_forces_beam_dof
-            except AttributeError:
+                steady_forces_b = self.data.structure.timestep_info[self.ts].postproc_node['aero_steady_forces']
+            except KeyError:
                 steady_forces_b = self.map_forces_beam_dof(self.ts, force)
 
             try:
-                unsteady_forces_b = self.data.aero.timestep_info[self.ts].aero_unsteady_forces_beam_dof
-            except AttributeError:
+                unsteady_forces_b = self.data.structure.timestep_info[self.ts].postproc_node['aero_unsteady_forces']
+            except KeyError:
                 unsteady_forces_b = self.map_forces_beam_dof(self.ts, unsteady_force)
 
             steady_forces_a = self.data.structure.nodal_b_for_2_a_for(steady_forces_b,

@@ -196,6 +196,7 @@ class StaticCoupled(BaseSolver):
                                                                structural_kstep=self.data.structure.timestep_info[self.data.ts],
                                                                struct_forces=struct_forces)
                 self.data.aero.timestep_info[self.data.ts].aero_steady_forces_beam_dof = struct_forces
+                self.data.structure.timestep_info[self.data.ts].postproc_node['aero_steady_forces'] = struct_forces  # B
                 
                 # Add external forces
                 if self.with_runtime_generators:
