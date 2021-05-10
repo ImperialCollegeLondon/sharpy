@@ -60,6 +60,7 @@ def generate_infinite_wing(case_name, alpha, **kwargs):
                                                                           alpha_rad,
                                                                           0.]))}
 
+    u_inf_direction = algebra.rotation3d_y(alpha_rad * 0).T.dot(np.array([1, 0, 0]))
     settings['AerogridLoader'] = {'unsteady': 'on',
                                   'aligned_grid': 'on',
                                   'mstar': int(kwargs.get('wake_length', 100) * m),
@@ -70,7 +71,7 @@ def generate_infinite_wing(case_name, alpha, **kwargs):
                                   'wake_shape_generator': 'StraightWake',
                                   'wake_shape_generator_input': {
                                       'u_inf': u_inf,
-                                      'u_inf_direction': [1., 0., 0.],
+                                      'u_inf_direction': u_inf_direction,
                                       'dt': wing.dt,
                                   },
                                   }
@@ -94,7 +95,7 @@ def generate_infinite_wing(case_name, alpha, **kwargs):
                               'vortex_radius': 1e-6,
                               'velocity_field_generator': 'SteadyVelocityField',
                               'velocity_field_input': {'u_inf': u_inf,
-                                                       'u_inf_direction': [1., 0, 0]},
+                                                       'u_inf_direction': u_inf_direction},
                               'rho': rho}
 
     settings['StaticCoupled'] = {'print_info': 'off',

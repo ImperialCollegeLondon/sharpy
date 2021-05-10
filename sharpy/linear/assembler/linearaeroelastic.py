@@ -88,6 +88,9 @@ class LinearAeroelastic(ss_interface.BaseElement):
         self.Crs = None
         self.Crr = None
 
+        self.correct_forces = False
+        self.correct_forces_generator = None
+
     def initialise(self, data):
 
         try:
@@ -131,6 +134,22 @@ class LinearAeroelastic(ss_interface.BaseElement):
             self.linearisation_vectors[k] = v
 
         self.get_gebm2uvlm_gains(data)
+
+        # correct forces generators
+        try:
+            data.settings['StaticCoupled']['correct_forces_method']
+        except KeyError:
+            self.correct_forces = False
+        else:
+            if data.settings['StaticCoupled']['correct_forces_method'] is not '':
+                import sharpy.utils.generator_interface as gen_interface
+                self.correct_forces = True
+                self.correct_forces_generator = gen_interface.generator_from_string(data.settings['StaticCoupled']['correct_forces_method'])()
+                self.correct_forces_generator.initialise(in_dict=data.settings['StaticCoupled']['correct_forces_settings'],
+                                                         aero=data.aero,
+                                                         structure=data.structure,
+                                                         rho=self.settings['aero_settings']['density'],
+                                                         vortex_radius=self.settings['aero_settings']['vortex_radius'])
 
     def assemble(self):
         r"""
@@ -226,6 +245,16 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
             self.couplings['Ksa'] = gain_ksa
             self.couplings['Kas'] = gain_kas
+
+            if self.correct_forces:
+                polar_gain_value = self.correct_forces_generator.generate_linear(beam=beam,
+                                                                                 tsstruct0=beam.sys.tsstruct0,
+                                                                                 tsaero0=uvlm.tsaero0)
+                polar_gain = libss.Gain(polar_gain_value,
+                                        input_vars=LinearVector.transform(uvlm.ss.output_variables,
+                                                                          to_type=InputVariable),
+                                        output_vars=uvlm.ss.output_variables.copy())
+                uvlm.ss.addGain(polar_gain, where='out')
 
             if self.settings['beam_settings']['modal_projection'] is True and \
                     self.settings['beam_settings']['inout_coords'] == 'modes':
@@ -996,3 +1025,130 @@ class LinearAeroelastic(ss_interface.BaseElement):
         uvlm_ss_read = read_data
         return libss.StateSpace(uvlm_ss_read.A, uvlm_ss_read.B, uvlm_ss_read.C, uvlm_ss_read.D, dt=uvlm_ss_read.dt)
 
+
+    def polar_gains(self, data, ss):
+
+        import sharpy.aero.utils.utils as aeroutils
+        aero = data.aero
+        structure = data.structure
+        tsaero = self.uvlm.tsaero0
+        tsstr = self.beam.tsstruct0
+
+        Kzeta = self.uvlm.sys.Kzeta
+        num_dof_str = self.beam.sys.num_dof_str
+        num_dof_rig = self.beam.sys.num_dof_rig
+        num_dof_flex = self.beam.sys.num_dof_flex
+        use_euler = self.beam.sys.use_euler
+
+        # allocate output
+        Kdisp = np.zeros((3 * Kzeta, num_dof_str))
+        Kdisp_vel = np.zeros((3 * Kzeta, num_dof_str))  # Orientation is in velocity DOFs
+        Kvel_disp = np.zeros((3 * Kzeta, num_dof_str))
+        Kvel_vel = np.zeros((3 * Kzeta, num_dof_str))
+        Kforces = np.zeros((num_dof_str, 3 * Kzeta))
+
+        Kss = np.zeros((num_dof_flex, num_dof_flex))
+        Csr = np.zeros((num_dof_flex, num_dof_rig))
+        Crs = np.zeros((num_dof_rig, num_dof_flex))
+        Crr = np.zeros((num_dof_rig, num_dof_rig))
+        Krs = np.zeros((num_dof_rig, num_dof_flex))
+
+        # get projection matrix A->G
+        # (and other quantities indep. from nodal position)
+        Cga = algebra.quat2rotation(tsstr.quat)  # NG 6-8-19 removing .T
+        Cag = Cga.T
+
+        # for_pos=tsstr.for_pos
+        for_vel = tsstr.for_vel[:3]
+        for_rot = tsstr.for_vel[3:]
+        skew_for_rot = algebra.skew(for_rot)
+        Der_vel_Ra = np.dot(Cga, skew_for_rot)
+
+        Faero = np.zeros(3)
+        FaeroA = np.zeros(3)
+
+        # GEBM degrees of freedom
+        jj_for_tra = range(num_dof_str - num_dof_rig,
+                           num_dof_str - num_dof_rig + 3)
+        jj_for_rot = range(num_dof_str - num_dof_rig + 3,
+                           num_dof_str - num_dof_rig + 6)
+
+        if use_euler:
+            jj_euler = range(num_dof_str - 3, num_dof_str)
+            euler = algebra.quat2euler(tsstr.quat)
+            tsstr.euler = euler
+        else:
+            jj_quat = range(num_dof_str - 4, num_dof_str)
+
+        polar_matrix_vel = np.zeros((ss.outputs, num_dof_str))
+        polar_matrix_disp = np.zeros((ss.outputs, num_dof_str))
+
+        jj = 0  # nodal dof index
+        for node_glob in range(structure.num_node):
+
+            ### detect bc at node (and no. of dofs)
+            bc_here = structure.boundary_conditions[node_glob]
+
+            if bc_here == 1:  # clamp (only rigid-body)
+                dofs_here = 0
+                jj_tra, jj_rot = [], []
+            # continue
+
+            elif bc_here == -1 or bc_here == 0:  # (rigid+flex body)
+                dofs_here = 6
+                jj_tra = 6 * structure.vdof[node_glob] + np.array([0, 1, 2], dtype=int)
+                jj_rot = 6 * structure.vdof[node_glob] + np.array([3, 4, 5], dtype=int)
+            else:
+                raise NameError('Invalid boundary condition (%d) at node %d!' \
+                                % (bc_here, node_glob))
+
+            jj += dofs_here
+
+            # retrieve element and local index
+            ee, node_loc = structure.node_master_elem[node_glob, :]
+
+            # get position, crv and rotation matrix
+            Ra = tsstr.pos[node_glob, :]  # in A FoR, w.r.t. origin A-G
+            Rg = np.dot(Cag.T, Ra)  # in G FoR, w.r.t. origin A-G
+            psi = tsstr.psi[ee, node_loc, :]
+            psi_dot = tsstr.psi_dot[ee, node_loc, :]
+            Cab = algebra.crv2rotation(psi)
+            Cba = Cab.T
+            Cbg = np.dot(Cab.T, Cag)
+            Tan = algebra.crv2tan(psi)
+
+            track_body = self.settings['track_body']
+            isurf = data.aero.struct2aero_mapping[node_glob][0]['i_surf']
+            i_n = data.aero.struct2aero_mapping[node_glob][0]['i_n']
+
+            cas = Cab.dot(tsaero.stability_transform[node_glob])
+
+            dir_span, span, dir_chord, chord = aeroutils.span_chord(i_n, tsaero.zeta[isurf])
+
+            # Define the relative velocity and its direction
+            urel, dir_urel = aeroutils.magnitude_and_direction_of_relative_velocity(tsstr.pos[node_glob, :],
+                                                                          tsstr.pos_dot[node_glob, :],
+                                                                          tsstr.for_vel[:],
+                                                                          Cga,
+                                                                          tsaero.u_ext[isurf][:, :, i_n])
+            coef = 0.5 * 1.225 * np.linalg.norm(urel)
+            cla = np.zeros((3, 3))
+            cla[0, :] = 0.5
+            cla[2, :] = 18
+            u_rel_norm = np.linalg.norm(urel)
+            ldir = np.zeros((3, 3))
+            ldir[:, 2] = 1
+            if bc_here != 1:
+                polar_matrix_vel[np.ix_(jj_tra, jj_tra)] -= cas.dot(coef * cla * ldir).dot(cas.T)  # eta_dot
+                polar_matrix_vel[np.ix_(jj_tra, jj_for_tra)] -= cas.dot(coef * cla * ldir).dot(cas.T)  # va
+                polar_matrix_vel[np.ix_(jj_tra, jj_for_rot)] += cas.dot(coef * cla * ldir).dot(cas.T).dot(algebra.skew(Ra))  # eta * Ra
+
+                polar_matrix_vel[np.ix_(jj_for_tra, jj_tra)] -= cas.dot(coef * cla * ldir).dot(cas.T)  # eta_dot
+            polar_matrix_vel[np.ix_(jj_for_tra, jj_for_tra)] -= cas.dot(coef * cla * ldir).dot(cas.T)  # va
+            polar_matrix_vel[np.ix_(jj_for_tra, jj_for_rot)] += cas.dot(coef * cla * ldir).dot(cas.T).dot(algebra.skew(Ra))  # eta * Ra
+            # polar_matrix_disp[np.ix_(jj_for_tra, jj_euler)] += cas.dot(coef * cla * ldir).dot(cas.T)
+
+
+
+        import pdb; pdb.set_trace()
+        return polar_matrix_disp, polar_matrix_vel
