@@ -8,7 +8,7 @@ from sharpy.utils.generate_cases import get_aoacl0_from_camber
 
 @generator_interface.generator
 class PolarCorrection(generator_interface.BaseGenerator):
-    """
+    r"""
     This generator corrects the aerodynamic forces from UVLM based on the airfoil polars provided by the user in the
     ``aero.h5`` file. Polars are entered for each airfoil, in a table comprising ``AoA (rad), CL, CD, CM``.
 
@@ -93,7 +93,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
         self.vortex_radius = kwargs.get('vortex_radius', 1e-6)
 
     def generate(self, **params):
-        """
+        r"""
         Keyword Args:
             aero_kstep (:class:`sharpy.utils.datastructures.AeroTimeStepInfo`): Current aerodynamic substep
             structural_kstep (:class:`sharpy.utils.datastructures.StructTimeStepInfo`): Current structural substep
@@ -124,9 +124,6 @@ class PolarCorrection(generator_interface.BaseGenerator):
         # Compute induced velocities at the structural points
         cga = algebra.quat2rotation(structural_kstep.quat)
         pos_g = np.array([cga.dot(structural_kstep.pos[inode]) + np.array([0, 0, 0]) for inode in range(nnode)])
-
-        aero_kstep.polar_coeff = np.zeros((nnode, 6))
-        aero_kstep.stability_transform = np.zeros((nnode, 3, 3))
 
         structural_kstep.postproc_node['aoa'] = np.zeros(nnode)
 
@@ -247,9 +244,6 @@ class PolarCorrection(generator_interface.BaseGenerator):
 
         cga = algebra.quat2rotation(structural_kstep.quat)
 
-        aero_kstep.polar_coeff = np.zeros((nnode, 6))
-        aero_kstep.stability_transform = np.zeros((nnode, 3, 3))
-
         # Matrix allocation
         num_dof_str = beam.sys.num_dof_str
         num_dof_rig = beam.sys.num_dof_rig
@@ -331,7 +325,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
 
 @generator_interface.generator
 class EfficiencyCorrection(generator_interface.BaseGenerator):
-    """
+    r"""
     The efficiency and constant terms are introduced by means of the array ``airfoil_efficiency`` in the ``aero.h5``
 
     .. math::
@@ -401,4 +395,94 @@ class EfficiencyCorrection(generator_interface.BaseGenerator):
         return new_struct_forces
 
     def generate_linear(self, **params):
-        raise NotImplementedError('Efficiency factors not yet implemented')
+        beam = params['beam']
+        tsstruct0 = params['tsstruct0']
+        tsaero0 = params['tsaero0']
+
+        aerogrid = self.aero
+        structure = self.structure
+
+        structural_kstep = tsstruct0
+        aero_kstep = tsaero0
+        nnode = tsstruct0.pos.shape[0]
+
+        aero_dict = aerogrid.aero_dict
+
+        cga = algebra.quat2rotation(structural_kstep.quat)
+
+        # Matrix allocation
+        num_dof_str = beam.sys.num_dof_str
+        num_dof_rig = beam.sys.num_dof_rig
+        use_euler = beam.sys.use_euler
+
+        # GEBM degrees of freedom
+        jj_for_tra = range(num_dof_str - num_dof_rig,
+                           num_dof_str - num_dof_rig + 3)
+        jj_for_rot = range(num_dof_str - num_dof_rig + 3,
+                           num_dof_str - num_dof_rig + 6)
+
+        if use_euler:
+            jj_euler = range(num_dof_str - 3, num_dof_str)
+            euler = algebra.quat2euler(tsstruct0.quat)
+            tsstruct0.euler = euler
+        else:
+            jj_quat = range(num_dof_str - 4, num_dof_str)
+
+        polar_gain = np.zeros((num_dof_str, num_dof_str))
+
+        jj = 0  # Global DOF index
+        for inode in range(nnode):
+            if aero_dict['aero_node'][inode]:
+
+                ### detect bc at node (and no. of dofs)
+                bc_here = structure.boundary_conditions[inode]
+
+                if bc_here == 1:  # clamp (only rigid-body)
+                    dofs_here = 0
+                    jj_tra, jj_rot = [], []
+
+                elif bc_here == -1 or bc_here == 0:  # (rigid+flex body)
+                    dofs_here = 6
+                    jj_tra = 6 * structure.vdof[inode] + np.array([0, 1, 2], dtype=int)
+                    jj_rot = 6 * structure.vdof[inode] + np.array([3, 4, 5], dtype=int)
+                else:
+                    raise NameError('Invalid boundary condition (%d) at node %d!' \
+                                    % (bc_here, inode))
+
+                jj += dofs_here
+
+                ielem, inode_in_elem = structure.node_master_elem[inode]
+                iairfoil = aero_dict['airfoil_distribution'][ielem, inode_in_elem]
+                isurf = aerogrid.struct2aero_mapping[inode][0]['i_surf']
+                i_n = aerogrid.struct2aero_mapping[inode][0]['i_n']
+                N = aerogrid.aero_dimensions[isurf, 1]
+
+                airfoil_efficiency = aero_dict['airfoil_efficiency']
+
+                cab = algebra.crv2rotation(structural_kstep.psi[ielem, inode_in_elem, :])
+                cgb = np.dot(cga, cab)
+
+                dir_span, span, dir_chord, chord = span_chord(i_n, aero_kstep.zeta[isurf])
+
+                # Define the relative velocity and its direction
+                urel, dir_urel = magnitude_and_direction_of_relative_velocity(structural_kstep.pos[inode, :],
+                                                                              structural_kstep.pos_dot[inode, :],
+                                                                              structural_kstep.for_vel[:],
+                                                                              cga,
+                                                                              aero_kstep.u_ext[isurf][:, :, i_n])
+
+                # Stability axes - projects forces in B onto S
+                c_bs = local_stability_axes(cgb.T.dot(dir_urel), cgb.T.dot(dir_chord))
+                cas = cab.dot(c_bs)
+
+                local_correction = np.diag(airfoil_efficiency[ielem, inode_in_elem, 0, :])
+
+                weight = 1 / np.sum(aero_dict['aero_node'])
+                if bc_here != 1:
+                    polar_gain[np.ix_(jj_tra, jj_tra)] += cas.dot(local_correction[:3, :3]).dot(cas.T)
+                    polar_gain[np.ix_(jj_rot, jj_rot)] += cas.dot(local_correction[3:, 3:]).dot(cas.T)
+
+                polar_gain[np.ix_(jj_for_tra, jj_for_tra)] += weight * cas.dot(local_correction[:3, :3]).dot(cas.T)
+                polar_gain[np.ix_(jj_for_rot, jj_for_rot)] += weight * cas.dot(local_correction[3:, 3:]).dot(cas.T)
+
+        return polar_gain

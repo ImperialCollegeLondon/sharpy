@@ -28,7 +28,7 @@ class TestAirfoilPolars(unittest.TestCase):
 
     polar_data = np.loadtxt(route_test_dir + '/xf-naca0018-il-50000.txt', skiprows=12)
 
-    polar = airfoilpolars.polar()
+    polar = airfoilpolars.Polar()
     polar.initialise(np.column_stack((polar_data[:, 0] * np.pi / 180, polar_data[:, 1], polar_data[:, 2],
                                       polar_data[:, 4])))
 
