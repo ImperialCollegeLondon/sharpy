@@ -460,7 +460,6 @@ def generate_solver_file(horseshoe=False):
                                                                'time_integrator_settings':
                                                                    {'dt': dt,
                                                                     'newmark_damp': 5e-3,
-                                                                    # 'sys_size': 6 * (num_node - 1),
                                                                     'num_LM_eq': 5}},
                                 'aero_solver': 'StepUvlm',
                                 'aero_solver_settings':
