@@ -51,7 +51,7 @@ class TestAirfoilPolars(unittest.TestCase):
                                          main_ea=0.25,
                                          use2pi=True)
 
-        results = self.postprocess(output_route + '/' + case_header + '/')
+        results = postprocess(output_route + '/' + case_header + '/')
 
         results[:, 1:3] /= wing.force_coef(1.225, 1)
         results[:, -1] /= wing.moment_coef(1.225, 1)
@@ -68,40 +68,39 @@ class TestAirfoilPolars(unittest.TestCase):
             cm_polar = np.interp(results[:, 0], self.polar_data[:, 0], self.polar_data[:, 4])
             np.testing.assert_array_almost_equal(cm_polar, results[:, 3], decimal=3)
 
-    def postprocess(self, output_folder):
-        cases = glob.glob(output_folder + '/*')
-
-        n_cases = 0
-        for case in cases:
-            alpha, lift, drag, moment = self.process_case(case)
-            if n_cases == 0:
-                results = np.array([alpha, lift, drag, moment], dtype=float)
-            else:
-                results = np.vstack((results, np.array([alpha, lift, drag, moment])))
-            n_cases += 1
-
-        order = np.argsort(results[:, 0])
-        results = np.array([results[i, :] for i in order], dtype=float)
-
-        return results
-
-    @staticmethod
-    def process_case(path_to_case):
-        case_name = path_to_case.split('/')[-1]
-        pmor = configobj.ConfigObj(path_to_case + f'/{case_name}.pmor.sharpy')
-        alpha = pmor['parameters']['alpha']
-        inertial_forces = np.loadtxt(f'{path_to_case}/forces/forces_aeroforces.txt',
-                                     skiprows=1, delimiter=',', dtype=float)[1:4]
-        inertial_moments = np.loadtxt(f'{path_to_case}/forces/moments_aeroforces.txt',
-                                      skiprows=1, delimiter=',', dtype=float)[1:4]
-
-        return alpha, inertial_forces[2], inertial_forces[0], inertial_moments[1]
-
     def tearDown(self):
         import shutil
         folders = ['cases', 'output']
         for folder in folders:
             shutil.rmtree(self.route_test_dir + '/' + folder)
+
+
+def postprocess(output_folder):
+    cases = glob.glob(output_folder + '/*')
+
+    n_cases = 0
+    for case in cases:
+        alpha, lift, drag, moment = process_case(case)
+        if n_cases == 0:
+            results = np.array([alpha, lift, drag, moment], dtype=float)
+        else:
+            results = np.vstack((results, np.array([alpha, lift, drag, moment])))
+        n_cases += 1
+    results = results.astype(float)
+    results = results[results[:, 0].argsort()]
+    return results
+
+
+def process_case(path_to_case):
+    case_name = path_to_case.split('/')[-1]
+    pmor = configobj.ConfigObj(path_to_case + f'/{case_name}.pmor.sharpy')
+    alpha = pmor['parameters']['alpha']
+    inertial_forces = np.loadtxt(f'{path_to_case}/forces/forces_aeroforces.txt',
+                                 skiprows=1, delimiter=',', dtype=float)[1:4]
+    inertial_moments = np.loadtxt(f'{path_to_case}/forces/moments_aeroforces.txt',
+                                  skiprows=1, delimiter=',', dtype=float)[1:4]
+
+    return alpha, inertial_forces[2], inertial_forces[0], inertial_moments[1]
 
 
 class TestStab(unittest.TestCase):

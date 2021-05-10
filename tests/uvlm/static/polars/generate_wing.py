@@ -110,8 +110,6 @@ def generate_infinite_wing(case_name, alpha, **kwargs):
         settings['StaticCoupled']['correct_forces_method'] = 'PolarCorrection'
         settings['StaticCoupled']['correct_forces_settings'] = {'cd_from_cl': 'off',
                                                                 'correct_lift': 'on',
-                                                                'compute_actual_aoa': kwargs.get('actual_aoa', 'on'),
-                                                                'compute_uind': kwargs.get('compute_uind', 'on'),
                                                                 'moment_from_polar': 'on'}
 
     settings['AerogridPlot'] = {'folder': output_route,
