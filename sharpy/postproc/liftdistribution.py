@@ -80,16 +80,15 @@ class LiftDistribution(BaseSolver):
         cga = algebra.quat2rotation(struct_tstep.quat)
         if self.settings["coefficients"]:
             # TODO: add nondimensional spanwise column y/s
-            header += ",cl"
-            numb_col += 1
-            lift_distribution = np.concatenate((lift_distribution, np.zeros((N_nodes, 1))), axis=1)
+            header += ", y/s, cl"
+            numb_col += 2
+            lift_distribution = np.concatenate((lift_distribution, np.zeros((N_nodes, 2))), axis=1)
 
         for inode in range(N_nodes):
             if self.data.aero.aero_dict['aero_node'][inode]:
                 local_node = self.data.aero.struct2aero_mapping[inode][0]["i_n"]
                 ielem, inode_in_elem = self.data.structure.node_master_elem[inode]
                 i_surf = int(self.data.aero.surface_distribution[ielem])
-
                 # get c_gb                
                 cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem, :])
                 cgb = np.dot(cga, cab)
@@ -112,12 +111,15 @@ class LiftDistribution(BaseSolver):
                 lift_distribution[inode, 1] = struct_tstep.pos[inode, 1]  # y
                 lift_distribution[inode, 0] = struct_tstep.pos[inode, 0]  # x
                 if self.settings["coefficients"]:
-                    lift_distribution[inode, 4] = np.sign(lift_force) * np.linalg.norm(lift_force) \
-                                                  / (0.5 * self.settings['rho'] * np.linalg.norm(
-                        urel) ** 2 * span * chord)  # strip_area[i_surf][local_node])
+                    # Get non-dimensional spanwise coordinate y/s
+                    lift_distribution[inode, 4] = lift_distribution[inode, 1]/max(abs(aero_tstep.zeta[i_surf][1,0,:]))
+                    # Get lift coefficient
+                    lift_distribution[inode, 5] = np.sign(lift_force) * np.linalg.norm(lift_force) \
+                                                  / (0.5 * self.settings['rho'] \
+                                                     * np.linalg.norm(urel) ** 2 * span * chord)  # strip_area[i_surf][local_node])
                     # Check if shared nodes from different surfaces exist (e.g. two wings joining at symmetry plane)
                     # Leads to error since panel area just donates for half the panel size while lift forces is summed up
-                    lift_distribution[inode, 4] /= len(self.data.aero.struct2aero_mapping[inode])
+                    lift_distribution[inode, 5] /= len(self.data.aero.struct2aero_mapping[inode])
 
         # Export lift distribution data
         np.savetxt(os.path.join(self.folder, self.settings['text_file_name']), lift_distribution,
