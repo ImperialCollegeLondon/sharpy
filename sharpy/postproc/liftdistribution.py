@@ -33,7 +33,7 @@ class LiftDistribution(BaseSolver):
 
     settings_types['rho'] = 'float'
     settings_default['rho'] = 1.225
-    settings_description['rho'] = 'Reference freestream density'
+    settings_description['rho'] = 'Reference freestream density [kg/m³]'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
@@ -92,20 +92,18 @@ class LiftDistribution(BaseSolver):
                 # get c_gb                
                 cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem, :])
                 cgb = np.dot(cga, cab)
-
+                # Get c_bs
                 urel, dir_urel = aeroutils.magnitude_and_direction_of_relative_velocity(struct_tstep.pos[inode, :],
                                                                                         struct_tstep.pos_dot[inode, :],
                                                                                         struct_tstep.for_vel[:],
                                                                                         cga,
                                                                                         aero_tstep.u_ext[i_surf][:, :,
                                                                                         local_node])
-
-                # Get the chord direction
                 dir_span, span, dir_chord, chord = aeroutils.span_chord(local_node, aero_tstep.zeta[i_surf])
                 # Stability axes - projects forces in B onto S
                 c_bs = aeroutils.local_stability_axes(cgb.T.dot(dir_urel), cgb.T.dot(dir_chord))
                 lift_force = c_bs.T.dot(forces[inode, :3])[2]
-
+                # Store data in export matrix
                 lift_distribution[inode, 3] = lift_force
                 lift_distribution[inode, 2] = struct_tstep.pos[inode, 2]  # z
                 lift_distribution[inode, 1] = struct_tstep.pos[inode, 1]  # y
