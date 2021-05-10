@@ -54,21 +54,19 @@ class Derivatives:
 
         """
         cls = DerivativeSet
-        if cls.quat is None:
-            cls.quat = quat
-            cls.cga = algebra.quat2rotation(cls.quat)
-            cls.v0 = v0
-            cls.coefficients = self.coefficients
+        cls.quat = quat
+        cls.cga = algebra.quat2rotation(cls.quat)
+        cls.v0 = v0
+        cls.coefficients = self.coefficients
 
-            if phi is not None:
-                cls.modal = True
-                cls.phi = phi[-9:-3, :6]
-                cls.inv_phi_forces = np.linalg.inv(phi[-9:-3, :6].T)
-                cls.inv_phi_vel = np.linalg.inv(phi[-9:-3, :6])
-            else:
-                cls.modal = False
+        if phi is not None:
+            cls.modal = True
+            cls.phi = phi[-9:-3, :6]
+            cls.inv_phi_forces = np.linalg.inv(phi[-9:-3, :6].T)
+            cls.inv_phi_vel = np.linalg.inv(phi[-9:-3, :6])
+        else:
+            cls.modal = False
         cls.steady_forces = steady_forces
-
 
         H0 = state_space.freqresp(np.array([1e-5]))[:, :, 0]
         # A, B, C, D = state_space.get_mats()
