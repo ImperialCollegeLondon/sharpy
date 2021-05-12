@@ -6,17 +6,20 @@ import sharpy.utils.cout_utils as cout
 class DefaultValueBaseException(Exception):
     def __init__(self, variable, value, message=''):
         super().__init__(message)
+        
+    def output_message(self, message, color_id = 3):
+        if cout.cout_wrap is None:
+            print(message)
+        else:
+            cout.cout_wrap.print_separator(3)
+            cout.cout_wrap(message, color_id)
+            cout.cout_wrap.print_separator(3)
 
 
 class NoDefaultValueException(DefaultValueBaseException):
     def __init__(self, variable, value=None, message=''):
-        super().__init__(message, value)
-        if cout.cout_wrap is None:
-            print("The variable " + variable + " has no default value, please indicate one")
-        else:
-            cout.cout_wrap.print_separator(3)
-            cout.cout_wrap("The variable " + variable + " has no default value, please indicate one", 3)
-            cout.cout_wrap.print_separator(3)
+        super().__init__(message, value)        
+        self.output_message("The variable " + variable + " has no default value, please indicate one") 
 
 
 class NotValidInputFile(Exception):
@@ -66,12 +69,7 @@ class NotValidSetting(DefaultValueBaseException):
     def __init__(self, setting, variable, options, value=None, message=''):
         message = 'The setting %s with entry %s is not one of the valid options: %s' % (setting, variable, options)
         super().__init__(variable, value, message=message)
-        if cout.cout_wrap is None:
-            print(message)
-        else:
-            cout.cout_wrap.print_separator(3)
-            cout.cout_wrap(message, 4)
-            cout.cout_wrap.print_separator(3)
+        self.output_message(message, color_id = 4)
 
 
 class SolverNotFound(Exception):
@@ -88,9 +86,4 @@ class NotRecognisedSetting(DefaultValueBaseException):
     def __init__(self, setting, value=None, message=''):
         message = 'Unrecognised setting {:s}. Please check input file and/or documentation'.format(setting)
         super().__init__(variable=None, value=None, message=message)
-        if cout.cout_wrap is None:
-            print(message)
-        else:
-            cout.cout_wrap.print_separator(3)
-            cout.cout_wrap(message, 4)
-            cout.cout_wrap.print_separator(3)
+        self.output_message(message, color_id = 4)
