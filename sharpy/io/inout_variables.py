@@ -21,16 +21,19 @@ class Variable:
         self.node = None
         self.panel = None
         self.cs_index = None
+        self.var_type = kwargs.get('var_type', None)
 
-        var_type = kwargs.get('var_type', None)
-        if var_type == 'node':
+        if self.var_type == 'node':
             self.node = position
-        elif var_type == 'panel':
+        elif self.var_type == 'panel':
             self.panel = position
-        elif var_type == 'control_surface':
+        elif self.var_type == 'control_surface':
             self.cs_index = position
         elif self.name == 'dt' or self.name == 'nt':
             pass
+        elif self.var_type == 'elem':
+            self.node = position  # element index
+            assert type(self.index) is list, '2 indices required for element variables'
         else:
             raise Exception('Unknown variable type')
 
@@ -56,16 +59,28 @@ class Variable:
         Returns:
             float: value of the variable
         """
-        if self.node is not None:
+        if self.node is not None and self.var_type != 'elem':
             # structural variables for now
             variable = getattr(data.structure.timestep_info[timestep_index], self.name)
             try:
                 value = variable[self.node, self.index]
             except IndexError:
-                logger.error('Node {} and/or Index {} are out of index of variable {}, '
-                             'which is of size ({})'.format(self.node, self.index, self.dref_name,
-                                                            variable.shape))
-                raise IndexError
+                msg = 'Node {} and/or Index {} are out of index of variable {}, ' \
+                      'which is of size ({})'.format(self.node, self.index, self.dref_name,
+                                                     variable.shape)
+                logger.error(msg)
+                raise IndexError(msg)
+        elif self.var_type == 'elem':
+            # self.node is the element index in this case
+            variable = getattr(data.structure.timestep_info[timestep_index], self.name)
+            try:
+                value = variable[self.node, self.index[0], self.index[1]]
+            except IndexError:
+                msg = 'Element {} and/or Index {} are out of index of variable {}, ' \
+                      'which is of size ({})'.format(self.node, self.index, self.dref_name,
+                                                     variable.shape)
+                logger.error(msg)
+                raise IndexError(msg)
         elif self.name == 'dt':
             value = data.settings['DynamicCoupled']['dt'].value
         elif self.name == 'nt':
@@ -155,7 +170,15 @@ class Variable:
             raise Exception('Unknown variable')
 
         if self.index is not None:
-            dref_name += divider + 'index{}'.format(self.index)
+            if type(self.index) is not list:
+                dref_name += divider + 'index{}'.format(self.index)
+            else:
+                dref_name += divider + 'index'
+                for ith, idx in enumerate(self.index):
+                    if ith != 0:
+                        dref_name += '_{:g}'.format(idx)
+                    else:
+                        dref_name += '{:g}'.format(idx)
 
         self.dref_name = dref_name
 
