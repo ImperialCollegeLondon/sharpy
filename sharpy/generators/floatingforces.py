@@ -444,6 +444,10 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_default['water_density'] = 1025 # kg/m3
     settings_description['water_density'] = 'Water density'
 
+    settings_types['gravity_on'] = 'bool'
+    settings_default['gravity_on'] = True
+    settings_description['gravity_on'] = 'Flag to include gravitational forces'
+
     settings_types['gravity'] = 'float'
     settings_default['gravity'] = 9.81
     settings_description['gravity'] = 'Gravity'
@@ -590,15 +594,16 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.hf_prev = [None]*self.n_mooring_lines
         self.vf_prev = [None]*self.n_mooring_lines
 
-        theta = 2.*np.pi/self.n_mooring_lines
-        R = algebra.rotation3d_x(theta)
-        self.anchor_pos[0, 0] = -self.floating_data['mooring']['anchor_depth']
-        self.anchor_pos[0, 2] = self.floating_data['mooring']['anchor_radius']
-        self.fairlead_pos_A[0, 0] = -self.floating_data['mooring']['fairlead_depth']
-        self.fairlead_pos_A[0, 2] = self.floating_data['mooring']['fairlead_radius']
-        for imoor in range(1, self.n_mooring_lines):
-            self.anchor_pos[imoor, :] = np.dot(R, self.anchor_pos[imoor - 1, :])
-            self.fairlead_pos_A[imoor, :] = np.dot(R, self.fairlead_pos_A[imoor - 1, :])
+        if self.n_mooring_lines > 0:
+            theta = 2.*np.pi/self.n_mooring_lines
+            R = algebra.rotation3d_x(theta)
+            self.anchor_pos[0, 0] = -self.floating_data['mooring']['anchor_depth']
+            self.anchor_pos[0, 2] = self.floating_data['mooring']['anchor_radius']
+            self.fairlead_pos_A[0, 0] = -self.floating_data['mooring']['fairlead_depth']
+            self.fairlead_pos_A[0, 2] = self.floating_data['mooring']['fairlead_radius']
+            for imoor in range(1, self.n_mooring_lines):
+                self.anchor_pos[imoor, :] = np.dot(R, self.anchor_pos[imoor - 1, :])
+                self.fairlead_pos_A[imoor, :] = np.dot(R, self.fairlead_pos_A[imoor - 1, :])
 
         # Hydrostatics
         self.buoyancy_node = self.floating_data['hydrostatics']['node']
@@ -636,8 +641,8 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.added_mass_in_mass_matrix = self.settings['added_mass_in_mass_matrix']
         if self.added_mass_in_mass_matrix:
             if data.structure.lumped_mass_mat is None:
-                data_structure.lumped_mass_mat_nodes = np.array([self.buoyancy_node])
-                data_structure.lumped_mass_mat = np.array([self.hd_added_mass_const])
+                data.structure.lumped_mass_mat_nodes = np.array([self.buoyancy_node])
+                data.structure.lumped_mass_mat = np.array([self.hd_added_mass_const])
             else:
                 data.structure.lumped_mass_mat_nodes = np.concatenate((data.structure.lumped_mass_mat_nodes, np.array([self.buoyancy_node])), axis=0)
                 data.structure.lumped_mass_mat = np.concatenate((data.structure.lumped_mass_mat, np.array([self.hd_added_mass_const])), axis=0)
@@ -861,7 +866,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         if ((self.settings['method_matrices_freq'] == 'constant') or
              (data.ts < self.settings['steps_constant_matrices'])):
             hd_f_qdot_g -= np.dot(self.hd_damping_const, self.qdot[data.ts, :])
-            hd_f_qdotdot_g = np.zeros((6))
+            hd_f_qdotdot_g = -np.dot(self.hd_added_mass_const, self.qdotdot[data.ts, :])
 
         elif self.settings['method_matrices_freq'] == 'rational_function':
             # Damping
@@ -881,7 +886,7 @@ class FloatingForces(generator_interface.BaseGenerator):
             cout.cout_wrap(("ERROR: Unknown method_matrices_freq %s" % self.settings['method_matrices_freq']), 4)
 
         # Correct gravity forces if needed
-        if self.added_mass_in_mass_matrix:
+        if self.added_mass_in_mass_matrix and self.settings['gravity_on']:
             # Correct unreal gravity forces from added mass
             gravity_b = np.zeros((6,),)
             gravity_b[0:3] = np.dot(cbg, -self.settings['gravity_dir'])*self.settings['gravity']
