@@ -129,7 +129,7 @@ class Variable:
         Set the variable value in the time step
 
         Args:
-            data:
+            data (sharpy.presharpy.PreSharpy): Simulation data object
 
         """
         if self.node is not None: # structural variable then
@@ -173,12 +173,9 @@ class Variable:
             if type(self.index) is not list:
                 dref_name += divider + 'index{}'.format(self.index)
             else:
-                dref_name += divider + 'index'
-                for ith, idx in enumerate(self.index):
-                    if ith != 0:
-                        dref_name += '_{:g}'.format(idx)
-                    else:
-                        dref_name += '{:g}'.format(idx)
+                dref_name += divider + 'index{:g}'.format(self.index[0])
+                for idx in range(1, len(self.index)):
+                    dref_name += '_{:g}'.format(self.index[idx])
 
         self.dref_name = dref_name
 

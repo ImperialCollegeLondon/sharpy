@@ -33,7 +33,7 @@ class NetworkLoader:
           inout: 'in'  # either `in`, `out` or `inout`
           position: 0  # control surface index
         - name: 'pos'  # variable name
-          var_type: 'node'  # type of variable. In this case a node variable. Others: `panel` or `control_surface`
+          var_type: 'node'  # type of variable. In this case a node variable. Others: `panel`, `control_surface` or 'elem'
           inout: 'out'
           position: 5  # node number
           index: 2  # vector index, in this case a 3d vector where the desired index is number 2
@@ -41,6 +41,11 @@ class NetworkLoader:
           inout: 'out'
           position: [0, 1, 2] # [i_surf, i_chordwise, i_spanwise]
           var_type: 'panel'
+        - name: 'psi'  # element variable like the CRV
+          inout: 'out'
+          var_type: 'elem'
+          position: 3  # element id
+          index: [0, 2]  # 2-list containing [index_local_node, vector_index]
         ...
 
     All variables in the aero and structural timestep info classes :class:`~sharpy.utils.datastructures` are supported,
