@@ -881,6 +881,14 @@ class FloatingForces(generator_interface.BaseGenerator):
             self.x0_K[data.ts] = xout[:, 1]
             hd_f_qdot_g -= yout[:, 1]
             hd_f_qdotdot_g = np.zeros((6))
+            #(T, yout, xout) = forced_response(self.hd_K,
+            #                                  T=[0, self.settings['dt']],
+            #                                  U=self.qdotdot[data.ts-1:data.ts+1, :].T,
+            #                                  X0=self.x0_K[data.ts-1])
+            #                                  # transpose=True)
+            #self.x0_K[data.ts] = xout[:, 1]
+            #hd_f_qdot_g -= np.zeros((6))
+            #hd_f_qdotdot_g = -yout[:, 1]
 
         else:
             cout.cout_wrap(("ERROR: Unknown method_matrices_freq %s" % self.settings['method_matrices_freq']), 4)
