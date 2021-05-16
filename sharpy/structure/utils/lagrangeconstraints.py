@@ -459,7 +459,7 @@ def equal_rot_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, 
     LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += scalingFactor*ag.der_TanT_by_xv(psi, Lambda_dot[ieq:ieq+num_LM_eq_specific])
     if MB_beam[node_body].FoR_movement == 'free':
         LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] += scalingFactor*ag.der_Ccrv_by_v(psi, Lambda_dot[ieq:ieq+num_LM_eq_specific])
-    
+
     LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] -= scalingFactor*ag.der_Ccrv_by_v(psi,
                                                                                        ag.multiply_matrices(node_cga, FoR_cga.T, Lambda_dot[ieq:ieq+num_LM_eq_specific]))
 
@@ -1082,7 +1082,7 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         return
 
     def dynamicpost(self, lc_list, MB_beam, MB_tstep):
-        
+
         ielem, inode_in_elem = MB_beam[self.node_body].node_master_elem[self.node_number]
         node_cga = MB_tstep[self.node_body].cga()
         cab = ag.crv2rotation(MB_tstep[self.node_body].psi[ielem, inode_in_elem, :])
@@ -1651,6 +1651,85 @@ class constant_vel_FoR(BaseLagrangeConstraint):
 
     def dynamicpost(self, lc_list, MB_beam, MB_tstep):
         return
+
+
+@lagrangeconstraint
+class zero_lin_vel_sine_rot_vel_FoR(BaseLagrangeConstraint):
+    __doc__ = """
+    zero_lin_vel_sine_rot_vel_FoR
+
+    Zero linear velocity and sinusoidal rotation velocity FoR
+
+    See ``LagrangeConstraints`` for the description of variables
+
+    Attributes:
+        FoR_body (int): body number of the "FoR"
+        vel_amp (float): Rotation velocity amplitude
+        omega (float): Frequency of the sinusoidally-varying rotation velocity
+        xyz (string): Axis with the sine velocity
+    """
+    _lc_id = 'zero_lin_vel_sine_rot_vel_FoR'
+
+    def __init__(self):
+        self.required_parameters = ['FoR_body', 'vel_amp', 'omega', 'xyz']
+        self._n_eq = 6
+
+    def get_n_eq(self):
+        return self._n_eq
+
+    def initialise(self, MBdict_entry, ieq, print_info=True):
+
+        self.FoR_body = MBdict_entry['FoR_body']
+        self.vel_amp = MBdict_entry['vel_amp']
+        self.omega = MBdict_entry['omega']
+        if MBdict_entry['xyz'] == 'x':
+            self.xyz_index = 0
+        elif MBdict_entry['xyz'] == 'y':
+            self.xyz_index = 1
+        elif MBdict_entry['xyz'] == 'z':
+            self.xyz_index = 2
+        else:
+            raise NotImplementedError("FoR rotation velocity shouldd be parallel to x, y or z")
+        self._ieq = ieq
+        self.scalingFactor = set_value_or_default(MBdict_entry, "scalingFactor", 1.)
+        self.penaltyFactor = set_value_or_default(MBdict_entry, "penaltyFactor", 0.)
+
+        return self._ieq + self._n_eq
+
+    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot):
+        return
+
+    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot):
+        num_LM_eq_specific = self._n_eq
+        Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
+        B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order='F')
+
+        # Define the position of the first degree of freedom associated to the FoR
+        FoR_dof = define_FoR_dof(MB_beam, self.FoR_body)
+        ieq = self._ieq
+
+        vel = np.zeros((6))
+        vel[3 + self.xyz_index] = vel_amp*np.sin(omega*ts*dt)
+
+        Bnh[:num_LM_eq_specific, FoR_dof:FoR_dof+6] = np.eye(6)
+
+        LM_C[sys_size + ieq:sys_size + ieq + num_LM_eq_specific, :sys_size] += self.scalingFactor * Bnh
+        LM_C[:sys_size, sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += self.scalingFactor * np.transpose(Bnh)
+
+        LM_Q[:sys_size] += self.scalingFactor * np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq + num_LM_eq_specific])
+        LM_Q[sys_size + ieq:sys_size + ieq + num_LM_eq_specific] += self.scalingFactor*(MB_tstep[self.FoR_body].for_vel - vel)
+
+        ieq += 6
+        return
+
+    def staticpost(self, lc_list, MB_beam, MB_tstep):
+        return
+
+    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
+        return
+
 
 @lagrangeconstraint
 class lin_vel_node_wrtA(BaseLagrangeConstraint):
