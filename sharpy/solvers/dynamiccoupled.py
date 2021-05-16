@@ -616,8 +616,8 @@ class DynamicCoupled(BaseSolver):
                 if self.convergence(k,
                                     structural_kstep,
                                     previous_kstep,
-                                    self.settings['structural_solver'].lower(),
-                                    self.settings['aero_solver'].lower(),
+                                    self.structural_solver,
+                                    self.aero_solver,
                                     self.with_runtime_generators):
                     # move the aerodynamic surface according to the structural one
                     self.aero_solver.update_custom_grid(
@@ -704,7 +704,7 @@ class DynamicCoupled(BaseSolver):
             return False
 
         # Check the special case of no aero and no runtime generators
-        if aero_solver.lower() == "noaero" and not with_runtime_generators:
+        if aero_solver.solver_id.lower() == "noaero" and not with_runtime_generators:
             return True
 
         # relative residuals
@@ -731,8 +731,13 @@ class DynamicCoupled(BaseSolver):
                 return False
 
         # convergence
+        rigid_solver = False
+        if "rigid" in struct_solver.solver_id.lower():
+            rigid_solver = True
+        elif "NonLinearDynamicMultibody" == struct_solver.solver_id.lower() and struct_solver.settings['rigid_bodies']:
+            rigid_solver = True
         if k > self.settings['minimum_steps'] - 1:
-            if self.res < self.settings['fsi_tolerance'] or "rigid" in struct_solver.lower():
+            if self.res < self.settings['fsi_tolerance'] or rigid_solver:
                 if self.res_dqdt < self.settings['fsi_tolerance']:
                     if res_forces < self.settings['fsi_tolerance']:
                         return True
