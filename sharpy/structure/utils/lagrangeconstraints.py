@@ -1711,7 +1711,7 @@ class zero_lin_vel_sine_rot_vel_FoR(BaseLagrangeConstraint):
         ieq = self._ieq
 
         vel = np.zeros((6))
-        vel[3 + self.xyz_index] = vel_amp*np.sin(omega*ts*dt)
+        vel[3 + self.xyz_index] = self.vel_amp*np.sin(self.omega*ts*dt)
 
         Bnh[:num_LM_eq_specific, FoR_dof:FoR_dof+6] = np.eye(6)
 
