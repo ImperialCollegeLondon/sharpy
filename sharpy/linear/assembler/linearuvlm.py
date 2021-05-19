@@ -197,9 +197,15 @@ class LinearUVLM(ss_interface.BaseElement):
 
         for_vel = data.linear.tsstruct0.for_vel
         cga = data.linear.tsstruct0.cga()
+
+        # add linuvlm.Dynamic() specific settings only as unrecognised settings raise an error
+        dynamic_settings = {}
+        for k in self.settings.keys():
+            if k in linuvlm.settings_types_dynamic.keys():
+                dynamic_settings[k] = self.settings[k]
         uvlm = linuvlm.Dynamic(data.linear.tsaero0,
                                dt=None,
-                               dynamic_settings=self.settings,
+                               dynamic_settings=dynamic_settings,
                                for_vel=np.hstack((cga.dot(for_vel[:3]), cga.dot(for_vel[3:]))))
 
         self.tsaero0 = data.linear.tsaero0

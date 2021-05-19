@@ -43,6 +43,7 @@ class TurbVelocityField(generator_interface.BaseGenerator):
 
     """
     generator_id = 'TurbVelocityField'
+    generator_classification = 'velocity-field'
 
     settings_types = dict()
     settings_default = dict()

@@ -37,20 +37,32 @@ time_steps = 2 # For the test cases
 
 mstar = int(revs_in_wake*2.*np.pi/dphi)
 
-rotor = template_wt.rotor_from_excel_type02(
-                                  chord_panels,
-                                  rotation_velocity,
-                                  pitch_deg,
-                                  excel_file_name = route + '../../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v02.xlsx',
-                                  excel_sheet_parameters = 'parameters',
-                                  excel_sheet_structural_blade = 'structural_blade',
-                                  excel_sheet_discretization_blade = 'discretization_blade',
-                                  excel_sheet_aero_blade = 'aero_blade',
-                                  excel_sheet_airfoil_info = 'airfoil_info',
-                                  excel_sheet_airfoil_coord = 'airfoil_coord',
-                                  m_distribution = 'uniform',
-                                  n_points_camber = 100,
-                                  tol_remove_points = 1e-8)
+op_params = {'rotation_velocity': rotation_velocity,
+             'pitch_deg': pitch_deg,
+             'wsp': WSP,
+             'dt': dt}
+
+geom_params = {'chord_panels':chord_panels,
+            'tol_remove_points': 1e-8,
+            'n_points_camber': 100,
+            'm_distribution': 'uniform'}
+
+excel_description = {'excel_file_name': route + '../../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v02.xlsx',
+                    'excel_sheet_parameters': 'parameters',
+                    'excel_sheet_structural_blade': 'structural_blade',
+                    'excel_sheet_discretization_blade': 'discretization_blade',
+                    'excel_sheet_aero_blade': 'aero_blade',
+                    'excel_sheet_airfoil_info': 'airfoil_info',
+                    'excel_sheet_airfoil_chord': 'airfoil_coord'}
+
+options = {'camber_effect_on_twist': False,
+           'user_defined_m_distribution_type': None,
+           'include_polars': False}
+
+rotor = template_wt.rotor_from_excel_type03(op_params,
+                                            geom_params,
+                                            excel_description,
+                                            options)
 
 ######################################################################
 ######################  DEFINE SIMULATION  ###########################
@@ -60,11 +72,12 @@ SimInfo.set_default_values()
 
 SimInfo.solvers['SHARPy']['flow'] = ['BeamLoader',
                         'AerogridLoader',
-                        'StaticCoupledRBM',
+                        'StaticCoupled',
                         'BeamPlot',
                         'AerogridPlot',
                         'DynamicCoupled',
                         'SaveData']
+
 SimInfo.solvers['SHARPy']['case'] = case
 SimInfo.solvers['SHARPy']['route'] = route
 SimInfo.solvers['SHARPy']['write_log'] = True
@@ -80,39 +93,44 @@ SimInfo.solvers['BeamLoader']['unsteady'] = 'on'
 SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
 SimInfo.solvers['AerogridLoader']['mstar'] = mstar
 SimInfo.solvers['AerogridLoader']['freestream_dir'] = np.array([0.,0.,0.])
+SimInfo.solvers['AerogridLoader']['wake_shape_generator'] = 'HelicoidalWake'
+SimInfo.solvers['AerogridLoader']['wake_shape_generator_input'] = {'u_inf': WSP,
+                                                                   'u_inf_direction': SimInfo.solvers['SteadyVelocityField']['u_inf_direction'],
+                                                                   'rotation_velocity': rotation_velocity*np.array([0., 0., 1.]),
+                                                                   'dt': dt,
+                                                                   'dphi1': dphi,
+                                                                   'ndphi1': mstar,
+                                                                   'r': 1.,
+                                                                   'dphimax': 10*deg2rad}
 
 SimInfo.solvers['NonLinearStatic']['max_iterations'] = 200
 SimInfo.solvers['NonLinearStatic']['num_load_steps'] = 1
 SimInfo.solvers['NonLinearStatic']['min_delta'] = 1e-5
 
-SimInfo.solvers['StaticCoupledRBM']['structural_solver'] = 'RigidDynamicPrescribedStep'
-SimInfo.solvers['StaticCoupledRBM']['structural_solver_settings'] = SimInfo.solvers['RigidDynamicPrescribedStep']
-SimInfo.solvers['StaticCoupledRBM']['structural_solver'] = 'NonLinearDynamicPrescribedStep'
-SimInfo.solvers['StaticCoupledRBM']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicPrescribedStep']
-SimInfo.solvers['StaticCoupledRBM']['structural_solver'] = 'NonLinearStatic'
-SimInfo.solvers['StaticCoupledRBM']['structural_solver_settings'] = SimInfo.solvers['NonLinearStatic']
-SimInfo.solvers['StaticCoupledRBM']['aero_solver'] = 'SHWUvlm'
-SimInfo.solvers['StaticCoupledRBM']['aero_solver_settings'] = SimInfo.solvers['SHWUvlm']
+SimInfo.solvers['StaticUvlm']['horseshoe'] = False
+SimInfo.solvers['StaticUvlm']['num_cores'] = 8
+SimInfo.solvers['StaticUvlm']['n_rollup'] = 0
+SimInfo.solvers['StaticUvlm']['rollup_dt'] = dt
+SimInfo.solvers['StaticUvlm']['rollup_aic_refresh'] = 1
+SimInfo.solvers['StaticUvlm']['rollup_tolerance'] = 1e-8
+SimInfo.solvers['StaticUvlm']['velocity_field_generator'] = 'SteadyVelocityField'
+SimInfo.solvers['StaticUvlm']['velocity_field_input'] = SimInfo.solvers['SteadyVelocityField']
 
-SimInfo.solvers['StaticCoupledRBM']['tolerance'] = 1e-6
-SimInfo.solvers['StaticCoupledRBM']['n_load_steps'] = 0
-SimInfo.solvers['StaticCoupledRBM']['relaxation_factor'] = 0.
+SimInfo.solvers['StaticCoupled']['structural_solver'] = 'NonLinearStatic'
+SimInfo.solvers['StaticCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearStatic']
+SimInfo.solvers['StaticCoupled']['aero_solver'] = 'StaticUvlm'
+SimInfo.solvers['StaticCoupled']['aero_solver_settings'] = SimInfo.solvers['StaticUvlm']
 
-SimInfo.solvers['SHWUvlm']['convection_scheme'] = 2
-SimInfo.solvers['SHWUvlm']['num_cores'] = 15
-SimInfo.solvers['SHWUvlm']['rot_vel'] = rotation_velocity
-SimInfo.solvers['SHWUvlm']['rot_axis'] = np.array([0.,0.,1.])
-SimInfo.solvers['SHWUvlm']['rot_center'] = np.zeros((3),)
+SimInfo.solvers['StaticCoupled']['tolerance'] = 1e-6
+SimInfo.solvers['StaticCoupled']['n_load_steps'] = 0
+SimInfo.solvers['StaticCoupled']['relaxation_factor'] = 0.
 
-# SimInfo.solvers['StaticCoupledRBM']['newmark_damp'] = 0.1
 SimInfo.solvers['StepUvlm']['convection_scheme'] = 2
-SimInfo.solvers['StepUvlm']['num_cores'] = 15
+SimInfo.solvers['StepUvlm']['num_cores'] = 8
 
 SimInfo.solvers['WriteVariablesTime']['FoR_variables'] = ['total_forces',]
 SimInfo.solvers['WriteVariablesTime']['FoR_number'] = [0,]
 
-# SimInfo.solvers['DynamicCoupled']['structural_solver'] = 'NonLinearDynamicMultibody'
-# SimInfo.solvers['DynamicCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicMultibody']
 SimInfo.solvers['DynamicCoupled']['structural_solver'] = 'RigidDynamicPrescribedStep'
 SimInfo.solvers['DynamicCoupled']['structural_solver_settings'] = SimInfo.solvers['RigidDynamicPrescribedStep']
 SimInfo.solvers['DynamicCoupled']['aero_solver'] = 'StepUvlm'
