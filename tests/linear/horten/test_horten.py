@@ -186,13 +186,8 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
                               'initial_velocity': ws.u_inf * 1}
 
     step_uvlm_settings = {'print_info': 'on',
-                          'horseshoe': ws.horseshoe,
                           'num_cores': 4,
-                          'n_rollup': 1,
                           'convection_scheme': ws.wake_type,
-                          'rollup_dt': ws.dt,
-                          'rollup_aic_refresh': 1,
-                          'rollup_tolerance': 1e-4,
                           'vortex_radius': 1e-6,
                           'velocity_field_generator': 'SteadyVelocityField',
                           'velocity_field_input': {'u_inf': ws.u_inf * 0,
