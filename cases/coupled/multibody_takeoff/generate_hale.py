@@ -656,14 +656,21 @@ def generate_solver_file():
                               'orientation': algebra.euler2quat(np.array([roll,
                                                                           alpha,
                                                                           beta]))}
+
     settings['AerogridLoader'] = {'unsteady': 'on',
                                   'aligned_grid': 'on',
-                                  'mstar': int(20/tstep_factor),
+                                  'mstar': int(20 / tstep_factor),
                                   'freestream_dir': ['1', '0', '0'],
+                                  'wake_shape_generator': 'StraightWake',
+                                  'wake_shape_generator_input': {
+                                      'u_inf': u_inf,
+                                      'u_inf_direction': [1., 0., 0.],
+                                      'dt': dt,
+                                  },
                                   'control_surface_deflection': ['', ''],
-                                  'control_surface_deflection_generator':
-                                  {'0': {},
-                                   '1': {}}}
+                                  'control_surface_deflection_generator_settings':
+                                      {'0': {},
+                                       '1': {}}}
 
     settings['NonLinearStatic'] = {'print_info': 'off',
                                    'max_iterations': 150,
@@ -725,22 +732,17 @@ def generate_solver_file():
 
     relative_motion = 'off'
     settings['StepUvlm'] = {'print_info': 'off',
-                            'horseshoe': 'off',
                             'num_cores': num_cores,
-                            'n_rollup': 0,
                             'convection_scheme': 2,
-                            'rollup_dt': dt,
-                            'rollup_aic_refresh': 1,
-                            'rollup_tolerance': 1e-4,
                             'gamma_dot_filtering': 6,
                             'velocity_field_generator': 'GustVelocityField',
                             'velocity_field_input': {'u_inf': 0,
                                                      'u_inf_direction': [1., 0, 0],
                                                      'gust_shape': '1-cos',
-                                                     'gust_length': gust_length,
-                                                     'gust_intensity': gust_intensity*u_inf,
+                                                     'gust_parameters': {
+                                                         'gust_length': gust_length,
+                                                         'gust_intensity': gust_intensity * u_inf},
                                                      'offset': gust_offset,
-                                                     'span': span_main,
                                                      'relative_motion': relative_motion},
                             'rho': rho,
                             'n_time_steps': n_tstep,
@@ -773,8 +775,7 @@ def generate_solver_file():
     settings['BeamLoads'] = {'csv_output': 'off'}
 
     settings['BeamPlot'] = {'include_rbm': 'on',
-                            'include_applied_forces': 'on',
-                            'include_forward_motion': 'on'}
+                            'include_applied_forces': 'on'}
 
     settings['AerogridPlot'] = {'include_rbm': 'on',
                                 'include_forward_motion': 'off',

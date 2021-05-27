@@ -18,6 +18,7 @@ class StraightWake(generator_interface.BaseGenerator):
     direction ``u_inf_direction``
     """
     generator_id = 'StraightWake'
+    generator_classification = 'wake'
 
     settings_types = dict()
     settings_default = dict()

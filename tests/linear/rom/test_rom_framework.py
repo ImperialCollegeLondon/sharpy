@@ -73,7 +73,7 @@ class TestROMFramework(unittest.TestCase):
                  ],
             'case': ws.case_name, 'route': ws.route,
             'write_screen': 'off', 'write_log': 'on',
-            'log_folder': self.route_test_dir + '/output/' + ws.case_name + '/',
+            'log_folder': self.route_test_dir + '/output/',
             'log_file': ws.case_name + '.log'}
 
         ws.config['BeamLoader'] = {
@@ -183,11 +183,10 @@ class TestROMFramework(unittest.TestCase):
                                                               'density': ws.rho,
                                                               'remove_predictor': remove_predictor,
                                                               'use_sparse': use_sparse,
-                                                              'rigid_body_motion': 'off',
-                                                              'use_euler': 'off',
                                                               'remove_inputs': ['u_gust'],
                                                               },
-                                            'rigid_body_motion': False}}
+                                        }
+                                        }
 
         ws.config['LinDynamicSim'] = {'dt': ws.dt,
                                       'n_tsteps': ws.n_tstep,

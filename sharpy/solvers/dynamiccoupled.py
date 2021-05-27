@@ -742,7 +742,6 @@ class DynamicCoupled(BaseSolver):
                     if res_forces < self.settings['fsi_tolerance']:
                         return True
 
-        return False
 
     def map_forces(self, aero_kstep, structural_kstep, unsteady_forces_coeff=1.0):
         # set all forces to 0

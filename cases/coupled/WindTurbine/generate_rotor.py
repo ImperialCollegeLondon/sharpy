@@ -84,6 +84,7 @@ SimInfo.solvers['SHARPy']['flow'] = ['BeamLoader',
                         'AerogridPlot',
                         'DynamicCoupled',
                         'SaveData']
+
 SimInfo.solvers['SHARPy']['case'] = case
 SimInfo.solvers['SHARPy']['route'] = route
 SimInfo.solvers['SHARPy']['write_log'] = True
@@ -123,6 +124,15 @@ while angle < (revs_in_wake*2*np.pi):
 SimInfo.solvers['AerogridLoader']['unsteady'] = 'on'
 SimInfo.solvers['AerogridLoader']['mstar'] = mstar
 SimInfo.solvers['AerogridLoader']['freestream_dir'] = np.array([0.,0.,0.])
+SimInfo.solvers['AerogridLoader']['wake_shape_generator'] = 'HelicoidalWake'
+SimInfo.solvers['AerogridLoader']['wake_shape_generator_input'] = {'u_inf': WSP,
+                                                                   'u_inf_direction': SimInfo.solvers['SteadyVelocityField']['u_inf_direction'],
+                                                                   'rotation_velocity': rotation_velocity*np.array([0., 0., 1.]),
+                                                                   'dt': dt,
+                                                                   'dphi1': dphi,
+                                                                   'ndphi1': mstar,
+                                                                   'r': 1.,
+                                                                   'dphimax': 10*deg2rad}
 
 struct_static_solver = 'NonLinearStatic'
 

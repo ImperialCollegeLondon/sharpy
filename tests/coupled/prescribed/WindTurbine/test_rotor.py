@@ -133,8 +133,8 @@ class TestRotor(unittest.TestCase):
         files_to_delete = [case + '.aero.h5',
                            case + '.fem.h5',
                            case + '.sharpy',]
-        
+
         for f in files_to_delete:
             os.remove(folder +'/' + f)
-        
+
         shutil.rmtree(folder + '/output/')
