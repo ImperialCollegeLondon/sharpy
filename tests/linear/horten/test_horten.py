@@ -155,14 +155,12 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
                               'm_tolerance': 1e-2,
                               'save_info': 'on'}
 
-    settings['AerogridPlot'] = {'folder': output_folder,
-                                'include_rbm': 'off',
+    settings['AerogridPlot'] = {'include_rbm': 'off',
                                 'include_applied_forces': 'on',
                                 'minus_m_star': 0,
                                 'u_inf': ws.u_inf
                                 }
-    settings['AeroForcesCalculator'] = {'folder': output_folder,
-                                        'write_text_file': 'off',
+    settings['AeroForcesCalculator'] = {'write_text_file': 'off',
                                         'text_file_name': ws.case_name + '_aeroforces.csv',
                                         'screen_output': 'on',
                                         'unsteady': 'off',
@@ -171,8 +169,7 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
                                         'S_ref': 12.809,
                                         }
 
-    settings['BeamPlot'] = {'folder': output_folder,
-                            'include_rbm': 'on',
+    settings['BeamPlot'] = {'include_rbm': 'on',
                             'include_applied_forces': 'on',
                             'include_FoR': 'on'}
 
@@ -223,19 +220,15 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
                                   'dt': ws.dt,
                                   'include_unsteady_force_contribution': 'off',
                                   'postprocessors': ['BeamLoads', 'BeamPlot', 'AerogridPlot', 'WriteVariablesTime'],
-                                  'postprocessors_settings': {'BeamLoads': {'folder': output_folder,
-                                                                            'csv_output': 'off'},
-                                                              'BeamPlot': {'folder': output_folder,
-                                                                           'include_rbm': 'on',
+                                  'postprocessors_settings': {'BeamLoads': {'csv_output': 'off'},
+                                                              'BeamPlot': {'include_rbm': 'on',
                                                                            'include_applied_forces': 'on'},
                                                               'AerogridPlot': {
                                                                   'u_inf': ws.u_inf,
-                                                                  'folder': output_folder,
                                                                   'include_rbm': 'on',
                                                                   'include_applied_forces': 'on',
                                                                   'minus_m_star': 0},
                                                               'WriteVariablesTime': {
-                                                                  'folder': output_folder,
                                                                   'cleanup_old_solution': 'on',
                                                                   'delimiter': ',',
                                                                   'FoR_variables': ['total_forces',
@@ -296,8 +289,7 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
         'display_root_locus': 'off',
         'frequency_cutoff': 0,
         'export_eigenvalues': 'on',
-        'num_evals': 10000,
-        'folder': output_folder}
+        'num_evals': 10000}
 
     settings['FrequencyResponse'] = {'print_info': 'on',
                                      'frequency_bounds': [0.1, 100]}
@@ -311,12 +303,10 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
                                  'postprocessors': ['BeamPlot', 'AerogridPlot'],
                                  'postprocessors_settings': {'AerogridPlot': {
                                      'u_inf': ws.u_inf,
-                                     'folder': output_folder,
                                      'include_rbm': 'on',
                                      'include_applied_forces': 'on',
                                      'minus_m_star': 0},
-                                     'BeamPlot': {'folder': output_folder,
-                                                  'include_rbm': 'on',
+                                     'BeamPlot': {'include_rbm': 'on',
                                                   'include_applied_forces': 'on'}}}
 
     settings['StabilityDerivatives'] = {'u_inf': ws.u_inf,
@@ -324,16 +314,14 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
                                         'b_ref': ws.span,
                                         'c_ref': 0.719}
 
-    settings['SaveData'] = {'folder': './output',
-                            'save_aero': 'off',
+    settings['SaveData'] = {'save_aero': 'off',
                             'save_struct': 'off',
                             'save_linear': 'on',
                             'save_linear_uvlm': 'on'}
 
-    settings['PickleData'] = {'folder': output_folder + ws.case_name + '/'}
+    settings['PickleData'] = {}
 
-    settings['SaveParametricCase'] = {'folder': output_folder + ws.case_name + '/',
-                                      'parameters': {'r': rom_settings['r']}}
+    settings['SaveParametricCase'] = {'parameters': {'r': rom_settings['r']}}
 
     config = configobj.ConfigObj()
     file_name = ws.case_route + '/' + ws.case_name + '.solver.txt'
