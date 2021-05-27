@@ -118,9 +118,13 @@ class PreSharpy(object):
         self.settings['SHARPy']['flow'] = self.settings['SHARPy']['flow']
         settings.to_custom_types(self.settings['SHARPy'], self.settings_types, self.settings_default)
 
+        self.output_folder = self.settings['SHARPy']['log_folder'] + '/' + self.settings['SHARPy']['case'] + '/'
+        if not os.path.isdir(self.output_folder):
+            os.makedirs(self.output_folder)
+            
         cout.cout_wrap.initialise(self.settings['SHARPy']['write_screen'],
                                   self.settings['SHARPy']['write_log'],
-                                  self.settings['SHARPy']['log_folder'],
+                                  self.output_folder,
                                   self.settings['SHARPy']['log_file'])
 
         self.case_route = self.settings['SHARPy']['route'] + '/'
