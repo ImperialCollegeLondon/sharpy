@@ -242,7 +242,7 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
                          'rigid_body_modes': True,
                          'write_modes_vtk': 'on',
                          'print_matrices': 'on',
-                         'write_data': 'on',
+                         'save_data': 'on',
                          'continuous_eigenvalues': 'off',
                          'dt': ws.dt,
                          'plot_eigenvalues': False,

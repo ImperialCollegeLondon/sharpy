@@ -54,9 +54,9 @@ class Modal(BaseSolver):
     settings_default['print_matrices'] = False
     settings_description['print_matrices']  = 'Write M, C and K matrices to file'
 
-    settings_types['write_dat'] = 'bool'  # write modes shapes/freq./damp. to dat file
-    settings_default['write_dat'] = True
-    settings_description['write_dat'] = 'Write mode shapes, frequencies and damping to file'
+    settings_types['save_data'] = 'bool'  # write modes shapes/freq./damp. to dat file
+    settings_default['save_data'] = True
+    settings_description['save_data'] = 'Write mode shapes, frequencies and damping to file'
 
     settings_types['continuous_eigenvalues'] = 'bool'
     settings_default['continuous_eigenvalues'] = False
@@ -389,7 +389,7 @@ class Modal(BaseSolver):
                 warnings.warn('Unable to import matplotlib, skipping plot')
 
         # Write dat files
-        if self.settings['write_dat']:
+        if self.settings['save_data']:
             if type(eigenvalues) == complex:
                 np.savetxt(self.folder + "eigenvalues.dat", eigenvalues.view(float).reshape(-1, 2), fmt='%.12f',
                            delimiter='\t', newline='\n')

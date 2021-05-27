@@ -601,7 +601,7 @@ class FlyingWing():
                            'rigid_body_modes': 'off',
                            'print_matrices': 'off',
                            'keep_linear_matrices': 'on',
-                           'write_dat': 'off',
+                           'save_data': 'off',
                            'continuous_eigenvalues': 'off',
                            'dt': 0,
                            'plot_eigenvalues': False,

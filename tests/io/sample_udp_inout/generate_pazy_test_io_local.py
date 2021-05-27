@@ -172,7 +172,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
                           'rigid_body_modes': 'off',
                           'print_matrices': 'on',
                           'keep_linear_matrices': 'on',
-                          'write_dat': 'off',
+                          'save_data': 'off',
                           'rigid_modes_cg': 'off',
                           'continuous_eigenvalues': 'off',
                           'dt': 0,

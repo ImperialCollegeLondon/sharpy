@@ -160,7 +160,7 @@ class TestLinearDerivatives(unittest.TestCase):
                               'rigid_body_modes': 'on',
                               'write_modes_vtk': 'on',
                               'print_matrices': 'off',
-                              'write_data': 'on',
+                              'save_data': 'on',
                               'rigid_modes_cg': 'off'}
 
         settings = {}

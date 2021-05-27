@@ -213,7 +213,7 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                          'rigid_body_modes': 'off',
                          'write_modes_vtk': 'on',
                          'print_matrices': 'on',
-                         'write_data': 'on',
+                         'save_data': 'on',
                          'continuous_eigenvalues': 'off',
                          'dt': ws.dt,
                          'plot_eigenvalues': False,

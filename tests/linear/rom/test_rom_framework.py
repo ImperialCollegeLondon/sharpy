@@ -150,7 +150,7 @@ class TestROMFramework(unittest.TestCase):
                               'rigid_body_modes': 'off',
                               'print_matrices': 'on',
                               'keep_linear_matrices': 'on',
-                              'write_dat': 'off',
+                              'save_data': 'off',
                               'rigid_modes_cg': 'off',
                               'continuous_eigenvalues': 'off',
                               'dt': 0,
