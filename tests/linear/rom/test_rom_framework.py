@@ -149,7 +149,6 @@ class TestROMFramework(unittest.TestCase):
         ws.config['Modal'] = {'NumLambda': 20,
                               'rigid_body_modes': 'off',
                               'print_matrices': 'on',
-                              'keep_linear_matrices': 'on',
                               'save_data': 'off',
                               'rigid_modes_cg': 'off',
                               'continuous_eigenvalues': 'off',

@@ -600,7 +600,6 @@ class FlyingWing():
         config['Modal'] = {'NumLambda': 20,
                            'rigid_body_modes': 'off',
                            'print_matrices': 'off',
-                           'keep_linear_matrices': 'on',
                            'save_data': 'off',
                            'continuous_eigenvalues': 'off',
                            'dt': 0,
