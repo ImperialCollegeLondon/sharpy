@@ -57,7 +57,7 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                                   'aligned_grid': 'on',
                                   'mstar': int(kwargs.get('wake_length', 10) * m),
                                   'control_surface_deflection': ['', ''],
-                                  'control_surface_deflection_generator':
+                                  'control_surface_deflection_generator_settings':
                                       {'0': {},
                                        '1': {}},
                                   'wake_shape_generator': 'StraightWake',
@@ -99,18 +99,15 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                                  'tolerance': kwargs.get('fsi_tolerance', 1e-5),
                                  'relaxation_factor': kwargs.get('relaxation_factor', 0.2)}
 
-    settings['BeamPlot'] = {'folder': output_route,
-                            'include_FoR': 'on'}
+    settings['BeamPlot'] = {'include_FoR': 'on'}
 
-    settings['AerogridPlot'] = {'folder': output_route,
-                                'include_rbm': 'off',
+    settings['AerogridPlot'] = {'include_rbm': 'off',
                                 'include_applied_forces': 'on',
                                 'minus_m_star': 0,
                                 'u_inf': u_inf
                                 }
 
-    settings['AeroForcesCalculator'] = {'folder': output_route,
-                                        'write_text_file': 'on',
+    settings['AeroForcesCalculator'] = {'write_text_file': 'on',
                                         'text_file_name': 'aeroforces.txt',
                                         'screen_output': 'on',
                                         'unsteady': 'off',
@@ -119,8 +116,7 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                                         'S_ref': 12.809,
                                         }
 
-    settings['BeamPlot'] = {'folder': output_route,
-                            'include_rbm': 'on',
+    settings['BeamPlot'] = {'include_rbm': 'on',
                             'include_applied_forces': 'on',
                             'include_FoR': 'on'}
 
@@ -187,19 +183,15 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                                   'include_unsteady_force_contribution': 'on',
                                   'steps_without_unsteady_force': 5,
                                   'postprocessors': ['BeamPlot', 'AerogridPlot', 'WriteVariablesTime'],
-                                  'postprocessors_settings': {'BeamLoads': {'folder': output_route,
-                                                                            'csv_output': 'off'},
-                                                              'BeamPlot': {'folder': output_route,
-                                                                           'include_rbm': 'on',
+                                  'postprocessors_settings': {'BeamLoads': {'csv_output': 'off'},
+                                                              'BeamPlot': {'include_rbm': 'on',
                                                                            'include_applied_forces': 'on'},
                                                               'AerogridPlot': {
                                                                   'u_inf': u_inf,
-                                                                  'folder': output_route,
                                                                   'include_rbm': 'on',
                                                                   'include_applied_forces': 'on',
                                                                   'minus_m_star': 0},
                                                               'WriteVariablesTime': {
-                                                                  'folder': output_route,
                                                                   'cleanup_old_solution': 'on',
                                                                   'delimiter': ',',
                                                                   'FoR_variables': ['total_forces',
@@ -217,8 +209,7 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                          'continuous_eigenvalues': 'off',
                          'dt': ws.dt,
                          'plot_eigenvalues': False,
-                         'rigid_modes_ppal_axes': 'on',
-                         'folder': output_route}
+                         'rigid_modes_ppal_axes': 'on'}
     # ROM settings
     rom_settings = dict()
     rom_settings['algorithm'] = 'mimo_rational_arnoldi'
@@ -273,8 +264,7 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
         'frequency_cutoff': 0,
         'export_eigenvalues': 'on',
         'num_evals': 1000,
-        'target_system': ['aeroelastic', 'aerodynamic', 'structural'],
-        'folder': output_route}
+        'target_system': ['aeroelastic', 'aerodynamic', 'structural']}
 
     settings['FrequencyResponse'] = {'target_system': ['aeroelastic', 'aerodynamic', 'structural'],
                                      'quick_plot': 'off',
@@ -284,17 +274,15 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                                      'num_freqs': 200,
                                      'print_info': 'on'}
 
-    settings['PickleData'] = {'folder': output_route}
+    settings['PickleData'] = {}
 
-    settings['LinDynamicSim'] = {'folder': output_route,
-                                 'n_tsteps': tsteps,
+    settings['LinDynamicSim'] = {'n_tsteps': tsteps,
                                  'dt': ws.dt,
                                  'write_dat': ['x', 'y', 'u'],
                                  'input_generators': kwargs.get('linear_input_generators', []),
                                  'postprocessors': ['AerogridPlot'],
                                  'postprocessors_settings':
-                                     {'AerogridPlot': {'folder': output_route,
-                                                       'include_rbm': 'on',
+                                     {'AerogridPlot': {'include_rbm': 'on',
                                                        'include_applied_forces': 'on',
                                                        'minus_m_star': 0}, }
                                  }
