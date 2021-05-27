@@ -45,10 +45,6 @@ class Modal(BaseSolver):
     settings_default['NumLambda'] = 20  # doubles if use_undamped_modes is False
     settings_description['NumLambda'] = 'Number of modes to retain'
 
-    settings_types['keep_linear_matrices'] = 'bool'  # attach linear M,C,K matrices to output dictionary
-    settings_default['keep_linear_matrices'] = True
-    settings_description['keep_linear_matrices'] = 'Save M, C and K matrices to output dictionary'
-
     # output options
     settings_types['write_modes_vtk'] = 'bool'  # write displacements mode shapes in vtk file
     settings_default['write_modes_vtk'] = True
@@ -452,10 +448,9 @@ class Modal(BaseSolver):
         if cg is not None:
             outdict['cg'] = cg
 
-        if self.settings['keep_linear_matrices']:
-            outdict['M'] = FullMglobal
-            outdict['C'] = FullCglobal
-            outdict['K'] = FullKglobal
+        outdict['M'] = FullMglobal
+        outdict['C'] = FullCglobal
+        outdict['K'] = FullKglobal
 
         if t_pa is not None:
             outdict['t_pa'] = t_pa
