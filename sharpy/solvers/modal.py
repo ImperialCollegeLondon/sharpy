@@ -91,6 +91,10 @@ class Modal(BaseSolver):
     settings_description['rigid_modes_ppal_axes'] = 'Modify the ridid body modes such that they are defined wrt ' \
                                                     'to the CG and aligned with the principal axes of inertia'
 
+    settings_types['rigid_modes_cg'] = 'bool'
+    settings_default['rigid_modes_cg'] = False
+    settings_description['rigid_modes_cg'] = 'Not implemente yet'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
