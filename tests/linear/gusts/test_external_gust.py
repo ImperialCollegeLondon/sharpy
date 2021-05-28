@@ -80,10 +80,6 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
     settings['StaticUvlm'] = {'print_info': 'on',
                               'horseshoe': kwargs.get('horseshoe', 'off'),
                               'num_cores': 4,
-                              'n_rollup': 0,
-                              'rollup_dt': ws.dt,
-                              'rollup_aic_refresh': 1,
-                              'rollup_tolerance': 1e-4,
                               'velocity_field_generator': 'SteadyVelocityField',
                               'velocity_field_input': {'u_inf': u_inf,
                                                        'u_inf_direction': [1., 0, 0]},
@@ -121,7 +117,6 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                             'include_FoR': 'on'}
 
     struct_solver_settings = {'print_info': 'off',
-                              'initial_velocity_direction': [-1., 0., 0.],
                               'max_iterations': 950,
                               'delta_curved': 1e-6,
                               'min_delta': tolerance,
@@ -130,7 +125,6 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                               'gravity': 9.81,
                               'num_steps': 1,
                               'dt': ws.dt}
-                              # 'initial_velocity': u_inf * 0}
 
     gust_vec = kwargs.get('nl_gust', None)
     if gust_vec is not None:
@@ -143,14 +137,9 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
         )))
 
     step_uvlm_settings = {'print_info': 'on',
-                          'horseshoe': 'off',
                           'num_cores': 4,
-                          'n_rollup': 1,
                           'convection_scheme': 0, #ws.wake_type,
-                          'rollup_dt': ws.dt,
                           'vortex_radius': 1e-7,
-                          'rollup_aic_refresh': 1,
-                          'rollup_tolerance': 1e-4,
                           'velocity_field_generator': 'GustVelocityField',
                           'velocity_field_input': {'u_inf': u_inf * 1,
                                                    'u_inf_direction': [1., 0., 0.],
@@ -165,9 +154,6 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                           'gamma_dot_filtering': 3}
 
     settings['DynamicCoupled'] = {'print_info': 'on',
-                                  # 'structural_substeps': 1,
-                                  # 'dynamic_relaxation': 'on',
-                                  # 'clean_up_previous_solution': 'on',
                                   'structural_solver': 'NonLinearDynamicPrescribedStep',
                                   'structural_solver_settings': struct_solver_settings,
                                   'aero_solver': 'StepUvlm',
@@ -218,6 +204,7 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
     rom_settings['single_side'] = 'observability'
 
     settings['LinearAssembler'] = {'linear_system': 'LinearAeroelastic',
+                                   'linearisation_tstep': -1,
                                    'linear_system_settings': {
                                        'beam_settings': {'modal_projection': 'off',
                                                          'inout_coords': 'modes',
@@ -233,28 +220,19 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                                                          'remove_dofs': [],
                                                          'remove_rigid_states': 'off'},
                                        'aero_settings': {'dt': ws.dt,
-                                                         # 'ScalingDict': {'length': hale.aero.chord_main / 2,
-                                                         #                  'speed': u_inf,
-                                                         #                  'density': rho},
                                                          'integr_order': 2,
                                                          'density': rho,
                                                          'remove_predictor': 'off',
                                                          'use_sparse': False,
-                                                         'rigid_body_motion': 'off',
-                                                         'use_euler': 'on',
                                                          'vortex_radius': 1e-7,
-                                                         # 'remove_inputs': ['u_gust'],
                                                          'convert_to_ct': 'off',
                                                          'gust_assembler': kwargs.get('gust_name', ''),
                                                          'gust_assembler_inputs': kwargs.get('gust_settings', {}),
-                                                         # 'rom_method': ['Krylov'],
-                                                         # 'rom_method_settings': {'Krylov': rom_settings},
                                                          },
-                                       'rigid_body_motion': 'off',
                                        'track_body': 'on',
                                        'use_euler': 'on',
-                                       'linearisation_tstep': -1
-                                   }}
+                                   },
+                                   }
 
     settings['AsymptoticStability'] = {
         'print_info': 'on',
@@ -263,8 +241,7 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
         'display_root_locus': 'off',
         'frequency_cutoff': 0,
         'export_eigenvalues': 'on',
-        'num_evals': 1000,
-        'target_system': ['aeroelastic', 'aerodynamic', 'structural']}
+        'num_evals': 100}
 
     settings['FrequencyResponse'] = {'target_system': ['aeroelastic', 'aerodynamic', 'structural'],
                                      'quick_plot': 'off',

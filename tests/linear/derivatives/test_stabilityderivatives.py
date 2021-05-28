@@ -243,7 +243,6 @@ class TestLinearDerivatives(unittest.TestCase):
                                                                             'r': 4,
                                                                             'single_side': 'observability'}}
                                                              },
-                                           'rigid_body_motion': 'on',
                                            'use_euler': 'on',
                                        },
                                        }
@@ -256,8 +255,7 @@ class TestLinearDerivatives(unittest.TestCase):
                                           'target_system': ['aeroelastic'],
                                           }
 
-        ws.config['StabilityDerivatives'] = {'target_system': target_system,
-                                             'u_inf': ws.u_inf,
+        ws.config['StabilityDerivatives'] = {'u_inf': ws.u_inf,
                                              'c_ref': ws.main_chord,
                                              'b_ref': ws.wing_span,
                                              'S_ref': ws.wing_span * ws.main_chord,

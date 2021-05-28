@@ -76,12 +76,7 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
             'DynamicCoupled',
             'Modal',
             'LinearAssembler',
-            # 'LinDynamicSim',
-            # 'SaveData',
             'AsymptoticStability',
-            # 'StabilityDerivatives',
-            # 'LinDynamicSim',
-            # 'PickleData',
             'SaveParametricCase'
             ]
 
@@ -198,9 +193,6 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
                           'gamma_dot_filtering': 3}
 
     settings['DynamicCoupled'] = {'print_info': 'on',
-                                  # 'structural_substeps': 1,
-                                  # 'dynamic_relaxation': 'on',
-                                  # 'clean_up_previous_solution': 'on',
                                   'structural_solver': 'NonLinearDynamicCoupledStep',
                                   'structural_solver_settings': struct_solver_settings,
                                   'aero_solver': 'StepUvlm',
@@ -244,6 +236,7 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
                          'rigid_modes_cg': False}
 
     settings['LinearAssembler'] = {'linear_system': 'LinearAeroelastic',
+                                   'linearisation_tstep': -1,
                                    'linear_system_settings': {
                                        'beam_settings': {'modal_projection': 'on',
                                                          'inout_coords': 'modes',
@@ -258,23 +251,16 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
                                                          'gravity': 'on',
                                                          'remove_dofs': []},
                                        'aero_settings': {'dt': ws.dt,
-                                                         # 'ScalingDict': {'length': ws.c_root,
-                                                         #                 'speed': ws.u_inf,
-                                                         #                 'density': ws.rho},
                                                          'integr_order': 2,
                                                          'density': ws.rho * rho_fact,
                                                          'remove_predictor': False,
                                                          'use_sparse': False,
-                                                         'rigid_body_motion': True,
                                                          'vortex_radius': 1e-6,
-                                                         'use_euler': use_euler,
                                                          'remove_inputs': ['u_gust'],
                                                          'rom_method': ['Krylov'],
                                                          'rom_method_settings': {'Krylov': rom_settings}},
-                                       'rigid_body_motion': True,
                                        'track_body': track_body,
                                        'use_euler': use_euler,
-                                       'linearisation_tstep': -1
                                    }}
 
     settings['AsymptoticStability'] = {
@@ -284,7 +270,7 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
         'display_root_locus': 'off',
         'frequency_cutoff': 0,
         'export_eigenvalues': 'on',
-        'num_evals': 10000}
+        'num_evals': 100}
 
     settings['FrequencyResponse'] = {'print_info': 'on',
                                      'frequency_bounds': [0.1, 100]}

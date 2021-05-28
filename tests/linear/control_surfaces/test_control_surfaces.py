@@ -194,10 +194,10 @@ class TestGolandControlSurface(unittest.TestCase):
                                                               'remove_predictor': remove_predictor,
                                                               'use_sparse': use_sparse,
                                                               'remove_inputs': ['u_gust']},
-                                            'rigid_body_motion': 'off'}}
+                                        }
+                                        }
 
-        ws.config['LinDynamicSim'] = {'folder': self.route_test_dir + '/output/',
-                                      'n_tsteps': lin_tsteps,
+        ws.config['LinDynamicSim'] = {'n_tsteps': lin_tsteps,
                                       'dt': ws.dt,
                                       'input_generators': [{'name': 'control_surface_deflection',
                                                             'index': 0,
@@ -207,8 +207,7 @@ class TestGolandControlSurface(unittest.TestCase):
                                                             'file_path': self.route_test_dir + '/cases/elevator.txt'}],
                                       'postprocessors': ['AerogridPlot'],
                                       'postprocessors_settings':
-                                          {'AerogridPlot': {'folder': self.route_test_dir + '/output/',
-                                                            'include_rbm': 'on',
+                                          {'AerogridPlot': {'include_rbm': 'on',
                                                             'include_applied_forces': 'on',
                                                             'minus_m_star': 0}, }
                                       }

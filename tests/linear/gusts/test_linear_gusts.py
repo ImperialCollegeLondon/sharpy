@@ -186,7 +186,8 @@ class TestGolandControlSurface(unittest.TestCase):
                                                               'remove_inputs': [],
                                                               'gust_assembler': 'LeadingEdge',
                                                               },
-                                            'rigid_body_motion': 'off'}}
+                                        }
+                                        }
 
         ws.config['LinDynamicSim'] = {'n_tsteps': lin_tsteps,
                                       'dt': ws.dt,

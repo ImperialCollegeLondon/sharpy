@@ -26,10 +26,6 @@ class StabilityDerivatives(solver_interface.BaseSolver):
     settings_default['print_info'] = True
     settings_description['print_info'] = 'Display info to screen'
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output/'
-    settings_description['folder'] = 'Output directory'
-
     settings_types['u_inf'] = 'float'
     settings_default['u_inf'] = 1.
     settings_description['u_inf'] = 'Free stream reference velocity'
