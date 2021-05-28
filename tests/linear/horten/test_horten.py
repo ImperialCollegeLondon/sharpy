@@ -158,7 +158,6 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
     settings['AeroForcesCalculator'] = {'write_text_file': 'off',
                                         'text_file_name': ws.case_name + '_aeroforces.csv',
                                         'screen_output': 'on',
-                                        'unsteady': 'off',
                                         'coefficients': True,
                                         'q_ref': 0.5 * ws.rho * ws.u_inf ** 2,
                                         'S_ref': 12.809,

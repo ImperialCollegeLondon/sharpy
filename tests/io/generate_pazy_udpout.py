@@ -110,14 +110,10 @@ def generate_pazy_udp(u_inf, case_name, output_folder='/output/', cases_folder='
         'velocity_field_input': {
             'u_inf': ws.u_inf,
             'u_inf_direction': ws.u_inf_direction},
-        'rollup_dt': ws.dt,
         'print_info': 'on',
         'horseshoe': 'on',
         'num_cores': 4,
-        'n_rollup': 0,
-        'rollup_aic_refresh': 0,
-        'vortex_radius': 1e-9,
-        'rollup_tolerance': 1e-4}
+        'vortex_radius': 1e-9}
 
     settings = dict()
     settings['NonLinearStatic'] = {'print_info': 'off',
@@ -140,10 +136,6 @@ def generate_pazy_udp(u_inf, case_name, output_folder='/output/', cases_folder='
             'print_info': 'off',
             'horseshoe': 'on',
             'num_cores': 4,
-            'n_rollup': 0,
-            'rollup_dt': ws.dt,
-            'rollup_aic_refresh': 1,
-            'rollup_tolerance': 1e-4,
             'velocity_field_generator': 'SteadyVelocityField',
             'velocity_field_input': {
                 'u_inf': ws.u_inf,

@@ -121,11 +121,11 @@ def generate_infinite_wing(case_name, alpha, **kwargs):
                          'rigid_body_modes': True,
                          'write_modes_vtk': 'on',
                          'print_matrices': 'on',
-                         'write_data': 'on',
+                         'save_data': 'off',
                          'continuous_eigenvalues': 'off',
                          'plot_eigenvalues': False,
                          'rigid_modes_ppal_axes': 'on',
-                         'folder': output_route}
+                         }
 
     # ROM settings
     rom_settings = dict()
@@ -154,7 +154,6 @@ def generate_infinite_wing(case_name, alpha, **kwargs):
                                                          'density': rho,
                                                          'remove_predictor': 'off',
                                                          'use_sparse': False,
-                                                         'rigid_body_motion': True,
                                                          'vortex_radius': 1e-7,
                                                          'remove_inputs': ['u_gust'],
                                                          'convert_to_ct': 'on',
