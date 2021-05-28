@@ -67,7 +67,7 @@ class NewmarkBeta(_BaseTimeIntegrator):
 
     settings_types['num_LM_eq'] = 'int'
     settings_default['num_LM_eq'] = 0
-    settings_description['num_LM_eq'] = 'Number of contraint equations'
+    settings_description['num_LM_eq'] = 'Number of constraint equations'
 
     def __init__(self):
 

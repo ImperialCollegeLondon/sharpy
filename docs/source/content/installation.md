@@ -143,8 +143,8 @@ to your taste.
 you will need to checkout the `develop` branch. For more info on how we structure our development and what branches
 are used for what kind of features have a look at the [Contributing](contributing.html) page.
     ```bash
-    git checkout -b develop --track origin/develop
-    git submodule update --remote
+    git checkout develop
+    git submodule update --recursive
     ```
     This command will check out the `develop` branch and set it to track the remote origin. It will also set the submodules (xbeam and UVLM) to the right commit.
 
