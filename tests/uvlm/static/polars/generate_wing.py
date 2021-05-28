@@ -64,10 +64,6 @@ def generate_infinite_wing(case_name, alpha, **kwargs):
     settings['AerogridLoader'] = {'unsteady': 'on',
                                   'aligned_grid': 'on',
                                   'mstar': int(kwargs.get('wake_length', 100) * m),
-                                  'control_surface_deflection': ['', ''],
-                                  'control_surface_deflection_generator':
-                                      {'0': {},
-                                       '1': {}},
                                   'wake_shape_generator': 'StraightWake',
                                   'wake_shape_generator_input': {
                                       'u_inf': u_inf,
@@ -88,10 +84,6 @@ def generate_infinite_wing(case_name, alpha, **kwargs):
     settings['StaticUvlm'] = {'print_info': 'on',
                               'horseshoe': 'on',
                               'num_cores': 4,
-                              'n_rollup': 0,
-                              'rollup_dt': wing.dt,
-                              'rollup_aic_refresh': 1,
-                              'rollup_tolerance': 1e-4,
                               'vortex_radius': 1e-6,
                               'velocity_field_generator': 'SteadyVelocityField',
                               'velocity_field_input': {'u_inf': u_inf,
@@ -113,14 +105,12 @@ def generate_infinite_wing(case_name, alpha, **kwargs):
                                                                 'correct_lift': 'on',
                                                                 'moment_from_polar': 'on'}
 
-    settings['AerogridPlot'] = {'folder': output_route,
-                                'include_incidence_angle': 'on',
+    settings['AerogridPlot'] = {'include_incidence_angle': 'on',
                                 'include_velocities': 'on'}
 
-    settings['BeamPlot'] = {'folder': output_route}
+    settings['BeamPlot'] = {}
 
-    settings['AeroForcesCalculator'] = {'folder': output_route,
-                                        'write_text_file': 'on',
+    settings['AeroForcesCalculator'] = {'write_text_file': 'on',
                                         'coefficients': 'on',
                                         'q_ref': 0.5 * rho * u_inf ** 2,
                                         'S_ref': wing.main_chord * wing.wing_span}
@@ -160,37 +150,27 @@ def generate_infinite_wing(case_name, alpha, **kwargs):
                                                          'remove_dofs': [],
                                                          'remove_rigid_states': 'on'},
                                        'aero_settings': {'dt': wing.dt,
-                                                         # 'ScalingDict': {'length': hale.aero.chord_main / 2,
-                                                         #                  'speed': u_inf,
-                                                         #                  'density': rho},
                                                          'integr_order': 2,
                                                          'density': rho,
                                                          'remove_predictor': 'off',
                                                          'use_sparse': False,
                                                          'rigid_body_motion': True,
-                                                         'use_euler': 'on',
                                                          'vortex_radius': 1e-7,
                                                          'remove_inputs': ['u_gust'],
                                                          'convert_to_ct': 'on',
-                                                         # 'rom_method': ['Krylov'],
-                                                         # 'rom_method_settings': {'Krylov': rom_settings},
                                                          },
-                                       'rigid_body_motion': True,
                                        'track_body': 'off',
                                        'use_euler': 'on',
-                                       'linearisation_tstep': -1
                                    }}
 
 
-    settings['StabilityDerivatives'] = {'folder': output_route,
-                                        'u_inf': u_inf,
+    settings['StabilityDerivatives'] = {'u_inf': u_inf,
                                         'c_ref': wing.main_chord,
                                         'b_ref': wing.wing_span,
                                         'S_ref': wing.wing_span * wing.main_chord,
                                         }
 
-    settings['SaveParametricCase'] = {'folder': output_route + '/' + case_name,
-                                      'save_case': 'off',
+    settings['SaveParametricCase'] = {'save_case': 'off',
                                       'parameters': {'alpha': alpha_deg}}
 
     wing.settings_to_config(settings)
