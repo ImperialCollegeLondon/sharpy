@@ -19,17 +19,18 @@ class BumpVelocityField(generator_interface.BaseGenerator):
     This is parsed as the value for the ``velocity_field_generator`` key in the desired aerodynamic solver's settings.
 
     The resultant velocity, $w_g$, is calculated as follows:
-    
+
     .. math::
-    
+
         w_g = \frac{w_0}{4}\left( 1 + \cos(\frac{(x - x_0)}{H_x} \right)\left( 1 + \cos(\frac{(y - y_0)}{H_y} \right)
-    
+
 
     Notes:
         For now, only simulations where the inertial FoR is fixed are supported.
 
     """
     generator_id = 'BumpVelocityField'
+    generator_classification = 'velocity-field'
 
     settings_types = dict()
     settings_default = dict()
@@ -82,7 +83,7 @@ class BumpVelocityField(generator_interface.BaseGenerator):
         settings.to_custom_types(self.in_dict, BumpVelocityField.settings_types, BumpVelocityField.settings_default)
         self.settings = self.in_dict
 
-        self.u_inf = self.settings['u_inf'].value
+        self.u_inf = self.settings['u_inf']
         self.u_inf_direction = self.in_dict['u_inf_direction']
 
     def generate(self, params, uext):
@@ -108,11 +109,11 @@ class BumpVelocityField(generator_interface.BaseGenerator):
                     uext[i_surf][:, i, j] += gust_shape(zeta[i_surf][0, i, j] + for_pos[0],
                                                         zeta[i_surf][1, i, j] + for_pos[1],
                                                         zeta[i_surf][2, i, j] + for_pos[2],
-                                                        self.settings['hx'].value,
-                                                        self.settings['hy'].value,
-                                                        self.settings['x0'].value,
-                                                        self.settings['y0'].value,
-                                                        self.settings['gust_intensity'].value)
-                    
+                                                        self.settings['hx'],
+                                                        self.settings['hy'],
+                                                        self.settings['x0'],
+                                                        self.settings['y0'],
+                                                        self.settings['gust_intensity'])
+
                     if self.settings['relative_motion']:
                         uext[i_surf][:, i, j] += self.u_inf*t

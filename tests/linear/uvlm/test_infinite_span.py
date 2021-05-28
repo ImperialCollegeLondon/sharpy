@@ -7,7 +7,6 @@ Author: S. Maraniello, Dec 2018
 Modified: N. Goizueta, Sep 2019
 """
 
-import sharpy.utils.sharpydir as sharpydir
 import unittest
 import os
 # import matplotlib.pyplot as plt

@@ -15,6 +15,7 @@ class ModifyStructure(generator_interface.BaseGenerator):
     This generator is called at the start of each time step in ``DynamicCoupled``.
     """
     generator_id = 'ModifyStructure'
+    generator_classification = 'runtime'
 
     settings_types = dict()
     settings_default = dict()

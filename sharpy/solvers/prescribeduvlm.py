@@ -131,7 +131,7 @@ class PrescribedUvlm(BaseSolver):
         structural_kstep = self.data.structure.ini_info.copy()
 
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
-        for self.data.ts in range(1, self.settings['n_time_steps'].value + 1):
+        for self.data.ts in range(1, self.settings['n_time_steps'] + 1):
             aero_kstep = self.data.aero.timestep_info[-1].copy()
             structural_kstep = self.data.structure.timestep_info[-1].copy()
             ts = len(self.data.structure.timestep_info) - 1
@@ -150,10 +150,10 @@ class PrescribedUvlm(BaseSolver):
             #                                  convect_wake=True)
             #
             # self.residual_table.print_line([self.data.ts,
-            #                                 self.data.ts*self.dt.value])
+            #                                 self.data.ts*self.dt])
 
             self.data.structure.next_step()
-            self.data.structure.integrate_position(self.data.ts, self.settings['dt'].value)
+            self.data.structure.integrate_position(self.data.ts, self.settings['dt'])
 
             self.aero_solver.add_step()
             self.data.aero.timestep_info[-1] = aero_kstep.copy()
@@ -165,7 +165,7 @@ class PrescribedUvlm(BaseSolver):
                                              self.data.aero.timestep_info[-2],
                                              convect_wake=True)
             self.residual_table.print_line([self.data.ts,
-                                            self.data.ts*self.dt.value])
+                                            self.data.ts*self.dt])
 
             # run postprocessors
             if self.with_postprocessors:
@@ -209,15 +209,15 @@ class PrescribedUvlm(BaseSolver):
 #                 astype(dtype=ct.c_double, order='F', copy=True))
 #
 #     def relaxation_factor(self, k):
-#         initial = self.settings['relaxation_factor'].value
-#         if not self.settings['dynamic_relaxation'].value:
+#         initial = self.settings['relaxation_factor']
+#         if not self.settings['dynamic_relaxation']:
 #             return initial
 #
-#         final = self.settings['final_relaxation_factor'].value
-#         if k >= self.settings['relaxation_steps'].value:
+#         final = self.settings['final_relaxation_factor']
+#         if k >= self.settings['relaxation_steps']:
 #             return final
 #
-#         value = initial + (final - initial)/self.settings['relaxation_steps'].value*k
+#         value = initial + (final - initial)/self.settings['relaxation_steps']*k
 #         return value
 #
 #

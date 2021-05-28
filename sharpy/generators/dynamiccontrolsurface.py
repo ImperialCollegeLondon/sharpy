@@ -17,9 +17,9 @@ class DynamicControlSurface(generator_interface.BaseGenerator):
     To call this generator, the ``generator_id = DynamicControlSurface`` key shall be used for the setting
     `control_surface_deflection` in the ``AerogridLoader`` solver.
 
-   One instance of this generator will be created for each control surface, thus, a group of settings should be defined 
+   One instance of this generator will be created for each control surface, thus, a group of settings should be defined
    for each control surface (``cs0_settings``, ``cs1_settings`` ... in the example below).
-   All of these groups of settings should be collected as values in a dictionary which keys are the associated control surface number in string format. 
+   All of these groups of settings should be collected as values in a dictionary which keys are the associated control surface number in string format.
    This dictionary should be parsed to the variable
     ``control_surface_deflection_generator_settings`` in ``AerogridLoader``. This is shown better
     in the example below:
@@ -44,6 +44,7 @@ class DynamicControlSurface(generator_interface.BaseGenerator):
 
     """
     generator_id = 'DynamicControlSurface'
+    generator_classification = 'utils'
 
     settings_types = dict()
     settings_default = dict()

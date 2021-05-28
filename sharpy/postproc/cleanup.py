@@ -12,21 +12,32 @@ import sharpy.structure.utils.xbeamlib as xbeamlib
 
 @solver
 class Cleanup(BaseSolver):
+    """
+    Clean-up old timesteps to save RAM memory
+    """
     solver_id = 'Cleanup'
+    solver_classification = 'post-processor'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['clean_structure'] = 'bool'
+    settings_default['clean_structure'] = True
+    settings_description['clean_structure'] = 'Clean-up :class:`~sharpy.utils.datastructures.StructTimeStepInfo`'
+
+    settings_types['clean_aero'] = 'bool'
+    settings_default['clean_aero'] = True
+    settings_description['clean_aero'] = 'Clean-up :class:`~sharpy.utils.datastructures.AeroTimeStepInfo`'
+
+    settings_types['remaining_steps'] = 'int'
+    settings_default['remaining_steps'] = 10
+    settings_description['remaining_steps'] = 'The last `remaining_steps` are not cleaned up'
+
+    table = settings.SettingsTable()
+    __doc__ += table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
-        self.settings_types = dict()
-        self.settings_default = dict()
-
-        self.settings_types['clean_structure'] = 'bool'
-        self.settings_default['clean_structure'] = True
-
-        self.settings_types['clean_aero'] = 'bool'
-        self.settings_default['clean_aero'] = True
-
-        self.settings_types['remaining_steps'] = 'int'
-        self.settings_default['remaining_steps'] = 10
-
         self.settings = None
         self.data = None
         self.caller = None
@@ -37,14 +48,16 @@ class Cleanup(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings,
+                                 self.settings_types,
+                                 self.settings_default)
         self.caller = caller
 
     def run(self, online=False):
         if self.settings['clean_structure']:
-            self.clean(self.data.structure.timestep_info, self.settings['remaining_steps'].value)
+            self.clean(self.data.structure.timestep_info, self.settings['remaining_steps'])
         if self.settings['clean_aero']:
-            self.clean(self.data.aero.timestep_info, self.settings['remaining_steps'].value)
+            self.clean(self.data.aero.timestep_info, self.settings['remaining_steps'])
 
         return self.data
 
