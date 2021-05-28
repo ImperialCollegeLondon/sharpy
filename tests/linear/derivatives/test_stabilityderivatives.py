@@ -77,7 +77,7 @@ class TestLinearDerivatives(unittest.TestCase):
         ws.config['SHARPy'] = {
             'flow': flow,
             'case': ws.case_name, 'route': ws.route,
-            'write_screen': 'on', 'write_log': 'on',
+            'write_screen': 'off', 'write_log': 'on',
             'log_folder': self.route_test_dir + '/output/',
             'log_file': ws.case_name + '.log'}
 
