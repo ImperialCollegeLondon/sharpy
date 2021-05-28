@@ -129,11 +129,11 @@ class AeroForcesCalculator(BaseSolver):
             except AttributeError:
                 unsteady_forces_b = self.map_forces_beam_dof(self.ts, unsteady_force)
 
-            steady_forces_a = self.data.structure.nodal_b_for_2_a_for(steady_forces_b,
-                                                                      self.data.structure.timestep_info[self.ts])
+            steady_forces_a = self.data.structure.timestep_info[self.ts].nodal_b_for_2_a_for(steady_forces_b,
+                                                                                             self.data.structure)
 
-            unsteady_forces_a = self.data.structure.nodal_b_for_2_a_for(unsteady_forces_b,
-                                                                        self.data.structure.timestep_info[self.ts])
+            unsteady_forces_a = self.data.structure.timestep_info[self.ts].nodal_b_for_2_a_for(unsteady_forces_b,
+                                                                                               self.data.structure)
 
             # Express total forces in A frame
             self.data.aero.timestep_info[self.ts].total_steady_body_forces = np.sum(steady_forces_a, axis=0)
