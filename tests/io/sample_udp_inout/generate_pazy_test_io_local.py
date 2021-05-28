@@ -86,7 +86,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
              #              'SaveParametricCase',
              ],
         'case': ws.case_name, 'route': ws.route,
-        'write_screen': 'on', 'write_log': 'on',
+        'write_screen': 'off', 'write_log': 'on',
         'save_settings': 'on',
         'log_folder': output_folder + '/' + ws.case_name + '/',
         'log_file': ws.case_name + '.log'}

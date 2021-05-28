@@ -15,7 +15,7 @@
   var_type: 'node'
 - name: 'psi_dot'
   inout: 'out'
-  position: 4
-  index: [0, 2]
-  var_type: 'elem'
+  position: 16
+  index: 2
+  var_type: 'node'
 ...

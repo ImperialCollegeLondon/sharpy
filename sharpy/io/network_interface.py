@@ -41,11 +41,11 @@ class NetworkLoader:
           inout: 'out'
           position: [0, 1, 2] # [i_surf, i_chordwise, i_spanwise]
           var_type: 'panel'
-        - name: 'psi'  # element variable like the CRV
+        - name: 'psi'  # CRV
           inout: 'out'
-          var_type: 'elem'
-          position: 3  # element id
-          index: [0, 2]  # 2-list containing [index_local_node, vector_index]
+          var_type: 'node'
+          position: 3  # node id
+          index: 2  # dimension index
         ...
 
     All variables in the aero and structural timestep info classes :class:`~sharpy.utils.datastructures` are supported,
