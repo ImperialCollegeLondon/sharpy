@@ -8,4 +8,5 @@ SHARPy Exception Classes
 
 	./DocumentationError
 	./NotConvergedSolver
+	./NotRecognisedSetting
 	./NotValidSetting

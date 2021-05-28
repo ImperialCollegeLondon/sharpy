@@ -13,6 +13,7 @@ Dynamic Control Surface generators enable the user to prescribe a certain contro
 
 	./bumpvelocityfield/index
 	./dynamiccontrolsurface/index
+	./floatingforces/index
 	./gridbox/index
 	./gustvelocityfield/index
 	./helicoidalwake/index
