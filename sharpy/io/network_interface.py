@@ -73,8 +73,17 @@ class NetworkLoader:
     See Also:
         Endianness: https://docs.python.org/3/library/struct.html#byte-order-size-and-alignment
 
+
     Note:
         The SHARPy input and output sockets do not time out.
+
+
+    Note:
+        The first time step in a simulation with UDP inputs takes particularly long. Make sure your client has a
+        sufficient time out time to avoid issues. After the first time step, the UDP should not delay the simulation.
+
+    Warnings:
+        There is a limitation, for the moment, on just one control surface being supported for UDP input.
     """
     settings_types = dict()
     settings_default = dict()

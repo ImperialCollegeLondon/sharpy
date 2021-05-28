@@ -72,4 +72,9 @@
   position: 20
   index: 2
   var_type: 'node'
+- name: 'psi'
+  inout: 'out'
+  position: 4
+  index: [0, 2]
+  var_type: 'elem'
 ...
