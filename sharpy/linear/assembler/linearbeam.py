@@ -9,7 +9,8 @@ import numpy as np
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.structure.utils.modalutils as modalutils
-from sharpy.linear.utils.ss_interface import VectorVariable
+from sharpy.linear.utils.ss_interface import VectorVariable, OutputVariable, InputVariable
+import sharpy.linear.src.libss as libss
 
 
 @linear_system
@@ -123,10 +124,10 @@ class LinearBeam(BaseElement):
     settings_default['remove_sym_modes'] = False
     settings_description['remove_sym_modes'] = 'Remove symmetric modes if wing is clamped'
 
-    # Temporary - include as part of StabilityDerivatives PostProc
     settings_types['remove_rigid_states'] = 'bool'
     settings_default['remove_rigid_states'] = False
-    settings_description['remove_rigid_states'] = 'WIP - For Stability Derivatives - Remove RIGID STATES from SS'
+    settings_description['remove_rigid_states'] = '(For Stability Derivatives) - Remove RIGID STATES from SS leaving' \
+                                                  ' input/output channels unchanged'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
@@ -181,7 +182,7 @@ class LinearBeam(BaseElement):
 
         self.linearisation_vectors['eta'] = self.tsstruct0.q
         self.linearisation_vectors['eta_dot'] = self.tsstruct0.dqdt
-        self.linearisation_vectors['forces_struct'] = self.tsstruct0.steady_applied_forces.reshape(-1, order='C')
+        self.linearisation_vectors['forces_struct'] = self.tsstruct0.steady_applied_forces.reshape(-1, order='C') # B frame
 
     def assemble(self, t_ref=None):
         """
@@ -241,18 +242,7 @@ class LinearBeam(BaseElement):
             self.ss.C = self.ss.C[:, num_rig_dof:]
             self.ss.state_variables.modify('q', size=self.ss.state_variables[0].size - num_rig_dof)
             self.ss.state_variables.update_locations()
-            #
-            # # import pdb; pdb.set_trace()
-            # # To remove the yaw mode state
-            # # retain_state = np.zeros((self.ss.states - 1, self.ss.states))
-            # # retain_state[:8+11, :8+11] = np.eye(8+11)
-            # # retain_state[8+11:, 9+11:] = np.eye(self.ss.states - 9 - 11)
-            # # self.ss.A = retain_state.dot(self.ss.A.dot(retain_state.T))
-            # # self.ss.B = retain_state.dot(self.ss.B)
-            # # self.ss.C = self.ss.C.dot(retain_state.T)
-            # self.ss.state_variables.modify('q_dot', size=self.ss.state_variables[1].size - 1)
-            # # self.ss.state_variables.update_locations()
-            #
+
             retain_state = np.zeros((self.ss.states - 9, self.ss.states))
             retain_state[:self.ss.state_variables[0].size, :self.ss.state_variables[0].size] = \
                 np.eye(self.ss.state_variables[0].size)
@@ -276,8 +266,6 @@ class LinearBeam(BaseElement):
             self.ss.state_variables.remove('beta_bar')
             self.ss.state_variables.remove('beta')
             self.ss.state_variables.update_locations()
-            np.savetxt('./retain_state_nodal.txt', retain_state)
-
 
     def x0(self):
         x = np.concatenate((self.tsstruct0.q, self.tsstruct0.dqdt))
@@ -426,15 +414,17 @@ class LinearBeam(BaseElement):
         # Missing the forces
         # dqddt = self.sys.Minv.dot(-self.sys.Cstr.dot(dqdt) - self.sys.Kstr.dot(q))
 
-        for i_node in vdof[vdof >= 0]:
-            pos[i_node + 1, :] = q[6*i_node: 6*i_node + 3]
-            pos_dot[i_node + 1, :] = dqdt[6*i_node + 0: 6*i_node + 3]
-
+        # for i_node in vdof[vdof >= 0]:
+        #     pos[i_node + 1, :] = q[6*i_node: 6*i_node + 3]
+        #     pos_dot[i_node + 1, :] = dqdt[6*i_node + 0: 6*i_node + 3]
+        #
         # TODO: CRV of clamped node and double check that the CRV takes this form
-        for i_elem in range(struct_tstep.num_elem):
-            for i_node in range(struct_tstep.num_node_elem):
-                psi[i_elem, i_node, :] = np.linalg.inv(algebra.crv2tan(struct_tstep.psi[i_elem, i_node]).T).dot(q[i_node + 3: i_node + 6])
-                psi_dot[i_elem, i_node, :] = dqdt[i_node + 3: i_node + 6]
+        # for i_elem in range(struct_tstep.num_elem):
+        #     for i_node in range(struct_tstep.num_node_elem):
+        #         psi[i_elem, i_node, :] = np.linalg.inv(algebra.crv2tan(struct_tstep.psi[i_elem, i_node]).T).dot(q[i_node + 3: i_node + 6])
+        #         psi_dot[i_elem, i_node, :] = dqdt[i_node + 3: i_node + 6]
+
+        pos, psi, pos_dot, psi_dot = self.unpack_flex_dof(q, dqdt)
 
         if not clamped:
             for_vel = dqdt[-rig_dof: -rig_dof + 6]
@@ -447,9 +437,18 @@ class LinearBeam(BaseElement):
             for_acc = dqddt[-rig_dof:-rig_dof + 6]
 
         if u_n is not None:
+            cba_m = algebra.get_transformation_matrix('ba')
             for i_node in vdof[vdof >= 0]:
-                steady_applied_forces[i_node+1] = u_n[6*i_node: 6*i_node + 6]
-            steady_applied_forces[0] = u_n[-10:-4] - np.sum(steady_applied_forces[1:, :], 0)
+                i_elem = self.sys.structure.node_master_elem[i_node, 0]
+                i_local_node = self.sys.structure.node_master_elem[i_node, 1]
+                cba = cba_m(struct_tstep.psi[i_elem, i_local_node])
+                steady_applied_forces[i_node+1, :3] = cba.dot(u_n[6*i_node: 6*i_node + 3])
+                steady_applied_forces[i_node+1, 3:] = cba.dot(u_n[6*i_node + 3: 6*i_node + 6])
+            i_elem = self.sys.structure.node_master_elem[0, 0]
+            i_local_node = self.sys.structure.node_master_elem[0, 1]
+            cba = cba_m(struct_tstep.psi[i_elem, i_local_node])
+            steady_applied_forces[0, :3] = cba.dot(u_n[-10:-7]) - np.sum(steady_applied_forces[1:, :3], 0)
+            steady_applied_forces[0, 3:] = cba.dot(u_n[-7:-4]) - np.sum(steady_applied_forces[1:, 3:], 0)
 
         # gravity forces - careful - debug
         C_grav = np.zeros((q.shape[0], q.shape[0]))
@@ -488,3 +487,97 @@ class LinearBeam(BaseElement):
         current_time_step.steady_applied_forces = steady_applied_forces + struct_tstep.steady_applied_forces
 
         return current_time_step
+
+    def unpack_flex_dof(self, eta, eta_dot=None):
+        """
+        Unpacks a vector of structural displacements and velocities into a SHARPy familiar
+        form of pos, psi and their time derivatives
+
+        Args:
+            eta (np.array): Vector of structural displacements
+            eta_dot (np.array (Optional): Vector of structural velocities
+
+        Returns:
+            tuple: Containing ``pos``, ``psi``, ``pos_dot``, ``psi_dot`` if ``eta_dot`` is provided, else
+              only the displacements are returned
+        """
+        vdof = self.sys.structure.vdof
+        if np.max(np.abs(eta.imag)) > 0:
+            dtype=complex
+        else:
+            dtype=float
+        pos = np.zeros_like(self.tsstruct0.pos, dtype=dtype)
+        psi = np.zeros_like(self.tsstruct0.psi, dtype=dtype)
+        pos_dot = np.zeros_like(self.tsstruct0.pos_dot, dtype=dtype)
+        psi_dot = np.zeros_like(self.tsstruct0.psi_dot, dtype=dtype)
+
+        return_vels = True
+        if eta_dot is None:
+            return_vels = False
+            eta_dot = np.zeros_like(eta)
+
+        for i_node in vdof[vdof >= 0]:
+            pos[i_node + 1, :] = eta[6*i_node: 6*i_node + 3]
+            pos_dot[i_node + 1, :] = eta_dot[6*i_node + 0: 6*i_node + 3]
+
+        # TODO: CRV of clamped node and double check that the CRV takes this form
+        for i_elem in range(self.tsstruct0.num_elem):
+            for i_node in range(self.tsstruct0.num_node_elem):
+                psi[i_elem, i_node, :] = np.linalg.inv(
+                    algebra.crv2tan(self.tsstruct0.psi[i_elem, i_node]).T).dot(eta[i_node + 3: i_node + 6])
+                psi_dot[i_elem, i_node, :] = eta_dot[i_node + 3: i_node + 6]
+
+        if return_vels:
+            return pos, psi, pos_dot, psi_dot
+        else:
+            return pos, psi
+
+    def recover_accelerations(self, full_ss):
+        """
+        For a system with displacement and velocity outputs (``full_ss``), recover the accelerations and append them
+        as new output channels.
+
+        This function produces an output gain that should then be connected in series to the desired system
+
+        Args:
+            full_ss (libss.StateSpace): State space for which to provide output gain to recover accelerations
+
+        Returns:
+            libss.Gain: Gain adding the accelerations as new output channels
+        """
+        n_in = full_ss.outputs
+        n_out = full_ss.outputs + self.ss.states // 2
+
+        acc_gain = np.zeros((n_out, n_in))
+
+        input_variables = LinearVector.transform(full_ss.output_variables, to_type=InputVariable)
+
+        output_variables = full_ss.output_variables.copy()
+        acceleration_variables = []
+        for var in self.ss.output_variables[self.ss.output_variables.num_variables//2:]:
+            new_var = var.copy()
+            new_var.name += '_dot'
+            output_variables.append(new_var)
+            acceleration_variables.append(new_var)
+
+        acc_gain[:n_in, :n_in] = np.eye(n_in)
+        acc_gain[-self.ss.states//2:, :self.ss.inputs] = self.ss.B[self.ss.states//2:]
+        acc_gain[-self.ss.states//2:, self.ss.inputs:] = self.ss.A[self.ss.states//2:, :]
+
+        acceleration_recovery = libss.Gain(acc_gain,
+                                           input_vars=input_variables,
+                                           output_vars=output_variables)
+
+        if self.sys.modal:
+            output_variables = []
+            for var in self.sys.Kout.output_variables[self.sys.Kout.output_variables.num_variables//2:]:
+                new_var = var.copy()
+                new_var.name += '_dot'
+                output_variables.append(new_var)
+            modal_gain = libss.Gain(self.sys.U,
+                                    input_vars=LinearVector.transform(LinearVector(acceleration_variables),
+                                                                      to_type=InputVariable),
+                                    output_vars=LinearVector(output_variables))
+            self.sys.acceleration_modal_gain = modal_gain
+
+        return acceleration_recovery

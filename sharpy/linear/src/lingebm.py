@@ -169,7 +169,8 @@ class FlexDynamic():
         else:
             self.num_dof_rig = 10
 
-        self.update_modal()
+        if self.modal:
+            self.update_modal()
 
         self.num_dof_flex = np.sum(structure.vdof >= 0)*6
 

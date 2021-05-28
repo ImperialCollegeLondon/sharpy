@@ -10,6 +10,7 @@ import sharpy.utils.rom_interface as rom_interface
 import sharpy.utils.h5utils as h5
 import sharpy.rom.utils.krylovutils as krylovutils
 import warnings as warn
+import h5py
 from sharpy.linear.utils.ss_interface import LinearVector, StateVariable, InputVariable, OutputVariable
 
 @rom_interface.rom
@@ -161,7 +162,7 @@ class Krylov(rom_interface.BaseRom):
                           compress_float=True)
             h5.add_as_grp(self.ssrom, outfile,
                           grpname='ssrom',
-                          ClassesToSave=(libss.ss, ),
+                          ClassesToSave=(libss.StateSpace, ),
                           compress_float=True)
 
     def run(self, ss):

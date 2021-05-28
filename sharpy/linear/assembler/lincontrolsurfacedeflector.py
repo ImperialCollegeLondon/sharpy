@@ -214,9 +214,9 @@ class LinControlSurfaceDeflector(object):
         control_surface_gain.input_variables = in_vars
         control_surface_gain.output_variables = ss_interface.LinearVector.transform(ss.input_variables,
                                                                                     to_type=ss_interface.OutputVariable)
-        ss.addGain(control_surface_gain, where='in')
+        # ss.addGain(control_surface_gain, where='in')
 
-        self.gain_cs = gain_cs
+        self.gain_cs = control_surface_gain
 
         return ss
     # def generator():

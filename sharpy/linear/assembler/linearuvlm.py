@@ -185,6 +185,8 @@ class LinearUVLM(ss_interface.BaseElement):
 
         self.linearisation_vectors = dict()  # reference conditions at the linearisation
 
+        self.input_gain = None
+
     def initialise(self, data, custom_settings=None):
 
         if custom_settings:
@@ -277,7 +279,6 @@ class LinearUVLM(ss_interface.BaseElement):
             self.sys.SS = libss.disc2cont(self.sys.SS)
 
         self.ss = self.sys.SS
-        self.C_to_vertex_forces = -1 * self.ss.C.copy()  # post-processing issue
 
         if self.settings['remove_inputs']:
             self.remove_inputs(self.settings['remove_inputs'])
@@ -285,9 +286,20 @@ class LinearUVLM(ss_interface.BaseElement):
         if self.gust_assembler is not None:
             self.ss = self.gust_assembler.apply(self.ss)
 
+        self.input_gain = libss.Gain(np.eye(self.ss.inputs),
+                                     input_vars=self.ss.input_variables.copy(),
+                                     output_vars=LinearVector.transform(self.ss.input_variables,
+                                                                        to_type=ss_interface.OutputVariable))
+
         if self.control_surface is not None:
-            self.ss = self.control_surface.apply(self.ss)
+            ss2 = self.control_surface.apply(self.ss)
             self.gain_cs = self.control_surface.gain_cs
+            self.connect_input(self.gain_cs)
+            # np.testing.assert_almost_equal(ss2.B, self.ss.B)
+
+        self.D_to_vertex_forces = self.ss.D.copy()  # post-processing issue
+        self.B_to_vertex_forces = self.ss.B.copy()  # post-processing issue
+        self.C_to_vertex_forces = self.ss.C.copy()  # post-processing issue
 
     def remove_inputs(self, remove_list=list):
         """
@@ -301,7 +313,7 @@ class LinearUVLM(ss_interface.BaseElement):
         """
         self.sys.SS.remove_inputs(*remove_list)
 
-    def unpack_ss_vector(self, data, x_n, aero_tstep, track_body=False, state_variables=None, gust_in=False):
+    def unpack_ss_vector(self, data, x_n, u_aero, aero_tstep, track_body=False, state_variables=None, gust_in=False):
         r"""
         Transform column vectors used in the state space formulation into SHARPy format
 
@@ -381,9 +393,13 @@ class LinearUVLM(ss_interface.BaseElement):
             gust_vars_size = 0
             gust_state = []
 
-        x_n = x_n[gust_vars_size:]
-        y_n = self.C_to_vertex_forces.dot(x_n)
+        y_n = self.C_to_vertex_forces.dot(x_n) + self.D_to_vertex_forces.dot(u_aero)
 
+        if self.sys.remove_predictor:
+            # x_n += self.B_to_vertex_forces.dot(u_aero)
+            pass
+
+        x_n = x_n[gust_vars_size:]
         gamma_vec, gamma_star_vec, gamma_dot_vec = self.sys.unpack_state(x_n)
 
         # Reshape output into forces[i_surface] where forces[i_surface] is a (6,M+1,N+1) matrix and circulation terms
@@ -486,6 +502,9 @@ class LinearUVLM(ss_interface.BaseElement):
                 dimensions_zeta, order='C'))
             try:
                 u_gust = input_vectors['u_gust']
+                    # TODO: fix this check because it is not correct
+                    # u_gust is not 3 * vertices *n_surf because different surfaces can have different vertices
+                    # take outside of loop and fix at the top!
             except KeyError:
                 u_gust = np.zeros(3*vertices_in_surface*tsaero0.n_surf)
             u_ext.append(u_gust[worked_vertices:worked_vertices+vertices_in_surface].reshape(
@@ -497,3 +516,27 @@ class LinearUVLM(ss_interface.BaseElement):
             worked_vertices += vertices_in_surface
 
         return zeta, zeta_dot, u_ext
+
+    def connect_input(self, element):
+        # connect gain or statespace on the input side
+        if type(element) is libss.StateSpace:
+            print('here')
+            self.ss = libss.series(element, self.ss)
+        elif type(element) is libss.Gain:
+            self.ss.addGain(element, where='in')
+            self.input_gain = self.input_gain.dot(element)
+        else:
+            TypeError('Unable to connect system that is not StateSpace or Gain')
+
+    def connect_output(self, element):
+        # connect gain or statespace on the output side
+        if type(element) is libss.StateSpace:
+            print('here')
+            self.ss = libss.series(self.ss, element)
+        elif type(element) is libss.Gain:
+            self.ss.addGain(element, where='out')
+        else:
+            TypeError('Unable to connect system that is not StateSpace or Gain')
+
+    def unpack(self, u):
+        return self.input_gain.value.dot(u)

@@ -32,10 +32,14 @@ class LinearGust:
         self.linuvlm = None # :linuvlm
         self.tsaero0 = None  # timestep info at the linearisation point
 
-        self.state_to_uext = None
+        self.state_to_uext = None #: np.array Gust system C matrix (for unpacking into timestep_info)
+        self.uin_to_uext = None #: np.array Gust system D matrix (for unpacking into timestep_info)
         self.gust_ss = None # :libss.StateSpace containing the gust state-space system
 
         self.settings = None
+
+        self.u_ext_direction = None # np.ndarray Unit external velocity vector in G frame
+        self.u_inf = None  # float Free stream velocity magnitude
 
     def initialise(self, aero, linuvlm, tsaero0, custom_settings=None):
         self.aero = aero
@@ -46,7 +50,20 @@ class LinearGust:
             self.settings = custom_settings
             settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
+        # find free stream velocity
+        u_ext = self.tsaero0.u_ext[0][:, 0, 0]  # use ref node external velocity
+        self.u_inf = np.linalg.norm(u_ext)
+        self.u_ext_direction = u_ext / self.u_inf
+
+        try:
+            np.testing.assert_array_almost_equal(self.u_ext_direction, np.array([1., 0., 0.]))
+        except AssertionError:
+            raise NotImplementedError('Gust system not yet implemented when the free-stream vector is not '
+                                      'coincident with the inertial G (x) vector. Please rotate structure rather '
+                                      'than fluid.')
+
     def get_x_max(self):
+        # TODO: fix such that it doesn't take x-max but rather the projection onto the freestream vector
         max_chord_surf = []
         min_chord_surf = []
         for i_surf in range(len(self.tsaero0.zeta)):
@@ -110,12 +127,59 @@ class LinearGust:
         self.gust_ss.state_variables = ssgust.state_variables.copy()
         self.gust_ss.output_variables = ss_interface.LinearVector.transform(ssuvlm.input_variables,
                                                                             to_type=ss_interface.OutputVariable)
-        # np.testing.assert_array_equal(b_aug, self.gust_ss.B)
-        # np.testing.assert_array_equal(c_aug, self.gust_ss.C)
-        # np.testing.assert_array_equal(d_aug, self.gust_ss.D)
         ss = libss.series(self.gust_ss, ssuvlm)
 
         return ss
+
+    def assemble_gust_statespace(self, a_i, b_i, c_i, d_i):
+        """
+        Assembles the individual gust system in discrete time and removes the predictor term if that is specified
+        in the linear UVLM settings.
+
+        Args:
+            a_i (np.array): Gust A matrix
+            b_i (np.array): Gust B matrix
+            c_i (np.array): Gust C matrix
+            d_i (np.array): Gust D matrix
+
+        Returns:
+            libss.StateSpace: StateSpace object of the individual gust system
+        """
+        if self.linuvlm.remove_predictor:
+            a_mod, b_mod, c_mod, d_mod = libss.SSconv(a_i, None, b_i, c_i, d_i)
+            gustss = libss.StateSpace(a_mod, b_mod, c_mod, d_mod, dt=self.linuvlm.SS.dt)
+            self.state_to_uext = c_mod
+            self.uin_to_uext = d_mod
+        else:
+            gustss = libss.StateSpace(a_i, b_i, c_i, d_i,
+                                      dt=self.linuvlm.SS.dt)
+            self.state_to_uext = c_i
+            self.uin_to_uext = d_i
+        gustss.input_variables = ss_interface.LinearVector(
+            [ss_interface.InputVariable('u_gust', size=1, index=0)])
+        gustss.state_variables = ss_interface.LinearVector(
+            [ss_interface.StateVariable('gust', size=gustss.states, index=0)])
+        gustss.output_variables = ss_interface.LinearVector(
+            [ss_interface.OutputVariable('u_gust', size=gustss.outputs, index=0)])
+
+        return gustss
+
+    def discretise_domain(self):
+
+        x_min, x_max = self.get_x_max()  # G frame, min and max of panels x coordinates
+
+        u_ext_direction = self.u_ext_direction
+
+        # Project onto free stream
+        # TODO: need to fix. Projection before getting xmin/xmax
+        # x_min = x_min.dot(u_ext_direction) * u_ext_direction
+        # x_max = x_max.dot(u_ext_direction) * u_ext_direction
+
+        N = int(np.ceil((x_max - x_min) / self.linuvlm.SS.dt))
+        x_domain = np.linspace(x_min, x_max, N)
+
+        return x_domain, N
+
 
 
 @linear_gust
@@ -136,11 +200,8 @@ class LeadingEdge(LinearGust):
         Kzeta = self.linuvlm.Kzeta
 
         # Convection system: needed for as many inputs (since it carries their time histories)
-        x_min, x_max = self.get_x_max()  # G frame
-        # TODO: project onto free stream vector
-        # TODO: apply to time scaled systems
-        N = int(np.ceil((x_max - x_min) / self.linuvlm.SS.dt))
-        x_domain = np.linspace(x_min, x_max, N)
+        x_domain, N = self.discretise_domain()
+
         # State Equation
         # for each input...
         a_i = np.zeros((N, N))
@@ -164,16 +225,10 @@ class LeadingEdge(LinearGust):
                     c_i[i_vertex, column_indices[0]] = np.array([0, 0, interpolation_weights[0]])
                     c_i[i_vertex, column_indices[1]] = np.array([0, 0, interpolation_weights[1]])
 
-        self.state_to_uext = c_i
+        d_i = np.zeros((c_i.shape[0], b_i.shape[1]))
 
-        gustss = libss.StateSpace(a_i, b_i, c_i, np.zeros((c_i.shape[0], b_i.shape[1])),
-                                  dt=self.linuvlm.SS.dt)
-        gustss.input_variables = ss_interface.LinearVector(
-            [ss_interface.InputVariable('u_gust', size=1, index=0)])
-        gustss.state_variables = ss_interface.LinearVector(
-            [ss_interface.StateVariable('gust', size=gustss.states, index=0)])
-        gustss.output_variables = ss_interface.LinearVector(
-            [ss_interface.OutputVariable('u_gust', size=gustss.outputs, index=0)])
+        gustss = self.assemble_gust_statespace(a_i, b_i, c_i, d_i)
+
         return gustss
 
 
@@ -210,7 +265,7 @@ class MultiLeadingEdge(LinearGust):
         self.span_loc = self.settings['span_location']
         self.n_gust = len(self.span_loc)
 
-        assert self.n_gust > 1, 'Use LeadingEdgeGust for single inputs'
+        assert self.n_gust > 1, 'Use LeadingEdge gust for single inputs'
 
     def assemble(self):
 
@@ -219,11 +274,7 @@ class MultiLeadingEdge(LinearGust):
         span_loc = self.span_loc
 
         # Convection system: needed for as many inputs (since it carries their time histories)
-        x_min, x_max = self.get_x_max()  # G frame
-        # TODO: project onto free stream vector
-        # TODO: apply to time scaled systems
-        N = int(np.ceil((x_max - x_min) / self.linuvlm.SS.dt))
-        x_domain = np.linspace(x_min, x_max, N)
+        x_domain, N = self.discretise_domain()
 
         # State Equation
         # for each input...
@@ -251,15 +302,7 @@ class MultiLeadingEdge(LinearGust):
                     for i in range(len(column_indices)):
                         gust_c[i_vertex, column_indices[i]] = np.array([0, 0, interpolation_weights[i]])
 
-        gustss = libss.StateSpace(gust_a, gust_b, gust_c, gust_d, dt=self.linuvlm.SS.dt)
-        self.state_to_uext = gust_c
-
-        gustss.input_variables = ss_interface.LinearVector(
-            [ss_interface.InputVariable('u_gust', size=gustss.inputs, index=0)])
-        gustss.state_variables = ss_interface.LinearVector(
-            [ss_interface.StateVariable('gust', size=gustss.states, index=0)])
-        gustss.output_variables = ss_interface.LinearVector(
-            [ss_interface.OutputVariable('u_gust', size=gustss.outputs, index=0)])
+        gustss = self.assemble_gust_statespace(gust_a, gust_b, gust_c, gust_d)
         return gustss
 
 
@@ -373,12 +416,18 @@ def campbell(sigma_w, length_scale, velocity, dt=None):
     time_scale = a * length_scale / velocity
     num_tf = np.array([91/12, 52, 60]) * sigma_w * np.sqrt(time_scale / a / np.pi)
     den_tf = np.array([935/216, 561/12, 102, 60])
-    if dt is None:
-        camp_tf = scsig.ltisys.TransferFunction(num_tf, den_tf)
+    if dt is not None:
+        num_tf, den_tf, dt = scsig.cont2discrete((num_tf, den_tf), dt, method='bilinear')
+        camp_tf = scsig.ltisys.TransferFunctionDiscrete(num_tf, den_tf, dt=dt)
     else:
-        camp_tf = scsig.ltisys.TransferFunction(num_tf, den_tf, dt=dt)
+        camp_tf = scsig.ltisys.TransferFunction(num_tf, den_tf)
+    ss_turb = libss.StateSpace.from_scipy(camp_tf.to_ss())
 
-    return libss.StateSpace.from_scipy(camp_tf.to_ss())
+    ss_turb.initialise_variables(({'name': 'noise_in', 'size': 1}), var_type='in')
+    ss_turb.initialise_variables(({'name': 'u_gust', 'size': 1}), var_type='out')
+    ss_turb.initialise_variables(({'name': 'campbell_state', 'size': ss_turb.states}), var_type='state')
+
+    return ss_turb
 
 
 if __name__ == '__main__':
@@ -414,5 +463,6 @@ if __name__ == '__main__':
                     print('Weights', weights)
                     print('Columns', columns)
                     print('\n')
+
 
     unittest.main()

@@ -129,9 +129,15 @@ def cbeam3_solv_nlnstatic(beam, settings, ts):
                             )
 
 
-def cbeam3_loads(beam, ts):
-    """@brief Python wrapper for f_cbeam3_loads
-     Alfonso del Carre
+def cbeam3_loads(beam, timestep):
+    """Python wrapper for f_cbeam3_loads
+    
+    Args:
+        beam (sharpy.structure.models.beam.Beam): Structural info class
+        timestep (sharpy.utils.datastructures.StructTimeStepInfo): Structural time step class
+
+    Returns:
+        tuple: Tuple containing the ``strains`` and ``loads``.
     """
     f_cbeam3_loads = xbeamlib.cbeam3_loads
     f_cbeam3_loads.restype = None
@@ -147,9 +153,9 @@ def cbeam3_loads(beam, ts):
                    ct.byref(n_nodes),
                    beam.fortran['connectivities'].ctypes.data_as(intP),
                    beam.ini_info.pos.ctypes.data_as(doubleP),
-                   beam.timestep_info[ts].pos.ctypes.data_as(doubleP),
+                   timestep.pos.ctypes.data_as(doubleP),
                    beam.ini_info.psi.ctypes.data_as(doubleP),
-                   beam.timestep_info[ts].psi.ctypes.data_as(doubleP),
+                   timestep.psi.ctypes.data_as(doubleP),
                    beam.fortran['stiffness_indices'].ctypes.data_as(intP),
                    ct.byref(n_stiff),
                    beam.fortran['stiffness'].ctypes.data_as(doubleP),

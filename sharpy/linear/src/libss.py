@@ -65,7 +65,7 @@ import sharpy.linear.src.libsparse as libsp
 
 # ------------------------------------------------------------- Dedicated class
 
-class StateSpace():
+class StateSpace:
     """
     Wrap state-space models allocation into a single class and support both
     full and sparse matrices. The class emulates
@@ -321,25 +321,35 @@ class StateSpace():
         """
         scale_SS(self, input_scal, output_scal, state_scal, byref=True)
 
-    def project(self, WT, V):
+    def project(self, wt, v):
         """
-        Given 2 transformation matrices, (WT,V) of shapes (Nk,self.states) and
-        (self.states,Nk) respectively, this routine projects the state space
+        Given 2 transformation matrices, ``(WT, V)`` of shapes ``(Nk, self.states)`` and
+        ``(self.states, Nk)`` respectively, this routine projects the state space
         model states according to:
 
-            Anew = WT A V
-            Bnew = WT B
-            Cnew = C V
-            Dnew = D
+
+        .. math::
+            Anew = WT A V \\
+            Bnew = WT B \\
+            Cnew = C V \\
+            Dnew = D \\
 
         The projected model has the same number of inputs/outputs as the original
         one, but Nk states.
-        """
 
-        self.A = libsp.dot(WT, libsp.dot(self.A, V))
-        self.B = libsp.dot(WT, self.B)
-        self.C = libsp.dot(self.C, V)
-        self.states = V.shape[1]
+        Args:
+            wt (Gain or np.ndarray): Left projection matrix
+            v (Gain or np.ndarray): Righty projection matrix
+        """
+        if isinstance(wt, Gain) and isinstance(v, Gain):
+            self.A = libsp.dot(wt.value, libsp.dot(self.A, v.value))
+            self.B = libsp.dot(wt.value, self.B)
+            self.C = libsp.dot(self.C, v.value)
+            self.state_variables = LinearVector.transform(v.input_variables, to_type=StateVariable)
+        else:
+            self.A = libsp.dot(wt, libsp.dot(self.A, v))
+            self.B = libsp.dot(wt, self.B)
+            self.C = libsp.dot(self.C, v)
 
     def truncate(self, N):
         """ Retains only the first N states. """
@@ -384,8 +394,15 @@ class StateSpace():
         if self.dt:
             self = disc2cont(self)
 
-    def remove_inout_channels(self, retain_channels, where):
-        remove_inout_channels(self, retain_channels, where)
+    def retain_inout_channels(self, retain_channels, where):
+        """
+        Retain selected input or output channels only.
+
+        Args:
+            retain_channels (list): List of channels to retain
+            where (str): ``in`` or ``out`` for input/output channels
+        """
+        retain_inout_channels(self, retain_channels, where)
 
     def summary(self):
         msg = 'State-space system\nStates: %g\nInputs: %g\nOutputs: %g\n' % (self.states, self.inputs, self.outputs)
@@ -456,25 +473,28 @@ class StateSpace():
             raise AttributeError('No output variables have been defined for the current state-space object. Define '
                                  'some variables prior to using the remove_outputs() method.')
 
-        self.output_variables.remove(*output_remove_list)
-
-        i = 0
-        retain_output_array = None
+        new_outputs = 0
         for variable in self.output_variables:
-            if i == 0:
-                retain_output_array = variable.rows_loc
-            else:
-                retain_output_array = np.vstack((retain_output_array, variable.rows_loc))
-            i += 1
+            if variable.name not in output_remove_list:
+                new_outputs += variable.size
 
-        if retain_output_array is not None:
+        out_gain = np.zeros((new_outputs, self.outputs))
+        worked_outputs = 0
+        for variable in self.output_variables:
+            if variable.name not in output_remove_list:
+                index = variable.rows_loc
+                out_gain[worked_outputs:worked_outputs + variable.size, index] = np.eye(variable.size)
+                worked_outputs += variable.size
+
+        if new_outputs != self.outputs:
             if type(self.B) is libsp.csc_matrix:
-                self.C = libsp.csc_matrix(self.C[retain_output_array, :])
-                self.D = libsp.csc_matrix(self.D[retain_output_array, :])
+                self.C = libsp.csc_matrix(out_gain.dot(self.C))
+                self.D = libsp.csc_matrix(out_gain.dot(self.D))
             else:
-                self.C = self.C[retain_output_array, :]
-                self.D = self.D[retain_output_array, :]
+                self.C = out_gain.dot(self.C)
+                self.D = out_gain.dot(self.D)
 
+        self.output_variables.remove(*output_remove_list)
         self.output_variables.update_locations()
 
     @classmethod
@@ -565,7 +585,23 @@ class Gain:
         self._outputs = value
 
     def dot(self, elem):
-        return self.value.dot(elem)
+        """
+        Dot product of two Gains
+
+        Args:
+            elem (np.array or Gain):
+
+        Returns:
+            np.array or Gain: new matrix/Gain containing the dot product
+        """
+        if type(elem) is Gain:
+            LinearVector.check_connection(elem.output_variables, self.input_variables)
+            new_gain_value = libsp.dot(self.value, elem.value)
+            return Gain(new_gain_value,
+                        input_vars=elem.input_variables.copy(),
+                        output_vars=self.output_variables.copy())
+        else:
+            return self.value.dot(elem)
 
     def __repr__(self):
         str_out = ''
@@ -594,6 +630,7 @@ class Gain:
         return Gain(self.value.T,
                     input_vars=input_variables,
                     output_vars=output_variables)
+
 
 class ss_block():
     """
@@ -1011,13 +1048,27 @@ def disc2cont(sys):
     return sys_ct
 
 
-def remove_inout_channels(sys, retain_channels, where):
+def retain_inout_channels(sys, retain_channels, where):
+    """
+    Retain selected input or output channels only.
+
+    Args:
+        retain_channels (list): List of channels to retain
+        where (str): ``in`` or ``out`` for input/output channels
+
+    Returns:
+        StateSpace: Updated state-space object
+    """
     retain_m = len(retain_channels)  # new number of in/out
 
     if where == 'in':
         m = sys.inputs  # current number of in/out
+        gain_input_vars = sys.input_variables
+        gain_output_vars = LinearVector.transform(sys.input_variables, to_type=OutputVariable)
     elif where == 'out':
         m = sys.outputs
+        gain_input_vars = LinearVector.transform(sys.output_variables, to_type=InputVariable)
+        gain_output_vars = sys.output_variables.copy()
     else:
         raise NameError('Argument ``where`` can only be ``in`` or ``out``.')
 
@@ -1025,8 +1076,24 @@ def remove_inout_channels(sys, retain_channels, where):
     for ith, channel in enumerate(retain_channels):
         gain_matrix[ith, channel] = 1
 
+    # Go through variables...
+    for var in gain_input_vars:
+        n_vars = np.sum((np.array(retain_channels) < var.end_position) * (np.array(retain_channels) >= var.first_position))
+
+        if n_vars == 0:
+            gain_output_vars.remove(var.name)
+        else:
+            gain_output_vars.modify(var.name, size=n_vars)
+
+    gain_output_vars.update_indices()
+    gain_output_vars.update_locations()
+
+    gain_matrix = Gain(gain_matrix,
+                       input_vars=gain_input_vars,
+                       output_vars=gain_output_vars)
+
     if where == 'in':
-        sys.addGain(gain_matrix.T, where='in')
+        sys.addGain(gain_matrix.transpose(), where='in')
     elif where == 'out':
         sys.addGain(gain_matrix, where='out')
     else:
@@ -1855,6 +1922,17 @@ def eigvals(a, dlti=False):
 def random_ss(Nx, Nu, Ny, dt=None, use_sparse=False, stable=True):
     """
     Define random system from number of states (Nx), inputs (Nu) and output (Ny).
+
+    Args:
+        Nx (int): Number of states
+        Nu (int): Number of inputs
+        Ny (int): Number of outputs
+        dt (float (optional)): Time step for discrete systems
+        use_sparse (bool): Use sparse matrices
+        stable (bool): Ensure the system is stable
+
+    Returns:
+        StateSpace: State space object
     """
 
     A = np.random.rand(Nx, Nx)
@@ -1871,15 +1949,19 @@ def random_ss(Nx, Nu, Ny, dt=None, use_sparse=False, stable=True):
     D = np.random.rand(Ny, Nu)
 
     if use_sparse:
-        SS = StateSpace(libsp.csc_matrix(A),
+        ss = StateSpace(libsp.csc_matrix(A),
                         libsp.csc_matrix(B),
                         libsp.csc_matrix(C),
                         libsp.csc_matrix(D),
                         dt=dt)
     else:
-        SS = StateSpace(A, B, C, D, dt=dt)
+        ss = StateSpace(A, B, C, D, dt=dt)
 
-    return SS
+    ss.initialise_variables(({'name': 'input_variable', 'size': Nu}), var_type='in')
+    ss.initialise_variables(({'name': 'output_variable', 'size': Ny}), var_type='out')
+    ss.initialise_variables(({'name': 'state_variable', 'size': Nx}), var_type='state')
+
+    return ss
 
 
 def compare_ss(SS1, SS2, tol=1e-10, Print=False):

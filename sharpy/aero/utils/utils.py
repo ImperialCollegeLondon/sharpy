@@ -1,5 +1,7 @@
+"""Aero utilities functions"""
 import numpy as np
 import sharpy.utils.algebra as algebra
+from sharpy.utils import algebra as algebra
 
 
 def flightcon_file_parser(fc_dict):
@@ -18,3 +20,156 @@ def alpha_beta_to_direction(alpha, beta):
     beta_rot = algebra.rotation3d_z(beta)
     direction = np.dot(beta_rot, np.dot(alpha_rot, direction))
     return direction
+
+
+def magnitude_and_direction_of_relative_velocity(displacement, displacement_vel, for_vel, cga, uext):
+    r"""
+    Calculates the magnitude and direction of the relative velocity ``u_rel`` at a local section of the wing.
+
+    .. math::
+
+       u_{rel, i}^G = \bar{U}_{\infty, i}^G - C^{GA}(\chi)(\dot{\eta}_i^A + v^A + \tilde{\omega}^A\eta_i^A
+
+    where :math:`\bar{U}_{\infty, i}^G` is the average external velocity across all aerodynamic nodes at the
+    relevant cross section.
+
+    Args:
+        displacement (np.array): Unit vector in the direction of the free stream velocity expressed in A frame.
+        displacement_vel (np.array): Unit vector in the direction of the local chord expressed in A frame.
+        for_vel (np.array): ``A`` frame of reference (FoR) velocity. Expressed in A FoR
+        cga (np.array): Rotation vector from FoR ``G`` to FoR ``A``
+        uext (np.array): Background flow velocity on solid grid nodes
+
+    Returns:
+        tuple: ``u_rel``, ``dir_u_rel`` expressed in the inertial, ``G`` frame.
+    """
+    urel = (displacement_vel +
+            for_vel[0:3] +
+            algebra.cross3(for_vel[3:6], displacement))
+    urel = -np.dot(cga, urel)
+    urel += np.average(uext, axis=1)
+
+    dir_urel = algebra.unit_vector(urel)
+
+    return urel, dir_urel
+
+
+def local_stability_axes(dir_urel, dir_chord):
+    """
+    Rotates the body axes onto stability axes. This rotation is equivalent to the projection of a vector in S onto B.
+
+    The stability axes are defined as:
+
+        * ``x_s``: parallel to the free stream
+
+        * ``z_s``: perpendicular to the free stream and part of the plane formed by the local chord and the vertical
+          body axis ``z_b``.
+
+        * ``y_s``: completes the set
+
+    Args:
+        dir_urel (np.array): Unit vector in the direction of the free stream velocity expressed in B frame.
+        dir_chord (np.array): Unit vector in the direction of the local chord expressed in B frame.
+
+    Returns:
+        np.array: Rotation matrix from B to S, equivalent to the projection matrix :math:`C^{BS}` that projects a
+        vector from S onto B.
+    """
+    xs = dir_urel
+
+    zb = np.array([0, 0, 1.])
+    zs = algebra.cross3(algebra.cross3(dir_chord, zb), dir_urel)
+
+    ys = -algebra.cross3(xs, zs)
+
+    return algebra.triad2rotation(xs, ys, zs)
+
+
+def span_chord(i_node_surf, zeta):
+    """
+    Retrieve the local span and local chord
+
+    Args:
+        i_node_surf (int): Node index in aerodynamic surface
+        zeta (np.array): Aerodynamic surface coordinates ``(3 x n_chord x m_span)``
+
+    Returns:
+        tuple: ``dir_span``, ``span``, ``dir_chord``, ``chord``
+    """
+    N = zeta.shape[2] - 1 # spanwise vertices in surface (-1 for index)
+
+    # Deal with the extremes
+    if i_node_surf == 0:
+        node_p = 1
+        node_m = 0
+    elif i_node_surf == N:
+        node_p = N
+        node_m = N - 1
+    else:
+        node_p = i_node_surf + 1
+        node_m = i_node_surf - 1
+
+    # Define the span and the span direction
+    dir_span = 0.5 * (zeta[:, 0, node_p] - zeta[:, 0, node_m])
+
+    span = np.linalg.norm(dir_span)
+    dir_span = algebra.unit_vector(dir_span)
+
+    # Define the chord and the chord direction
+    dir_chord = zeta[:, -1, i_node_surf] - zeta[:, 0, i_node_surf]
+    chord = np.linalg.norm(dir_chord)
+    dir_chord = algebra.unit_vector(dir_chord)
+
+    return dir_span, span, dir_chord, chord
+
+
+def find_aerodynamic_solver(settings):
+    """
+    Retrieves the name and settings of the first aerodynamic solver used in the solution ``flow``.
+
+    Args:
+        settings (dict): SHARPy settings (usually found in ``data.settings`` )
+
+    Returns:
+        tuple: Aerodynamic solver name and solver settings
+    """
+    flow = settings['SHARPy']['flow']
+    # Look for the aerodynamic solver
+    if 'StaticUvlm' in flow:
+        aero_solver_name = 'StaticUvlm'
+        aero_solver_settings = settings['StaticUvlm']
+    elif 'StaticCoupled' in flow:
+        aero_solver_name = settings['StaticCoupled']['aero_solver']
+        aero_solver_settings = settings['StaticCoupled']['aero_solver_settings']
+    elif 'StaticCoupledRBM' in flow:
+        aero_solver_name = settings['StaticCoupledRBM']['aero_solver']
+        aero_solver_settings = settings['StaticCoupledRBM']['aero_solver_settings']
+    elif 'DynamicCoupled' in flow:
+        aero_solver_name = settings['DynamicCoupled']['aero_solver']
+        aero_solver_settings = settings['DynamicCoupled']['aero_solver_settings']
+    elif 'StepUvlm' in flow:
+        aero_solver_name = 'StepUvlm'
+        aero_solver_settings = settings['StepUvlm']
+    else:
+        raise KeyError("ERROR: aerodynamic solver not found")
+
+    return aero_solver_name, aero_solver_settings
+
+
+def find_velocity_generator(settings):
+    """
+    Retrieves the name and settings of the fluid velocity generator in the first aerodynamic solver used in the
+    solution ``flow``.
+
+    Args:
+        settings (dict): SHARPy settings (usually found in ``data.settings`` )
+
+    Returns:
+        tuple: velocity generator name and velocity generator settings
+    """
+    aero_solver_name, aero_solver_settings = find_aerodynamic_solver(settings)
+
+    vel_gen_name = aero_solver_settings['velocity_field_generator']
+    vel_gen_settings = aero_solver_settings['velocity_field_input']
+
+    return vel_gen_name, vel_gen_settings

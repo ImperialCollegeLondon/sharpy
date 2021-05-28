@@ -1095,7 +1095,7 @@ class SweptWing:
                              'rigid_body_modes': True,
                              'write_modes_vtk': 'on',
                              'print_matrices': 'on',
-                             'write_data': 'on',
+                             'save_data': 'on',
                              'continuous_eigenvalues': 'off',
                              'dt': dt,
                              'plot_eigenvalues': False}

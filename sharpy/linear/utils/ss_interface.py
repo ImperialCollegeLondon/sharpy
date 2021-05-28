@@ -137,6 +137,9 @@ class VectorVariable:
             self.first_position,
             self.end_position)
 
+    def copy(self):
+        return copy.deepcopy(self)
+
 
 # should have a dedicated class for Input vs Output variables? in the output the columns should not change
 # in the input it is the rows the ones that do not change
@@ -316,13 +319,13 @@ class LinearVector:
         if vec1.variable_class is not vec2.variable_class:
             raise TypeError('Unable to merge two different kinds of vectors')
 
-        for variable in vec2:
-            variable.index += vec1.num_variables
+        list_of_variables_1 = [variable.copy() for variable in vec1]
+        list_of_variables_2 = [variable.copy() for variable in vec2]
 
-        list_of_variables_1 = [variable for variable in vec1]
-        list_of_variables_2 = [variable for variable in vec2]
+        for ith, variable in enumerate(list_of_variables_1 + list_of_variables_2):
+            variable.index = ith
 
-        merged_vector = cls(list_of_variables_1.copy() + list_of_variables_2.copy())
+        merged_vector = cls(list_of_variables_1 + list_of_variables_2)
         return merged_vector
 
     @classmethod
@@ -354,11 +357,16 @@ class LinearVector:
                 err_log += '\nUnable to connect both systems, no input variable named {:s}\n'.format(out_variable.name)
                 with_error = True
             else:
-                if not (out_variable.rows_loc == in_variable.cols_loc).all:
+                if not out_variable.size == in_variable.size:
+                    err_log += 'Variable {:s} and {:s} not the same size'
+                    with_error = True
+                if not out_variable.rows_loc[-1] == in_variable.cols_loc[-1]:
+                    # checking the last index should be sufficient (and more efficient than checking the whole array)
                     err_log += 'Variable {:s}Output rows not coincident with input columns for variable\n'.format(
                         out_variable.name)
-                    err_log += out_variable + '\n'
-                    err_log += in_variable + '\n'
+                    err_log += str(out_variable) + '\n'
+                    err_log += str(in_variable) + '\n'
+                    with_error = True
 
         if with_error:
             raise ValueError(err_log)
@@ -394,6 +402,17 @@ class LinearVector:
             raise ValueError('Variable {:s} is non existent'.format(name))
         else:
             return self.vector_variables[variable_index]
+
+    def __call__(self, variable_name):
+        """
+
+        Args:
+            variable_name (str): Variable name
+
+        Returns:
+            VectorVariable: Vector variable within LinearVector
+        """
+        return self.get_variable_from_name(variable_name)
 
     def copy(self):
         return copy.deepcopy(self)

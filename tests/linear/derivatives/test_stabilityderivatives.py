@@ -62,7 +62,7 @@ class TestLinearDerivatives(unittest.TestCase):
                                  case_name=case_name)
 
         ws.gust_intensity = 0.01
-        ws.sigma = 1
+        ws.sigma = 1e-1
 
         ws.clean_test_files()
         ws.update_derived_params()
@@ -73,13 +73,12 @@ class TestLinearDerivatives(unittest.TestCase):
 
         frequency_continuous_w = 2 * u_inf * frequency_continuous_k / ws.c_ref
         rom_settings['frequency'] = frequency_continuous_w
-        rom_settings['tangent_input_file'] = ws.route + '/' + ws.case_name + '.rom.h5'
 
         ws.config['SHARPy'] = {
             'flow': flow,
             'case': ws.case_name, 'route': ws.route,
             'write_screen': 'on', 'write_log': 'on',
-            'log_folder': self.route_test_dir + '/output/' + ws.case_name + '/',
+            'log_folder': self.route_test_dir + '/output/',
             'log_file': ws.case_name + '.log'}
 
         ws.config['BeamLoader'] = {
@@ -136,37 +135,32 @@ class TestLinearDerivatives(unittest.TestCase):
                                            'num_load_steps': 4,
                                            'delta_curved': 1e-1,
                                            'min_delta': 1e-10,
-                                           'gravity_on': 'on',
+                                           'gravity_on': 'off',
                                            'gravity': 9.81}}
 
-        ws.config['AerogridPlot'] = {'folder': self.route_test_dir + '/output/',
-                                     'include_rbm': 'off',
+        ws.config['AerogridPlot'] = {'include_rbm': 'off',
                                      'include_applied_forces': 'on',
                                      'minus_m_star': 0}
 
-        ws.config['AeroForcesCalculator'] = {'folder': self.route_test_dir + '/output/',
-                                             'write_text_file': 'on',
+        ws.config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                              # 'text_file_name': ws.case_name + '_aeroforces.csv',
                                              'screen_output': 'on',
                                              'unsteady': 'off'}
 
-        ws.config['BeamPlot'] = {'folder': self.route_test_dir + '/output/',
-                                 'include_rbm': 'off',
+        ws.config['BeamPlot'] = {'include_rbm': 'off',
                                  'include_applied_forces': 'on'}
 
-        ws.config['BeamCsvOutput'] = {'folder': self.route_test_dir + '/output/',
-                                      'output_pos': 'on',
+        ws.config['BeamCsvOutput'] = {'output_pos': 'on',
                                       'output_psi': 'on',
                                       'screen_output': 'on'}
 
-        ws.config['Modal'] = {'folder': self.route_test_dir + '/output/',
-                              'print_info': 'on',
+        ws.config['Modal'] = {'print_info': 'on',
                               'use_undamped_modes': 'on',
                               'NumLambda': 20,
                               'rigid_body_modes': 'on',
                               'write_modes_vtk': 'on',
                               'print_matrices': 'off',
-                              'write_data': 'on',
+                              'save_data': 'on',
                               'rigid_modes_cg': 'off'}
 
         settings = {}
@@ -220,17 +214,17 @@ class TestLinearDerivatives(unittest.TestCase):
                                            'track_body': 'off',
                                            'beam_settings': {'modal_projection': 'on',
                                                              'inout_coords': 'modes',
-                                                             'discrete_time': 'on',
+                                                             'discrete_time': 'off',
                                                              'newmark_damp': 5e-4,
                                                              'discr_method': 'newmark',
                                                              'dt': ws.dt,
                                                              'proj_modes': 'undamped',
                                                              'use_euler': 'on',
-                                                             'num_modes': 9,
+                                                             'num_modes': 20,
                                                              'print_info': 'on',
-                                                             'gravity': 'on',
+                                                             'gravity': 'off',
                                                              'remove_dofs': [],
-                                                             'remove_rigid_states': 'off'},
+                                                             'remove_rigid_states': 'on'},
                                            'aero_settings': {'dt': ws.dt,
                                                              # 'ScalingDict': {'density': rho,
                                                              #                 'length': ws.c_ref * 0.5,
@@ -238,23 +232,22 @@ class TestLinearDerivatives(unittest.TestCase):
                                                              'integr_order': 2,
                                                              'density': rho,
                                                              'remove_predictor': 'off',
-                                                             'use_sparse': 'on',
+                                                             'use_sparse': 'off',
                                                              'vortex_radius': 1e-8,
+                                                             'convert_to_ct': 'on',
                                                              'remove_inputs': ['u_gust'],
-                                                             'rom_method': ['Krylov'],
+                                                             # 'rom_method': ['Krylov'],
                                                              'rom_method_settings': {
                                                                  'Krylov': {'algorithm': 'mimo_rational_arnoldi',
                                                                             'frequency': [0.],
                                                                             'r': 4,
                                                                             'single_side': 'observability'}}
                                                              },
-                                           'rigid_body_motion': 'on',
                                            'use_euler': 'on',
                                        },
                                        }
 
         ws.config['FrequencyResponse'] = {'quick_plot': 'off',
-                                          'folder': self.route_test_dir + '/output/',
                                           'frequency_unit': 'k',
                                           'frequency_bounds': [0.0001, 1.0],
                                           'num_freqs': 100,
@@ -262,23 +255,18 @@ class TestLinearDerivatives(unittest.TestCase):
                                           'target_system': ['aeroelastic'],
                                           }
 
-        ws.config['StabilityDerivatives'] = {'folder': self.route_test_dir + '/output/',
-                                             'target_system': target_system,
-                                             'u_inf': ws.u_inf,
+        ws.config['StabilityDerivatives'] = {'u_inf': ws.u_inf,
                                              'c_ref': ws.main_chord,
                                              'b_ref': ws.wing_span,
                                              'S_ref': ws.wing_span * ws.main_chord,
                                              }
 
-        ws.config['AsymptoticStability'] = {'folder': self.route_test_dir + '/output/' + case_name + '/',
-                                            'print_info': 'on'}
+        ws.config['AsymptoticStability'] = {'print_info': 'on'}
 
-        ws.config['SaveParametricCase'] = {'folder': self.route_test_dir + '/output/' + case_name + '/',
-                                           'save_case': 'off',
+        ws.config['SaveParametricCase'] = {'save_case': 'off',
                                            'parameters': {'alpha': alpha_deg}}
 
-        ws.config['SaveData'] = {'folder': self.route_test_dir + '/output/',
-                                 'save_aero': 'off',
+        ws.config['SaveData'] = {'save_aero': 'off',
                                  'save_struct': 'off',
                                  'save_linear': 'on',
                                  'save_linear_uvlm': 'on',
@@ -293,9 +281,9 @@ class TestLinearDerivatives(unittest.TestCase):
         return ws
 
     def test_derivatives(self):
-        target_system_list = ['aerodynamic']#, 'aeroelastic']
+        # target_system_list = ['aerodynamic']#, 'aeroelastic']
         # target_system_list = ['aeroelastic']
-        # target_system_list = ['aerodynamic', 'aeroelastic']
+        target_system_list = ['aerodynamic', 'aeroelastic']
         for system in target_system_list:
             with self.subTest(target_system=system):
                 self.run_case(target_system=system)
@@ -305,15 +293,15 @@ class TestLinearDerivatives(unittest.TestCase):
         if target_system == 'aerodynamic':
             nonlinear_solver = ['StaticUvlm']
         elif target_system == 'aeroelastic':
-            nonlinear_solver = ['StaticCoupled', 'DynamicCoupled']
+            nonlinear_solver = ['StaticCoupled']
         else:
             NameError('Unrecognised system')
 
         case_name_db = []
-        not_run = False # for debuigghig
+        not_run = False # for debugging
         # Reference Case at 4 degrees
         # Run nonlinear simulation and save linerised ROM
-        alpha_deg_ref = 4
+        alpha_deg_ref = 0
         alpha0 = alpha_deg_ref * np.pi/180
         ref = self.run_sharpy(alpha_deg=alpha_deg_ref,
                               flow=['BeamLoader',
@@ -352,7 +340,7 @@ class TestLinearDerivatives(unittest.TestCase):
                 case_name_db.append(case.case_name)
                 case_name = case.case_name
             nlin_forces = np.loadtxt(self.route_test_dir +
-                                     '/output/{:s}/forces/aeroforces.txt'.format(case_name),
+                                     '/output/{:s}/forces/forces_aeroforces.txt'.format(case_name),
                                      skiprows=1,
                                      delimiter=',')
             nlin_forces_g[ith, :3] = nlin_forces[1:4]
@@ -385,23 +373,25 @@ class TestLinearDerivatives(unittest.TestCase):
         
         # Steady State transfer function
         if target_system == 'aerodynamic':
-            A, B, C, D, dt = linuvlm_data['A'], linuvlm_data['B'], linuvlm_data['C'], linuvlm_data['D'], linuvlm_data['dt']
-            # H0 = linuvlm_data['C'].dot(
-            #     np.linalg.inv(np.eye(linuvlm_data['A'].shape[0]) - linuvlm_data['A']).dot(linuvlm_data['B'])) + \
-            #      linuvlm_data['D']
+            A, B, C, D = linuvlm_data['A'], linuvlm_data['B'], linuvlm_data['C'], linuvlm_data['D']
+            try:
+                dt = linuvlm_data['dt']
+            except KeyError:
+                dt = None
         else:
-            A, B, C, D, dt = linss_data['A'], linss_data['B'], linss_data['C'], linss_data['D'], linss_data['dt']
-            # H0 = linss_data['C'].dot(
-            #     np.linalg.inv(np.eye(linss_data['A'].shape[0]) - linss_data['A']).dot(linss_data['B'])) + \
-            #      linss_data['D']
+            A, B, C, D = linss_data['A'], linss_data['B'], linss_data['C'], linss_data['D']
+            try:
+                dt = linss_data['dt']
+            except KeyError:
+                dt = None
 
         ss = libss.StateSpace(A, B, C, D, dt=dt)
-        H0 = ss.freqresp([1e-5])[:, :, 0].real
+        H0 = ss.freqresp(np.array([1e-5]))[:, :, 0].real
 
         cga = algebra.quat2rotation(algebra.euler2quat(np.array([0, alpha0, 0])))
 
-        vx_ind = 9  # x_a input index
-        vz_ind = 9 + 2  # z_a input index
+        vx_ind = 20  # x_a input index
+        vz_ind = 20 + 2  # z_a input index
 
         n_evals = 2
         forces = np.zeros((n_evals, 4))
@@ -485,12 +475,12 @@ class TestLinearDerivatives(unittest.TestCase):
         for test in linsubtests:
             with self.subTest(test):
                 try:
-                    np.testing.assert_almost_equal(sharpy_force_angle[test[0], 1], test[1], decimal=5)
+                    np.testing.assert_almost_equal(sharpy_force_angle[test[0], 1], test[1], decimal=3)
                 except AssertionError as e:
                     print('Error Linear perturbation in {:s}'.format(test[2]))
                     print(e)
                     print('Pct error', np.abs(sharpy_force_angle[test[0], 1] - test[1]) / test[1] * 100)
-                    # raise AssertionError
+                    raise AssertionError
 
         nonlinsubtests = ((2, nonlin_cla, 'lift'),
                           (0, nonlin_cda, 'drag'),
@@ -504,7 +494,7 @@ class TestLinearDerivatives(unittest.TestCase):
                     print('Error nonlinear perturbation in {:s}'.format(test[2]))
                     print(e)
                     print('Pct error', np.abs(sharpy_force_angle[test[0], 1] - test[1]) / test[1] * 100)
-                    # raise AssertionError
+                    raise AssertionError
         return forces, moments
 
     def tearDown(self):

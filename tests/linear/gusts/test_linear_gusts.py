@@ -3,16 +3,22 @@ import os
 import unittest
 import cases.templates.flying_wings as wings
 import sharpy.sharpy_main
+from sharpy.linear.assembler.lineargustassembler import campbell
+import pickle
 
 
 class TestGolandControlSurface(unittest.TestCase):
 
-    def setup(self):
+    def setUp(self):
+        self.route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+
+    def run_sharpy(self, flow, **kwargs):
         # Problem Set up
         u_inf = 1.
         alpha_deg = 0.
         rho = 1.02
         num_modes = 4
+        restart = kwargs.get('restart', False)
 
         # Lattice Discretisation
         M = 4
@@ -21,7 +27,7 @@ class TestGolandControlSurface(unittest.TestCase):
 
         # Linear UVLM settings
         integration_order = 2
-        remove_predictor = False
+        remove_predictor = kwargs.get('remove_predictor', False)
         use_sparse = True
 
         # Case Admin - Create results folders
@@ -30,7 +36,6 @@ class TestGolandControlSurface(unittest.TestCase):
 
         case_name += case_nlin_info
 
-        self.route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
         fig_folder = self.route_test_dir + '/figures/'
         os.makedirs(fig_folder, exist_ok=True)
 
@@ -66,19 +71,13 @@ class TestGolandControlSurface(unittest.TestCase):
         # gust
         u_vec[:, 4] = np.sin(np.linspace(0, 2*np.pi, lin_tsteps))
         ws.create_linear_files(x0, u_vec)
-        np.savetxt(self.route_test_dir + '/elevator.txt', u_vec[:, 5])
-        np.savetxt(self.route_test_dir + '/gust.txt', u_vec[:, 4])
+        np.savetxt(self.route_test_dir + '/cases/elevator.txt', u_vec[:, 5])
+        np.savetxt(self.route_test_dir + '/cases/gust.txt', u_vec[:, 4])
 
         ws.config['SHARPy'] = {
-            'flow':
-                ['BeamLoader', 'AerogridLoader',
-                 'StaticCoupled',
-                 'Modal',
-                 'LinearAssembler',
-                 'LinDynamicSim',
-                 ],
+            'flow': flow,
             'case': ws.case_name, 'route': ws.route,
-            'write_screen': 'on', 'write_log': 'on',
+            'write_screen': 'off', 'write_log': 'on',
             'log_folder': self.route_test_dir + '/output/' + ws.case_name + '/',
             'log_file': ws.case_name + '.log'}
 
@@ -139,32 +138,22 @@ class TestGolandControlSurface(unittest.TestCase):
                                            'gravity_on': 'on',
                                            'gravity': 9.81}}
 
-        ws.config['AerogridPlot'] = {'folder': self.route_test_dir + '/output/',
-                                     'include_rbm': 'off',
+        ws.config['AerogridPlot'] = {'include_rbm': 'off',
                                      'include_applied_forces': 'on',
                                      'minus_m_star': 0}
 
-        ws.config['AeroForcesCalculator'] = {'folder': self.route_test_dir + '/output/forces',
-                                             'write_text_file': 'on',
+        ws.config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                              'text_file_name': ws.case_name + '_aeroforces.csv',
                                              'screen_output': 'on',
                                              'unsteady': 'off'}
 
-        ws.config['BeamPlot'] = {'folder': self.route_test_dir + '/output/',
-                                 'include_rbm': 'off',
+        ws.config['BeamPlot'] = {'include_rbm': 'off',
                                  'include_applied_forces': 'on'}
 
-        ws.config['BeamCsvOutput'] = {'folder': self.route_test_dir + '/output/',
-                                      'output_pos': 'on',
-                                      'output_psi': 'on',
-                                      'screen_output': 'on'}
-
-        ws.config['Modal'] = {'folder': self.route_test_dir + '/output/',
-                              'NumLambda': 20,
+        ws.config['Modal'] = {'NumLambda': 20,
                               'rigid_body_modes': 'off',
                               'print_matrices': 'on',
-                              'keep_linear_matrices': 'on',
-                              'write_dat': 'off',
+                              'save_data': 'off',
                               'rigid_modes_cg': 'off',
                               'continuous_eigenvalues': 'off',
                               'dt': 0,
@@ -197,33 +186,86 @@ class TestGolandControlSurface(unittest.TestCase):
                                                               'remove_inputs': [],
                                                               'gust_assembler': 'LeadingEdge',
                                                               },
-                                            'rigid_body_motion': 'off'}}
+                                        }
+                                        }
 
-        ws.config['LinDynamicSim'] = {'folder': self.route_test_dir + '/output/',
-                                      'n_tsteps': lin_tsteps,
+        ws.config['LinDynamicSim'] = {'n_tsteps': lin_tsteps,
                                       'dt': ws.dt,
                                       'input_generators': [
                                           {'name': 'control_surface_deflection',
                                            'index': 0,
-                                           'file_path': self.route_test_dir + '/elevator.txt'},
+                                           'file_path': self.route_test_dir + '/cases/elevator.txt'},
                                           {'name': 'u_gust',
                                            'index': 0,
-                                           'file_path': self.route_test_dir + '/gust.txt'}
+                                           'file_path': self.route_test_dir + '/cases/gust.txt'}
                                       ],
                                       'postprocessors': ['AerogridPlot'],
                                       'postprocessors_settings':
-                                          {'AerogridPlot': {'folder': self.route_test_dir + '/output/',
-                                                            'include_rbm': 'on',
+                                          {'AerogridPlot': {'include_rbm': 'on',
                                                             'include_applied_forces': 'on',
                                                             'minus_m_star': 0}, }
                                       }
 
+        ws.config['PickleData'] = {}
         ws.config.write()
 
-        self.data = sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.sharpy'])
+        if not restart:
+            data = sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.sharpy'])
+        else:
+            with open(self.route_test_dir + '/output/{:s}.pkl'.format(ws.case_name), 'rb') as f:
+                data = pickle.load(f)
+
+        return data
+
+    def run_linear_sharpy(self, **kwargs):
+        flow = ['BeamLoader', 'AerogridLoader',
+                'StaticCoupled',
+                'Modal',
+                'LinearAssembler',
+                'LinDynamicSim',
+                'PickleData']
+
+        restart = False
+        if restart:
+            flow = ['LinDynamicSim']
+
+        data = self.run_sharpy(flow, restart=restart, **kwargs)
+
+        return data
+
+    def extract_u_inf(self, data):
+        ts = len(data.aero.timestep_info)
+        _, m_chord, n_span = data.aero.timestep_info[0].u_ext[0].shape
+        u_inf_ext = np.zeros((ts, m_chord, n_span))
+        for i_ts in range(ts):
+            u_inf_ext[i_ts, :, :] = data.aero.timestep_info[i_ts].u_ext[0][2, :, :]
+
+        return u_inf_ext
 
     def test_linear_gust(self):
-        self.setup()
+        test_conditions = [
+            {'remove_predictor': True},
+            {'remove_predictor': False},
+        ]
+        for test in test_conditions:
+            with self.subTest(test):
+                data = self.run_linear_sharpy(**test)
+                u_gust_in = np.loadtxt(self.route_test_dir + '/cases/gust.txt')
+                u_inf_ext = self.extract_u_inf(data)
+                if test['remove_predictor']:
+                    predictor_offset = 0
+                else:
+                    # input defined at time step n+1
+                    predictor_offset = 1
+
+                # test leading edge value is equal to input
+                np.testing.assert_array_almost_equal(u_inf_ext[1 + predictor_offset:, 0, 0],
+                                                     u_gust_in[:-1-predictor_offset])
+
+                # check convection in panels downstream
+                for i_chord in range(1, u_inf_ext.shape[1]):
+                    np.testing.assert_array_almost_equal(u_inf_ext[predictor_offset + 1 + i_chord:-i_chord, i_chord, 0],
+                                                         u_inf_ext[predictor_offset + 1 + i_chord - 1:-(i_chord + 1), i_chord - 1, 0])
 
     def tearDown(self):
         import shutil
@@ -232,5 +274,31 @@ class TestGolandControlSurface(unittest.TestCase):
             shutil.rmtree(self.route_test_dir + '/' + folder)
 
 
+class TestGusts(unittest.TestCase):
+
+    def test_campbell(self):
+        """
+        Test that the Campell approximation to the Von Karman filter is equivalent in continuous and
+        discrete time
+
+        """
+        sigma_w = 1
+        length_scale = 1
+        velocity = 1
+        dt = 1e-1
+        omega_w = np.logspace(-3, 0, 10)
+
+        ss_ct = campbell(sigma_w, length_scale, velocity)
+
+        ss_dt = campbell(sigma_w, length_scale, velocity, dt=dt)
+
+        G_ct = ss_ct.freqresp(omega_w)
+        G_dt = ss_dt.freqresp(omega_w)
+
+        np.testing.assert_array_almost_equal(G_ct[0, 0, :].real, G_dt[0, 0, :].real, decimal=3)
+
+
 if __name__ == '__main__':
     unittest.main()
+
+

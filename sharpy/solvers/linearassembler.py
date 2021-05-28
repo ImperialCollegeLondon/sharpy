@@ -91,6 +91,20 @@ class LinearAssembler(BaseSolver):
     settings_default['retain_outputs'] = []
     settings_description['retain_outputs'] = 'List of output channels to retain in the chosen ``inout_coordinates``.'
 
+    settings_types['retain_input_variables'] = 'list(str)'
+    settings_default['retain_input_variables'] = []
+    settings_description['retain_input_variables'] = 'List of input channels to retain in the chosen ' \
+                                                     '``inout_coordinates``.'
+
+    settings_types['retain_output_variables'] = 'list(str)'
+    settings_default['retain_output_variables'] = []
+    settings_description['retain_output_variables'] = 'List of output channels to retain in the chosen ' \
+                                                      '``inout_coordinates``.'
+
+    settings_types['recover_accelerations'] = 'bool'
+    settings_default['recover_accelerations'] = False
+    settings_description['recover_accelerations'] = 'Recover structural system accelerations as additional outputs.'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
@@ -141,6 +155,10 @@ class LinearAssembler(BaseSolver):
 
         self.data.linear.ss = self.data.linear.linear_system.assemble()
 
+        if self.settings['recover_accelerations']:
+            gain = self.data.linear.linear_system.beam.recover_accelerations(self.data.linear.ss)
+            self.data.linear.ss.addGain(gain, where='out')
+
         # modify inout coordinates
         if self.settings['inout_coordinates'] == 'nodes':
             try:
@@ -150,9 +168,28 @@ class LinearAssembler(BaseSolver):
 
         # retain only selected inputs and outputs
         if len(self.settings['retain_inputs']) != 0:
-            self.data.linear.ss.remove_inout_channels(self.settings['retain_inputs'], where='in')
+            self.data.linear.ss.retain_inout_channels(self.settings['retain_inputs'], where='in')
         if len(self.settings['retain_outputs']) != 0:
-            self.data.linear.ss.remove_inout_channels(self.settings['retain_outputs'], where='out')
+            self.data.linear.ss.retain_inout_channels(self.settings['retain_outputs'], where='out')
+
+        if len(self.settings['retain_input_variables']) != 0:
+            ss = self.data.linear.ss
+            input_vars = ss.input_variables
+            removed_variables = []
+            for variable in input_vars:
+                if variable.name not in self.settings['retain_input_variables']:
+                    removed_variables.append(variable.name)
+            ss.remove_inputs(*removed_variables)
+
+        if len(self.settings['retain_output_variables']) != 0:
+            ss = self.data.linear.ss
+            output_vars = ss.output_variables
+            removed_variables = []
+            for variable in output_vars:
+                if variable.name not in self.settings['retain_output_variables']:
+                    removed_variables.append(variable.name)
+            ss.remove_outputs(*removed_variables)
+
         cout.cout_wrap('Final system is:', 1)
         cout.cout_wrap(str(self.data.linear.ss), 2)
 
