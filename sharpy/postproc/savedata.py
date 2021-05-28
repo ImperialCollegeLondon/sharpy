@@ -272,11 +272,9 @@ class SaveData(BaseSolver):
                                 'D': D}
                     for k, v in linearisation_vectors.items():
                         savedict[k] = v
-                    try:
-                        dt = self.data.linear.ss.dt
+                    dt = self.data.linear.ss.dt
+                    if dt is not None:
                         savedict['dt'] = dt
-                    except AttributeError:
-                        pass
                     savemat(matfilename, savedict)
 
                 if self.settings['save_linear_uvlm']:
@@ -289,11 +287,9 @@ class SaveData(BaseSolver):
                                 'D': D}
                     for k, v in linearisation_vectors.items():
                         savedict[k] = v
-                    try:
-                        dt = self.data.linear.ss.dt
+                    dt = self.data.linear.linear_system.uvlm.ss.dt
+                    if dt is not None:
                         savedict['dt'] = dt
-                    except AttributeError:
-                        pass
                     savemat(matfilename, savedict)
 
         return self.data
