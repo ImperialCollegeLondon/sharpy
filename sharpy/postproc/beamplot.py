@@ -112,7 +112,8 @@ class BeamPlot(BaseSolver):
 
     def write_beam(self, it):
         it_filename = (self.filename +
-                       '%06u' % it)
+                       ('%06u' % it) +
+                       '.vtu')
         num_nodes = self.data.structure.num_node
         num_elem = self.data.structure.num_elem
 

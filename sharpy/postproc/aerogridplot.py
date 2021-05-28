@@ -151,8 +151,9 @@ class AerogridPlot(BaseSolver):
         for i_surf in range(aero_tstep.n_surf):
             filename = (self.body_filename +
                         '_' +
-                        '%02u_' % i_surf +
-                        '%06u' % self.ts)
+                        ('%02u_' % i_surf) +
+                        ('%06u' % self.ts) +
+                        '.vtu')
 
             dims = aero_tstep.dimensions[i_surf, :]
             point_data_dim = (dims[0]+1)*(dims[1]+1)  # + (dims_star[0]+1)*(dims_star[1]+1)
@@ -271,8 +272,9 @@ class AerogridPlot(BaseSolver):
         for i_surf in range(self.data.aero.timestep_info[self.ts].n_surf):
             filename = (self.wake_filename +
                         '_' +
-                        '%02u_' % i_surf +
-                        '%06u' % self.ts)
+                        ('%02u_' % i_surf) +
+                        ('%06u' % self.ts) +
+                        '.vtu')
 
             dims_star = self.data.aero.timestep_info[self.ts].dimensions_star[i_surf, :].copy()
             dims_star[0] -= self.settings['minus_m_star']
