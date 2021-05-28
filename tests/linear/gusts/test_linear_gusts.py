@@ -138,32 +138,22 @@ class TestGolandControlSurface(unittest.TestCase):
                                            'gravity_on': 'on',
                                            'gravity': 9.81}}
 
-        ws.config['AerogridPlot'] = {'folder': self.route_test_dir + '/output/',
-                                     'include_rbm': 'off',
+        ws.config['AerogridPlot'] = {'include_rbm': 'off',
                                      'include_applied_forces': 'on',
                                      'minus_m_star': 0}
 
-        ws.config['AeroForcesCalculator'] = {'folder': self.route_test_dir + '/output/forces',
-                                             'write_text_file': 'on',
+        ws.config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                              'text_file_name': ws.case_name + '_aeroforces.csv',
                                              'screen_output': 'on',
                                              'unsteady': 'off'}
 
-        ws.config['BeamPlot'] = {'folder': self.route_test_dir + '/output/',
-                                 'include_rbm': 'off',
+        ws.config['BeamPlot'] = {'include_rbm': 'off',
                                  'include_applied_forces': 'on'}
 
-        ws.config['BeamCsvOutput'] = {'folder': self.route_test_dir + '/output/',
-                                      'output_pos': 'on',
-                                      'output_psi': 'on',
-                                      'screen_output': 'on'}
-
-        ws.config['Modal'] = {'folder': self.route_test_dir + '/output/',
-                              'NumLambda': 20,
+        ws.config['Modal'] = {'NumLambda': 20,
                               'rigid_body_modes': 'off',
                               'print_matrices': 'on',
-                              'keep_linear_matrices': 'on',
-                              'write_dat': 'off',
+                              'save_data': 'off',
                               'rigid_modes_cg': 'off',
                               'continuous_eigenvalues': 'off',
                               'dt': 0,
@@ -196,10 +186,10 @@ class TestGolandControlSurface(unittest.TestCase):
                                                               'remove_inputs': [],
                                                               'gust_assembler': 'LeadingEdge',
                                                               },
-                                            'rigid_body_motion': 'off'}}
+                                        }
+                                        }
 
-        ws.config['LinDynamicSim'] = {'folder': self.route_test_dir + '/output/',
-                                      'n_tsteps': lin_tsteps,
+        ws.config['LinDynamicSim'] = {'n_tsteps': lin_tsteps,
                                       'dt': ws.dt,
                                       'input_generators': [
                                           {'name': 'control_surface_deflection',
@@ -211,13 +201,12 @@ class TestGolandControlSurface(unittest.TestCase):
                                       ],
                                       'postprocessors': ['AerogridPlot'],
                                       'postprocessors_settings':
-                                          {'AerogridPlot': {'folder': self.route_test_dir + '/output/',
-                                                            'include_rbm': 'on',
+                                          {'AerogridPlot': {'include_rbm': 'on',
                                                             'include_applied_forces': 'on',
                                                             'minus_m_star': 0}, }
                                       }
 
-        ws.config['PickleData'] = {'folder': self.route_test_dir + '/output/'}
+        ws.config['PickleData'] = {}
         ws.config.write()
 
         if not restart:

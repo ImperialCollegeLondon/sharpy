@@ -45,10 +45,6 @@ class Modal(BaseSolver):
     settings_default['NumLambda'] = 20  # doubles if use_undamped_modes is False
     settings_description['NumLambda'] = 'Number of modes to retain'
 
-    settings_types['keep_linear_matrices'] = 'bool'  # attach linear M,C,K matrices to output dictionary
-    settings_default['keep_linear_matrices'] = True
-    settings_description['keep_linear_matrices'] = 'Save M, C and K matrices to output dictionary'
-
     # output options
     settings_types['write_modes_vtk'] = 'bool'  # write displacements mode shapes in vtk file
     settings_default['write_modes_vtk'] = True
@@ -58,9 +54,9 @@ class Modal(BaseSolver):
     settings_default['print_matrices'] = False
     settings_description['print_matrices']  = 'Write M, C and K matrices to file'
 
-    settings_types['write_dat'] = 'bool'  # write modes shapes/freq./damp. to dat file
-    settings_default['write_dat'] = True
-    settings_description['write_dat'] = 'Write mode shapes, frequencies and damping to file'
+    settings_types['save_data'] = 'bool'  # write modes shapes/freq./damp. to dat file
+    settings_default['save_data'] = True
+    settings_description['save_data'] = 'Write mode shapes, frequencies and damping to file'
 
     settings_types['continuous_eigenvalues'] = 'bool'
     settings_default['continuous_eigenvalues'] = False
@@ -94,6 +90,10 @@ class Modal(BaseSolver):
     settings_default['rigid_modes_ppal_axes'] = False
     settings_description['rigid_modes_ppal_axes'] = 'Modify the ridid body modes such that they are defined wrt ' \
                                                     'to the CG and aligned with the principal axes of inertia'
+
+    settings_types['rigid_modes_cg'] = 'bool'
+    settings_default['rigid_modes_cg'] = False
+    settings_description['rigid_modes_cg'] = 'Not implemente yet'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
@@ -389,7 +389,7 @@ class Modal(BaseSolver):
                 warnings.warn('Unable to import matplotlib, skipping plot')
 
         # Write dat files
-        if self.settings['write_dat']:
+        if self.settings['save_data']:
             if type(eigenvalues) == complex:
                 np.savetxt(self.folder + "eigenvalues.dat", eigenvalues.view(float).reshape(-1, 2), fmt='%.12f',
                            delimiter='\t', newline='\n')
@@ -452,10 +452,9 @@ class Modal(BaseSolver):
         if cg is not None:
             outdict['cg'] = cg
 
-        if self.settings['keep_linear_matrices']:
-            outdict['M'] = FullMglobal
-            outdict['C'] = FullCglobal
-            outdict['K'] = FullKglobal
+        outdict['M'] = FullMglobal
+        outdict['C'] = FullCglobal
+        outdict['K'] = FullKglobal
 
         if t_pa is not None:
             outdict['t_pa'] = t_pa

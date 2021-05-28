@@ -160,8 +160,7 @@ class TestGolandFlutter(unittest.TestCase):
         ws.config['Modal'] = {'NumLambda': 20,
                               'rigid_body_modes': 'off',
                               'print_matrices': 'on',
-                              'keep_linear_matrices': 'on',
-                              'write_dat': 'off',
+                              'save_data': 'off',
                               'rigid_modes_cg': 'off',
                               'continuous_eigenvalues': 'off',
                               'dt': 0,
@@ -197,10 +196,9 @@ class TestGolandFlutter(unittest.TestCase):
                                                               'remove_inputs': ['u_gust'],
                                                               'rom_method': ['Krylov'],
                                                               'rom_method_settings': {'Krylov': rom_settings}},
-                                            'rigid_body_motion': 'off'}}
+                                        }}
 
         ws.config['AsymptoticStability'] = {'print_info': True,
-                                            'target_system': ['aeroelastic', 'aerodynamic', 'structural'],
                                             'velocity_analysis': [160, 180, 20]}
 
         ws.config['LinDynamicSim'] = {'dt': ws.dt,

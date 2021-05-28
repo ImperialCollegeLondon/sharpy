@@ -336,8 +336,7 @@ class TestWakeCFLn1(unittest.TestCase):
                                                  ]
 
             SimInfo.solvers['SHARPy']['write_screen'] = 'on'
-            SimInfo.solvers['Modal'] = {'keep_linear_matrices': 'on',
-                                        'write_dat': 'off',
+            SimInfo.solvers['Modal'] = {'save_data': 'off',
                                         'NumLambda': 50,
                                         'rigid_body_modes': 'off'}
 

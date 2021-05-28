@@ -57,7 +57,7 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                                   'aligned_grid': 'on',
                                   'mstar': int(kwargs.get('wake_length', 10) * m),
                                   'control_surface_deflection': ['', ''],
-                                  'control_surface_deflection_generator':
+                                  'control_surface_deflection_generator_settings':
                                       {'0': {},
                                        '1': {}},
                                   'wake_shape_generator': 'StraightWake',
@@ -80,10 +80,6 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
     settings['StaticUvlm'] = {'print_info': 'on',
                               'horseshoe': kwargs.get('horseshoe', 'off'),
                               'num_cores': 4,
-                              'n_rollup': 0,
-                              'rollup_dt': ws.dt,
-                              'rollup_aic_refresh': 1,
-                              'rollup_tolerance': 1e-4,
                               'velocity_field_generator': 'SteadyVelocityField',
                               'velocity_field_input': {'u_inf': u_inf,
                                                        'u_inf_direction': [1., 0, 0]},
@@ -99,18 +95,15 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                                  'tolerance': kwargs.get('fsi_tolerance', 1e-5),
                                  'relaxation_factor': kwargs.get('relaxation_factor', 0.2)}
 
-    settings['BeamPlot'] = {'folder': output_route,
-                            'include_FoR': 'on'}
+    settings['BeamPlot'] = {'include_FoR': 'on'}
 
-    settings['AerogridPlot'] = {'folder': output_route,
-                                'include_rbm': 'off',
+    settings['AerogridPlot'] = {'include_rbm': 'off',
                                 'include_applied_forces': 'on',
                                 'minus_m_star': 0,
                                 'u_inf': u_inf
                                 }
 
-    settings['AeroForcesCalculator'] = {'folder': output_route,
-                                        'write_text_file': 'on',
+    settings['AeroForcesCalculator'] = {'write_text_file': 'on',
                                         'text_file_name': 'aeroforces.txt',
                                         'screen_output': 'on',
                                         'unsteady': 'off',
@@ -119,13 +112,11 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                                         'S_ref': 12.809,
                                         }
 
-    settings['BeamPlot'] = {'folder': output_route,
-                            'include_rbm': 'on',
+    settings['BeamPlot'] = {'include_rbm': 'on',
                             'include_applied_forces': 'on',
                             'include_FoR': 'on'}
 
     struct_solver_settings = {'print_info': 'off',
-                              'initial_velocity_direction': [-1., 0., 0.],
                               'max_iterations': 950,
                               'delta_curved': 1e-6,
                               'min_delta': tolerance,
@@ -134,7 +125,6 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                               'gravity': 9.81,
                               'num_steps': 1,
                               'dt': ws.dt}
-                              # 'initial_velocity': u_inf * 0}
 
     gust_vec = kwargs.get('nl_gust', None)
     if gust_vec is not None:
@@ -147,14 +137,9 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
         )))
 
     step_uvlm_settings = {'print_info': 'on',
-                          'horseshoe': 'off',
                           'num_cores': 4,
-                          'n_rollup': 1,
                           'convection_scheme': 0, #ws.wake_type,
-                          'rollup_dt': ws.dt,
                           'vortex_radius': 1e-7,
-                          'rollup_aic_refresh': 1,
-                          'rollup_tolerance': 1e-4,
                           'velocity_field_generator': 'GustVelocityField',
                           'velocity_field_input': {'u_inf': u_inf * 1,
                                                    'u_inf_direction': [1., 0., 0.],
@@ -169,9 +154,6 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                           'gamma_dot_filtering': 3}
 
     settings['DynamicCoupled'] = {'print_info': 'on',
-                                  # 'structural_substeps': 1,
-                                  # 'dynamic_relaxation': 'on',
-                                  # 'clean_up_previous_solution': 'on',
                                   'structural_solver': 'NonLinearDynamicPrescribedStep',
                                   'structural_solver_settings': struct_solver_settings,
                                   'aero_solver': 'StepUvlm',
@@ -187,19 +169,15 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                                   'include_unsteady_force_contribution': 'on',
                                   'steps_without_unsteady_force': 5,
                                   'postprocessors': ['BeamPlot', 'AerogridPlot', 'WriteVariablesTime'],
-                                  'postprocessors_settings': {'BeamLoads': {'folder': output_route,
-                                                                            'csv_output': 'off'},
-                                                              'BeamPlot': {'folder': output_route,
-                                                                           'include_rbm': 'on',
+                                  'postprocessors_settings': {'BeamLoads': {'csv_output': 'off'},
+                                                              'BeamPlot': {'include_rbm': 'on',
                                                                            'include_applied_forces': 'on'},
                                                               'AerogridPlot': {
                                                                   'u_inf': u_inf,
-                                                                  'folder': output_route,
                                                                   'include_rbm': 'on',
                                                                   'include_applied_forces': 'on',
                                                                   'minus_m_star': 0},
                                                               'WriteVariablesTime': {
-                                                                  'folder': output_route,
                                                                   'cleanup_old_solution': 'on',
                                                                   'delimiter': ',',
                                                                   'FoR_variables': ['total_forces',
@@ -213,12 +191,11 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                          'rigid_body_modes': 'off',
                          'write_modes_vtk': 'on',
                          'print_matrices': 'on',
-                         'write_data': 'on',
+                         'save_data': 'on',
                          'continuous_eigenvalues': 'off',
                          'dt': ws.dt,
                          'plot_eigenvalues': False,
-                         'rigid_modes_ppal_axes': 'on',
-                         'folder': output_route}
+                         'rigid_modes_ppal_axes': 'on'}
     # ROM settings
     rom_settings = dict()
     rom_settings['algorithm'] = 'mimo_rational_arnoldi'
@@ -227,6 +204,7 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
     rom_settings['single_side'] = 'observability'
 
     settings['LinearAssembler'] = {'linear_system': 'LinearAeroelastic',
+                                   'linearisation_tstep': -1,
                                    'linear_system_settings': {
                                        'beam_settings': {'modal_projection': 'off',
                                                          'inout_coords': 'modes',
@@ -242,28 +220,19 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                                                          'remove_dofs': [],
                                                          'remove_rigid_states': 'off'},
                                        'aero_settings': {'dt': ws.dt,
-                                                         # 'ScalingDict': {'length': hale.aero.chord_main / 2,
-                                                         #                  'speed': u_inf,
-                                                         #                  'density': rho},
                                                          'integr_order': 2,
                                                          'density': rho,
                                                          'remove_predictor': 'off',
                                                          'use_sparse': False,
-                                                         'rigid_body_motion': 'off',
-                                                         'use_euler': 'on',
                                                          'vortex_radius': 1e-7,
-                                                         # 'remove_inputs': ['u_gust'],
                                                          'convert_to_ct': 'off',
                                                          'gust_assembler': kwargs.get('gust_name', ''),
                                                          'gust_assembler_inputs': kwargs.get('gust_settings', {}),
-                                                         # 'rom_method': ['Krylov'],
-                                                         # 'rom_method_settings': {'Krylov': rom_settings},
                                                          },
-                                       'rigid_body_motion': 'off',
                                        'track_body': 'on',
                                        'use_euler': 'on',
-                                       'linearisation_tstep': -1
-                                   }}
+                                   },
+                                   }
 
     settings['AsymptoticStability'] = {
         'print_info': 'on',
@@ -272,9 +241,7 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
         'display_root_locus': 'off',
         'frequency_cutoff': 0,
         'export_eigenvalues': 'on',
-        'num_evals': 1000,
-        'target_system': ['aeroelastic', 'aerodynamic', 'structural'],
-        'folder': output_route}
+        'num_evals': 100}
 
     settings['FrequencyResponse'] = {'target_system': ['aeroelastic', 'aerodynamic', 'structural'],
                                      'quick_plot': 'off',
@@ -284,17 +251,15 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                                      'num_freqs': 200,
                                      'print_info': 'on'}
 
-    settings['PickleData'] = {'folder': output_route}
+    settings['PickleData'] = {}
 
-    settings['LinDynamicSim'] = {'folder': output_route,
-                                 'n_tsteps': tsteps,
+    settings['LinDynamicSim'] = {'n_tsteps': tsteps,
                                  'dt': ws.dt,
                                  'write_dat': ['x', 'y', 'u'],
                                  'input_generators': kwargs.get('linear_input_generators', []),
                                  'postprocessors': ['AerogridPlot'],
                                  'postprocessors_settings':
-                                     {'AerogridPlot': {'folder': output_route,
-                                                       'include_rbm': 'on',
+                                     {'AerogridPlot': {'include_rbm': 'on',
                                                        'include_applied_forces': 'on',
                                                        'minus_m_star': 0}, }
                                  }
