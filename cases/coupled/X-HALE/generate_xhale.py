@@ -1669,7 +1669,6 @@ for case in cases:
                                        'num_load_steps': 1,
                                        'delta_curved': 1e-1,
                                        'min_delta': tolerance,
-                                       'balancing': 'off',
                                        'gravity_on': gravity,
                                        'gravity': gravity_value}
 
@@ -1750,23 +1749,18 @@ for case in cases:
                                   'thrust_nodes': thrust_nodes}
 
         settings['StepUvlm'] = {'print_info': 'off',
-                                'horseshoe': horseshoe,
                                 'num_cores': 6,
-                                'n_rollup': 0,
                                 'convection_scheme': 2,
-                                'rollup_dt': dt,
-                                'rollup_aic_refresh': 1,
-                                'rollup_tolerance': 1e-4,
                                 'gamma_dot_filtering': 6,
                                 # this is where the gust is input.
                                 'velocity_field_generator': 'GustVelocityField',
                                 'velocity_field_input': {'u_inf': u_inf,
                                                          'u_inf_direction': [1., 0, 0],
                                                          'gust_shape': gust_shape,
-                                                         'gust_length': gust_length,
-                                                         'gust_intensity': gust_intensity*u_inf,
-                                                         'offset': -space_offset,
-                                                         'span': span_main},
+                                                         'gust_parameters': {
+                                                             'gust_length': gust_length,
+                                                             'gust_intensity': gust_intensity * u_inf},
+                                                         'offset': -space_offset},
                                 'rho': rho,
                                 'n_time_steps': n_tstep,
                                 'dt': dt}
@@ -1812,11 +1806,9 @@ for case in cases:
                                             'CreateSnapshot',
                                             ],
                                       'postprocessors_settings': {'BeamLoads': {}, # you need to specify the dict even if empty
-                                                                  'BeamPlot': {'folder': route + '/output/',
-                                                                               'include_rbm': 'on',
+                                                                  'BeamPlot': {'include_rbm': 'on',
                                                                                'include_applied_forces': 'on'},
                                                                   'AerogridPlot': {
-                                                                      'folder': route + '/output/',
                                                                       'include_rbm': 'on',
                                                                       'include_applied_forces': 'on',
                                                                       'minus_m_star': 0},
@@ -1849,17 +1841,13 @@ for case in cases:
             'NumLambda': 100,
             'write_modes_vtk': 'on',
             'print_matrices': 'on',
-            'write_data': 'on',
             'continuous_eigenvalues': 'off',
             'dt': dt,
             'plot_eigenvalues': 'on'}
-        settings['BeamPlot'] = {'folder': route + '/output/',
-            'include_rbm': 'on',
-            'include_applied_forces': 'on',
-            'include_forward_motion': 'off'}
+        settings['BeamPlot'] = {'include_rbm': 'on',
+            'include_applied_forces': 'on'}
 
-        settings['AerogridPlot'] = {'folder': route + '/output/',
-                                    'include_rbm': 'on',
+        settings['AerogridPlot'] = {'include_rbm': 'on',
                                     'include_forward_motion': 'off',
                                     'include_applied_forces': 'on',
                                     'minus_m_star': 0,

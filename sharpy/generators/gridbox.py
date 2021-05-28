@@ -17,6 +17,7 @@ class GridBox(generator_interface.BaseGenerator):
 
     """
     generator_id = 'GridBox'
+    generator_classification = 'utils'
 
     settings_types = dict()
     settings_default = dict()

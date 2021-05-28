@@ -18,6 +18,7 @@ class StraightWake(generator_interface.BaseGenerator):
     direction ``u_inf_direction``
     """
     generator_id = 'StraightWake'
+    generator_classification = 'wake'
 
     settings_types = dict()
     settings_default = dict()
@@ -99,12 +100,12 @@ class StraightWake(generator_interface.BaseGenerator):
                                      aero_solver.settings_default)
 
             if 'dt' in aero_solver_settings.keys():
-                dt = aero_solver_settings['dt'].value
+                dt = aero_solver_settings['dt']
             elif 'rollup_dt' in aero_solver_settings.keys():
-                dt = aero_solver_settings['rollup_dt'].value
+                dt = aero_solver_settings['rollup_dt']
             else:
                 # print(aero_solver['velocity_field_input']['u_inf'])
-                dt = 1./aero_solver_settings['velocity_field_input']['u_inf'].value
+                dt = 1./aero_solver_settings['velocity_field_input']['u_inf']
             self.in_dict = {'u_inf': aero_solver_settings['velocity_field_input']['u_inf'],
                             'u_inf_direction': aero_solver_settings['velocity_field_input']['u_inf_direction'],
                             'dt': dt}

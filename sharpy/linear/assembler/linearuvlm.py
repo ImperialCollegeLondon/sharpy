@@ -128,6 +128,10 @@ class LinearUVLM(ss_interface.BaseElement):
     settings_default['vortex_radius'] = vortex_radius_def
     settings_description['vortex_radius'] = 'Distance below which inductions are not computed'
 
+    settings_types['cfl1'] = 'bool'
+    settings_default['cfl1'] = True
+    settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
@@ -193,9 +197,15 @@ class LinearUVLM(ss_interface.BaseElement):
 
         for_vel = data.linear.tsstruct0.for_vel
         cga = data.linear.tsstruct0.cga()
+
+        # add linuvlm.Dynamic() specific settings only as unrecognised settings raise an error
+        dynamic_settings = {}
+        for k in self.settings.keys():
+            if k in linuvlm.settings_types_dynamic.keys():
+                dynamic_settings[k] = self.settings[k]
         uvlm = linuvlm.Dynamic(data.linear.tsaero0,
                                dt=None,
-                               dynamic_settings=self.settings,
+                               dynamic_settings=dynamic_settings,
                                for_vel=np.hstack((cga.dot(for_vel[:3]), cga.dot(for_vel[3:]))))
 
         self.tsaero0 = data.linear.tsaero0
@@ -238,7 +248,7 @@ class LinearUVLM(ss_interface.BaseElement):
             self.gust_assembler = lineargust.LinearGustGenerator()
             self.gust_assembler.initialise(data.aero)
 
-    def assemble(self, track_body=False):
+    def assemble(self, track_body=False, wake_prop_settings=None):
         r"""
         Assembles the linearised UVLM system, removes the desired inputs and adds linearised control surfaces
         (if present).
@@ -252,7 +262,7 @@ class LinearUVLM(ss_interface.BaseElement):
         .. math:: [\delta_1, \delta_2, \dots, \dot{\delta}_1, \dot{\delta_2}]
         """
 
-        self.sys.assemble_ss()
+        self.sys.assemble_ss(wake_prop_settings=wake_prop_settings)
 
         if self.scaled:
             self.sys.nondimss()
