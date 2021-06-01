@@ -66,7 +66,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
     settings_types['moment_from_polar'] = 'bool'
     settings_default['moment_from_polar'] = False
     settings_description['moment_from_polar'] = 'If ``correct_lift`` is selected, it will compute the pitching moment ' \
-                                                'simply from poalr derived data, i.e. the polars Cm and the moments' \
+                                                'simply from polar derived data, i.e. the polars Cm and the moments' \
                                                 'arising from the lift and drag (derived from the polar) contribution. ' \
                                                 'Else, it will add the polar Cm to the moment already computed by ' \
                                                 'SHARPy.'
