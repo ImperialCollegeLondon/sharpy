@@ -33,7 +33,7 @@ class NetworkLoader:
           inout: 'in'  # either `in`, `out` or `inout`
           position: 0  # control surface index
         - name: 'pos'  # variable name
-          var_type: 'node'  # type of variable. In this case a node variable. Others: `panel`, `control_surface` or 'elem'
+          var_type: 'node'  # type of variable. In this case a node variable. Others: `panel`, `control_surface`
           inout: 'out'
           position: 5  # node number
           index: 2  # vector index, in this case a 3d vector where the desired index is number 2
