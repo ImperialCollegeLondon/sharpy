@@ -28,8 +28,8 @@ class PolarCorrection(generator_interface.BaseGenerator):
           (the remaining force).
 
     If ``cd_from_cl == 'on'``.
-        2. The viscous drag and pitching moment is found at the computed lift coefficient and the forces and
-           moments updated
+        2. The viscous drag and pitching moment are found at the computed lift coefficient. Then forces and
+           moments are updated
 
     Else, the angle of attack is computed:
 
