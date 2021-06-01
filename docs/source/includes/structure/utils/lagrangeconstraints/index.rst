@@ -43,12 +43,15 @@ Args:
 	./BaseLagrangeConstraint
 	./constant_rot_vel_FoR
 	./constant_vel_FoR
-	./def_rot_axis_FoR_wrt_node
+	./def_rot_axis_FoR_wrt_node_general
+	./def_rot_axis_FoR_wrt_node_xyz
+	./def_rot_vect_FoR_wrt_node
 	./def_rot_vel_FoR_wrt_node
 	./define_FoR_dof
 	./define_node_dof
 	./define_num_LM_eq
 	./equal_lin_vel_node_FoR
+	./equal_pos_node_FoR
 	./free
 	./fully_constrained_node_FoR
 	./generate_lagrange_matrix

@@ -29,6 +29,7 @@ Note:
 	./der_Teuler_by_w
 	./der_Teuler_by_w_NED
 	./der_quat_wrt_crv
+	./der_skewp_skewp_v
 	./deuler_dt
 	./deuler_dt_NED
 	./euler2quat
