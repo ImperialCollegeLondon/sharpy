@@ -34,7 +34,7 @@ out_sock.bind(own_receive)
 
 # from https://stackoverflow.com/questions/2719017/how-to-set-timeout-on-pythons-socket-recv-method
 # ready_to_read = select.select([out_sock], [], [], 2)
-out_sock.settimeout(10)
+out_sock.settimeout(30)
 
 tsteps = 401
 t = np.linspace(0, 0.2, tsteps)
@@ -56,12 +56,10 @@ while True:
     # time.sleep(2)
     # input('Continue loop')
 
-    # receive output data
-    # req_message = b'I want data'  # this would be the RREF0 value
-    # out_sock.sendto(req_message, sharpy_outgoing)
-    # if ready_to_read[0]:
+    # receive output data. set msg_len to whatever length SHARPy is sending
+    msg_len = 133
     try:
-        msg, conn = out_sock.recvfrom(21)
+        msg, conn = out_sock.recvfrom(msg_len)
     except socket.timeout:
         logger.info('Socket time out')
         break
