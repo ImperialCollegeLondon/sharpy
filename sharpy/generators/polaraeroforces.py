@@ -34,14 +34,14 @@ class PolarCorrection(generator_interface.BaseGenerator):
     Else, the angle of attack is computed:
 
             2. The angle of attack is computed based on that lift force and the angle of zero lift computed from the
-               airfoil polar and taking the potential flow lift curve slope of :math:`2 \pi`
+               airfoil polar and assuming the potential flow lift curve slope of :math:`2 \pi`
 
         3. The drag force is computed based on the angle of attack and the polars provided by the user
 
-        4. If ``correct_lift == 'on'``, the lift coefficient is also corrected with the polar data. Else only the
+        4. If ``correct_lift == 'on'``, the lift coefficient is also corrected with the polar data. Else, only the
            UVLM results are used.
 
-    The pitching moment is added in a similar manner to the viscous drag. However, if ``moment_from_polar == 'on'``
+    The pitching moment is added in a similar manner as the viscous drag. However, if ``moment_from_polar == 'on'``
     and ``correct_lift == 'on'``, the total moment (the one used for the FSI) is computed just from polar data,
     overriding any moment computed in SHARPy. That is, the moment will include the polar pitching moment, and moments
     due to lift and drag computed from the polar data.
