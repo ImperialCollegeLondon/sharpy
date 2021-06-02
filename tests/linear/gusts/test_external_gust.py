@@ -106,7 +106,6 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
     settings['AeroForcesCalculator'] = {'write_text_file': 'on',
                                         'text_file_name': 'aeroforces.txt',
                                         'screen_output': 'on',
-                                        'unsteady': 'off',
                                         'coefficients': True,
                                         'q_ref': 0.5 * rho * u_inf ** 2,
                                         'S_ref': 12.809,

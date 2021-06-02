@@ -144,8 +144,7 @@ class TestLinearDerivatives(unittest.TestCase):
 
         ws.config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                              # 'text_file_name': ws.case_name + '_aeroforces.csv',
-                                             'screen_output': 'on',
-                                             'unsteady': 'off'}
+                                             'screen_output': 'on'}
 
         ws.config['BeamPlot'] = {'include_rbm': 'off',
                                  'include_applied_forces': 'on'}
@@ -370,7 +369,7 @@ class TestLinearDerivatives(unittest.TestCase):
                                                                                                      ref_case_name))
         linss_data = scio.loadmat(self.route_test_dir + '/output/{:s}/savedata/{:s}.linss.mat'.format(ref_case_name,
                                                                                                   ref_case_name))
-        
+
         # Steady State transfer function
         if target_system == 'aerodynamic':
             A, B, C, D = linuvlm_data['A'], linuvlm_data['B'], linuvlm_data['C'], linuvlm_data['D']
