@@ -733,7 +733,7 @@ def rotor_from_excel_type03(in_op_params,
             cl = gc.read_column_sheet_type01(excel_file_name, excel_sheet_polar, 'CL')
             cd = gc.read_column_sheet_type01(excel_file_name, excel_sheet_polar, 'CD')
             cm = gc.read_column_sheet_type01(excel_file_name, excel_sheet_polar, 'CM')
-            polar = ap.polar()
+            polar = ap.Polar()
             polar.initialise(np.column_stack((aoa, cl, cd, cm)))
             pure_polars[iairfoil] = polar
 

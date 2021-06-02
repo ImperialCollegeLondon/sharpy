@@ -319,8 +319,7 @@ Item by item:
 
     This is an optional group to add if correcting the aerodynamic forces using airfoil polars is desired. A polar
     should be included for each airfoil defined. Each entry consists of a 4-column table. The first column corresponds
-    to the angle of attack (in radians) and then the ``C_L``, ``C_D`` and ``C_M``. If different airfoils are used a
-    linear interpolation will be used for in-between sections.
+    to the angle of attack (in radians) and then the ``C_L``, ``C_D`` and ``C_M``. 
 
 
 Time-varying force input file (``.dyn.h5``)
