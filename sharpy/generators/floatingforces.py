@@ -635,7 +635,6 @@ class FloatingForces(generator_interface.BaseGenerator):
                                axis=0)
             self.hd_damping_const = interp_d(self.settings['matrices_freq'])
 
-
         elif self.settings['method_matrices_freq'] == 'rational_function':
             self.hd_added_mass_const = self.floating_data['hydrodynamics']['added_mass_matrix'][-1, :, :]
             self.hd_damping_const = self.floating_data['hydrodynamics']['damping_matrix'][-1, :, :]
@@ -909,10 +908,10 @@ class FloatingForces(generator_interface.BaseGenerator):
         cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
         cbg = np.dot(cab.T, cga.T)
 
-        struct_tstep.runtime_steady_forces[self.buoyancy_node, 0:3] += np.dot(cbg, self.buoy_F0[0:3])
-        struct_tstep.runtime_steady_forces[self.buoyancy_node, 3:6] += np.dot(cbg, self.buoy_F0[3:6])
-        struct_tstep.runtime_unsteady_forces[self.buoyancy_node, 0:3] += np.dot(cbg, hs_f_g[0:3] + hd_f_qdot_g[0:3] + hd_f_qdotdot_g[0:3])
-        struct_tstep.runtime_unsteady_forces[self.buoyancy_node, 3:6] += np.dot(cbg, hs_f_g[3:6] + hd_f_qdot_g[3:6] + hd_f_qdotdot_g[3:6])
+        struct_tstep.runtime_steady_forces[self.buoyancy_node, 0:3] += np.dot(cbg, self.buoy_F0[0:3] + hs_f_g[0:3])
+        struct_tstep.runtime_steady_forces[self.buoyancy_node, 3:6] += np.dot(cbg, self.buoy_F0[3:6] + hs_f_g[3:6])
+        struct_tstep.runtime_unsteady_forces[self.buoyancy_node, 0:3] += np.dot(cbg, hd_f_qdot_g[0:3] + hd_f_qdotdot_g[0:3])
+        struct_tstep.runtime_unsteady_forces[self.buoyancy_node, 3:6] += np.dot(cbg, hd_f_qdot_g[3:6] + hd_f_qdotdot_g[3:6])
 
         # Nonlinear drag coefficeint
         if self.settings['concentrate_spar']:
