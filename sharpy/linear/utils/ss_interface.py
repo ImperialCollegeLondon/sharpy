@@ -77,11 +77,15 @@ def initialise_system(sys_id):
 
 
 def dictionary_of_systems():
+    import sharpy.linear.assembler
     dictionary = dict()
     for linear_system in dict_of_systems:
         init_sys = initialise_system(linear_system)
-        dictionary[linear_system] = init_sys.settins_default
-
+        try:
+            dictionary[linear_system] = init_sys.settings_default
+        except AttributeError:
+            print('No settings_default in %s' %linear_system)
+            dictionary[linear_system] = {}
     return dictionary
 
 
