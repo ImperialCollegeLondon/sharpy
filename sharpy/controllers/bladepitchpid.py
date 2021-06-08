@@ -40,8 +40,9 @@ class BladePitchPid(controller_interface.BaseController):
     settings_description['lp_cut_freq'] = 'Cutting frequency of the low pass filter of the process value. Choose 0 for no filter'
 
     settings_types['anti_windup_lim'] = 'list(float)'
-    settings_default['anti_windup_lim'] = None
-    settings_description['anti_windup_lim'] = 'Limits of actuation to apply anti windup'
+    settings_default['anti_windup_lim'] = [-1., -1.]
+    settings_description['anti_windup_lim'] = ('Limits of actuation to apply anti windup.' +
+                                              'Use the same number to deactivate.')
 
     # Set point parameters
     settings_types['sp_type'] = 'str'
@@ -49,20 +50,24 @@ class BladePitchPid(controller_interface.BaseController):
     settings_description['sp_type'] = (
             'Quantity used to define the' +
             ' set point')
-    settings_options['sp_type'] = ['rbm', 'pitch']
+    settings_options['sp_type'] = ['rbm', 'pitch', 'torque']
 
     settings_types['sp_source'] = 'str'
     settings_default['sp_source'] = None
     settings_description['sp_source'] = (
             'Source used to define the' +
             ' set point')
-    settings_options['sp_source'] = ['file']
+    settings_options['sp_source'] = ['file', 'const']
 
     settings_types['sp_time_history_file'] = 'str'
-    settings_default['sp_time_history_file'] = None
+    settings_default['sp_time_history_file'] = ''
     settings_description['sp_time_history_file'] = ('Route and file name of the time ' +
                                                     'history of the desired set point.' +
                                                     'Used for ``sp_source = file``')
+
+    settings_types['sp_const'] = 'float'
+    settings_default['sp_const'] = 0.
+    settings_description['sp_const'] = 'Constant set point. Only used for ``sp_source`` = `const ``'
 
     # Other parameters
     settings_types['dt'] = 'float'
@@ -81,10 +86,14 @@ class BladePitchPid(controller_interface.BaseController):
     settings_default['max_pitch_rate'] = 0.1396
     settings_description['max_pitch_rate'] = 'Maximum pitch rate [rad/s]'
 
+    settings_types['min_pitch'] = 'float'
+    settings_default['min_pitch'] = 0.
+    settings_description['min_pitch'] = 'Minimum pitch [rad]'
+
     # Generator and drive train model
-    settings_types['target_power'] = 'float'
-    settings_default['target_power'] = 5e6
-    settings_description['target_power'] = 'Target power in operation'
+    settings_types['variable_speed'] = 'bool'
+    settings_default['variable_speed'] = True
+    settings_description['variable_speed'] = 'Allow the change in the rotor velocity'
 
     settings_types['GBR'] = 'float'
     settings_default['GBR'] = 97.
@@ -93,6 +102,10 @@ class BladePitchPid(controller_interface.BaseController):
     settings_types['inertia_dt'] = 'float'
     settings_default['inertia_dt'] = 43776046.25
     settings_description['inertia_dt'] = 'Drive train inertia'
+
+    settings_types['target_gen_torque'] = 'float'
+    settings_default['target_gen_torque'] = 3945990.325
+    settings_description['target_gen_torque'] = 'Generator torque'
 
     settings_types['newmark_damp'] = 'float'
     settings_default['newmark_damp'] = 1e-4
@@ -149,7 +162,7 @@ class BladePitchPid(controller_interface.BaseController):
                                  no_ctype=True)
 
         self.settings = self.in_dict
-        self.newmark_damp = 0.5 + self.settings['newmark_damp']
+        self.newmark_beta = 0.5 + self.settings['newmark_damp']
         # self.controller_id = controller_id
 
         # self.nblades = len(self.settings['blade_num_body'])
@@ -169,7 +182,8 @@ class BladePitchPid(controller_interface.BaseController):
                                                            self.settings['D'],
                                                            self.settings['dt'])
 
-        self.controller_implementation.set_anti_windup_lim(self.settings['anti_windup_lim'])
+        if not self.settings['anti_windup_lim'][0] == self.settings['anti_windup_lim'][1]:
+                self.controller_implementation.set_anti_windup_lim(self.settings['anti_windup_lim'])
 
         if self.settings['lp_cut_freq'] == 0.:
             self.filter_pv = False
@@ -195,10 +209,22 @@ class BladePitchPid(controller_interface.BaseController):
         """
         struct_tstep = controlled_state['structural']
         aero_tstep = controlled_state['aero']
+        if not "info" in controlled_state:
+            controlled_state['info'] = dict()
         time = self.settings['dt']*data.ts
 
+        # Compute the rotor velocity
+        torque = self.compute_torque(data.structure, struct_tstep)
+        if self.settings['variable_speed']:
+            rotor_vel, rotor_acc = self.drive_train_model(torque,
+                                    struct_tstep.mb_FoR_vel[self.settings['blade_num_body'][0], 3:6],
+                                    struct_tstep.mb_FoR_acc[self.settings['blade_num_body'][0], 3:6])
+            controlled_state['info']['rotor_vel'] = rotor_vel
+
+        # System set point
         prescribed_sp = self.compute_prescribed_sp(time)
-        sys_pv = self.compute_system_pv(struct_tstep, data.structure)
+        # System process value
+        sys_pv = self.compute_system_pv(struct_tstep, data.structure, torque=torque)
 
         # Apply filter
         if self.filter_pv and (len(self.system_pv) > 1):
@@ -224,29 +250,45 @@ class BladePitchPid(controller_interface.BaseController):
                                'D': self.settings['D']},
                 i_current=data.ts)
 
-        if control_command < -self.settings['max_pitch_rate']:
-            control_command = -self.settings['max_pitch_rate']
-        elif control_command > self.settings['max_pitch_rate']:
-            control_command = self.settings['max_pitch_rate']
+        # Limit pitch and pitch rate
+        current_pitch = algebra.quat2euler(struct_tstep.mb_quat[self.settings['blade_num_body'][0]])[0]
+        target_pitch = current_pitch + control_command
+        target_pitch = max(target_pitch, self.settings['min_pitch'])
+        pitch_rate = (target_pitch - current_pitch)/self.settings['dt']
+        if pitch_rate < -self.settings['max_pitch_rate']:
+            pitch_rate = -self.settings['max_pitch_rate']
+        elif pitch_rate > self.settings['max_pitch_rate']:
+            pitch_rate = self.settings['max_pitch_rate']
+        delta_pitch = pitch_rate*self.settings['dt']
+        controlled_state['info']['pitch_vel'] = pitch_rate
 
         # Apply control order
         # rot_mat = algebra.rotation3d_x(control_command)
-        print("control_command: ", control_command)
+        # print("control_command: ", control_command)
         # print("init euler: ", algebra.quat2euler(struct_tstep.quat))
         change_quat = False
         if change_quat:
-            quat = algebra.rotate_quaternion(struct_tstep.quat, control_command*np.array([1., 0., 0.]))
-            # print("final euler: ", algebra.quat2euler(quat))
-            # euler = np.array([prescribed_sp[0], 0., 0.])
-            struct_tstep.quat = quat
+            for ibody in self.settings['blade_num_body']:
+                quat = algebra.rotate_quaternion(struct_tstep.mb_quat[ibody, :],
+                                                 delta_pitch*np.array([1., 0., 0.]))
+                # print("final euler: ", algebra.quat2euler(quat))
+                # euler = np.array([prescribed_sp[0], 0., 0.])
+                struct_tstep.mb_quat[ibody, :] = quat.copy()
+                if ibody == 0:
+                    struct_tstep.quat = quat.copy()
         change_vel = True
         if change_vel:
             # struct_tstep.for_vel[3] = control_command/self.settings['dt']
             # struct_tstep.for_acc[3] = (data.structure.timestep_info[data.ts - 1].for_vel[3] - struct_tstep.for_vel[3])/self.settings['dt']
             # struct_tstep.for_vel[3] = np.sign(control_command)*self.settings['max_pitch_rate']
             # struct_tstep.for_acc[3] = (data.structure.timestep_info[data.ts - 1].for_vel[3] - struct_tstep.for_vel[3])/self.settings['dt']
-            struct_tstep.for_vel[3] = control_command
-            struct_tstep.for_acc[3] = (data.structure.timestep_info[data.ts - 1].for_vel[3] - struct_tstep.for_vel[3])/self.settings['dt']
+            for ibody in self.settings['blade_num_body']:
+                struct_tstep.mb_FoR_vel[ibody, 3] = pitch_rate
+                struct_tstep.mb_FoR_acc[ibody, 3] = (data.structure.timestep_info[data.ts - 1].mb_FoR_vel[ibody, 3] -
+                                                     struct_tstep.mb_FoR_vel[ibody, 3])/self.settings['dt']
+                if ibody == 0:
+                    struct_tstep.for_vel[3] = struct_tstep.mb_FoR_vel[ibody, 3]
+                    struct_tstep.for_acc[3] = struct_tstep.mb_FoR_acc[ibody, 3]
 
             data.structure.dynamic_input[data.ts - 1]['for_vel'] = struct_tstep.for_vel.copy()
             data.structure.dynamic_input[data.ts - 1]['for_acc'] = struct_tstep.for_acc.copy()
@@ -270,6 +312,7 @@ class BladePitchPid(controller_interface.BaseController):
                                                 detail[1],
                                                 detail[2],
                                                 control_command))
+
         return controlled_state
 
 
@@ -281,23 +324,19 @@ class BladePitchPid(controller_interface.BaseController):
             sp = np.interp(time,
                            self.prescribed_sp_time_history[:, 0],
                            self.prescribed_sp_time_history[:, 1])
-            # vel = np.interp(time,
-            #                    self.prescribed_sp_time_history[:, 0],
-            #                    self.prescribed_sp_time_history[:, 2])
-            # acc = np.interp(time,
-            #                    self.prescribed_sp_time_history[:, 0],
-            #                    self.prescribed_sp_time_history[:, 3])
-            # self.prescribed_sp.append(np.array([pitch, vel, acc]))
             self.prescribed_sp.append(sp)
+        elif self.settings['sp_source'] == 'const':
+            self.prescribed_sp.append(self.settings['sp_const'])
+
         return self.prescribed_sp[-1]
 
 
-    def compute_system_pv(self, struct_tstep, beam):
+    def compute_system_pv(self, struct_tstep, beam, **kwargs):
         """
             Compute the process value relevant for the controller
         """
         if self.settings['sp_type'] == 'pitch':
-            pitch = algebra.quat2euler(struct_tstep.quat)[0]
+            pitch = algebra.quat2euler(struct_tstep.mb_quat[self.settings['blade_num_body'][0]])[0]
             self.system_pv.append(pitch)
         elif self.settings['sp_type'] == 'rbm':
             steady, unsteady, grav = struct_tstep.extract_resultants(beam, force_type=['steady', 'unsteady', 'gravity'],
@@ -305,35 +344,11 @@ class BladePitchPid(controller_interface.BaseController):
             # rbm = np.linalg.norm(steady[3:6] + unsteady[3:6] + grav[3:6])
             rbm = steady[4] + unsteady[4] + grav[4]
             self.system_pv.append(rbm)
-            print("rbm: ", rbm)
+            # print("rbm: ", rbm)
+        elif self.settings['sp_type'] == 'torque':
+            self.system_pv.append(kwargs['torque'])
 
         return self.system_pv[-1]
-    # def extract_time_history(self, controlled_state):
-    #     output = 0.0
-    #     if self.settings['input_type'] == 'pitch':
-    #         step = controlled_state['structural']
-    #         euler = step.euler_angles()
-
-    #         output = euler[1]
-    #     elif self.settings['input_type'] == 'roll':
-    #         step = controlled_state['structural']
-    #         euler = step.euler_angles()
-
-    #         output = euler[0]
-    #     elif 'pos_z(' in self.settings['input_type']:
-    #         node_str = self.settings['input_type']
-    #         node_str = node_str.replace('pos(', '')
-    #         node_str = node_str.replace(')', '')
-    #         node = int(node_str)
-    #         step = controlled_state['structural']
-    #         pos = step.pos[node, :]
-
-    #         output = pos[2]
-    #     else:
-    #         raise NotImplementedError(
-    #             "input_type {} is not yet implemented in extract_time_history()"
-    #             .format(self.settings['input_type']))
-    #     return output
 
     def controller_wrapper(self,
                            required_input,
@@ -348,12 +363,13 @@ class BladePitchPid(controller_interface.BaseController):
         # self.log.close()
         pass
 
-    def generator_model(aero_torque, ini_rot_vel, ini_rot_acc):
+    def drive_train_model(self, torque, ini_rot_vel, ini_rot_acc):
 
-        gen_torque = self.settings['target_power']*ini_rot_vel
+        # Assuming contant generator torque demand
+        gen_torque = self.settings['target_gen_torque']
 
-        delta_rot_acc = (aero_torque - self.settings['GBR']*gen_torque)/self.settings['inertia_dt']
-        rot_acc = ini_tor_acc + delta_rot_acc
+        delta_rot_acc = (torque - self.settings['GBR']*gen_torque)/self.settings['inertia_dt']
+        rot_acc = ini_rot_acc + delta_rot_acc
 
         # Integrate according to newmark-beta scheme
         rot_vel = (ini_rot_vel +
@@ -361,3 +377,23 @@ class BladePitchPid(controller_interface.BaseController):
                    self.newmark_beta*self.settings['dt']*rot_acc)
 
         return rot_vel, rot_acc
+
+    def compute_torque(self, beam, struct_tstep):
+        # Compute total forces
+        total_forces = np.zeros((6))
+        for ibody in self.settings['blade_num_body']:
+            steady, unsteady, grav = struct_tstep.extract_resultants(beam,
+                                                      force_type=['steady', 'unsteady', 'grav'],
+                                                      ibody=ibody)
+            total_forces += steady + unsteady + grav
+
+        # Compute equivalent forces at hub position
+        hub_elem = np.where(beam.body_number == self.settings['blade_num_body'][0])[0][0]
+        hub_node = beam.connectivities[hub_elem, 0]
+        hub_pos = struct_tstep.pos[hub_node, :]
+
+        hub_forces = np.zeros((6))
+        hub_forces[0:3] = total_forces[0:3].copy()
+        hub_forces[3:6] = total_forces[3:6] + np.cross(hub_pos, total_forces[0:3])
+
+        return hub_forces[5]

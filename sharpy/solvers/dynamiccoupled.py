@@ -393,12 +393,22 @@ class DynamicCoupled(BaseSolver):
                             self.settings['dt']/(
                                 self.settings['structural_substeps'] + 1))
 
-                if info_k == 'structural_solver':
+                elif info_k == 'structural_solver':
                     if info_v is not None:
                         self.structural_solver = solver_interface.initialise_solver(
                             info['structural_solver'])
                         self.structural_solver.initialise(
                             self.data, self.settings['structural_solver_settings'])
+
+            elif info_k == 'rotor_vel':
+                for lc in self.structural_solver.lc_list:
+                    if lc._lc_id == 'hinge_node_FoR_pitch':
+                        lc.set_rotor_vel(info_v)
+
+            elif info_k == 'pitch_vel':
+                for lc in self.structural_solver.lc_list:
+                    if lc._lc_id == 'hinge_node_FoR_pitch':
+                        lc.set_pitch_vel(info_v)
 
         return controlled_state['structural'], controlled_state['aero']
 

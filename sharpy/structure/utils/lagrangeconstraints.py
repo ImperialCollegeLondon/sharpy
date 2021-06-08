@@ -413,7 +413,7 @@ def equal_lin_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, 
     return ieq
 
 
-def equal_rot_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q):
+def rel_rot_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q, rel_vel=np.zeros((3))):
     """
     This function generates the stiffness and damping matrices and the independent vector associated to a constraint that
     imposes equal rotation velocities between a node and a frame of reference
@@ -427,6 +427,7 @@ def equal_rot_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, 
         node_dof (int): position of the first degree of freedom associated to the "node"
         FoR_body (int): body number of the "FoR"
         FoR_dof (int): position of the first degree of freedom associated to the "FoR"
+        rel_vel (np.array): relative velocity FoR-node
     """
 
     num_LM_eq_specific = 3
@@ -454,7 +455,7 @@ def equal_rot_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, 
     LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq+num_LM_eq_specific])
     LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*(np.dot(tan, MB_tstep[node_body].psi_dot[ielem, inode_in_elem, :]) +
                                                                          np.dot(cab.T, node_FoR_wa) -
-                                                                         ag.multiply_matrices(cab.T, node_cga.T, FoR_cga, FoR_wa))
+                                                                         ag.multiply_matrices(cab.T, node_cga.T, FoR_cga, FoR_wa) - rel_vel)
 
     LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += scalingFactor*ag.der_TanT_by_xv(psi, Lambda_dot[ieq:ieq+num_LM_eq_specific])
     if MB_beam[node_body].FoR_movement == 'free':
@@ -1029,13 +1030,13 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         self.node_number = MBdict_entry['node_in_body']
         self.node_body = MBdict_entry['body']
         self.FoR_body = MBdict_entry['body_FoR']
-        self.rot_axisB = ag.unit_vector(MBdict_entry['rot_vect'])
         self.rel_posB = MBdict_entry['rel_posB']
         self._ieq = ieq
         self.indep = []
         self.scalingFactor = set_value_or_default(MBdict_entry, "scalingFactor", 1.)
         self.penaltyFactor = set_value_or_default(MBdict_entry, "penaltyFactor", 0.)
 
+        self.rot_axisB = ag.unit_vector(MBdict_entry['rot_vect'])
         if (self.rot_axisB[[1, 2]]  == 0).all():
             self.rot_dir = 'x'
             self.zero_comp = np.array([1, 2], dtype=int)
@@ -1050,12 +1051,23 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
             self.nonzero_comp = 2
         else:
             raise NotImplementedError("Hinges should be parallel to the xB, yB or zB of the reference node")
-        self.rot_vel = MBdict_entry['rot_vect'][self.nonzero_comp]
+        self.set_rot_vel(MBdict_entry['rot_vect'][self.nonzero_comp])
+
+        self.pitch_vel = set_value_or_default(MBdict_entry, "pitch_vel", 0.)
 
         # self.static_constraint = fully_constrained_node_FoR()
         # self.static_constraint.initialise(MBdict_entry, ieq)
 
         return self._ieq + self._n_eq
+
+
+    def set_rot_vel(self, rot_vel):
+        self.rot_vel = rot_vel
+
+
+    def set_pitch_vel(self, pitch_vel):
+        self.pitch_vel = pitch_vel
+
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
                 sys_size, dt, Lambda, Lambda_dot):
@@ -1102,6 +1114,102 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         #                                  self.rot_vect)
 
         # MB_tstep[self.FoR_body].for_vel[3:6] = rot_vect_A.copy()
+        return
+
+
+@lagrangeconstraint
+class hinge_node_FoR_pitch(BaseLagrangeConstraint):
+    __doc__ = """
+    hinge_node_FoR_pitch
+
+    This constraint forces a hinge behaviour between a node and a FoR and
+    a rotation velocity at the joint
+
+    See ``LagrangeConstraints`` for the description of variables
+
+    Attributes:
+        node_number (int): number of the "node" within its own body
+        node_body (int): body number of the "node"
+        FoR_body (int): body number of the "FoR"
+        rot_vect (np.ndarray): Rotation velocity vector in the node B FoR
+        rel_posB (np.ndarray): Relative position between the node and the frame of reference in the node B FoR
+    """
+    _lc_id = 'hinge_node_FoR_pitch'
+
+    def __init__(self):
+        self.required_parameters = ['node_in_body', 'body', 'body_FoR', 'rotor_vel', 'rel_posB']
+        self._n_eq = 6
+
+    def get_n_eq(self):
+        return self._n_eq
+
+    def initialise(self, MBdict_entry, ieq, print_info=True):
+
+        self.node_number = MBdict_entry['node_in_body']
+        self.node_body = MBdict_entry['body']
+        self.FoR_body = MBdict_entry['body_FoR']
+        self.rel_posB = MBdict_entry['rel_posB']
+        self._ieq = ieq
+        self.indep = []
+        self.scalingFactor = set_value_or_default(MBdict_entry, "scalingFactor", 1.)
+        self.penaltyFactor = set_value_or_default(MBdict_entry, "penaltyFactor", 0.)
+
+        self.set_rotor_vel(MBdict_entry['rotor_vel'])
+        pitch_vel = set_value_or_default(MBdict_entry, "pitch_vel", np.zeros((3)))
+        self.set_pitch_vel(pitch_vel)
+
+        return self._ieq + self._n_eq
+
+
+    def set_rotor_vel(self, rotor_vel):
+        self.rotor_vel = rotor_vel
+
+
+    def set_pitch_vel(self, pitch_vel):
+        self.pitch_vel = pitch_vel
+
+
+    def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot):
+        return
+
+    def dynamicmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
+                sys_size, dt, Lambda, Lambda_dot):
+
+        # Define the position of the first degree of freedom associated to the node
+        node_dof = define_node_dof(MB_beam, self.node_body, self.node_number)
+        node_FoR_dof = define_FoR_dof(MB_beam, self.node_body)
+        FoR_dof = define_FoR_dof(MB_beam, self.FoR_body)
+        ieq = self._ieq
+
+        # Compute relative velocity
+        ielem, inode_in_elem = MB_beam[self.node_body].node_master_elem[self.node_number]
+        node_cga = MB_tstep[self.node_body].cga()
+        cab = ag.crv2rotation(MB_tstep[self.node_body].psi[ielem, inode_in_elem, :])
+        FoR_cga = MB_tstep[self.FoR_body].cga()
+
+        rel_vel = np.array([0., 0., self.rotor_vel])
+        rel_vel += ag.multiply_matrices(cab.T, node_cga.T, FoR_cga,
+                                        np.array([self.pitch_vel, 0., 0.]))
+
+        # Define the equations
+        ieq = equal_lin_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
+        ieq = rel_rot_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q, rel_vel=rel_vel)
+        return
+
+    def staticpost(self, lc_list, MB_beam, MB_tstep):
+        return
+
+    def dynamicpost(self, lc_list, MB_beam, MB_tstep):
+
+        ielem, inode_in_elem = MB_beam[self.node_body].node_master_elem[self.node_number]
+        node_cga = MB_tstep[self.node_body].cga()
+        cab = ag.crv2rotation(MB_tstep[self.node_body].psi[ielem, inode_in_elem, :])
+
+        MB_tstep[self.FoR_body].for_pos[0:3] = (np.dot(node_cga,
+                                                       MB_tstep[self.node_body].pos[self.node_number,:] + np.dot(cab, self.rel_posB)) +
+                                                MB_tstep[self.node_body].for_pos[0:3])
+
         return
 
 
@@ -1509,7 +1617,7 @@ class fully_constrained_node_FoR(BaseLagrangeConstraint):
 
         # Define the equations
         ieq = equal_lin_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
-        ieq = equal_rot_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
+        ieq = rel_rot_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q, rel_vel=np.zeros((3)))
 
         return
 
