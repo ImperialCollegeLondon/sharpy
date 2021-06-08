@@ -179,7 +179,8 @@ class StaticCoupledRBM(BaseSolver):
                                                                structural_kstep=self.data.structure.timestep_info[self.data.ts],
                                                                struct_forces=struct_forces)
 
-                self.data.aero.timestep_info[self.data.ts].aero_steady_forces_beam_dof = struct_forces
+                self.data.aero.timestep_info[self.data.ts].postproc_node['aero_steady_forces'] = struct_forces
+
                 if not self.settings['relaxation_factor'] == 0.:
                     if i_iter == 0:
                         self.previous_force = struct_forces.copy()

@@ -18,6 +18,7 @@ class ShearVelocityField(generator_interface.BaseGenerator):
 
     """
     generator_id = 'ShearVelocityField'
+    generator_classification = 'velocity-field'
 
     settings_types = dict()
     settings_default = dict()
@@ -81,4 +82,3 @@ class ShearVelocityField(generator_interface.BaseGenerator):
                 for j in range(zeta[i_surf].shape[2]):
                     h = np.dot(zeta[i_surf][:, i, j], self.shear_direction) + self.h_corr
                     uext[i_surf][:, i, j] += self.u_inf*self.u_inf_direction*(h/self.h_ref)**self.shear_exp
-

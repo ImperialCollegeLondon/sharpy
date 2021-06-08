@@ -51,8 +51,6 @@ class AeroTimeStepInfo(object):
           ``[n_surf][3 x streamwise nodes x spanwise nodes]``
         gamma_dot (list(np.ndarray)): Time derivative of ``gamma``
 
-        inertial_total_forces (list(np.ndarray)): Total aerodynamic forces in ``G`` FoR ``[n_surf x 6]``
-        body_total_forces (list(np.ndarray)): Total aerodynamic forces in ``A`` FoR ``[n_surf x 6]``
         inertial_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``G`` FoR ``[n_surf x 6]``
         body_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``A`` FoR ``[n_surf x 6]``
         inertial_unsteady_forces (list(np.ndarray)): Total aerodynamic unsteady forces in ``G`` FoR ``[n_surf x 6]``
@@ -166,14 +164,10 @@ class AeroTimeStepInfo(object):
                                                dtype=ct.c_double))
 
         # total forces - written by AeroForcesCalculator
-        self.inertial_total_forces = np.zeros((self.n_surf, 6))
-        self.body_total_forces = np.zeros((self.n_surf, 6))
         self.inertial_steady_forces = np.zeros((self.n_surf, 6))
         self.body_steady_forces = np.zeros((self.n_surf, 6))
         self.inertial_unsteady_forces = np.zeros((self.n_surf, 6))
         self.body_unsteady_forces = np.zeros((self.n_surf, 6))
-        self.total_inertial_forces = np.zeros((6,))  # G Frame
-        self.total_body_forces = np.zeros((6,))  # A Frame
 
         self.postproc_cell = dict()
         self.postproc_node = dict()
@@ -232,15 +226,11 @@ class AeroTimeStepInfo(object):
             copied.dist_to_orig[i_surf] = self.dist_to_orig[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
 
         # total forces
-        copied.inertial_total_forces = self.inertial_total_forces.astype(dtype=ct.c_double, copy=True, order='C')
-        copied.body_total_forces = self.body_total_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.inertial_steady_forces = self.inertial_steady_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.body_steady_forces = self.body_steady_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.inertial_unsteady_forces = self.inertial_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.body_unsteady_forces = self.body_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
-        copied.total_inertial_forces = self.total_inertial_forces.astype(dtype=ct.c_double, copy=True, order='C')
-        copied.total_body_forces = self.total_body_forces.astype(dtype=ct.c_double, copy=True, order='C')
-
+        
         copied.postproc_cell = copy.deepcopy(self.postproc_cell)
         copied.postproc_node = copy.deepcopy(self.postproc_node)
 
