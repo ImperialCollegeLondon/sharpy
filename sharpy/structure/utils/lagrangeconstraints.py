@@ -455,7 +455,7 @@ def rel_rot_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, no
     LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq+num_LM_eq_specific])
     LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*(np.dot(tan, MB_tstep[node_body].psi_dot[ielem, inode_in_elem, :]) +
                                                                          np.dot(cab.T, node_FoR_wa) -
-                                                                         ag.multiply_matrices(cab.T, node_cga.T, FoR_cga, FoR_wa) - rel_vel)
+                                                                         ag.multiply_matrices(cab.T, node_cga.T, FoR_cga, FoR_wa) + rel_vel)
 
     LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += scalingFactor*ag.der_TanT_by_xv(psi, Lambda_dot[ieq:ieq+num_LM_eq_specific])
     if MB_beam[node_body].FoR_movement == 'free':
@@ -1155,7 +1155,7 @@ class hinge_node_FoR_pitch(BaseLagrangeConstraint):
         self.penaltyFactor = set_value_or_default(MBdict_entry, "penaltyFactor", 0.)
 
         self.set_rotor_vel(MBdict_entry['rotor_vel'])
-        pitch_vel = set_value_or_default(MBdict_entry, "pitch_vel", np.zeros((3)))
+        pitch_vel = set_value_or_default(MBdict_entry, "pitch_vel", 0.)
         self.set_pitch_vel(pitch_vel)
 
         return self._ieq + self._n_eq
