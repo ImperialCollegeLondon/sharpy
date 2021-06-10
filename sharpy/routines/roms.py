@@ -34,7 +34,7 @@ def sol_500(panels_wake,
         rom_method = 'Krylov'
         rom_settings = {'algorithm':'mimo_rational_arnoldi',
                         'r':6}
-        frequency_continuous_k = np.array([0.])  # Interpolation point in the complex plane with reduced frequency units
+        frequency_continuous_k = np.array([0.])  
         frequency_continuous_w = 2 * u_inf * frequency_continuous_k / c_ref
         rom_settings['frequency'] = frequency_continuous_w
 

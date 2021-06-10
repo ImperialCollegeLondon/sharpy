@@ -1,9 +1,14 @@
 import numpy as np
 import copy
-from cases.models_generator.gen_utils import update_dic
+import sharpy.routines.basic as basic
 
-
-def sol_103(flow=[], **settings):
+def sol_103(num_modes,
+            forA=[0.,0.,0.],
+            beam_orientation=[1., 0, 0, 0],
+            rigid_body_modes=False,
+            rigid_modes_cg=False,
+            use_undamped_modes=True,
+            flow=[], **settings):
     """
     Modal solution (stiffness and mass matrices, and natural frequencies)
     in the reference configuration
@@ -11,14 +16,20 @@ def sol_103(flow=[], **settings):
 
     settings_new = dict()
     if flow == []:
-        flow = []
-        for k in flow:
-            settings_new[k] = {}
-    else:
-        for k in flow:
-            settings_new[k] = {}      
+        flow = ['BeamLoader','Modal']
+    for k in flow:
+        settings_new[k] = {}
 
-    settings_new = update_dic(settings_new, settings)        
+    settings_new['BeamLoader']['for_pos'] = forA
+    settings_new['BeamLoader']['orientation'] = beam_orientation
+    settings_new['BeamLoader']['unsteady'] = False
+    settings_new['Modal']['NumLambda'] = num_modes
+    settings_new['Modal']['rigid_body_modes'] = rigid_body_modes
+    settings_new['Modal']['rigid_modes_cg'] = rigid_modes_cg
+    settings_new['Modal']['use_undamped_modes'] = use_undamped_modes
+    settings_new['Modal']['print_matrices'] = True
+    
+    settings_new = basic.update_dic(settings_new, settings)        
     return flow, settings_new
 
 def sol_104(flow=[], **settings):
@@ -36,7 +47,7 @@ def sol_104(flow=[], **settings):
         for k in flow:
             settings_new[k] = {}      
 
-    settings_new = update_dic(settings_new, settings)        
+    settings_new = basic.update_dic(settings_new, settings)        
     return flow, settings_new
 
 def sol_105(flow=[], **settings):
@@ -54,5 +65,5 @@ def sol_105(flow=[], **settings):
         for k in flow:
             settings_new[k] = {}      
 
-    settings_new = update_dic(settings_new, settings)        
+    settings_new = basic.update_dic(settings_new, settings)        
     return flow, settings_new

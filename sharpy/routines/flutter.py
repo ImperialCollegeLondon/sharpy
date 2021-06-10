@@ -1,18 +1,20 @@
 import numpy as np
 import copy
-from cases.models_generator.gen_utils import update_dic
+#from cases.models_generator.gen_utils import update_dic
+import sharpy.routines.basic as basic
 
-def sol_145(panels_wake,
-            num_modes,
-            rho,
-            u_inf,
-            c_ref,
-            velocity_analysis,
-            rom_algorithm,
-            rom_size,
-            folder,
+def sol_145(num_modes,
+            panels_wake,
+            velocity_range,
+            forA=[0.,0.,0.],
+            rho=1.22,
+            u_inf=1.,
+            c_ref=1.,
             dt=0.1,
-            u_inf_direction=[1., 0., 0.],
+            gravity='on',
+            linear_coordinates='modes',
+            rom_method='Balanced',
+            rom_settings={},
             flow=[],
             **settings):
     """ 
@@ -31,48 +33,54 @@ def sol_145(panels_wake,
     else:
         for k in flow:
             settings_new[k] = {}        
-    #c_ref = c_ref #1.8288 # Goland wing reference chord. Used for frequency normalisation
-    rom_settings = dict()
-    rom_settings['algorithm'] = rom_algorithm # 'mimo_rational_arnoldi'  # reduction algorithm
-    rom_settings['r'] = rom_size  # Krylov subspace order
-    frequency_continuous_k = np.array([0.])  # Interpolation point in the complex plane with reduced frequency units
-    frequency_continuous_w = 2 * u_inf * frequency_continuous_k / c_ref
-    rom_settings['frequency'] = frequency_continuous_w
+
+    settings_new['BeamLoader']['for_pos'] = forA
+    settings_new['BeamLoader']['orientation'] = [1.0, 0, 0, 0]
     settings_new['BeamLoader']['usteady'] = 'off'
     settings_new['AerogridLoader']['mstar'] = panels_wake
-    settings_new['StaticCoupled'] = {'print_info': 'on',
-                                     'max_iter': 200,
-                                     'n_load_steps': 1,
-                                     'tolerance': 1e-10,
-                                     'relaxation_factor': 0.,
-                                     'aero_solver': 'StaticUvlm',
-                                     'aero_solver_settings': {'rho': rho,
-                                                              'print_info': 'off',
-                                                              'horseshoe': 'off',
-                                                              'num_cores': 4,
-                                                              'n_rollup': 0,
-                                                              'rollup_dt': dt,
-                                                              'rollup_aic_refresh': 1,
-                                                              'rollup_tolerance': 1e-4,
-                                                              'velocity_field_generator': 'SteadyVelocityField',
-                                                              'velocity_field_input': {'u_inf': u_inf*1e-6,
-                                                                                       'u_inf_direction': u_inf_direction}},
-                                     'structural_solver': 'NonLinearStatic',
-                                     'structural_solver_settings': {'print_info': 'off',
-                                                                    'max_iterations': 150,
-                                                                    'num_load_steps': 4,
-                                                                    'delta_curved': 1e-1,
-                                                                    'min_delta': 1e-10,
-                                                                    'gravity_on': 'on',
-                                                                    'gravity': 9.807}}
+    settings_new['AerogridLoader']['unsteady'] = False   
+    settings_new['StaticCoupled']['n_load_steps'] = 1
+    settings_new['StaticCoupled']['aero_solver'] = 'StaticUvlm'
+    settings_new['StaticCoupled']['aero_solver_settings'] = {'rho': 0.,
+                                                             'horseshoe': 'off',
+                                                             'num_cores': 1,
+                                                             'n_rollup': 1.15*panels_wake,
+                                                             'rollup_dt': dt,
+                                                             'velocity_field_generator': \
+                                                             'SteadyVelocityField',
+                                                             'velocity_field_input': \
+                                                             {'u_inf': u_inf,
+                                                              'u_inf_direction':[1.,0.,0.]}
+                                                             },
+    settings_new['StaticCoupled']['structural_solver'] = 'NonLinearStatic'
+    settings_new['StaticCoupled']['structural_solver_settings'] = {'initial_position':forA,
+                                                                   'dt': dt,
+                                                                   'gravity_on':False
+                                                                   }
     settings_new['Modal']['NumLambda'] = num_modes
     settings_new['Modal']['write_modes_vtk'] = 'off'
-    settings_new['Modal']['folder'] = folder
+    settings_new['Modal']['rigid_body_modes'] = False
+    settings_new['Modal']['rigid_modes_cg'] = False
+    settings_new['Modal']['use_undamped_modes'] = True
 
+    if not rom_method: # Flutter using the full assembled matrices
+        rom_settings = {}
+    elif rom_method=='Balanced' and (not rom_settings):
+        rom_settings = {"algorithm":'Iterative',
+                        "algorithm_settings":{}}
+    if linear_coordinates == 'modes': #Flutter after projection on the modes
+        modal_projection = True
+    elif linear_coordinates == 'nodes':
+        modal_projection = False
+        
+    settings_new['LinearAssembler']['inout_coordinates'] = linear_coordinates # 'nodes', 'modes'
     settings_new['LinearAssembler']['linear_system'] = 'LinearAeroelastic'
     settings_new['LinearAssembler']['linear_system_settings'] = {
-                                    'beam_settings': {'modal_projection': 'on',
-                                                      'inout_coords': 'modes',
+                                    'uvlm_filename':'',
+                                    'track_body':True,
+                                    'use_euler':False,
+                                    'beam_settings': {'modal_projection': modal_projection,
+                                                      'inout_coords': linear_coordinates,
                                                       'discrete_time': 'on',
                                                       'newmark_damp': 0.5e-4,
                                                       'discr_method': 'newmark',
@@ -80,30 +88,25 @@ def sol_145(panels_wake,
                                                       'proj_modes': 'undamped',
                                                       'use_euler': 'off',
                                                       'num_modes': num_modes,
-                                                      'print_info': 'on',
-                                                      'gravity': 'on',
-                                                      'remove_sym_modes': 'off',
-                                                      'remove_dofs': []},
+                                                      'gravity': gravity,
+                                                      },
                                     'aero_settings': {'dt': dt,
-                                                      'ScalingDict': {'length': 0.5 * c_ref,
-                                                                      'speed': 0.01,
+                                                      'ScalingDict': {'length': c_ref,
+                                                                      'speed': u_inf,
                                                                       'density': rho},
-                                                      'integr_order': 2,
                                                       'density': rho,
-                                                      'remove_predictor': 'on',
-                                                      'use_sparse': 'on',
                                                       'rigid_body_motion': 'off',
                                                       'use_euler': 'off',
                                                       'remove_inputs': ['u_gust'],
-                                                      'rom_method': ['Krylov'],
-                                                      'rom_method_settings': {'Krylov': rom_settings}},
-                                    'rigid_body_motion': False}
+                                                      'rom_method': rom_method,
+                                                      'rom_method_settings': rom_settings
+                                                      }
+                                                              }
     settings_new['AsymptoticStability'] = {'print_info': True,
-                                           'folder': folder,
-                                           'velocity_analysis': velocity_analysis,
-                                           'modes_to_plot': []}
+                                           'velocity_analysis': velocity_range,
+                                           }
     
-    settings_new = update_dic(settings_new, settings)        
+    settings_new = basic.update_dic(settings_new, settings)        
     return flow, settings_new
 
 def sol_146(varx, flow=[], settings={}):
