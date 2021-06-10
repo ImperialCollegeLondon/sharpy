@@ -110,7 +110,7 @@ class LiftDistribution(BaseSolver):
                 lift_distribution[inode, 0] = struct_tstep.pos[inode, 0]  # x
                 if self.settings["coefficients"]:
                     # Get non-dimensional spanwise coordinate y/s
-                    lift_distribution[inode, 4] = lift_distribution[inode, 1]/max(abs(aero_tstep.zeta[i_surf][1,0,:]))
+                    lift_distribution[inode, 4] = lift_distribution[inode, 1]/span
                     # Get lift coefficient
                     lift_distribution[inode, 5] = np.sign(lift_force) * np.linalg.norm(lift_force) \
                                                   / (0.5 * self.settings['rho'] \
