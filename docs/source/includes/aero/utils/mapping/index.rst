@@ -7,4 +7,3 @@ Force Mapping Utilities
 	:glob:
 
 	./aero2struct_force_mapping
-	./aero2struct_total_force_mapping

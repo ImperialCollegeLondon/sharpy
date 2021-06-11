@@ -40,6 +40,7 @@ Note:
 	./multiply_matrices
 	./norm3d
 	./normsq3d
+	./panel_area
 	./quadskew
 	./quat2euler
 	./quat2rotation
