@@ -256,11 +256,11 @@ Item by item:
 
     Same here, just a rotation around :math:`z`.
 
-* ``airfoil_distribution_input [num_elem, num_node_elem]``: Airfoil distribution.
+* ``airfoil_distribution [num_elem, num_node_elem]``: Airfoil distribution.
 
     Contains the indices of the airfoils that you put previously in ``airfoils``.
 
-*  ``surface_distribution_input [num_elem]``: Surface integer array.
+*  ``surface_distribution [num_elem]``: Surface integer array.
 
     It contains the index of the surface the element belongs
     to. Surfaces need to be continuous, so please note that if your beam numbering is not continuous, you need to make
@@ -274,7 +274,7 @@ Item by item:
 
     Is a string with the chordwise panel distribution. In almost all cases, leave it at ``uniform``.
 
-*  ``aero_node_input [num_node]``: Aerodynamic node definition.
+*  ``aero_node [num_node]``: Aerodynamic node definition.
 
     Is a boolean (``True`` or ``False``) array that indicates if that node has a lifting
     surface attached to it.
