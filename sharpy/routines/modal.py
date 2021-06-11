@@ -16,7 +16,7 @@ def sol_103(num_modes,
 
     settings_new = dict()
     if flow == []:
-        flow = ['BeamLoader','Modal']
+        flow = ['BeamLoader','NoAero','Modal']
     for k in flow:
         settings_new[k] = {}
 
@@ -28,6 +28,7 @@ def sol_103(num_modes,
     settings_new['Modal']['rigid_modes_cg'] = rigid_modes_cg
     settings_new['Modal']['use_undamped_modes'] = use_undamped_modes
     settings_new['Modal']['print_matrices'] = True
+    settings_new['Modal']['write_modes_vtk'] = True
     
     settings_new = basic.update_dic(settings_new, settings)        
     return flow, settings_new

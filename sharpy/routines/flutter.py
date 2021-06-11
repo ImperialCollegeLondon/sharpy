@@ -1,7 +1,7 @@
 import numpy as np
 import copy
-#from cases.models_generator.gen_utils import update_dic
-import sharpy.routines.basic as basic
+from cases.models_generator.gen_utils import update_dic
+#import sharpy.routines.basic as basic
 
 def sol_145(num_modes,
             panels_wake,
@@ -106,7 +106,7 @@ def sol_145(num_modes,
                                            'velocity_analysis': velocity_range,
                                            }
     
-    settings_new = basic.update_dic(settings_new, settings)        
+    settings_new = update_dic(settings_new, settings)        
     return flow, settings_new
 
 def sol_146(varx, flow=[], settings={}):
