@@ -99,6 +99,15 @@ class BladePitchPid(controller_interface.BaseController):
     #settings_default['variable_speed'] = True
     #settings_description['variable_speed'] = 'Allow the change in the rotor velocity'
 
+    settings_types['gen_model_const_var'] = 'str'
+    settings_default['gen_model_const_var'] = ''
+    settings_description['gen_model_const_var'] = 'Generator metric to be kept constant at a value `target_gen_value`'
+    settings_options['gen_model_const_var'] = ['power', 'torque']
+
+    settings_types['gen_model_const_value'] = 'float'
+    settings_default['gen_model_const_value'] = 3945990.325
+    settings_description['gen_model_const_value'] = 'Constant value of the generator metric to be kept constant '
+
     settings_types['GBR'] = 'float'
     settings_default['GBR'] = 97.
     settings_description['GBR'] = 'Gear box ratio'
@@ -106,10 +115,6 @@ class BladePitchPid(controller_interface.BaseController):
     settings_types['inertia_dt'] = 'float'
     settings_default['inertia_dt'] = 43776046.25
     settings_description['inertia_dt'] = 'Drive train inertia'
-
-    settings_types['target_gen_power'] = 'float'
-    settings_default['target_gen_power'] = 3945990.325
-    settings_description['target_gen_power'] = 'Generator power'
 
     settings_types['newmark_damp'] = 'float'
     settings_default['newmark_damp'] = 1e-4
@@ -409,7 +414,10 @@ class BladePitchPid(controller_interface.BaseController):
 
         # Assuming contant generator torque demand
         print(ini_rot_vel)
-        gen_torque = self.settings['target_gen_power']/self.settings['GBR']/ini_rot_vel
+        if self.settings['gen_model_const_var'] == 'power':
+            gen_torque = self.settings['gen_model_const_value']/self.settings['GBR']/ini_rot_vel
+        elif self.settings['gen_model_const_var'] == 'torque':
+            gen_torque = self.settings['gen_model_const_value']
 
         print("aero_torque", aero_torque)
         print("gen_torque", gen_torque*self.settings['GBR'])
