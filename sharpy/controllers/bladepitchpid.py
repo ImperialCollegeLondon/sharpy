@@ -293,7 +293,7 @@ class BladePitchPid(controller_interface.BaseController):
         #     pitch_rate = -self.settings['max_pitch_rate']
         # else:
         #     pitch_rate = 0.
-        pitch_rate = 0.
+        # pitch_rate = 0.
 
         next_pitch = self.pitch + pitch_rate*self.settings['dt']
         if next_pitch < 0.:
