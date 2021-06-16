@@ -50,7 +50,7 @@ class BladePitchPid(controller_interface.BaseController):
     settings_description['sp_type'] = (
             'Quantity used to define the' +
             ' set point')
-    settings_options['sp_type'] = ['rbm', 'pitch', 'rotor_vel']
+    settings_options['sp_type'] = ['rbm', 'pitch', 'gen_vel']
 
     settings_types['sp_source'] = 'str'
     settings_default['sp_source'] = None
@@ -178,8 +178,8 @@ class BladePitchPid(controller_interface.BaseController):
 
         if self.settings['write_controller_log']:
             self.log = open(self.settings['controller_log_route'] + '/' + self.controller_id + '.dat', 'w+')
-            self.log.write(('#'+ 1*'{:>2},' + 9*'{:>12},' + '{:>12}\n').
-                    format('tstep', 'time', 'ref_state', 'state', 'Pcontrol', 'Icontrol', 'Dcontrol', 'control', 'gen_torque', 'rotor_vel', 'pitch_vel'))
+            self.log.write(('#'+ 1*'{:>2},' + 10*'{:>12},' + '{:>12}\n').
+                    format('tstep', 'time', 'ref_state', 'state', 'Pcontrol', 'Icontrol', 'Dcontrol', 'control', 'gen_torque', 'rotor_vel', 'pitch_vel', 'pitch'))
             self.log.flush()
 
         # save input time history
@@ -241,7 +241,7 @@ class BladePitchPid(controller_interface.BaseController):
         # System process value
         sys_pv = self.compute_system_pv(struct_tstep,
                                         data.structure,
-                                        rotor_vel=rotor_vel)
+                                        gen_vel=rotor_vel*self.settings['GBR'])
 
         if data.ts < self.settings['nocontrol_steps']:
             sys_pv = prescribed_sp
@@ -293,13 +293,19 @@ class BladePitchPid(controller_interface.BaseController):
         #     pitch_rate = -self.settings['max_pitch_rate']
         # else:
         #     pitch_rate = 0.
-        # pitch_rate = 0.
+        pitch_rate = 0.
 
         next_pitch = self.pitch + pitch_rate*self.settings['dt']
         if next_pitch < 0.:
             pitch_rate = 0.
             next_pitch = 0.
         self.pitch = next_pitch
+
+        int_pitch = self.compute_blade_pitch(data.structure,
+                                         struct_tstep,
+                                         tower_ibody=self.settings['blade_num_body'][0] - 1,
+                                         blade_ibody=self.settings['blade_num_body'][0])
+        print("int comp pitch:", self.pitch, int_pitch)
 
         controlled_state['info']['pitch_vel'] = pitch_rate
 
@@ -348,7 +354,7 @@ class BladePitchPid(controller_interface.BaseController):
               "pitch_vel:", pitch_rate,
               "control_c:", control_command)
         self.log.write(('{:>6d},'
-                        + 9*'{:>12.6f},'
+                        + 10*'{:>12.6f},'
                         + '{:>12.6f}\n').format(data.ts,
                                                 data.ts*self.settings['dt'],
                                                 self.prescribed_sp[-1],
@@ -359,7 +365,8 @@ class BladePitchPid(controller_interface.BaseController):
                                                 control_command,
                                                 aero_torque/self.settings['GBR'],
                                                 rotor_vel,
-                                                pitch_rate))
+                                                pitch_rate,
+                                                self.pitch))
         return controlled_state
 
 
@@ -392,8 +399,8 @@ class BladePitchPid(controller_interface.BaseController):
             rbm = steady[4] + unsteady[4] + grav[4]
             self.system_pv.append(rbm)
             # print("rbm: ", rbm)
-        elif self.settings['sp_type'] == 'rotor_vel':
-            self.system_pv.append(kwargs['rotor_vel'])
+        elif self.settings['sp_type'] == 'gen_vel':
+            self.system_pv.append(kwargs['gen_vel'])
 
         return self.system_pv[-1]
 
@@ -456,3 +463,26 @@ class BladePitchPid(controller_interface.BaseController):
         hub_forces[3:6] = total_forces[3:6] + np.cross(hub_pos, total_forces[0:3])
 
         return hub_forces[5]
+
+    @staticmethod
+    def compute_blade_pitch(beam, struct_tstep, tower_ibody=0, blade_ibody=1):
+        # Tower top
+        tt_elem = np.where(beam.body_number == tower_ibody)[0][-1]
+        tt_node = beam.connectivities[tt_elem, 1]
+        ielem, inode_in_elem = beam.node_master_elem[tt_node]
+        ca0b = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem, :])
+        cga0 = algebra.quat2rotation(struct_tstep.mb_quat[tower_ibody, :])
+        zg_tower_top = algebra.multiply_matrices(cga0, ca0b, np.array([0., 0., 1.]))
+
+        # blade root
+        # hub_elem = np.where(beam.body_number == blade_ibody)[0][0]
+        # hub_node = beam.connectivities[hub_elem, 0]
+        # ielem, inode_in_elem = beam.node_master_elem[hub_node]
+        # cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem, :])
+        cga = algebra.quat2rotation(struct_tstep.mb_quat[blade_ibody, :])
+        # zg_hub = algebra.multiply_matrices(cga, cab, np.array([0., 0., 1.]))
+        zg_hub = algebra.multiply_matrices(cga, np.array([0., 0., 1.]))
+        
+        pitch = algebra.angle_between_vectors(zg_tower_top, zg_hub)
+        return pitch
+
