@@ -579,9 +579,15 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.gravity_dir = self.settings['gravity_dir']
 
         # Platform dofs
-        self.q = np.zeros((self.settings['n_time_steps'] + 1, 6))
-        self.qdot = np.zeros_like(self.q)
-        self.qdotdot = np.zeros_like(self.q)
+        if self.q is None:
+            self.q = np.zeros((self.settings['n_time_steps'] + 1, 6))
+            self.qdot = np.zeros_like(self.q)
+            self.qdotdot = np.zeros_like(self.q)
+        else:
+            increase_ts = self.settings['n_time_steps'] + 1 - self.q.shape[0]
+            self.q = np.concatenate((self.q, np.zeros((increase_ts, 6))), axis=0)
+            self.qdot = np.concatenate((self.qdot, np.zeros((increase_ts, 6))), axis=0)
+            self.qdotdot = np.concatenate((self.qdotdot, np.zeros((increase_ts, 6))), axis=0)
 
         # Read the file with the floating information
         fid = h5.File(self.settings['floating_file_name'], 'r')
@@ -593,8 +599,9 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.n_mooring_lines = self.floating_data['mooring']['n_lines']
         self.anchor_pos = np.zeros((self.n_mooring_lines, 3))
         self.fairlead_pos_A = np.zeros((self.n_mooring_lines, 3))
-        self.hf_prev = [None]*self.n_mooring_lines
-        self.vf_prev = [None]*self.n_mooring_lines
+        if len(self.hf_prev) == 0:
+            self.hf_prev = [None]*self.n_mooring_lines
+            self.vf_prev = [None]*self.n_mooring_lines
 
         if self.n_mooring_lines > 0:
             theta = 2.*np.pi/self.n_mooring_lines
@@ -668,8 +675,11 @@ class FloatingForces(generator_interface.BaseGenerator):
             self.hd_K = TransferFunction(hd_K_num, hd_K_den)
             self.ab_freq_rads = self.floating_data['hydrodynamics']['ab_freq_rads']
 
-            self.x0_K = [None]*(self.settings['n_time_steps'] + 1)
-            self.x0_K[0] = 0.
+            try:
+                self.x0_K.extend([None]*increase_ts)
+            except AttributeError:
+                self.x0_K = [None]*(self.settings['n_time_steps'] + 1)
+                self.x0_K[0] = 0.
 
 
         # Wave forces
@@ -871,9 +881,6 @@ class FloatingForces(generator_interface.BaseGenerator):
 
         elif self.settings['method_matrices_freq'] == 'rational_function':
             # Damping
-            if self.x0_K[data.ts - 1] is None:
-                # This loop is needed when computations are restarted
-                self.x0_K[data.ts - 1] = 0
             (T, yout, xout) = forced_response(self.hd_K,
                                               T=[0, self.settings['dt']],
                                               U=self.qdot[data.ts-1:data.ts+1, :].T,
@@ -977,3 +984,4 @@ class FloatingForces(generator_interface.BaseGenerator):
         if self.settings['write_output']:
             self.write_output(data.ts, k, mooring_forces, mooring_yaw, hs_f_g,
                      hd_f_qdot_g, hd_f_qdotdot_g, hd_correct_grav, total_drag_force, self.wave_forces_g[data.ts, :])
+

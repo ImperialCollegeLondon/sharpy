@@ -62,6 +62,9 @@ class BaseSolver(metaclass=ABCMeta):
         _doc += settings_table.generate(settings_types, settings_default, settings_description)
         return _doc
 
+    def teardown(self):
+        pass
+
 
 def solver_from_string(string):
     try:

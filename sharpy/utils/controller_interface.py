@@ -25,7 +25,10 @@ def print_available_controllers():
 
 
 class BaseController(metaclass=ABCMeta):
-    pass
+    
+    def teardown(self):
+        pass
+
 
 def controller_from_string(string):
     return dict_of_controllers[string]

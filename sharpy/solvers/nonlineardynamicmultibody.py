@@ -119,10 +119,10 @@ class NonLinearDynamicMultibody(_BaseStructural):
             dire = './output/' + self.data.settings['SHARPy']['case'] + '/NonLinearDynamicMultibody/'
             if not os.path.isdir(dire):
                 os.makedirs(dire)
-            self.fid_lambda = open(dire + 'lambda.dat', "w")
-            self.fid_lambda_dot = open(dire + 'lambda_dot.dat', "w")
-            self.fid_lambda_ddot = open(dire + 'lambda_ddot.dat', "w")
-            self.fid_cond_num = open(dire + 'cond_num.dat', "w")
+            self.fname_lambda = dire + 'lambda.dat'
+            self.fname_lambda_dot = dire + 'lambda_dot.dat'
+            self.fname_lambda_ddot = dire + 'lambda_ddot.dat'
+            self.fname_cond_num = dire + 'cond_num.dat'
 
         # Define the number of dofs
         self.define_sys_size()
@@ -327,18 +327,29 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
     def write_lm_cond_num(self, iteration, Lambda, Lambda_dot, Lambda_ddot, cond_num, cond_num_lm):
 
-        self.fid_lambda.write("%d %d " % (self.data.ts, iteration))
-        self.fid_lambda_dot.write("%d %d " % (self.data.ts, iteration))
-        self.fid_lambda_ddot.write("%d %d " % (self.data.ts, iteration))
-        self.fid_cond_num.write("%d %d " % (self.data.ts, iteration))
+        fid_lambda = open(self.fname_lambda, "a")
+        fid_lambda_dot = open(self.fname_lambda_dot, "a")
+        fid_lambda_ddot = open(self.fname_lambda_ddot, "a")
+        fid_cond_num = open(self.fname_cond_num, "a")
+        
+        fid_lambda.write("%d %d " % (self.data.ts, iteration))
+        fid_lambda_dot.write("%d %d " % (self.data.ts, iteration))
+        fid_lambda_ddot.write("%d %d " % (self.data.ts, iteration))
+        fid_cond_num.write("%d %d " % (self.data.ts, iteration))
         for ilm in range(self.num_LM_eq):
-            self.fid_lambda.write("%f " % Lambda[ilm])
-            self.fid_lambda_dot.write("%f " % Lambda_dot[ilm])
-            self.fid_lambda_ddot.write("%f " % Lambda_ddot[ilm])
-        self.fid_lambda.write("\n")
-        self.fid_lambda_dot.write("\n")
-        self.fid_lambda_ddot.write("\n")
-        self.fid_cond_num.write("%e %e\n" % (cond_num, cond_num_lm))
+            fid_lambda.write("%f " % Lambda[ilm])
+            fid_lambda_dot.write("%f " % Lambda_dot[ilm])
+            fid_lambda_ddot.write("%f " % Lambda_ddot[ilm])
+        fid_lambda.write("\n")
+        fid_lambda_dot.write("\n")
+        fid_lambda_ddot.write("\n")
+        fid_cond_num.write("%e %e\n" % (cond_num, cond_num_lm))
+        
+        fid_lambda.close()
+        fid_lambda_dot.close()
+        fid_lambda_ddot.close()
+        fid_cond_num.close()
+        
 
 
     def run(self, structural_step=None, dt=None):
@@ -540,3 +551,4 @@ class NonLinearDynamicMultibody(_BaseStructural):
         self.Lambda_ddot = Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
 
         return self.data
+

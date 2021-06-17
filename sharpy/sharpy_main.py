@@ -106,11 +106,19 @@ def main(args=None, sharpy_input_dict=None):
             # for it in range(self.num_steps):
             #     data.structure.dynamic_input.append(dict())
 
+            # Restart the solvers
+            old_solvers_list = list(data.solvers.keys())
+            for old_solver_name in old_solvers_list:
+                if old_solver_name not in settings['SHARPy']['flow']:
+                    del data.solvers[old_solver_name] 
+
         # Loop for the solvers specified in *.sharpy['SHARPy']['flow']
         for solver_name in settings['SHARPy']['flow']:
-            solver = solver_interface.initialise_solver(solver_name)
-            solver.initialise(data)
-            data = solver.run()
+            if (args.restart is None) or (solver_name not in data.solvers.keys()):
+                data.solvers[solver_name] = solver_interface.initialise_solver(solver_name)
+            data.solvers[solver_name].initialise(data)
+            data = data.solvers[solver_name].run()
+            data.solvers[solver_name].teardown()
 
         cpu_time = time.process_time() - t
         wall_time = time.perf_counter() - t0_wall

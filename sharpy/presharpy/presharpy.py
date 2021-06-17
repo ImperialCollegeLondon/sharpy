@@ -82,6 +82,7 @@ class PreSharpy(object):
             self._settings = False
 
         self.ts = 0
+        self.solvers = dict()
 
         if self._settings:
             self.settings = in_settings

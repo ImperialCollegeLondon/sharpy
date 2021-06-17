@@ -272,38 +272,50 @@ class DynamicCoupled(BaseSolver):
             # timestep_info[0] and remove the rest
             self.cleanup_timestep_info()
 
-        self.structural_solver = solver_interface.initialise_solver(
-            self.settings['structural_solver'])
+        if self.structural_solver is None:
+            self.structural_solver = solver_interface.initialise_solver(
+                self.settings['structural_solver'])
         self.structural_solver.initialise(
             self.data, self.settings['structural_solver_settings'])
-        self.aero_solver = solver_interface.initialise_solver(
-            self.settings['aero_solver'])
+        if self.aero_solver is None:
+            self.aero_solver = solver_interface.initialise_solver(
+                self.settings['aero_solver'])
         self.aero_solver.initialise(self.structural_solver.data,
                                     self.settings['aero_solver_settings'])
         self.data = self.aero_solver.data
 
         # initialise postprocessors
-        self.postprocessors = dict()
         if self.settings['postprocessors']:
             self.with_postprocessors = True
+            # Remove previous postprocessors not required on restart
+            old_list = list(self.postprocessors.keys())
+            for old_list_name in old_list:
+                if old_list_name not in self.settings['postprocessors']:
+                    del self.postprocessors[old_list_name] 
         for postproc in self.settings['postprocessors']:
-            self.postprocessors[postproc] = solver_interface.initialise_solver(
-                postproc)
+            if not postproc in self.postprocessors.keys():
+                self.postprocessors[postproc] = solver_interface.initialise_solver(
+                    postproc)
             self.postprocessors[postproc].initialise(
                 self.data, self.settings['postprocessors_settings'][postproc], caller=self)
 
         # initialise controllers
-        self.controllers = dict()
         self.with_controllers = False
         if self.settings['controller_id']:
             self.with_controllers = True
+            # Remove previous controllers not required on restart
+            old_list = list(self.controllers.keys())
+            for old_list_name in old_list:
+                if old_list_name not in self.settings['controller_id']:
+                    del self.controllers[old_list_name] 
         for controller_id, controller_type in self.settings['controller_id'].items():
-            self.controllers[controller_id] = (
-                controller_interface.initialise_controller(controller_type))
+            if not controller_id in self.controllers.keys():
+                self.controllers[controller_id] = (
+                    controller_interface.initialise_controller(controller_type))
             self.controllers[controller_id].initialise(
                     self.settings['controller_settings'][controller_id],
                     controller_id)
-
+        
         # print information header
         if self.print_info:
             self.residual_table = cout.TablePrinter(8, 12, ['g', 'f', 'g', 'f', 'f', 'f', 'e', 'e'])
@@ -329,13 +341,18 @@ class DynamicCoupled(BaseSolver):
             self.network_loader.initialise(in_settings=self.settings['network_settings'])
 
         # initialise runtime generators
-        self.runtime_generators = dict()
         if self.settings['runtime_generators']:
             self.with_runtime_generators = True
-            for id, param in self.settings['runtime_generators'].items():
-                gen = gen_interface.generator_from_string(id)
-                self.runtime_generators[id] = gen()
-                self.runtime_generators[id].initialise(param, data=self.data)
+            # Remove previous runtime generators not required on restart
+            old_list = list(self.runtime_generators.keys())
+            for old_list_name in old_list:
+                if old_list_name not in self.settings['runtime_generators']:
+                    del self.runtime_generators[old_list_name] 
+        for rg_id, param in self.settings['runtime_generators'].items():
+            if not rg_id in self.runtime_generators.keys():
+                gen = gen_interface.generator_from_string(rg_id)
+                self.runtime_generators[rg_id] = gen()
+            self.runtime_generators[rg_id].initialise(param, data=self.data)
 
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
@@ -859,6 +876,20 @@ class DynamicCoupled(BaseSolver):
                         pass
 
         return out_step
+
+    def teardown(self):
+        
+        self.structural_solver.teardown()
+        self.aero_solver.teardown()
+        if self.with_postprocessors:
+            for pp in self.postprocessors.values():
+                pp.teardown()
+        if self.with_controllers:
+            for cont in self.controllers.values():
+                cont.teardown()
+        if self.with_runtime_generators:
+            for rg in self.runtime_generators.values():
+                rg.teardown()
 
 
 def relax(beam, timestep, previous_timestep, coeff):

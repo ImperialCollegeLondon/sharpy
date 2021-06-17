@@ -137,10 +137,10 @@ class StaticCoupled(BaseSolver):
         self.runtime_generators = dict()
         if self.settings['runtime_generators']:
             self.with_runtime_generators = True
-            for id, param in self.settings['runtime_generators'].items():
-                gen = gen_interface.generator_from_string(id)
-                self.runtime_generators[id] = gen()
-                self.runtime_generators[id].initialise(param, data=self.data)
+            for rg_id, param in self.settings['runtime_generators'].items():
+                gen = gen_interface.generator_from_string(rg_id)
+                self.runtime_generators[rg_id] = gen()
+                self.runtime_generators[rg_id].initialise(param, data=self.data)
 
     def increase_ts(self):
         self.data.ts += 1
@@ -351,3 +351,14 @@ class StaticCoupled(BaseSolver):
 
     def extract_resultants(self, tstep=None):
         return self.structural_solver.extract_resultants(tstep)
+    
+
+    def teardown(self):
+        
+        self.structural_solver.teardown()
+        self.aero_solver.teardown()
+        if self.with_runtime_generators:
+            for rg in self.runtime_generators.values():
+                rg.teardown()
+
+
