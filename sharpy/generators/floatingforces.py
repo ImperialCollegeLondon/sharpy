@@ -647,7 +647,8 @@ class FloatingForces(generator_interface.BaseGenerator):
             self.hd_damping_const = self.floating_data['hydrodynamics']['damping_matrix'][-1, :, :]
 
         self.added_mass_in_mass_matrix = self.settings['added_mass_in_mass_matrix']
-        if self.added_mass_in_mass_matrix:
+        if ((self.added_mass_in_mass_matrix) and (data.ts == 0)):
+            cout.cout_wrap(("Including added mass in mass matrix"), 2)
             if data.structure.lumped_mass_mat is None:
                 data.structure.lumped_mass_mat_nodes = np.array([self.buoyancy_node])
                 data.structure.lumped_mass_mat = np.array([self.hd_added_mass_const])
