@@ -344,7 +344,6 @@ def generate_solver_file(horseshoe=False):
     config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                       'text_file_name': case_name + '_aeroforces.csv',
                                       'screen_output': 'on',
-                                      'unsteady': 'off'
                                       }
     config['BeamPlot'] = {'include_rbm': 'off',
                           'include_applied_forces': 'on'}

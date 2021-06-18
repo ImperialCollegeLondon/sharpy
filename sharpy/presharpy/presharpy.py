@@ -62,6 +62,10 @@ class PreSharpy(object):
     settings_description['log_folder'] = 'A folder with the case name will be created at this directory ' \
                                          'containing the SHARPy log and output folders'
 
+    settings_types['log_file'] = 'str'
+    settings_default['log_file'] = 'log'
+    settings_description['log_file'] = 'Name of the log file'
+
     settings_types['save_settings'] = 'bool'
     settings_default['save_settings'] = False
     settings_description['save_settings'] = 'Save a copy of the settings to a ``.sharpy`` file in the output ' \
@@ -78,9 +82,6 @@ class PreSharpy(object):
             self._settings = False
 
         self.ts = 0
-
-        self.settings_types['log_file'] = 'str'
-        self.settings_default['log_file'] = 'log'
 
         if self._settings:
             self.settings = in_settings
