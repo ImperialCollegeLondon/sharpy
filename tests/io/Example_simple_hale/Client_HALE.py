@@ -11,7 +11,7 @@ output capabilities of sharpy. It will just give back the initial control surfac
 
 Run this script as client.
 
-Run ``python generate_hale_io.py`` as server from the folder tests/io/example_simple_hale
+Run ``python generate_hale_io.py`` as server from the folder tests/io/Example_simple_hale
 """
 
 # sel = selectors.DefaultSelector()
