@@ -9,7 +9,7 @@ import numpy as np
 
 import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.utils.cout_utils as cout
 
 @solver
@@ -74,7 +74,7 @@ class DynamicUVLM(BaseSolver):
     settings_default['postprocessors_settings'] = dict()
     settings_description['postprocessors_settings'] = 'Dictionary with the applicable settings for every ``psotprocessor``. Every ``postprocessor`` needs its entry, even if empty'
 
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
 
@@ -98,7 +98,7 @@ class DynamicUVLM(BaseSolver):
         else:
             self.settings = custom_settings
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.dt = self.settings['dt']
         self.print_info = self.settings['print_info']
 
@@ -119,7 +119,7 @@ class DynamicUVLM(BaseSolver):
             self.residual_table = cout.TablePrinter(2, 14, ['g', 'f'])
             self.residual_table.print_header(['ts', 't'])
 
-    def run(self):
+    def run(self, **kwargs):
 
         # struct info - only for orientation, no structural solution is performed
         struct_ini_step = self.data.structure.timestep_info[-1]

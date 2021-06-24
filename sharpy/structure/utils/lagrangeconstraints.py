@@ -40,6 +40,7 @@ import os
 import ctypes as ct
 import numpy as np
 import sharpy.utils.algebra as ag
+from sharpy.utils.settings import set_value_or_default
 
 ###############################################################################
 # Basic structures
@@ -223,13 +224,6 @@ def define_FoR_dof(MB_beam, FoR_body):
     FoR_dof += MB_beam[FoR_body].num_dof.value
     return FoR_dof
 
-
-def set_value_or_default(dictionary, key, default_val):
-    try:
-        value = dictionary[key]
-    except KeyError:
-        value = default_val
-    return value
 
 ################################################################################
 # Equations

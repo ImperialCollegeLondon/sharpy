@@ -4,7 +4,7 @@ import numpy as np
 import sharpy.utils.algebra as algebra
 import sharpy.aero.utils.uvlmlib as uvlmlib
 import sharpy.utils.cout_utils as cout
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.generator_interface as gen_interface
 from sharpy.utils.constants import vortex_radius_def
@@ -110,7 +110,7 @@ class StaticUvlm(BaseSolver):
     settings_default['centre_rot_g'] = [0., 0., 0.]
     settings_description['centre_rot_g'] = 'Centre of rotation in G FoR around which ``rbm_vel_g`` is applied'
 
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -125,7 +125,7 @@ class StaticUvlm(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
+        su.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
 
         self.update_step()
 
@@ -151,22 +151,13 @@ class StaticUvlm(BaseSolver):
                                                    self.data.aero.aero_settings,
                                                    dt=self.settings['rollup_dt'])
 
-    def run(self,
-            aero_tstep=None,
-            structure_tstep=None,
-            convect_wake=False,
-            dt=None,
-            t=None,
-            unsteady_contribution=False):
+    def run(self, **kwargs):
 
-        if aero_tstep is None:
-            aero_tstep = self.data.aero.timestep_info[self.data.ts]
-        if structure_tstep is None:
-            structure_tstep = self.data.structure.timestep_info[self.data.ts]
-        if dt is None:
-            dt = self.settings['rollup_dt']
-        if t is None:
-            t = self.data.ts*dt
+        aero_tstep = su.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[-1])
+        structure_tstep = su.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
+        dt = su.set_value_or_default(kwargs, 'dt', self.settings['rollup_dt'])
+        t = su.set_value_or_default(kwargs, 't', self.data.ts*dt)
+
         unsteady_contribution = False
         convect_wake = False
 

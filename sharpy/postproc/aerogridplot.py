@@ -7,7 +7,7 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.aero.utils.uvlmlib as uvlmlib
 from sharpy.utils.constants import vortex_radius_def
 
@@ -81,7 +81,7 @@ class AerogridPlot(BaseSolver):
     settings_default['save_wake'] = True
     settings_description['save_wake'] = 'Plot the wake'
     
-    table = settings.SettingsTable()
+    table = su.SettingsTable()
     __doc__ += table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -100,7 +100,7 @@ class AerogridPlot(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.ts_max = self.data.ts + 1
         # create folder for containing files if necessary
         self.folder = data.output_folder + '/aero/'
@@ -116,7 +116,10 @@ class AerogridPlot(BaseSolver):
                               self.data.settings['SHARPy']['case'])
         self.caller = caller
 
-    def run(self, online=False):
+    def run(self, **kwargs):
+    
+        online = su.set_value_or_default(kwargs, 'online', False)
+
         # TODO: Create a dictionary to plot any variable as in beamplot
         if not online:
             for self.ts in range(self.ts_max):

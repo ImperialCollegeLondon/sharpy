@@ -6,7 +6,7 @@ import h5py
 import sharpy
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.utils.h5utils as h5utils
 
 
@@ -35,7 +35,7 @@ class PickleData(BaseSolver):
     settings_default['stride'] = 1
     settings_description['stride'] = 'Number of steps between the execution calls when run online'
 
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -53,16 +53,23 @@ class PickleData(BaseSolver):
         else:
             self.settings = custom_settings
 
-        settings.to_custom_types(self.settings,
-                                 self.settings_types, self.settings_default)
+        su.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default)
 
         self.folder = data.output_folder
         self.filename = self.folder + self.data.settings['SHARPy']['case']+'.pkl'
         self.caller = caller
 
-    def run(self, online=False):
+
+    def run(self, **kwargs):
+        
+        online = su.set_value_or_default(kwargs, 'online', False)
+        solvers = su.set_value_or_default(kwargs, 'solvers', None)
+        
         if ((online and (self.data.ts % self.settings['stride'] == 0)) or (not online)):
             with open(self.filename, 'wb') as f:
                 pickle.dump(self.data, f, protocol=pickle.HIGHEST_PROTOCOL)
+                pickle.dump(solvers, f, protocol=pickle.HIGHEST_PROTOCOL)
 
         return self.data

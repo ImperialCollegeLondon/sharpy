@@ -1,5 +1,4 @@
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 
 @solver
@@ -67,5 +66,5 @@ class _BaseStructural(BaseSolver):
     def initialise(self, data):
         pass
 
-    def run(self):
+    def run(self, **kwargs):
         pass

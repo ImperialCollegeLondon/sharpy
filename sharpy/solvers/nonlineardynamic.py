@@ -8,7 +8,7 @@ import numpy as np
 import sharpy.structure.utils.xbeamlib as xbeamlib
 from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.utils.cout_utils as cout
 
 _BaseStructural = solver_from_string('_BaseStructural')
@@ -38,7 +38,7 @@ class NonLinearDynamic(_BaseStructural):
     settings_types['gravity_dir'] = 'list(float)'
     settings_default['gravity_dir'] = [0, 0, 1]
 
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -48,7 +48,7 @@ class NonLinearDynamic(_BaseStructural):
     def initialise(self, data):
         self.data = data
         self.settings = data.settings[self.solver_id]
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'])
@@ -61,7 +61,7 @@ class NonLinearDynamic(_BaseStructural):
             self.data.structure.timestep_info[i].steady_applied_forces[:] = self.data.structure.ini_info.steady_applied_forces
 
 
-    def run(self):
+    def run(self, **kwargs):
         prescribed_motion = False
         try:
             prescribed_motion = self.settings['prescribed_motion']

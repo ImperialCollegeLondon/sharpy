@@ -1,7 +1,7 @@
 import numpy as np
 import ctypes as ct
 
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 from sharpy.utils.solver_interface import solver
 
 
@@ -81,10 +81,10 @@ class NewmarkBeta(_BaseTimeIntegrator):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings,
-                                 self.settings_types,
-                                 self.settings_default,
-                                 no_ctype=True)
+        su.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default,
+                           no_ctype=True)
 
         self.dt = self.settings['dt']
         self.gamma = 0.5 + self.settings['newmark_damp']
@@ -180,7 +180,7 @@ class GeneralisedAlpha(_BaseTimeIntegrator):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings,
+        su.to_custom_types(self.settings,
                                  self.settings_types,
                                  self.settings_default,
                                  no_ctype=True)

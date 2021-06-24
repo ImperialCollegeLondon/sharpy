@@ -1,5 +1,5 @@
 from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import configobj
 import os
 import sharpy.utils.cout_utils as cout
@@ -48,7 +48,7 @@ class SaveParametricCase(BaseSolver):
     settings_default['parameters'] = None
     settings_description['parameters'] = 'Dictionary containing the chosen simulation parameters and their values.'
 
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -64,14 +64,15 @@ class SaveParametricCase(BaseSolver):
         else:
             self.settings = custom_settings
 
-        settings.to_custom_types(self.settings,
-                                 self.settings_types,
-                                 self.settings_default
-                                 )
+        su.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default)
 
         self.folder = data.output_folder
 
-    def run(self):
+    def run(self, **kwargs):
+        
+        online = su.set_value_or_default(kwargs, 'online', False)
 
         config = configobj.ConfigObj()
         file_name = self.folder + '/' + self.data.settings['SHARPy']['case'] + '.pmor.sharpy'

@@ -3,7 +3,7 @@ import numpy as np
 
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.structure.models.beam as beam
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.utils.h5utils as h5utils
 import os
 
@@ -60,7 +60,7 @@ class BeamLoader(BaseSolver):
     settings_default['for_pos'] = [0., 0, 0]
     settings_description['for_pos'] = 'Initial position of the A FoR.'
 
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -81,7 +81,7 @@ class BeamLoader(BaseSolver):
         self.settings = data.settings[self.solver_id]
 
         # init settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # read input files (fem and dyn)
         self.read_files()
@@ -131,7 +131,7 @@ class BeamLoader(BaseSolver):
     def validate_dyn_file(self):
         raise NotImplementedError('validation of the dyn file in beamloader is not yet implemented!')
 
-    def run(self):
+    def run(self, **kwargs):
         self.data.structure = beam.Beam()
         self.data.structure.ini_mb_dict = self.mb_data_dict
         self.data.structure.generate(self.fem_data_dict, self.settings)

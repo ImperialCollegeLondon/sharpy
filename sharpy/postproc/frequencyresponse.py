@@ -2,7 +2,7 @@ import numpy as np
 import time
 import os
 import sharpy.utils.solver_interface as solver_interface
-import sharpy.utils.settings as settings_utils
+import sharpy.utils.settings as su
 import sharpy.utils.cout_utils as cout
 import warnings
 import sharpy.linear.src.libss as libss
@@ -74,7 +74,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
     settings_default['quick_plot'] = False
     settings_description['quick_plot'] = 'Produce array of ``.png`` plots showing response. Requires matplotlib.'
 
-    settings_table = settings_utils.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
@@ -96,9 +96,11 @@ class FrequencyResponse(solver_interface.BaseSolver):
             self.settings = self.data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default,
-                                       self.settings_options,
-                                       no_ctype=True)
+        su.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default,
+                           self.settings_options,
+                           no_ctype=True)
 
         self.print_info = self.settings['print_info']
 
@@ -127,7 +129,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
             os.makedirs(self.folder)
         self.caller = caller
 
-    def run(self, ss=None, online=False):
+
+    def run(self, **kwargs):
         """
         Computes the frequency response of the linear state-space.
 
@@ -136,7 +139,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
               If not given, the response for the previously assembled systems and specified in ``target_system`` will
               be performed.
         """
-        # TODO: This postproc does not have an standard call. Maybe a @staticmethod might help
+        online = su.set_value_or_default(kwargs, 'online', False)
+        ss = su.set_value_or_default(kwargs, 'ss', None)
 
         if ss is None:
             ss_list = [find_target_system(self.data, system_name) for system_name in self.settings['target_system']]

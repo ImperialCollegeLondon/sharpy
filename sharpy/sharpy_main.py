@@ -85,10 +85,12 @@ def main(args=None, sharpy_input_dict=None):
         if args.restart is None:
             # run preSHARPy
             data = PreSharpy(settings)
+            solvers = dict()
         else:
             try:
                 with open(args.restart, 'rb') as restart_file:
                     data = pickle.load(restart_file)
+                    solvers = pickle.load(restart_file)
             except FileNotFoundError:
                 raise FileNotFoundError('The file specified for the snapshot \
                     restart (-r) does not exist. Please check.')
@@ -107,18 +109,18 @@ def main(args=None, sharpy_input_dict=None):
             #     data.structure.dynamic_input.append(dict())
 
             # Restart the solvers
-            old_solvers_list = list(data.solvers.keys())
+            old_solvers_list = list(solvers.keys())
             for old_solver_name in old_solvers_list:
                 if old_solver_name not in settings['SHARPy']['flow']:
-                    del data.solvers[old_solver_name] 
+                    del solvers[old_solver_name] 
 
         # Loop for the solvers specified in *.sharpy['SHARPy']['flow']
         for solver_name in settings['SHARPy']['flow']:
-            if (args.restart is None) or (solver_name not in data.solvers.keys()):
-                data.solvers[solver_name] = solver_interface.initialise_solver(solver_name)
-            data.solvers[solver_name].initialise(data)
-            data = data.solvers[solver_name].run()
-            data.solvers[solver_name].teardown()
+            if (args.restart is None) or (solver_name not in solvers.keys()):
+                solvers[solver_name] = solver_interface.initialise_solver(solver_name)
+            solvers[solver_name].initialise(data)
+            data = solvers[solver_name].run(solvers=solvers)
+            solvers[solver_name].teardown()
 
         cpu_time = time.process_time() - t
         wall_time = time.perf_counter() - t0_wall

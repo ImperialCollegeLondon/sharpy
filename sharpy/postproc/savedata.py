@@ -4,7 +4,7 @@ import copy
 import sharpy
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.utils.h5utils as h5utils
 from sharpy.presharpy.presharpy import PreSharpy
 
@@ -94,7 +94,7 @@ class SaveData(BaseSolver):
     settings_default['stride'] = 1
     settings_description['stride'] = 'Number of steps between the execution calls when run online'
 
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
                                        settings_options=settings_options)
 
@@ -120,8 +120,10 @@ class SaveData(BaseSolver):
         else:
             self.settings = custom_settings
 
-        settings.to_custom_types(self.settings,
-                                 self.settings_types, self.settings_default, options=self.settings_options)
+        su.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default,
+                           options=self.settings_options)
 
         # Add these anyway - therefore if you add your own skip_attr you don't have to retype all of these
         self.settings['skip_attr'].extend(['fortran',
@@ -193,7 +195,9 @@ class SaveData(BaseSolver):
                 self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss)
         self.caller = caller
 
-    def run(self, online=False):
+    def run(self, **kwargs):
+    
+        online = su.set_value_or_default(kwargs, 'online', False)
 
         # Use the following statement in case the ct types are not defined and
         # you need them on uvlm3d

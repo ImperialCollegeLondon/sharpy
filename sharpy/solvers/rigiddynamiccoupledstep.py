@@ -4,7 +4,7 @@ import numpy as np
 import sharpy.structure.utils.xbeamlib as xbeamlib
 from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
 
@@ -37,7 +37,7 @@ class RigidDynamicCoupledStep(_BaseStructural):
     settings_default['relaxation_factor'] = 0.3
     settings_description['relaxation factor'] = 'Relaxation factor'
 
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -50,7 +50,7 @@ class RigidDynamicCoupledStep(_BaseStructural):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'])
@@ -58,15 +58,18 @@ class RigidDynamicCoupledStep(_BaseStructural):
         # generate q, dqdt and dqddt
         xbeamlib.xbeam_solv_disp2state(self.data.structure, self.data.structure.timestep_info[-1])
 
-    def run(self, structural_step, previous_structural_step=None, dt=None):
-        if dt is None:
-            dt = self.settings['dt']
+    def run(self, **kwargs):
+
+        structural_step = su.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
+        # TODO: previous_structural_step never used
+        previous_structural_step = su.set_value_or_default(kwargs, 'previous_structural_step', self.data.structure.timestep_info[-1])
+        dt= su.set_value_or_default(kwargs, 'dt', self.settings['dt'])  
 
         xbeamlib.xbeam_step_coupledrigid(self.data.structure,
-                                          self.settings,
-                                          self.data.ts,
-                                          structural_step,
-                                          dt=dt)
+                                         self.settings,
+                                         self.data.ts,
+                                         structural_step,
+                                         dt=dt)
         self.extract_resultants(structural_step)
         self.data.structure.integrate_position(structural_step, dt)
 

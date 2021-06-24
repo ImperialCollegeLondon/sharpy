@@ -2,7 +2,7 @@ import os
 import warnings as warn
 import numpy as np
 import scipy.linalg as sclalg
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
@@ -77,7 +77,7 @@ class AsymptoticStability(BaseSolver):
     settings_default['postprocessors_settings'] = dict()
     settings_description['postprocessors_settings'] = 'To be used with ``modes_to_plot``. Under development.'
 
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -103,7 +103,7 @@ class AsymptoticStability(BaseSolver):
         else:
             self.settings = custom_settings
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
+        su.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
 
         self.num_evals = self.settings['num_evals']
 
@@ -121,7 +121,7 @@ class AsymptoticStability(BaseSolver):
 
         self.caller = caller
 
-    def run(self, online=False):
+    def run(self, **kwargs):
         """
         Computes the eigenvalues and eigenvectors
 
@@ -130,6 +130,9 @@ class AsymptoticStability(BaseSolver):
             eigenvectors (np.ndarray): Corresponding mode shapes
 
         """
+
+        online = su.set_value_or_default(kwargs, 'online', False)
+        
         try:
             self.frequency_cutoff = self.settings['frequency_cutoff']
         except AttributeError:

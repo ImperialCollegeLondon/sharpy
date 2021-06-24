@@ -6,7 +6,7 @@ import sharpy.aero.utils.mapping as mapping
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.utils.algebra as algebra
 import sharpy.utils.generator_interface as gen_interface
 
@@ -76,7 +76,7 @@ class StaticCoupled(BaseSolver):
                                                  'The dictionary values are dictionaries with the settings ' \
                                                  'needed by each generator.'
 
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
@@ -102,11 +102,11 @@ class StaticCoupled(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = input_dict
-        settings.to_custom_types(self.settings,
-                                 self.settings_types,
-                                 self.settings_default,
-                                 options=self.settings_options,
-                                 no_ctype=True)
+        su.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default,
+                           options=self.settings_options,
+                           no_ctype=True)
 
         self.print_info = self.settings['print_info']
 
@@ -160,7 +160,7 @@ class StaticCoupled(BaseSolver):
 
         self.data.ts = 0
 
-    def run(self):
+    def run(self, **kwargs):
         for i_step in range(self.settings['n_load_steps'] + 1):
             if (i_step == self.settings['n_load_steps'] and
                     self.settings['n_load_steps'] > 0):

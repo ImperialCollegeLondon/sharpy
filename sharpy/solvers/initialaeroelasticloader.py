@@ -2,7 +2,7 @@ import numpy as np
 import h5py as h5
 
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.utils.algebra as algebra
 import sharpy.utils.h5utils as h5utils
 import sharpy.utils.exceptions as exceptions
@@ -29,7 +29,7 @@ class InitialAeroelasticLoader(BaseSolver):
     settings_default['include_forces'] = True
     settings_description['include_forces'] = 'Map the forces'
 
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -44,20 +44,18 @@ class InitialAeroelasticLoader(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings,
-                                 self.settings_types,
-                                 self.settings_default,
-                                 no_ctype=True)
+        su.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default,
+                           no_ctype=True)
         # Load simulation data
         self.file_info = h5utils.readh5(self.settings['input_file'])
 
-    def run(self, structural_step=None, aero_step=None):
+    def run(self, **kwargs):
 
-        if structural_step is None:
-            structural_step = self.data.structure.timestep_info[-1]
-        if aero_step is None:
-            aero_step = self.data.aero.timestep_info[-1]
-
+        aero_step = su.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[-1])
+        structural_step = su.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
+        
         # Copy structural information
         attributes = ['pos', 'pos_dot', 'pos_ddot',
                       'psi', 'psi_dot', 'psi_ddot',

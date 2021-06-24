@@ -13,7 +13,7 @@ import sharpy.utils.cout_utils as cout
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.controller_interface as controller_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.utils.algebra as algebra
 import sharpy.utils.exceptions as exc
 import sharpy.io.network_interface as network_interface
@@ -178,7 +178,7 @@ class DynamicCoupled(BaseSolver):
                                                  'The dictionary values are dictionaries with the settings ' \
                                                  'needed by each generator.'
 
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
@@ -254,10 +254,10 @@ class DynamicCoupled(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings,
-                                 self.settings_types,
-                                 self.settings_default,
-                                 options=self.settings_options)
+        su.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default,
+                           options=self.settings_options)
 
         self.original_settings = copy.deepcopy(self.settings)
 
@@ -429,12 +429,12 @@ class DynamicCoupled(BaseSolver):
 
         return controlled_state['structural'], controlled_state['aero']
 
-    def run(self):
+    def run(self, **kwargs):
         """
         Run the time stepping procedure with controllers and postprocessors
         included.
         """
-
+        solvers = su.set_value_or_default(kwargs, 'solvers', None)
         if self.network_loader is not None:
             self.set_of_variables = self.network_loader.get_inout_variables()
 
@@ -444,7 +444,7 @@ class DynamicCoupled(BaseSolver):
             finish_event = threading.Event()
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                 netloop = executor.submit(self.network_loop, incoming_queue, outgoing_queue, finish_event)
-                timeloop = executor.submit(self.time_loop, incoming_queue, outgoing_queue, finish_event)
+                timeloop = executor.submit(self.time_loop, incoming_queue, outgoing_queue, finish_event, solvers)
 
                 # TODO: improve exception handling to get exceptions when they happen from each thread
                 for t1 in [netloop, timeloop]:
@@ -455,7 +455,7 @@ class DynamicCoupled(BaseSolver):
                         raise Exception
 
         else:
-            self.time_loop()
+            self.time_loop(solvers=solvers)
 
         if self.print_info:
             cout.cout_wrap('...Finished', 1)
@@ -498,7 +498,7 @@ class DynamicCoupled(BaseSolver):
         in_network.close()
         out_network.close()
 
-    def time_loop(self, in_queue=None, out_queue=None, finish_event=None):
+    def time_loop(self, in_queue=None, out_queue=None, finish_event=None, solvers=None):
         self.logger.debug('Inside time loop')
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
         for self.data.ts in range(
@@ -592,8 +592,8 @@ class DynamicCoupled(BaseSolver):
 
                 # run the solver
                 ini_time_aero = time.perf_counter()
-                self.data = self.aero_solver.run(aero_kstep,
-                                                 structural_kstep,
+                self.data = self.aero_solver.run(aero_step=aero_kstep,
+                                                 structural_step=structural_kstep,
                                                  convect_wake=True,
                                                  unsteady_contribution=unsteady_contribution)
                 self.time_aero += time.perf_counter() - ini_time_aero
@@ -688,7 +688,7 @@ class DynamicCoupled(BaseSolver):
             # run postprocessors
             if self.with_postprocessors:
                 for postproc in self.postprocessors:
-                    self.data = self.postprocessors[postproc].run(online=True)
+                    self.data = self.postprocessors[postproc].run(online=True, solvers=solvers)
 
             # network only
             # put result back in queue

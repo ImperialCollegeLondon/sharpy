@@ -51,7 +51,7 @@ class BaseSolver(metaclass=ABCMeta):
 
     # This executes the solver
     @abstractmethod
-    def run(self):
+    def run(self, **kwargs):
         pass
 
     # @property

@@ -7,7 +7,7 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 from sharpy.utils.datastructures import init_matrix_structure, standalone_ctypes_pointer
 import sharpy.aero.utils.uvlmlib as uvlmlib
 
@@ -39,11 +39,14 @@ class LiftDistribution(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.ts_max = len(self.data.structure.timestep_info)
         self.caller = caller
 
-    def run(self, online=False):
+    def run(self, **kwargs):
+        
+        online = su.set_value_or_default(kwargs, 'online', False)
+
         if not online:
             for self.ts in range(self.ts_max):
                 self.lift_distribution()

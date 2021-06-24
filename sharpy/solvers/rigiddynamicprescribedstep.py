@@ -8,7 +8,7 @@ import numpy as np
 import sharpy.structure.utils.xbeamlib as xbeamlib
 # from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
 from sharpy.utils.solver_interface import solver_from_string
@@ -33,7 +33,7 @@ class RigidDynamicPrescribedStep(BaseSolver):
     settings_default['num_steps'] = 500
     settings_description['num_steps'] = 'Number of timesteps to be run'
 
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -47,17 +47,14 @@ class RigidDynamicPrescribedStep(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'])
 
-    def run(self, structural_step=None, dt=None):
-
-        if structural_step is None:
-            structural_step = self.data.structure.timestep_info[-1]
-        if dt is None:
-            dt = self.settings['dt']
+    def run(self, **kwargs):
+        structural_step = su.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
+        dt= su.set_value_or_default(kwargs, 'dt', self.settings['dt'])  
 
         if self.data.ts > 0:
             try:
