@@ -68,7 +68,7 @@ class AeroForcesCalculator(BaseSolver):
 
         self.table = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
         self.ts_max = len(self.data.structure.timestep_info)

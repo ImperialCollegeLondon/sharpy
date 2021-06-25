@@ -62,7 +62,7 @@ class StraightWake(generator_interface.BaseGenerator):
         self.u_inf_direction = None
         self.dt = None
 
-    def initialise(self, data, in_dict=None):
+    def initialise(self, data, in_dict=None, restart=False):
         self.in_dict = in_dict
 
         # For backwards compatibility

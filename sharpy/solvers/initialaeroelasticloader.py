@@ -37,7 +37,7 @@ class InitialAeroelasticLoader(BaseSolver):
         self.settings = None
         self.file_info = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
 
         self.data = data
         if custom_settings is None:

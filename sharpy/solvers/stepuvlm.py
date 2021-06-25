@@ -141,7 +141,7 @@ class StepUvlm(BaseSolver):
         self.settings = None
         self.velocity_generator = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
         """
         To be called just once per simulation.
         """
@@ -181,7 +181,8 @@ class StepUvlm(BaseSolver):
             self.settings['velocity_field_generator'])
         self.velocity_generator = velocity_generator_type()
         self.velocity_generator.initialise(
-            self.settings['velocity_field_input'])
+            self.settings['velocity_field_input'],
+            restart=restart)
 
     def run(self, **kwargs):
         """

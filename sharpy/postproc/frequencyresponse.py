@@ -88,7 +88,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
         self.wv = None
         self.caller = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
 
         self.data = data
 

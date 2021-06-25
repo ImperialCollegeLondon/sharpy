@@ -109,7 +109,7 @@ class Modal(BaseSolver):
         self.filename_shapes = None
         self.rigid_body_motion = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]

@@ -143,7 +143,7 @@ class StepLinearUVLM(BaseSolver):
         self.lin_uvlm_system = None
         self.velocity_generator = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
         r"""
         Initialises the Linear UVLM aerodynamic solver and the chosen velocity generator.
 
@@ -178,7 +178,7 @@ class StepLinearUVLM(BaseSolver):
         # Initialise velocity generator
         velocity_generator_type = gen_interface.generator_from_string(self.settings['velocity_field_generator'])
         self.velocity_generator = velocity_generator_type()
-        self.velocity_generator.initialise(self.settings['velocity_field_input'])
+        self.velocity_generator.initialise(self.settings['velocity_field_input'], restart=restart)
 
         # Check whether linear UVLM has been initialised
         try:

@@ -163,7 +163,7 @@ class BladePitchPid(controller_interface.BaseController):
 
         self.log = None
 
-    def initialise(self, in_dict, controller_id=None):
+    def initialise(self, in_dict, controller_id=None, restart=False):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict,
                                  self.settings_types,

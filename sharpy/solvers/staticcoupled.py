@@ -96,7 +96,7 @@ class StaticCoupled(BaseSolver):
         self.runtime_generators = dict()
         self.with_runtime_generators = False
 
-    def initialise(self, data, input_dict=None):
+    def initialise(self, data, input_dict=None, restart=False):
         self.data = data
         if input_dict is None:
             self.settings = data.settings[self.solver_id]
@@ -111,9 +111,9 @@ class StaticCoupled(BaseSolver):
         self.print_info = self.settings['print_info']
 
         self.structural_solver = solver_interface.initialise_solver(self.settings['structural_solver'])
-        self.structural_solver.initialise(self.data, self.settings['structural_solver_settings'])
+        self.structural_solver.initialise(self.data, self.settings['structural_solver_settings'], restart=restart)
         self.aero_solver = solver_interface.initialise_solver(self.settings['aero_solver'])
-        self.aero_solver.initialise(self.structural_solver.data, self.settings['aero_solver_settings'])
+        self.aero_solver.initialise(self.structural_solver.data, self.settings['aero_solver_settings'], restart=restart)
         self.data = self.aero_solver.data
 
         if self.print_info:
@@ -140,7 +140,7 @@ class StaticCoupled(BaseSolver):
             for rg_id, param in self.settings['runtime_generators'].items():
                 gen = gen_interface.generator_from_string(rg_id)
                 self.runtime_generators[rg_id] = gen()
-                self.runtime_generators[rg_id].initialise(param, data=self.data)
+                self.runtime_generators[rg_id].initialise(param, data=self.data, restart=restart)
 
     def increase_ts(self):
         self.data.ts += 1

@@ -97,7 +97,7 @@ class AerogridLoader(BaseSolver):
 
         self.wake_shape_generator = None
 
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
 
@@ -113,7 +113,8 @@ class AerogridLoader(BaseSolver):
             self.settings['wake_shape_generator'])
         self.wake_shape_generator = wake_shape_generator_type()
         self.wake_shape_generator.initialise(data,
-                                             self.settings['wake_shape_generator_input'])
+                                             self.settings['wake_shape_generator_input'],
+                                             restart=restart)
 
     def read_files(self):
         # open aero file

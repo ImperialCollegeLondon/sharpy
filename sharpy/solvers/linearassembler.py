@@ -113,7 +113,7 @@ class LinearAssembler(BaseSolver):
         self.settings = dict()
         self.data = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
 
         self.data = data
         if custom_settings:

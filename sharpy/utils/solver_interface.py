@@ -46,7 +46,7 @@ class BaseSolver(metaclass=ABCMeta):
 
     # The input is a ProblemData class structure
     @abstractmethod
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         pass
 
     # This executes the solver

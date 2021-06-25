@@ -84,7 +84,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         self.prev_Dq = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
 
         self.data = data
         if custom_settings is None:
@@ -100,12 +100,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(
             self.data.structure.dyn_dict, self.settings['num_steps'])
-
-        # Initialise time integrator
-        self.time_integrator = solver_interface.initialise_solver(
-            self.settings['time_integrator'])
-        self.time_integrator.initialise(
-            self.data, self.settings['time_integrator_settings'])
 
         # Define the number of equations
         self.lc_list = lagrangeconstraints.initialize_constraints(self.data.structure.ini_mb_dict)
@@ -133,10 +127,11 @@ class NonLinearDynamicMultibody(_BaseStructural):
         self.settings['time_integrator_settings']['num_LM_eq'] = self.num_LM_eq
 
         # Initialise time integrator
-        self.time_integrator = solver_interface.initialise_solver(
-            self.settings['time_integrator'])
+        if not restart:
+            self.time_integrator = solver_interface.initialise_solver(
+                self.settings['time_integrator'])
         self.time_integrator.initialise(
-            self.data, self.settings['time_integrator_settings'])
+            self.data, self.settings['time_integrator_settings'], restart=restart)
 
     def add_step(self):
         self.data.structure.next_step()

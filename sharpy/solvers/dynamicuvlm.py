@@ -90,7 +90,7 @@ class DynamicUVLM(BaseSolver):
         self.postprocessors = dict()
         self.with_postprocessors = False
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
         self.data = data
 
         if custom_settings is None:
@@ -103,7 +103,7 @@ class DynamicUVLM(BaseSolver):
         self.print_info = self.settings['print_info']
 
         self.aero_solver = solver_interface.initialise_solver(self.settings['aero_solver'])
-        self.aero_solver.initialise(self.data, self.settings['aero_solver_settings'])
+        self.aero_solver.initialise(self.data, self.settings['aero_solver_settings'], restart=False)
         self.data = self.aero_solver.data
 
         # initialise postprocessors
@@ -113,7 +113,7 @@ class DynamicUVLM(BaseSolver):
         for postproc in self.settings['postprocessors']:
             self.postprocessors[postproc] = solver_interface.initialise_solver(postproc)
             self.postprocessors[postproc].initialise(
-                self.data, self.settings['postprocessors_settings'][postproc], caller=self)
+                self.data, self.settings['postprocessors_settings'][postproc], caller=self, restart=False)
 
         if self.print_info:
             self.residual_table = cout.TablePrinter(2, 14, ['g', 'f'])

@@ -565,7 +565,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.added_mass_in_mass_matrix = None
 
 
-    def initialise(self, in_dict=None, data=None):
+    def initialise(self, in_dict=None, data=None, restart=False):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict,
                                  self.settings_types,
@@ -579,7 +579,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.gravity_dir = self.settings['gravity_dir']
 
         # Platform dofs
-        if self.q is None:
+        if not restart:
             self.q = np.zeros((self.settings['n_time_steps'] + 1, 6))
             self.qdot = np.zeros_like(self.q)
             self.qdotdot = np.zeros_like(self.q)
@@ -599,7 +599,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.n_mooring_lines = self.floating_data['mooring']['n_lines']
         self.anchor_pos = np.zeros((self.n_mooring_lines, 3))
         self.fairlead_pos_A = np.zeros((self.n_mooring_lines, 3))
-        if len(self.hf_prev) == 0:
+        if not restart:
             self.hf_prev = [None]*self.n_mooring_lines
             self.vf_prev = [None]*self.n_mooring_lines
 
@@ -647,7 +647,7 @@ class FloatingForces(generator_interface.BaseGenerator):
             self.hd_damping_const = self.floating_data['hydrodynamics']['damping_matrix'][-1, :, :]
 
         self.added_mass_in_mass_matrix = self.settings['added_mass_in_mass_matrix']
-        if ((self.added_mass_in_mass_matrix) and (data.ts == 0)):
+        if ((self.added_mass_in_mass_matrix) and (not restart)):
             cout.cout_wrap(("Including added mass in mass matrix"), 2)
             if data.structure.lumped_mass_mat is None:
                 data.structure.lumped_mass_mat_nodes = np.array([self.buoyancy_node])
@@ -676,9 +676,9 @@ class FloatingForces(generator_interface.BaseGenerator):
             self.hd_K = TransferFunction(hd_K_num, hd_K_den)
             self.ab_freq_rads = self.floating_data['hydrodynamics']['ab_freq_rads']
 
-            try:
+            if restart:
                 self.x0_K.extend([None]*increase_ts)
-            except AttributeError:
+            else:
                 self.x0_K = [None]*(self.settings['n_time_steps'] + 1)
                 self.x0_K[0] = 0.
 

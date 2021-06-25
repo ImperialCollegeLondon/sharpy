@@ -92,7 +92,7 @@ class one_minus_cos(BaseGust):
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
                                       header_line=doc_settings_description)
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
@@ -139,7 +139,7 @@ class DARPA(BaseGust):
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
                                       header_line=doc_settings_description)
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
@@ -184,7 +184,7 @@ class continuous_sin(BaseGust):
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
                                       header_line=doc_settings_description)
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
@@ -223,7 +223,7 @@ class lateral_one_minus_cos(BaseGust):
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
                                       header_line=doc_settings_description)
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
@@ -267,7 +267,7 @@ class time_varying(BaseGust):
 
         self.file_info = None
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
@@ -312,7 +312,7 @@ class time_varying_global(BaseGust):
 
         self.file_info = None
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
@@ -366,7 +366,7 @@ class span_sine(BaseGust):
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
                                       header_line=doc_settings_description)
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
@@ -448,7 +448,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
 
         self.implemented_gusts = dict_of_gusts
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
@@ -465,7 +465,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
         self.gust.u_inf = self.u_inf
         self.gust.u_inf_direction = self.u_inf_direction
 
-        self.gust.initialise(self.settings['gust_parameters'])
+        self.gust.initialise(self.settings['gust_parameters'], restart=restart)
 
     def generate(self, params, uext):
         zeta = params['zeta']

@@ -76,7 +76,7 @@ class BeamLoader(BaseSolver):
         # structure storage
         self.structure = None
 
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
 

@@ -72,7 +72,7 @@ class PlotFlowField(BaseSolver):
         self.folder = None
         self.caller = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -91,13 +91,13 @@ class PlotFlowField(BaseSolver):
         velocity_generator_type = gen_interface.generator_from_string(
             self.settings['velocity_field_generator'])
         self.velocity_generator = velocity_generator_type()
-        self.velocity_generator.initialise(self.settings['velocity_field_input'])
+        self.velocity_generator.initialise(self.settings['velocity_field_input'], restart=restart)
 
         # init postproc grid generator
         postproc_grid_generator_type = gen_interface.generator_from_string(
             self.settings['postproc_grid_generator'])
         self.postproc_grid_generator = postproc_grid_generator_type()
-        self.postproc_grid_generator.initialise(self.settings['postproc_grid_input'])
+        self.postproc_grid_generator.initialise(self.settings['postproc_grid_input'], restart=restart)
         self.caller = caller
 
     def output_velocity_field(self, ts):

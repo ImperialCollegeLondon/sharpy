@@ -23,7 +23,7 @@ class _BaseTimeIntegrator():
         pass
 
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
         pass
 
 
@@ -75,7 +75,7 @@ class NewmarkBeta(_BaseTimeIntegrator):
         self.beta = None
         self.gamma = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
 
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -174,7 +174,7 @@ class GeneralisedAlpha(_BaseTimeIntegrator):
         self.gamma = None
         self.beta = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
 
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]

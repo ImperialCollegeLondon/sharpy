@@ -57,7 +57,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         self.ppal_axes = None
         self.n_control_surfaces = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
 
         if custom_settings:

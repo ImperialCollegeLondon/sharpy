@@ -45,7 +45,7 @@ class NonLinearDynamic(_BaseStructural):
         self.data = None
         self.settings = None
 
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
         su.to_custom_types(self.settings, self.settings_types, self.settings_default)

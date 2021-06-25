@@ -56,7 +56,7 @@ class SaveParametricCase(BaseSolver):
         self.settings = None
         self.folder = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
         self.data = data
 
         if custom_settings is None:
@@ -73,6 +73,7 @@ class SaveParametricCase(BaseSolver):
     def run(self, **kwargs):
         
         online = su.set_value_or_default(kwargs, 'online', False)
+        restart = su.set_value_or_default(kwargs, 'restart', False)
 
         config = configobj.ConfigObj()
         file_name = self.folder + '/' + self.data.settings['SHARPy']['case'] + '.pmor.sharpy'
@@ -87,7 +88,7 @@ class SaveParametricCase(BaseSolver):
 
         if 'PickleData' not in self.data.settings['SHARPy']['flow'] and self.settings['save_case']:
             pickle_solver = initialise_solver('PickleData')
-            pickle_solver.initialise(self.data)
+            pickle_solver.initialise(self.data, restart=restart)
             self.data = pickle_solver.run()
             sim_info['path_to_data'] = os.path.abspath(self.folder)
         else:

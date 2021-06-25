@@ -119,7 +119,7 @@ class StaticUvlm(BaseSolver):
         self.settings = None
         self.velocity_generator = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -133,7 +133,7 @@ class StaticUvlm(BaseSolver):
         velocity_generator_type = gen_interface.generator_from_string(
             self.settings['velocity_field_generator'])
         self.velocity_generator = velocity_generator_type()
-        self.velocity_generator.initialise(self.settings['velocity_field_input'])
+        self.velocity_generator.initialise(self.settings['velocity_field_input'], restart=restart)
 
     def add_step(self):
         self.data.aero.add_timestep()

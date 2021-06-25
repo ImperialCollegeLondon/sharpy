@@ -85,7 +85,7 @@ class PrescribedUvlm(BaseSolver):
         self.postprocessors = dict()
         self.with_postprocessors = False
 
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
         su.to_custom_types(self.settings, self.settings_types, self.settings_default)
@@ -106,7 +106,8 @@ class PrescribedUvlm(BaseSolver):
         for postproc in self.settings['postprocessors']:
             self.postprocessors[postproc] = solver_interface.initialise_solver(postproc)
             self.postprocessors[postproc].initialise(
-                self.data, self.settings['postprocessors_settings'][postproc], caller=self)
+                self.data, self.settings['postprocessors_settings'][postproc], caller=self,
+                restart=restart)
 
         self.residual_table = cout.TablePrinter(2, 14, ['g', 'f'])
         self.residual_table.field_length[0] = 6

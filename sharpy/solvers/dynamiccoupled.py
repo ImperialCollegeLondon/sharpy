@@ -243,7 +243,7 @@ class DynamicCoupled(BaseSolver):
         """
         self.aero_solver.settings['rho'] = ct.c_double(new_rho)
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
         """
         Controls the initialisation process of the solver, including processing
         the settings and initialising the aero and structural solvers, postprocessors
@@ -272,16 +272,17 @@ class DynamicCoupled(BaseSolver):
             # timestep_info[0] and remove the rest
             self.cleanup_timestep_info()
 
-        if self.structural_solver is None:
+        if not restart:
             self.structural_solver = solver_interface.initialise_solver(
                 self.settings['structural_solver'])
-        self.structural_solver.initialise(
-            self.data, self.settings['structural_solver_settings'])
-        if self.aero_solver is None:
             self.aero_solver = solver_interface.initialise_solver(
                 self.settings['aero_solver'])
+        self.structural_solver.initialise(
+            self.data, self.settings['structural_solver_settings'],
+            restart=restart)
         self.aero_solver.initialise(self.structural_solver.data,
-                                    self.settings['aero_solver_settings'])
+                                    self.settings['aero_solver_settings'],
+                                    restart=restart)
         self.data = self.aero_solver.data
 
         # initialise postprocessors
@@ -297,7 +298,8 @@ class DynamicCoupled(BaseSolver):
                 self.postprocessors[postproc] = solver_interface.initialise_solver(
                     postproc)
             self.postprocessors[postproc].initialise(
-                self.data, self.settings['postprocessors_settings'][postproc], caller=self)
+                self.data, self.settings['postprocessors_settings'][postproc], caller=self,
+                restart=restart)
 
         # initialise controllers
         self.with_controllers = False
@@ -314,7 +316,7 @@ class DynamicCoupled(BaseSolver):
                     controller_interface.initialise_controller(controller_type))
             self.controllers[controller_id].initialise(
                     self.settings['controller_settings'][controller_id],
-                    controller_id)
+                    controller_id, restart=restart)
         
         # print information header
         if self.print_info:
@@ -352,7 +354,7 @@ class DynamicCoupled(BaseSolver):
             if not rg_id in self.runtime_generators.keys():
                 gen = gen_interface.generator_from_string(rg_id)
                 self.runtime_generators[rg_id] = gen()
-            self.runtime_generators[rg_id].initialise(param, data=self.data)
+            self.runtime_generators[rg_id].initialise(param, data=self.data, restart=restart)
 
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:

@@ -88,7 +88,7 @@ class LinDynamicSim(BaseSolver):
 
         self.folder = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
 
         self.data = data
         if custom_settings:
@@ -112,7 +112,7 @@ class LinDynamicSim(BaseSolver):
         for postproc in self.settings['postprocessors']:
             self.postprocessors[postproc] = initialise_solver(postproc)
             self.postprocessors[postproc].initialise(
-                self.data, self.settings['postprocessors_settings'][postproc], caller=self)
+                self.data, self.settings['postprocessors_settings'][postproc], caller=self, restart=False)
 
     def input_vector(self, ss):
         """

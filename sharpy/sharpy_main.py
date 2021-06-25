@@ -86,6 +86,7 @@ def main(args=None, sharpy_input_dict=None):
             # run preSHARPy
             data = PreSharpy(settings)
             solvers = dict()
+            restart = False
         else:
             try:
                 with open(args.restart, 'rb') as restart_file:
@@ -95,7 +96,7 @@ def main(args=None, sharpy_input_dict=None):
                 raise FileNotFoundError('The file specified for the snapshot \
                     restart (-r) does not exist. Please check.')
 
-
+            restart = True
             # update the settings
             data.update_settings(settings)
 
@@ -118,7 +119,7 @@ def main(args=None, sharpy_input_dict=None):
         for solver_name in settings['SHARPy']['flow']:
             if (args.restart is None) or (solver_name not in solvers.keys()):
                 solvers[solver_name] = solver_interface.initialise_solver(solver_name)
-            solvers[solver_name].initialise(data)
+            solvers[solver_name].initialise(data, restart=restart)
             data = solvers[solver_name].run(solvers=solvers)
             solvers[solver_name].teardown()
 

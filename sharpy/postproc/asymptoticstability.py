@@ -95,7 +95,7 @@ class AsymptoticStability(BaseSolver):
         self.with_postprocessors = False
         self.caller = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
 
         if custom_settings is None:
@@ -358,7 +358,8 @@ class AsymptoticStability(BaseSolver):
             for postproc in postprocessor_list:
                 postprocessors[postproc] = initialise_solver(postproc)
                 postprocessors[postproc].initialise(
-                    self.data, postprocessors_settings[postproc])
+                    self.data, postprocessors_settings[postproc],
+                    restart=restart)
 
             # Plot reference
             for postproc in postprocessor_list:

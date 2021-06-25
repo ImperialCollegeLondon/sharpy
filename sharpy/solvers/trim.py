@@ -99,13 +99,13 @@ class Trim(BaseSolver):
 
         self.with_special_case = False
 
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
         su.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.solver = solver_interface.initialise_solver(self.settings['solver'])
-        self.solver.initialise(self.data, self.settings['solver_settings'])
+        self.solver.initialise(self.data, self.settings['solver_settings'], restart=restart)
 
         # generate x_info (which elements of the x array are what)
         counter = 0
