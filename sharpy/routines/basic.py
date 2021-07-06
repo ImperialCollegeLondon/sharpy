@@ -151,3 +151,22 @@ def sol_0(aero=1,
     
     settings_new = update_dic(settings_new, settings) 
     return flow, settings_new
+
+def write_sharpy(case_route, case_name, settings, flow):
+
+    import configobj    
+    config = configobj.ConfigObj()
+    file_name = case_route + '/' + case_name + '.sharpy'
+    config.filename = file_name
+    settings['SHARPy'] = {'case':case_name,
+                          'route': case_route,
+                          'flow': flow,
+                          'write_screen': 'on',
+                          'write_log': 'on',
+                          'log_folder': case_route,
+                          'log_file': case_name + '.log',
+                          'save_settings': 'on'}
+    
+    for k, v in settings.items():
+        config[k] = v
+    config.write()

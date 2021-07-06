@@ -92,29 +92,30 @@ def sol_102(alpha,
     return flow, settings_new
 
 
-def sol_144(u_inf,
-            rho,
-            panels_wake,
-            alpha0,
-            cs0,
-            csD0,
-            thrust0,
-            thrustD0,
-            thrust_nodes,
-            cs_i,
-            fx_tolerance,
-            fz_tolerance,
-            pitching_tolerance,
-            forA=[0.,0.,0.],
-            horseshoe='off',
-            dt=0.05,
-            trim_max_iter=100,
-            trim_relaxation_factor=0.2,
-            struct_tol=1e-5,
-            fsi_tolerance=1e-5,
-            fsi_relaxation=0.1,
-            fsi_maxiter=100,
-            flow=[], **settings):
+def sol_144(u_inf,                        # Free stream velocity
+            rho,                          # Air density 
+            panels_wake,                  # Number of wake panels 
+            alpha0,                       # Initial angle of attack
+            thrust0,                      # Number of     
+            cs0,                          # Number of wake panels 
+            thrust_nodes,                 # Nodes where thrust is applied
+            cs_i,                         # Indices of control surfaces to be trimmed
+            nz=1.,                        # Gravity factor for manoeuvres          
+            Dcs0=0.01,                    # Initial control surface deflection
+            Dthrust0=0.1,                 # Initial thrust variation 
+            fx_tolerance=0.01,            # Tolerance in horizontal  force
+            fz_tolerance=0.01,            # Tolerance in vertical force
+            pitching_tolerance=0.01,      # Tolerance in pitching 
+            forA=[0., 0., 0.],            # Node A coordinates 
+            horseshoe='off',              # Horseshoe solution 
+            dt=0.05,                      # dt for uvlm 
+            trim_max_iter=100,            # Mximum number of trim iterations
+            trim_relaxation_factor=0.2,   # Relaxation factor 
+            struct_tol=1e-5,              # Tolerance of structural solver
+            fsi_tolerance=1e-5,           # FSI loop tolerance
+            fsi_relaxation=0.1,           # FSI relaxation_factor
+            fsi_maxiter=100,              # FSI maximum number of iterations
+            flow=[], **settings):         # Flow and settings to modify the predifined solution
     """ Longitudinal aircraft trim"""
 
     settings_new = dict()
@@ -129,22 +130,26 @@ def sol_144(u_inf,
     settings_new['BeamLoader']['usteady'] = 'on'
     settings_new['AerogridLoader']['mstar'] = panels_wake
     settings_new['AerogridLoader']['unsteady'] = False
-    settings_new['AerogridLoader']['freestream_dir']=['1', '0', '0']
-    settings['StaticTrim']['initial_alpha'] = alpha0
-    settings['StaticTrim']['initial_deflection'] = cs0
-    settings['StaticTrim']['initial_angle_eps'] = csD0
-    settings['StaticTrim']['initial_thrust'] = thrust0
-    settings['StaticTrim']['initial_thrust_eps'] = thrustD0
-    settings['StaticTrim']['thrust_nodes'] = thrust_nodes
-    settings['StaticTrim']['tail_cs_index'] = cs_i
-    settings['StaticTrim']['fx_tolerance'] = fx_tolerance
-    settings['StaticTrim']['fz_tolerance'] = fz_tolerance
-    settings['StaticTrim']['m_tolerance'] = pitching_tolerance
-    settings['StaticTrim']['max_iter'] = trim_max_iter
-    settings['StaticTrim']['relaxation_factor'] = trim_relaxation_factor
-    settings['StaticTrim']['save_info'] = 'on'
-    settings['StaticTrim']['solver'] = 'StaticCoupled'
-    settings['StaticTrim']['solver_settings'] = {'print_info': 'on',
+    settings_new['AerogridLoader']['freestream_dir']=[1.,0.,0.]
+    settings_new['AerogridLoader']['wake_shape_generator']='StraightWake'
+    settings_new['AerogridLoader']['wake_shape_generator_input']={'u_inf': u_inf,
+                                                                  'u_inf_direction':['1', '0', '0'],
+                                                                  'dt': dt}
+    settings_new['StaticTrim']['initial_alpha'] = alpha0
+    settings_new['StaticTrim']['initial_deflection'] = cs0
+    settings_new['StaticTrim']['initial_angle_eps'] = Dcs0
+    settings_new['StaticTrim']['initial_thrust'] = thrust0
+    settings_new['StaticTrim']['initial_thrust_eps'] = Dthrust0
+    settings_new['StaticTrim']['thrust_nodes'] = thrust_nodes
+    settings_new['StaticTrim']['tail_cs_index'] = cs_i
+    settings_new['StaticTrim']['fx_tolerance'] = fx_tolerance
+    settings_new['StaticTrim']['fz_tolerance'] = fz_tolerance
+    settings_new['StaticTrim']['m_tolerance'] = pitching_tolerance
+    settings_new['StaticTrim']['max_iter'] = trim_max_iter
+    settings_new['StaticTrim']['relaxation_factor'] = trim_relaxation_factor
+    settings_new['StaticTrim']['save_info'] = 'on'
+    settings_new['StaticTrim']['solver'] = 'StaticCoupled'
+    settings_new['StaticTrim']['solver_settings'] = {'print_info': 'on',
                                  'structural_solver': 'NonLinearStatic',
                                  'structural_solver_settings': {'print_info': 'off',
                                                                 'max_iterations': 200,
@@ -152,6 +157,7 @@ def sol_144(u_inf,
                                                                 'delta_curved': 1e-5,
                                                                 'min_delta': struct_tol,
                                                                 'gravity_on': 'on',
+                                                                'gravity':nz*9.807
                                                                 'initial_position':forA,
                                                                 'dt':dt
                                                                 },
