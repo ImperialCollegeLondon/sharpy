@@ -519,8 +519,10 @@ class AeroTimeStepInfo(TimeStepInfo):
                                            dtype=ct.c_double))
 
         # Junction handling
-        self.flag_zeta_phantom = np.zeros((dimensions[i_surf, 1] + 1, self.n_surf),
-                                            dtype=ct.c_int)
+        self.flag_zeta_phantom = []
+        for i_surf in range(self.n_surf):
+            self.flag_zeta_phantom.append(np.zeros((dimensions[i_surf, 1], 1),
+                                                dtype=ct.c_int))
         self.control_surface_deflection = np.array([])
 
     def copy(self):
@@ -555,7 +557,9 @@ class AeroTimeStepInfo(TimeStepInfo):
         copied.control_surface_deflection = self.control_surface_deflection.astype(dtype=ct.c_double, copy=True)
 
         # phantom panel flags
-        copied.flag_zeta_phantom = self.flag_zeta_phantom.astype(dtype=ct.c_int, copy=True, order='C')
+        
+        for i_surf in range(copied.n_surf):
+            copied.flag_zeta_phantom[i_surf]  = self.flag_zeta_phantom[i_surf] .astype(dtype=ct.c_int, copy=True, order='C')
         
         return copied
 
@@ -594,7 +598,10 @@ class AeroTimeStepInfo(TimeStepInfo):
         self.ct_wake_conv_vel_list = []
         for i_surf in range(self.n_surf):
             self.ct_wake_conv_vel_list.append(self.wake_conv_vel[i_surf][:, :].reshape(-1))
-        self.ct_flag_zeta_phantom_list = self.flag_zeta_phantom[:].reshape(-1)
+        
+        self.ct_flag_zeta_phantom_list = []
+        for i_surf in range(self.n_surf):
+            self.ct_flag_zeta_phantom_list.append(self.flag_zeta_phantom[i_surf][:, :].reshape(-1))
  
 
 
@@ -614,7 +621,8 @@ class AeroTimeStepInfo(TimeStepInfo):
                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_dist_to_orig_list]))
         self.ct_p_wake_conv_vel = ((ct.POINTER(ct.c_double)*len(self.ct_wake_conv_vel_list))
                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_wake_conv_vel_list]))
-        self.ct_p_flag_zeta_phantom = np.ctypeslib.as_ctypes(self.ct_flag_zeta_phantom_list)
+        self.ct_p_flag_zeta_phantom = ((ct.POINTER(ct.c_int)*len(self.ct_flag_zeta_phantom_list))
+                           (* [np.ctypeslib.as_ctypes(array) for array in self.ct_flag_zeta_phantom_list]))
  
 
     def remove_ctypes_pointers(self):

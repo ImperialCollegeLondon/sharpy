@@ -305,9 +305,9 @@ class Aerogrid(Grid):
             if i_surf in list_surfaces:
                 idx_local_node = list_surfaces.index(i_surf)
                 # assume that there is only one junction per surface yet
-                aero_tstep.flag_zeta_phantom[list_local_nodes[idx_local_node], i_surf] = 1
+                aero_tstep.flag_zeta_phantom[i_surf][list_local_nodes[idx_local_node], 0] = 1
 
-
+        print(aero_tstep.flag_zeta_phantom)
 
     @staticmethod
     def compute_gamma_dot(dt, tstep, previous_tsteps):
