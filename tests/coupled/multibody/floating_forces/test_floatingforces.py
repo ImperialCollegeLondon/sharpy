@@ -143,7 +143,11 @@ class TestFloatingForces(unittest.TestCase):
                 self.assertLess(error, 0.3)
             
         save_fig = False
-        if save_fig:  
+        if save_fig:
+            np.savetxt("zero_noise_jonswap.txt", np.column_stack((w_js, zero_noise_spectrum)))
+            np.savetxt("realisations_jonswap.txt", np.column_stack((w_ns, np.abs(ns))))
+            np.savetxt("average_jonswap.txt", np.column_stack((w_ns, avg_noise_spectrum)))
+             
             import matplotlib.pyplot as plt
             fig, ax = plt.subplots(1, 1, figsize=(4, 3))
             ax.grid()
