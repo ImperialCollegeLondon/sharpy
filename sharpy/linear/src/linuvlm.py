@@ -68,24 +68,6 @@ settings_default_dynamic['remove_predictor'] = True
 settings_types_dynamic['use_sparse'] = 'bool'
 settings_default_dynamic['use_sparse'] = True
 
-settings_types_dynamic['density'] = 'float'
-settings_default_dynamic['density'] = 1.225
-
-settings_types_dynamic['velocity_field_generator'] = 'str'
-settings_default_dynamic['velocity_field_generator'] = 'SteadyVelocityField'
-
-settings_types_dynamic['velocity_field_input'] = 'dict'
-settings_default_dynamic['velocity_field_input'] = {}
-
-settings_types_dynamic['physical_model'] = 'bool'
-settings_default_dynamic['physical_model'] = True
-
-settings_types_dynamic['track_body'] = 'bool'
-settings_default_dynamic['track_body'] = False
-
-settings_types_dynamic['track_body_number'] = 'int'
-settings_default_dynamic['track_body_number'] = -1
-
 settings_types_dynamic['vortex_radius'] = 'float'
 settings_default_dynamic['vortex_radius'] = vortex_radius_def
 
