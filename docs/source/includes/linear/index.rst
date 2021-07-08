@@ -22,4 +22,3 @@ References:
 
 	./assembler/index
 	./src/index
-	./utils/index

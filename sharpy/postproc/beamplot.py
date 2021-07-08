@@ -187,10 +187,13 @@ class BeamPlot(BaseSolver):
         postproc_node_vector = []
         postproc_node_6vector = []
         for k, v in tstep.postproc_node.items():
-            _, cols = v.shape
+            try:
+                _, cols = v.shape
+            except ValueError:
+                # for np.arrays with shape (x,)
+                cols = 1
             if cols == 1:
-                raise NotImplementedError('scalar node types not supported in beamplot (Easy to implement)')
-                # postproc_cell_scalar.append(k)
+                postproc_node_scalar.append(k)
             elif cols == 3:
                 postproc_node_vector.append(k)
             elif cols == 6:
@@ -309,6 +312,11 @@ class BeamPlot(BaseSolver):
                     point_vector_counter += 1
                     ug.point_data.add_array(tstep.postproc_node[k][:, 3*i:3*(i+1)])
                     ug.point_data.get_array(point_vector_counter).name = k + '_' + str(i) + '_point'
+
+            for k in postproc_node_scalar:
+                point_vector_counter += 1
+                ug.point_data.add_array(tstep.postproc_node[k])
+                ug.point_data.get_array(point_vector_counter).name = k
 
         write_data(ug, it_filename)
 
