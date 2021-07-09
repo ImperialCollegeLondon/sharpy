@@ -306,14 +306,20 @@ class DynamicCoupled(BaseSolver):
         if self.settings['controller_id']:
             self.with_controllers = True
             # Remove previous controllers not required on restart
-            old_list = list(self.controllers.keys())
-            for old_list_name in old_list:
-                if old_list_name not in self.settings['controller_id']:
-                    del self.controllers[old_list_name] 
+            if self.controllers is not None:
+                old_list = list(self.controllers.keys())
+                for old_list_name in old_list:
+                    if old_list_name not in self.settings['controller_id']:
+                        del self.controllers[old_list_name] 
         for controller_id, controller_type in self.settings['controller_id'].items():
-            if not controller_id in self.controllers.keys():
+            if self.controllers is not None:
+                if not controller_id in self.controllers.keys():
+                    self.controllers[controller_id] = (
+                        controller_interface.initialise_controller(controller_type))
+            else:
+                self.controllers = dict()
                 self.controllers[controller_id] = (
-                    controller_interface.initialise_controller(controller_type))
+                       controller_interface.initialise_controller(controller_type))
             self.controllers[controller_id].initialise(
                     self.settings['controller_settings'][controller_id],
                     controller_id, restart=restart)

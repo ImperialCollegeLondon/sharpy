@@ -6,6 +6,7 @@ import sharpy.utils.settings as settings
 import sharpy.utils.control_utils as control_utils
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
+from sharpy.utils.constants import deg2rad
 
 
 @controller_interface.controller
@@ -86,6 +87,10 @@ class BladePitchPid(controller_interface.BaseController):
     settings_default['max_pitch_rate'] = 0.1396
     settings_description['max_pitch_rate'] = 'Maximum pitch rate [rad/s]'
 
+    settings_types['initial_pitch'] = 'float'
+    settings_default['initial_pitch'] = 0.
+    settings_description['initial_pitch'] = 'Initial pitch [rad]'
+
     settings_types['min_pitch'] = 'float'
     settings_default['min_pitch'] = 0.
     settings_description['min_pitch'] = 'Minimum pitch [rad]'
@@ -161,7 +166,7 @@ class BladePitchPid(controller_interface.BaseController):
 
         # self.n_control_surface = 0
 
-        self.log = None
+        self.log_fname = None
 
     def initialise(self, in_dict, controller_id=None, restart=False):
         self.in_dict = in_dict
@@ -177,10 +182,11 @@ class BladePitchPid(controller_interface.BaseController):
         # self.nblades = len(self.settings['blade_num_body'])
 
         if self.settings['write_controller_log']:
-            self.log = open(self.settings['controller_log_route'] + '/' + self.controller_id + '.dat', 'w+')
-            self.log.write(('#'+ 1*'{:>2},' + 10*'{:>12},' + '{:>12}\n').
+            self.log_fname = self.settings['controller_log_route'] + '/' + self.controller_id + '.dat'
+            fid = open(self.log_fname, 'w+')
+            fid.write(('#'+ 1*'{:>2},' + 10*'{:>12},' + '{:>12}\n').
                     format('tstep', 'time', 'ref_state', 'state', 'Pcontrol', 'Icontrol', 'Dcontrol', 'control', 'gen_torque', 'rotor_vel', 'pitch_vel', 'pitch'))
-            self.log.flush()
+            fid.close()
 
         # save input time history
         if self.settings['sp_source'] == 'file':
@@ -201,7 +207,8 @@ class BladePitchPid(controller_interface.BaseController):
             alpha = np.exp(-self.settings['lp_cut_freq']*self.settings['dt'])
             self.filter = ss(alpha, 1.-alpha, alpha, 1.-alpha, self.settings['dt'])
 
-        self.pitch = 0.
+        self.pitch = self.settings['initial_pitch']*deg2rad
+
 
     def control(self, data, controlled_state):
         r"""
@@ -218,6 +225,12 @@ class BladePitchPid(controller_interface.BaseController):
         :returns: A `dict` with `structural` and `aero` time steps and control
             input included.
         """
+        # TODO: move this to the initialisation with restart
+        if len(self.system_pv) == 0:
+            for it in range(data.ts - 1):
+                self.system_pv.append(0.)
+                self.prescribed_sp.append(0.)
+
         struct_tstep = controlled_state['structural']
         aero_tstep = controlled_state['aero']
         if not "info" in controlled_state:
@@ -305,7 +318,7 @@ class BladePitchPid(controller_interface.BaseController):
                                          struct_tstep,
                                          tower_ibody=self.settings['blade_num_body'][0] - 1,
                                          blade_ibody=self.settings['blade_num_body'][0])
-        print("int comp pitch:", self.pitch, int_pitch)
+        # print("int comp pitch:", self.pitch, int_pitch)
 
         controlled_state['info']['pitch_vel'] = pitch_rate
 
@@ -349,11 +362,12 @@ class BladePitchPid(controller_interface.BaseController):
         # controlled_state['aero'].control_surface_deflection = (
         #     np.array(self.settings['controlled_surfaces_coeff'])*control_command)
 
-        print("gen torque [MNm]:", aero_torque/self.settings['GBR']*1e-6,
-              "rotor_vel:", rotor_vel,
-              "pitch_vel:", pitch_rate,
-              "control_c:", control_command)
-        self.log.write(('{:>6d},'
+        #print("gen torque [MNm]:", aero_torque/self.settings['GBR']*1e-6,
+        #      "rotor_vel:", rotor_vel,
+        #      "pitch_vel:", pitch_rate,
+        #      "control_c:", control_command)
+        fid = open(self.log_fname, 'w+')
+        fid.write(('{:>6d},'
                         + 10*'{:>12.6f},'
                         + '{:>12.6f}\n').format(data.ts,
                                                 data.ts*self.settings['dt'],
@@ -367,6 +381,7 @@ class BladePitchPid(controller_interface.BaseController):
                                                 rotor_vel,
                                                 pitch_rate,
                                                 self.pitch))
+        fid.close()
         return controlled_state
 
 
@@ -420,15 +435,15 @@ class BladePitchPid(controller_interface.BaseController):
     def drive_train_model(self, aero_torque, ini_rot_vel, ini_rot_acc):
 
         # Assuming contant generator torque demand
-        print(ini_rot_vel)
+        # print(ini_rot_vel)
         if self.settings['gen_model_const_var'] == 'power':
             gen_torque = self.settings['gen_model_const_value']/self.settings['GBR']/ini_rot_vel
         elif self.settings['gen_model_const_var'] == 'torque':
             gen_torque = self.settings['gen_model_const_value']
 
-        print("aero_torque", aero_torque)
-        print("gen_torque", gen_torque*self.settings['GBR'])
-        print("error_torque", (aero_torque - gen_torque*self.settings['GBR'])/aero_torque*100)
+        # print("aero_torque", aero_torque)
+        # print("gen_torque", gen_torque*self.settings['GBR'])
+        # print("error_torque", (aero_torque - gen_torque*self.settings['GBR'])/aero_torque*100)
 
         rot_acc = (aero_torque - self.settings['GBR']*gen_torque)/self.settings['inertia_dt']
         # rot_acc = ini_rot_acc + delta_rot_acc
@@ -438,7 +453,7 @@ class BladePitchPid(controller_interface.BaseController):
         #            (1. - self.newmark_beta)*self.settings['dt']*ini_rot_acc +
         #            self.newmark_beta*self.settings['dt']*rot_acc)
         rot_vel = ini_rot_vel + rot_acc*self.settings['dt']
-        print("rot vel acc", rot_vel, rot_acc)
+        # print("rot vel acc", rot_vel, rot_acc)
 
         return rot_vel, rot_acc
         # return ini_rot_vel, ini_rot_acc
