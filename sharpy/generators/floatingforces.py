@@ -361,49 +361,6 @@ def noise_freq_1s(w):
     return wn*sigma
 
 
-def time_wave_forces(Tp, Hs, dt, time, xi, w_xi):
-    """
-    Compute the time evolution of wave forces
-    """
-    # Compute time and frequency discretisations
-    ntime_steps = time.shape[0]
-
-    nomega = ntime_steps//2 + 1
-    w = np.zeros((nomega))
-    w_temp = np.fft.fftfreq(ntime_steps, d=dt)*2.*np.pi
-    w[:ntime_steps//2] = w_temp[:ntime_steps//2]
-    if ntime_steps%2 == 0:
-        w[-1] = -1*w_temp[ntime_steps//2]
-    else:
-        w[-1] = w_temp[ntime_steps//2]
-    nomega_2s = ntime_steps
-
-    # Compute the one-sided spectrums
-    noise_freq = noise_freq_1s(w)
-    jonswap_1s = jonswap_spectrum(Tp, Hs, w)*2.*np.pi
-    jonswap_freq = np.sqrt(2*ntime_steps/dt*jonswap_1s/2) + 0j
-    jonswap_freq[0] = np.sqrt(ntime_steps/dt*jonswap_1s[0]/2) + 0j # The DC values does not have the 2
-
-    # Compute the two-sided spectrum
-    force_freq_2s = np.zeros((nomega_2s, 6), dtype=np.complex)
-    for idim in range(6):
-        for iomega in range(nomega):
-            xi_interp = np.interp(w[iomega], w_xi, xi[:, idim])
-            force_freq_2s[iomega, idim] = (noise_freq[iomega]*
-                                           0.5*jonswap_freq[iomega]*
-                                           xi_interp)
-            if not iomega == 0:
-                if not ((iomega == nomega - 1) and (nomega_2s%2 == 0)):
-                    force_freq_2s[-iomega, idim] = (np.conj(noise_freq[iomega])*
-                                                    0.5*jonswap_freq[iomega]*
-                                                    np.conj(xi_interp))
-
-    # Compute the inverse Fourier transform
-    force_waves = ifft(force_freq_2s, axis=0)
-
-    return force_waves
-
-
 @generator_interface.generator
 class FloatingForces(generator_interface.BaseGenerator):
     r"""
@@ -704,16 +661,12 @@ class FloatingForces(generator_interface.BaseGenerator):
             interp_x2 = interp1d(self.floating_data['wave_forces']['xi_beta_deg']*deg2rad,
                                  xi_matrix2,
                                  axis=0)
-            xi = interp_x2(self.settings['wave_incidence'])
+            self.xi_interp = interp_x2(self.settings['wave_incidence'])
             # xi = interp_x2(self.floating_data['wave_forces']['xi_beta_deg'][5]*deg2rad)
             # print(xi[0, :])
             # print(self.floating_data['wave_forces']['xi'][2, 5, :])
             # print(xi[0, :] - self.floating_data['wave_forces']['xi'][2, 5, :])
 
-            phase = self.settings['wave_freq']*np.arange(self.settings['n_time_steps'] + 1)*self.settings['dt']
-            self.wave_forces_g = np.zeros((self.settings['n_time_steps'] + 1, 6))
-            for idim in range(6):
-                self.wave_forces_g[:, idim] = np.real(self.settings['wave_amplitude']*xi[idim]*(np.cos(phase) + 1j*np.sin(phase)))
 
         elif self.settings['method_wave'] == 'jonswap':
 
@@ -722,12 +675,12 @@ class FloatingForces(generator_interface.BaseGenerator):
                                  axis=1)
             xi_matrix = interp_x1(self.settings['wave_incidence'])
 
-            self.wave_forces_g = np.real(time_wave_forces(self.settings['wave_Tp'],
-                                                  self.settings['wave_Hs'],
-                                                  self.settings['dt'],
-                                                  np.arange(self.settings['n_time_steps'] + 1)*self.settings['dt'],
-                                                  xi_matrix,
-                                                  self.floating_data['wave_forces']['xi_freq_rads']))
+            self.freq_wave_forces_variables(self.settings['wave_Tp'],
+                                       self.settings['wave_Hs'],
+                                       self.settings['dt'],
+                                       np.arange(self.settings['n_time_steps'] + 1)*self.settings['dt'],
+                                       xi_matrix,
+                                       self.floating_data['wave_forces']['xi_freq_rads'])
 
         # Log file
         if not os.path.exists(self.settings['folder']):
@@ -803,6 +756,67 @@ class FloatingForces(generator_interface.BaseGenerator):
             self.qdotdot[it, :] = self.qdotdot[it-1, :]
 
         return
+
+
+    def freq_wave_forces_variables(self, Tp, Hs, dt, time, xi, w_xi):
+        """
+        Compute the frequency arrays needed for wave forces
+        """
+        # Compute time and frequency discretisations
+        ntime_steps = time.shape[0]
+    
+        nomega = ntime_steps//2 + 1
+        w = np.zeros((nomega))
+        w_temp = np.fft.fftfreq(ntime_steps, d=dt)*2.*np.pi
+        w[:ntime_steps//2] = w_temp[:ntime_steps//2]
+        if ntime_steps%2 == 0:
+            w[-1] = -1*w_temp[ntime_steps//2]
+        else:
+            w[-1] = w_temp[ntime_steps//2]
+        nomega_2s = ntime_steps
+    
+        # Compute the one-sided spectrums
+        noise_freq = noise_freq_1s(w)
+        jonswap_1s = jonswap_spectrum(Tp, Hs, w)*2.*np.pi
+        jonswap_freq = np.sqrt(2*ntime_steps/dt*jonswap_1s/2) + 0j
+        jonswap_freq[0] = np.sqrt(ntime_steps/dt*jonswap_1s[0]/2) + 0j # The DC values does not have the 2
+
+        self.noise_freq = noise_freq
+        self.jonswap_freq = jonswap_freq    
+        self.omega = w
+        self.nomega_2s = nomega_2s
+    
+        self.xi_interp = np.zeros((nomega, 6), dtype=np.complex)
+        for iomega in range(nomega):
+            for idim in range(6):
+                self.xi_interp[iomega, idim] = np.interp(self.omega[iomega], w_xi, xi[:, idim])
+        
+
+    def time_wave_forces(self, dx, grav):
+        """
+        Compute the time evolution of wave forces
+        """
+
+        # Compute the two-sided spectrum
+        force_freq_2s = np.zeros((self.nomega_2s, 6), dtype=np.complex)
+        for idim in range(6):
+            for iomega in range(self.omega.shape[0]):
+                k = self.omega[iomega]**2/grav
+                force_freq_2s[iomega, idim] = (self.noise_freq[iomega]*
+                                               0.5*self.jonswap_freq[iomega]*
+                                               self.xi_interp[iomega, idim]*
+                                               np.exp(-1j*k*dx))
+                if not iomega == 0:
+                    if not ((iomega == self.omega.shape[0] - 1) and (self.nomega_2s%2 == 0)):
+                        force_freq_2s[-iomega, idim] = (np.conj(self.noise_freq[iomega])*
+                                                        0.5*self.jonswap_freq[iomega]*
+                                                        np.conj(self.xi_interp[iomega, idim])*
+                                                        np.exp(1j*k*dx))
+    
+        # Compute the inverse Fourier transform
+        force_waves = ifft(force_freq_2s, axis=0)
+    
+        return np.real(force_waves)
 
 
     def generate(self, params):
@@ -978,11 +992,23 @@ class FloatingForces(generator_interface.BaseGenerator):
         cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
         cbg = np.dot(cab.T, cga.T)
 
-        struct_tstep.runtime_unsteady_forces[self.wave_forces_node, 0:3] += np.dot(cbg, self.wave_forces_g[data.ts, 0:3])
-        struct_tstep.runtime_unsteady_forces[self.wave_forces_node, 3:6] += np.dot(cbg, self.wave_forces_g[data.ts, 3:6])
+        wave_node_pos = struct_tstep.for_pos[0:3] + np.dot(cga, struct_tstep.pos[self.wave_forces_node, :])
+        dx = (wave_node_pos[1]*np.sin(self.settings['wave_incidence']) +
+              wave_node_pos[2]*np.cos(self.settings['wave_incidence']))
+        wave_forces_g = np.zeros((6))
+        if self.settings['method_wave'] == 'sin':
+            phase = (self.settings['wave_freq']*data.ts*self.settings['dt'] +
+                     dx*self.settings['wave_freq']**2/self.settings['gravity'])
+            for idim in range(6):
+                wave_forces_g[idim] = np.real(self.settings['wave_amplitude']*self.xi_interp[idim]*(np.cos(phase) + 1j*np.sin(phase)))
+        elif self.settings['method_wave'] == 'jonswap':
+            wave_forces_g = self.time_wave_forces(dx, self.settings['gravity'])[data.ts, :]
+
+        struct_tstep.runtime_unsteady_forces[self.wave_forces_node, 0:3] += np.dot(cbg, wave_forces_g[0:3])
+        struct_tstep.runtime_unsteady_forces[self.wave_forces_node, 3:6] += np.dot(cbg, wave_forces_g[3:6])
 
         # Write output
         if self.settings['write_output']:
             self.write_output(data.ts, k, mooring_forces, mooring_yaw, hs_f_g,
-                     hd_f_qdot_g, hd_f_qdotdot_g, hd_correct_grav, total_drag_force, self.wave_forces_g[data.ts, :])
+                     hd_f_qdot_g, hd_f_qdotdot_g, hd_correct_grav, total_drag_force, wave_forces_g)
 
