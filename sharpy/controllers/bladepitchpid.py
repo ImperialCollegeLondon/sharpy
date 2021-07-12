@@ -183,7 +183,7 @@ class BladePitchPid(controller_interface.BaseController):
 
         if self.settings['write_controller_log']:
             self.log_fname = self.settings['controller_log_route'] + '/' + self.controller_id + '.dat'
-            fid = open(self.log_fname, 'w+')
+            fid = open(self.log_fname, 'a')
             fid.write(('#'+ 1*'{:>2},' + 10*'{:>12},' + '{:>12}\n').
                     format('tstep', 'time', 'ref_state', 'state', 'Pcontrol', 'Icontrol', 'Dcontrol', 'control', 'gen_torque', 'rotor_vel', 'pitch_vel', 'pitch'))
             fid.close()
@@ -366,7 +366,7 @@ class BladePitchPid(controller_interface.BaseController):
         #      "rotor_vel:", rotor_vel,
         #      "pitch_vel:", pitch_rate,
         #      "control_c:", control_command)
-        fid = open(self.log_fname, 'w+')
+        fid = open(self.log_fname, 'a')
         fid.write(('{:>6d},'
                         + 10*'{:>12.6f},'
                         + '{:>12.6f}\n').format(data.ts,
