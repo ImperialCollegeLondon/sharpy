@@ -207,7 +207,7 @@ class BladePitchPid(controller_interface.BaseController):
             alpha = np.exp(-self.settings['lp_cut_freq']*self.settings['dt'])
             self.filter = ss(alpha, 1.-alpha, alpha, 1.-alpha, self.settings['dt'])
 
-        self.pitch = self.settings['initial_pitch']*deg2rad
+        self.pitch = self.settings['initial_pitch']
 
 
     def control(self, data, controlled_state):
