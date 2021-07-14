@@ -882,6 +882,10 @@ class FloatingForces(generator_interface.BaseGenerator):
                                                                       mooring_yaw)
 
         # Hydrostatic model
+        ielem, inode_in_elem = data.structure.node_master_elem[self.buoyancy_node]
+        cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
+        cbg = np.dot(cab.T, cga.T)
+
         hs_f_g = - np.dot(self.buoy_rest_mat, self.q[data.ts, :])
 
         add_damp = self.floating_data['hydrodynamics']['additional_damping'].copy()
@@ -926,10 +930,6 @@ class FloatingForces(generator_interface.BaseGenerator):
         else:
             hd_correct_grav = np.zeros((6))
 
-        ielem, inode_in_elem = data.structure.node_master_elem[self.buoyancy_node]
-        cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
-        cbg = np.dot(cab.T, cga.T)
-
         struct_tstep.runtime_steady_forces[self.buoyancy_node, 0:3] += np.dot(cbg, self.buoy_F0[0:3] + hs_f_g[0:3])
         struct_tstep.runtime_steady_forces[self.buoyancy_node, 3:6] += np.dot(cbg, self.buoy_F0[3:6] + hs_f_g[3:6])
         struct_tstep.runtime_unsteady_forces[self.buoyancy_node, 0:3] += np.dot(cbg, hd_f_qdot_g[0:3] + hd_f_qdotdot_g[0:3])
@@ -948,7 +948,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         for inode in range(len(spar_node_pos)):
 
             if self.settings['concentrate_spar']:
-                ielem, inode_in_elem = data.structure.node_master_elem[inode + self.floating_data['hydrodynamics']['CD_node']]
+                ielem, inode_in_elem = data.structure.node_master_elem[self.floating_data['hydrodynamics']['CD_node']]
             else:
                 ielem, inode_in_elem = data.structure.node_master_elem[inode + self.floating_data['hydrodynamics']['CD_first_node']]
             cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
