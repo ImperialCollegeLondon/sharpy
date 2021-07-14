@@ -294,20 +294,21 @@ class Aerogrid(Grid):
 
     def generate_phantom_panels_at_junction(self, aero_tstep):
         # To-Do: Extent for general case
-        list_global_node_junction = np.where(self.data_dict["junction_boundary_condition"] == 1)[0]
+        list_global_node_junction = (np.where(self.data_dict["junction_boundary_condition"] > 0)[0]).tolist()
         list_local_nodes = []
         list_surfaces = []
-        for i_global_node in list_global_node_junction.tolist():
+        for i_global_node in list_global_node_junction:
             for i in range(len(self.struct2aero_mapping[i_global_node])):
                 list_local_nodes.append(self.struct2aero_mapping[i_global_node][i]['i_n'])
                 list_surfaces.append(self.struct2aero_mapping[i_global_node][i]['i_surf'])
+
         for i_surf in range(self.n_surf):
             if i_surf in list_surfaces:
-                idx_local_node = list_surfaces.index(i_surf)
+                idx = list_surfaces.index(i_surf)                
                 # assume that there is only one junction per surface yet
-                aero_tstep.flag_zeta_phantom[i_surf][list_local_nodes[idx_local_node], 0] = 1
+                aero_tstep.flag_zeta_phantom[i_surf][list_local_nodes[idx], 0] = \
+                        self.data_dict["junction_boundary_condition"][list_global_node_junction[idx]]
 
-        print(aero_tstep.flag_zeta_phantom)
 
     @staticmethod
     def compute_gamma_dot(dt, tstep, previous_tsteps):
