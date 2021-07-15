@@ -87,7 +87,7 @@ class TakeOffTrajectoryController(controller_interface.BaseController):
 
         self.log = None
 
-    def initialise(self, in_dict, controller_id=None, restart=False):
+    def initialise(self, data, in_dict, controller_id=None, restart=False):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict,
                                  self.settings_types,
@@ -98,8 +98,10 @@ class TakeOffTrajectoryController(controller_interface.BaseController):
 
         if self.settings['write_controller_log']:
             # TODO substitute for table writer in cout_utils.
-            self.log = open(self.settings['controller_log_route'] +
-                            '/' + self.controller_id + '.log.csv', 'w+')
+            folder = data.output_folder + '/controllers/'
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+            self.log = open(folder + self.controller_id + ".log.csv", "w+")
             self.log.write(('#'+ 1*'{:>2},' + 6*'{:>12},' + '{:>12}\n').
                     format('tstep', 'time', 'Ref. state', 'state', 'Pcontrol', 'Icontrol', 'Dcontrol', 'control'))
             self.log.flush()

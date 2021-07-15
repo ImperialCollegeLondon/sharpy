@@ -61,11 +61,6 @@ class ControlSurfacePidController(controller_interface.BaseController):
             'Write a time history of input, required input, ' +
             'and control')
 
-    settings_types['controller_log_route'] = 'str'
-    settings_default['controller_log_route'] = './output/'
-    settings_description['controller_log_route'] = (
-            'Directory where the log will be stored')
-
     supported_input_types = ['pitch', 'roll', 'pos_']
 
     settings_table = settings.SettingsTable()
@@ -96,7 +91,7 @@ class ControlSurfacePidController(controller_interface.BaseController):
 
         self.log = None
 
-    def initialise(self, in_dict, controller_id=None, restart=False):
+    def initialise(self, data, in_dict, controller_id=None, restart=False):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict,
                                  self.settings_types,
@@ -120,7 +115,10 @@ class ControlSurfacePidController(controller_interface.BaseController):
             raise NotImplementedError()
 
         if self.settings['write_controller_log']:
-            self.log = open(self.settings['controller_log_route'] + '/' + self.controller_id + '.log.csv', 'w+')
+            folder = data.output_folder + '/controllers/'
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+            self.log = open(folder + self.controller_id + ".log.csv", "w+")
             self.log.write(('#'+ 1*'{:>2},' + 6*'{:>12},' + '{:>12}\n').
                     format('tstep', 'time', 'Ref. state', 'state', 'Pcontrol', 'Icontrol', 'Dcontrol', 'control'))
             self.log.flush()

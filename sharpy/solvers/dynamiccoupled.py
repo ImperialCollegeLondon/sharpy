@@ -320,7 +320,7 @@ class DynamicCoupled(BaseSolver):
                 self.controllers = dict()
                 self.controllers[controller_id] = (
                        controller_interface.initialise_controller(controller_type))
-            self.controllers[controller_id].initialise(
+            self.controllers[controller_id].initialise(self.data,
                     self.settings['controller_settings'][controller_id],
                     controller_id, restart=restart)
         

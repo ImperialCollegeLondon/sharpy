@@ -132,11 +132,6 @@ class BladePitchPid(controller_interface.BaseController):
             'Write a time history of input, required input, ' +
             'and control')
 
-    settings_types['controller_log_route'] = 'str'
-    settings_default['controller_log_route'] = './output/'
-    settings_description['controller_log_route'] = (
-            'Directory where the log will be stored')
-
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types,
                                        settings_default,
@@ -168,7 +163,7 @@ class BladePitchPid(controller_interface.BaseController):
 
         self.log_fname = None
 
-    def initialise(self, in_dict, controller_id=None, restart=False):
+    def initialise(self, data, in_dict, controller_id=None, restart=False):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict,
                                  self.settings_types,
@@ -180,11 +175,14 @@ class BladePitchPid(controller_interface.BaseController):
         # self.controller_id = controller_id
 
         # self.nblades = len(self.settings['blade_num_body'])
-
+        
         if self.settings['write_controller_log']:
-            self.log_fname = self.settings['controller_log_route'] + '/' + self.controller_id + '.dat'
+            folder = data.output_folder + '/controllers/'
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+            self.log_fname = (folder + self.controller_id + ".dat")
             fid = open(self.log_fname, 'a')
-            fid.write(('#'+ 1*'{:>2},' + 10*'{:>12},' + '{:>12}\n').
+            fid.write(('#'+ 1*'{:>2} ' + 10*'{:>12} ' + '{:>12}\n').
                     format('tstep', 'time', 'ref_state', 'state', 'Pcontrol', 'Icontrol', 'Dcontrol', 'control', 'gen_torque', 'rotor_vel', 'pitch_vel', 'pitch'))
             fid.close()
 
@@ -367,8 +365,8 @@ class BladePitchPid(controller_interface.BaseController):
         #      "pitch_vel:", pitch_rate,
         #      "control_c:", control_command)
         fid = open(self.log_fname, 'a')
-        fid.write(('{:>6d},'
-                        + 10*'{:>12.6f},'
+        fid.write(('{:>6d} '
+                        + 10*'{:>12.6f} '
                         + '{:>12.6f}\n').format(data.ts,
                                                 data.ts*self.settings['dt'],
                                                 self.prescribed_sp[-1],
