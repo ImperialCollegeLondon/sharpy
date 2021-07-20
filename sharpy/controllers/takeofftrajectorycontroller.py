@@ -1,5 +1,6 @@
 import ctypes as ct
 import numpy as np
+import os
 import scipy.interpolate as interpolate
 
 import sharpy.utils.controller_interface as controller_interface

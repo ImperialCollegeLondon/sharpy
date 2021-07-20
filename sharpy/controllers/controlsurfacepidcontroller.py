@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 import sharpy.utils.controller_interface as controller_interface
 import sharpy.utils.settings as settings

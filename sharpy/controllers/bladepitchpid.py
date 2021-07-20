@@ -1,4 +1,5 @@
 import numpy as np
+import os
 from control import ss, forced_response
 
 import sharpy.utils.controller_interface as controller_interface
