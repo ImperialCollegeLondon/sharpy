@@ -285,7 +285,7 @@ class BladePitchPid(controller_interface.BaseController):
                                'I': self.settings['I'],
                                'D': self.settings['D']},
                 i_current=data.ts)
-        control_command *= -1.
+        # control_command *= -1.
         # Limit pitch and pitch rate
         # current_pitch = algebra.quat2euler(struct_tstep.mb_quat[self.settings['blade_num_body'][0]])[0]
         # print(control_command, current_pitch)
@@ -474,7 +474,7 @@ class BladePitchPid(controller_interface.BaseController):
 
         hub_forces = np.zeros((6))
         hub_forces[0:3] = total_forces[0:3].copy()
-        hub_forces[3:6] = total_forces[3:6] + np.cross(hub_pos, total_forces[0:3])
+        hub_forces[3:6] = total_forces[3:6] - np.cross(hub_pos, total_forces[0:3])
 
         return hub_forces[5]
 
