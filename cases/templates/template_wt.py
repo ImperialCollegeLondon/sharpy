@@ -418,6 +418,7 @@ def rotor_from_excel_type03(in_op_params,
     options['user_defined_m_distribution_type'] = None # type of distribution of the chordwise panels when 'm_distribution' == 'user_defined'
     options['include_polars'] = False #
     options['separate_blades'] = False # Keep blades as different bodies
+    options['twist_in_aero'] = False # Twist the aerodynamic surface instead of the structure
 
     excel_description = {}
     excel_description['excel_file_name'] = 'database_excel_type02.xlsx'
@@ -602,7 +603,7 @@ def rotor_from_excel_type03(in_op_params,
             stiffness_db=blade.StructuralInformation.stiffness_db,
             mass_db=blade.StructuralInformation.mass_db,
             frame_of_reference_delta='y_AFoR',
-            vec_node_structural_twist=node_twist,
+            vec_node_structural_twist=np.zeros_like(node_twist) if options['twist_in_aero'] else node_twist,
             num_lumped_mass=0)
 
     # Boundary conditions
@@ -691,11 +692,11 @@ def rotor_from_excel_type03(in_op_params,
     else:
         udmd_by_nodes = None
 
-    node_twist = np.zeros_like(node_chord)
+    node_twist_aero = np.zeros_like(node_chord)
     if camber_effect_on_twist:
         cout.cout_wrap("WARNING: The steady applied Mx should be manually multiplied by the density", 3)
         for inode in range(blade.StructuralInformation.num_node):
-            node_twist[inode] = gc.get_aoacl0_from_camber(airfoils[inode, :, 0], airfoils[inode, :, 1])
+            node_twist_aero[inode] = gc.get_aoacl0_from_camber(airfoils[inode, :, 0], airfoils[inode, :, 1])
             mu0 = gc.get_mu0_from_camber(airfoils[inode, :, 0], airfoils[inode, :, 1])
             r = np.linalg.norm(blade.StructuralInformation.coordinates[inode, :])
             vrel = np.sqrt(rotation_velocity**2*r**2 + wsp**2)
@@ -706,15 +707,15 @@ def rotor_from_excel_type03(in_op_params,
             else:
                 dr = 0.5*np.linalg.norm(blade.StructuralInformation.coordinates[inode + 1, :] - blade.StructuralInformation.coordinates[inode - 1, :])
             moment_factor = 0.5*vrel**2*node_chord[inode]**2*dr
-            # print("node", inode, "mu0", mu0, "CMc/4", 2.*mu0 + np.pi/2*node_twist[inode])
-            blade.StructuralInformation.app_forces[inode, 3] = (2.*mu0 + np.pi/2*node_twist[inode])*moment_factor
+            # print("node", inode, "mu0", mu0, "CMc/4", 2.*mu0 + np.pi/2*node_twist_struct[inode])
+            blade.StructuralInformation.app_forces[inode, 3] = (2.*mu0 + np.pi/2*node_twist_aero[inode])*moment_factor
             airfoils[inode, :, 1] *= 0.
 
     # Write SHARPy format
     blade.AerodynamicInformation.create_aerodynamics_from_vec(blade.StructuralInformation,
                                                             aero_node,
                                                             node_chord,
-                                                            node_twist,
+                                                            (node_twist + node_twist_aero) if options['twist_in_aero'] else node_twist_aero,
                                                             np.pi*np.ones_like(node_chord),
                                                             chord_panels,
                                                             surface_distribution,
@@ -722,7 +723,8 @@ def rotor_from_excel_type03(in_op_params,
                                                             node_ElAxisAftLEc,
                                                             airfoil_distribution,
                                                             airfoils,
-                                                            udmd_by_nodes)
+                                                            udmd_by_nodes,
+                                                            first_twist=False)
 
     # Read the polars of the pure airfoils
     if include_polars:
@@ -1099,6 +1101,7 @@ def rotor_from_excel_type02(chord_panels,
     options['camber_effect_on_twist'] = camber_effect_on_twist
     options['user_defined_m_distribution_type'] = user_defined_m_distribution_type
     options['include_polars'] = False
+    options['twist_in_aero'] = False
 
     excel_description = {}
     excel_description['excel_file_name'] = excel_file_name

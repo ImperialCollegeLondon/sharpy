@@ -1062,6 +1062,7 @@ class AerodynamicInformation():
         # self.control_surface_chord = None
         # self.control_surface_hinge_coords = None
         self.polars = None
+        self.first_twist = [None]
 
     def copy(self):
         """
@@ -1087,6 +1088,7 @@ class AerodynamicInformation():
         copied.user_defined_m_distribution = self.user_defined_m_distribution.copy()
         if self.polars is not None:
             copied.polars = self.polars.copy()
+        copied.first_twist = self.first_twist.copy()
 
         return copied
 
@@ -1119,6 +1121,7 @@ class AerodynamicInformation():
         self.airfoils = np.zeros((num_airfoils, num_points_camber, 2), dtype=float)
         for iairfoil in range(num_airfoils):
             self.airfoils[iairfoil, :, 0] = np.linspace(0.0, 1.0, num_points_camber)
+        self.first_twist = [True]
 
     def generate_full_aerodynamics(self,
                                    aero_node,
@@ -1130,7 +1133,8 @@ class AerodynamicInformation():
                                    m_distribution,
                                    elastic_axis,
                                    airfoil_distribution,
-                                   airfoils):
+                                   airfoils,
+                                   first_twist):
         """
         generate_full_aerodynamics
 
@@ -1147,6 +1151,7 @@ class AerodynamicInformation():
             elastic_axis (np.array): position of the elastic axis in the chord
             airfoil_distribution (np.array): airfoil at each element node
             airfoils (np.array): coordinates of the camber lines of the airfoils
+            first_twist (list(bool)): Apply the twist rotation before the sweep
         """
 
         self.aero_node = aero_node
@@ -1159,6 +1164,7 @@ class AerodynamicInformation():
         self.elastic_axis = elastic_axis
         self.airfoil_distribution = airfoil_distribution
         self.airfoils = airfoils
+        self.first_twist = first_twist
 
     def create_aerodynamics_from_vec(self,
                                      StructuralInformation,
@@ -1172,7 +1178,8 @@ class AerodynamicInformation():
                                      vec_elastic_axis,
                                      vec_airfoil_distribution,
                                      airfoils,
-                                     user_defined_m_distribution=None):
+                                     user_defined_m_distribution=None,
+                                     first_twist=True):
         """
         create_aerodynamics_from_vec
 
@@ -1190,6 +1197,7 @@ class AerodynamicInformation():
             vec_elastic_axis (np.array): position of the elastic axis in the chord
             vec_airfoil_distribution (np.array): airfoil at each element node
             airfoils (np.array): coordinates of the camber lines of the airfoils
+            first_twist (bool): Apply the twist rotation before the sweep
         """
         self.aero_node = vec_aero_node
 
@@ -1210,6 +1218,8 @@ class AerodynamicInformation():
             udmd_by_elements = from_node_array_to_elem_matrix(user_defined_m_distribution, StructuralInformation.connectivities)
             self.user_defined_m_distribution = [udmd_by_elements]
 
+        self.first_twist = [first_twist]
+
     def create_one_uniform_aerodynamics(self,
                                      StructuralInformation,
                                      chord,
@@ -1219,7 +1229,8 @@ class AerodynamicInformation():
                                      m_distribution,
                                      elastic_axis,
                                      num_points_camber,
-                                     airfoil):
+                                     airfoil,
+                                     first_twist=True):
         """
         create_one_uniform_aerodynamics
 
@@ -1235,6 +1246,7 @@ class AerodynamicInformation():
             elastic_axis (float): position of the elastic axis in the chord
             num_points_camber (int): Number of points to define the camber line
             airfoils (np.array): coordinates of the camber lines of the airfoils
+            first_twist (bool): Apply the twist rotation before the sweep
         """
         num_node = StructuralInformation.num_node
         num_node_elem = StructuralInformation.num_node_elem
@@ -1257,6 +1269,8 @@ class AerodynamicInformation():
         if m_distribution == 'user_defined':
             self.user_defined_m_distribution = []
             self.user_defined_m_distribution.append(np.zeros((num_chord_panels + 1, num_elem, num_node_elem)))
+
+        self.first_twist = [first_twist]
 
     def change_airfoils_discretezation(self, airfoils, new_num_nodes):
         """
@@ -1333,6 +1347,7 @@ class AerodynamicInformation():
             # total_num_surfaces += len(aerodynamics_to_add.surface_m)
             total_num_surfaces += np.sum(aerodynamics_to_add.surface_m != -1)
 
+            self.first_twist.extend(aerodynamics_to_add.first_twist)
         # self.num_airfoils = total_num_airfoils
         # self.num_surfaces = total_num_surfaces
 
@@ -1471,6 +1486,8 @@ class AerodynamicInformation():
             h5file.create_dataset('elastic_axis', data=self.elastic_axis)
             h5file.create_dataset('airfoil_distribution', data=self.airfoil_distribution)
             h5file.create_dataset('sweep', data=self.sweep)
+           
+            h5file.create_dataset('first_twist', data=np.array(self.first_twist))
 
             airfoils_group = h5file.create_group('airfoils')
             for iairfoil in range(len(self.airfoils)):
