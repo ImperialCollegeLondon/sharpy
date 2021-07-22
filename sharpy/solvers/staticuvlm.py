@@ -8,6 +8,7 @@ import sharpy.utils.settings as su
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.generator_interface as gen_interface
 from sharpy.utils.constants import vortex_radius_def
+import sharpy.aero.utils.mapping as mapping
 
 
 @solver
@@ -110,6 +111,10 @@ class StaticUvlm(BaseSolver):
     settings_default['centre_rot_g'] = [0., 0., 0.]
     settings_description['centre_rot_g'] = 'Centre of rotation in G FoR around which ``rbm_vel_g`` is applied'
 
+    settings_types['map_forces_on_struct'] = 'bool'
+    settings_default['map_forces_on_struct'] = False
+    settings_description['map_forces_on_struct'] = 'Maps the forces on the structure at the end of the timestep. Only usefull if the solver is used outside StaticCoupled'
+
     settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -179,6 +184,18 @@ class StaticUvlm(BaseSolver):
         # grid orientation
         uvlmlib.vlm_solver(aero_tstep,
                            self.settings)
+
+        if self.settings['map_forces_on_struct']:
+            structure_tstep.steady_applied_forces[:] = mapping.aero2struct_force_mapping(
+                    aero_tstep.forces,
+                    self.data.aero.struct2aero_mapping,
+                    self.data.aero.timestep_info[self.data.ts].zeta,
+                    structure_tstep.pos,
+                    structure_tstep.psi,
+                    self.data.structure.node_master_elem,
+                    self.data.structure.connectivities,
+                    structure_tstep.cag(),
+                    self.data.aero.aero_dict)
 
         return self.data
 
