@@ -89,7 +89,6 @@ class VMopts(ct.Structure):
         self.vortex_radius_wake_ind = ct.c_double(vortex_radius_def)
         self.centre_rot_g = np.ctypeslib.as_ctypes(np.zeros((3)))
         self.rbm_vel_g = np.ctypeslib.as_ctypes(np.zeros((6)))
-        print(self.rbm_vel_g)
 
 
     def set_options(self, options, n_surfaces = 0, n_surfaces_nonlifting = 0, rbm_vel_g = np.zeros(6)):
@@ -111,9 +110,7 @@ class VMopts(ct.Structure):
 
         self.only_nonlifting = ct.c_bool(options["only_nonlifting"])
         self.only_lifting = ct.c_bool(not options["nonlifting_body_interactions"])
-        print("Centre rot g = ", options["centre_rot_g"])
-        rbm_vel_g = [1, 2, 5]
-        print("RBM = ", rbm_vel_g)
+
         for i in range(len(options["centre_rot_g"])):
             self.centre_rot_g[i] = ct.c_double(options["centre_rot_g"][i])
         for i in range(len(rbm_vel_g)):            
@@ -135,9 +132,7 @@ class UVMopts(ct.Structure):
                 ("iterative_solver", ct.c_bool),
                 ("iterative_tol", ct.c_double),
                 ("iterative_precond", ct.c_bool),
-                ("convect_wake", ct.c_bool),                
-                ("only_lifting", ct.c_bool),
-                ("only_nonlifting", ct.c_bool),           
+                ("convect_wake", ct.c_bool),           
                 ("cfl1", ct.c_bool),
                 ("vortex_radius", ct.c_double),
                 ("vortex_radius_wake_ind", ct.c_double),
@@ -147,7 +142,8 @@ class UVMopts(ct.Structure):
                 ("yaw_slerp", ct.c_double),
                 ("quasi_steady", ct.c_bool),
                 ("centre_rot_g", ct.c_double * 3),
-                ("rbm_vel_g", ct.c_double * 6)]
+                ("rbm_vel_g", ct.c_double * 6),                
+                ("only_lifting", ct.c_bool)]
 
     def __init__(self):
         ct.Structure.__init__(self)
@@ -169,6 +165,7 @@ class UVMopts(ct.Structure):
         self.quasi_steady = ct.c_bool(False)
         self.centre_rot_g = np.ctypeslib.as_ctypes(np.zeros((3)))
         self.rbm_vel_g = np.ctypeslib.as_ctypes(np.zeros((6)))
+        self.only_lifting = ct.c_bool(True)
 
     def set_options(self, 
                     options, 
@@ -184,6 +181,7 @@ class UVMopts(ct.Structure):
             self.dt = ct.c_double(dt)
         self.NumCores = ct.c_uint(options["num_cores"])
         self.NumSurfaces = ct.c_uint(n_surfaces)
+        self.NumSurfacesNonlifting = ct.c_uint(n_surfaces_nonlifting)
         self.ImageMethod = ct.c_bool(False)
         self.convection_scheme = ct.c_uint(options["convection_scheme"])
         self.iterative_solver = ct.c_bool(options['iterative_solver'])
@@ -199,10 +197,8 @@ class UVMopts(ct.Structure):
         self.yaw_slerp = ct.c_double(options["yaw_slerp"])
         self.quasi_steady = ct.c_bool(options['quasi_steady'])
  
-        self.only_nonlifting = ct.c_bool(options["only_nonlifting"])
         self.only_lifting = ct.c_bool(not options["nonlifting_body_interactions"])
-        print("Centre rot g = ", options["centre_rot_g"])
-        print("RBM = ", rbm_vel_g)
+
         for i in range(len(options["centre_rot_g"])):
             self.centre_rot_g[i] = ct.c_double(options["centre_rot_g"][i])
         for i in range(len(rbm_vel_g)):     
@@ -274,7 +270,6 @@ def vlm_solver_nonlifting_body(ts_info, options):
     flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
 
     ts_info.generate_ctypes_pointers()
-
     run_VLM_nonlifting(ct.byref(vmopts),
                        ct.byref(flightconditions),
                        ts_info.ct_p_dimensions,
@@ -296,7 +291,6 @@ def vlm_solver_lifting_and_nonlifting_bodies(ts_info_lifting, ts_info_nonlifting
     flightconditions.uinf = np.ctypeslib.as_ctypes(np.linalg.norm(ts_info_lifting.u_ext[0][:, 0, 0]))
     flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info_lifting.u_ext[0][:, 0, 0]/flightconditions.uinf)
 
-    p_rbm_vel_g = options['rbm_vel_g'].ctypes.data_as(ct.POINTER(ct.c_double))
     ts_info_lifting.generate_ctypes_pointers()
     ts_info_nonlifting.generate_ctypes_pointers()
     run_VLM_lifting_and_nonlifting(ct.byref(vmopts),
@@ -311,7 +305,6 @@ def vlm_solver_lifting_and_nonlifting_bodies(ts_info_lifting, ts_info_nonlifting
             ts_info_lifting.ct_p_gamma_star,
             ts_info_lifting.ct_p_forces,
             ts_info_lifting.ct_p_flag_zeta_phantom,
-            p_rbm_vel_g,
             ts_info_nonlifting.ct_p_dimensions,
             ts_info_nonlifting.ct_p_zeta,
             ts_info_nonlifting.ct_p_u_ext,
@@ -378,9 +371,6 @@ def uvlm_solver_lifting_and_nonlifting(i_iter, ts_info, ts_info_nonlifting, stru
     rbm_vel = struct_ts_info.for_vel.copy()
     rbm_vel[0:3] = np.dot(struct_ts_info.cga(), rbm_vel[0:3])
     rbm_vel[3:6] = np.dot(struct_ts_info.cga(), rbm_vel[3:6])
-    p_rbm_vel = rbm_vel.ctypes.data_as(ct.POINTER(ct.c_double))
-    p_centre_rot = options['centre_rot'].ctypes.data_as(ct.POINTER(ct.c_double))
-
 
     uvmopts = UVMopts()
     uvmopts.set_options(options,
@@ -393,7 +383,6 @@ def uvlm_solver_lifting_and_nonlifting(i_iter, ts_info, ts_info_nonlifting, stru
     run_UVLM = UvlmLib.run_UVLM_lifting_and_nonlifting
     run_UVLM.restype = None
 
-
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
     flightconditions.uinf = np.ctypeslib.as_ctypes(np.linalg.norm(ts_info.u_ext[0][:, 0, 0]))
@@ -401,13 +390,8 @@ def uvlm_solver_lifting_and_nonlifting(i_iter, ts_info, ts_info_nonlifting, stru
     flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
     # flightconditions.uinf_direction = np.ctypeslib.as_ctypes(direction)
 
-    rbm_vel = struct_ts_info.for_vel.copy()
-    rbm_vel[0:3] = np.dot(struct_ts_info.cga(), rbm_vel[0:3])
-    rbm_vel[3:6] = np.dot(struct_ts_info.cga(), rbm_vel[3:6])
-    p_rbm_vel = rbm_vel.ctypes.data_as(ct.POINTER(ct.c_double))
-    p_centre_rot = options['centre_rot'].ctypes.data_as(ct.POINTER(ct.c_double))
-
     i = ct.c_uint(i_iter)
+
     ts_info.generate_ctypes_pointers()
     ts_info_nonlifting.generate_ctypes_pointers()
     # previous_ts_info.generate_ctypes_pointers()
