@@ -125,10 +125,10 @@ g1mm = {'model_name':'A320mock',
         'iterate_labels': {'label_type':'number',
                            'print_name_var':0},
         'assembly': {'include_aero':1,
-                     'default_settings': 1, #beam_number and aero surface and
-                                            #surface_distribution
-                                            #selected by default one
-                                            #per component
+                     'default_settings': 1, # beam_number and aero surface and
+                                            # surface_distribution
+                                            # selected by default one
+                                            # per component
                      'fuselage_front':{'node2add':0,
                                  'upstream_component':'',
                                  'node_in_upstream':0},

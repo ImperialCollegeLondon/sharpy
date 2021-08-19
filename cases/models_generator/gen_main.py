@@ -113,37 +113,62 @@ class Nastran_data:
     pass
 
 class Components:
+    """
+    This class 
+    The :class:`~sharpy.solvers.dynamiccoupled.DynamicCoupled` solver couples the aerodynamic and structural solvers
+    of choice to march forward in time the aeroelastic system's solution.
 
+    Using the :class:`~sharpy.solvers.dynamiccoupled.DynamicCoupled` solver requires that an instance of the
+    ``StaticCoupled`` solver is called in the SHARPy solution ``flow`` when defining the problem case.
+
+    Input data (from external controllers) can be received and data sent using the SHARPy network
+    interface, specified through the setting ``network_settings`` of this solver. For more detail on how to send
+    and receive data see the :class:`~sharpy.io.network_interface.NetworkLoader` documentation.
+
+    Changes to the structural properties or external forces that depend on the instantaneous situation of the system
+    can be applied through ``runtime_generators``. These runtime generators are parsed through dictionaries, with the
+    key being the name of the generator and the value the settings for such generator. The currently available
+    ``runtime_generators`` are :class:`~sharpy.generators.externalforces.ExternalForces` and
+    :class:`~sharpy.generators.modifystructure.ModifyStructure`.
+
+    """
     def __init__(self, key, in_put, out_put, settings):
 
         self.key = key
-        if 'sharpy' in out_put:
+        if 'sharpy' in out_put: # Output a SHARPy model
             self.sharpy = Sharpy_data(settings['workflow'])
-            #import pdb; pdb.set_trace()
-            if self.sharpy.structure_create:
-                if 'geometry' in settings.keys():
+            if self.sharpy.structure_create: # Create structural fem from dictionary variables   
+                if 'geometry' in settings.keys(): 
+                    # check coordinates variable are not defined from both fem \
+                    # and geometry dictionaries
+                    if 'coordinates' in settings['geometry'].keys():
+                        assert (not settings['geometry']['coordinates']), 'if coordinates are \
+                                                explicitly defined, they must be in dictionary fem'
+                    # coordinates given from function generate_geometry    
                     settings['fem']['coordinates'] = self.generate_geometry(
-                                                       **settings['geometry'])
+                                                          **settings['geometry'])
                 else:
+                    # coordinates explicitly given in fem dictionary
                     self.generate_geometry(coordinates=settings['fem']['coordinates'])
                 self.sharpy_fem(**settings['fem'])
-            elif self.sharpy.structure_read:
+            elif self.sharpy.structure_read: # Create structural fem from read .h5    
                 self.sharpy.read_structure(settings['read_structure_file'])
-            elif self.sharpy.structure_input:
+            elif self.sharpy.structure_input: # Create structural fem from a complete dictionary  
                 self.sharpy.input_structure(**settings['fem'])
-            if self.sharpy.aero_create:
+            if self.sharpy.aero_create: # Create aero from dictionary variables
                 self.sharpy_aero(**settings['aero'])
-            elif self.sharpy.aero_create0:
+            elif self.sharpy.aero_create0:  # Component without aerodynamics in a model with
+                                            # e.g. a fuselage or a pylon
                 self.sharpy_aero(chord=0, elastic_axis=0, surface_m=2,
                                  aero_node=False, surface_distribution=-1)
-            elif self.sharpy.aero_read:
+            elif self.sharpy.aero_read:  # create aero from file          
                 self.sharpy.read_aero(settings['read_aero_file'])
-            elif self.sharpy.aero_input:
+            elif self.sharpy.aero_input: # Create aero from a complete dictionary
                 self.sharpy.input_aero(**settings['aero'])
 
-        if 'cpacs' in out_put:
+        if 'cpacs' in out_put:  # output a cpacs model
             self.cpacs = Cpacs_data(settings['workflow'])
-        if 'nastran' in out_put:
+        if 'nastran' in out_put: # output a nastran model
             self.nastran = Nastran_data(settings['workflow'])
 
     def generate_geometry(self,
@@ -156,6 +181,10 @@ class Components:
                           dihedral=0.,
                           coordinates=None):
 
+        #######################################################################
+        # In case one wants to define the model with subcomponents pertaining #
+        # to each component, not implemented further                          #
+        #######################################################################        
         try:
             self.subcomponents = len(length)
         except TypeError:
@@ -214,6 +243,8 @@ class Components:
                    coordinates,
                    stiffness_db,
                    mass_db,
+                   elem_stiffness=None,
+                   elem_mass=None,                   
                    sigma=1.,
                    sigma_m=1.,
                    num_node=None,
@@ -226,12 +257,35 @@ class Components:
                    beam_number=None,
                    structural_twist=None,
                    app_forces=None,
-                   elem_stiffness=None,
-                   elem_mass=None,
                    lumped_mass=None,
                    lumped_mass_nodes=None,
                    lumped_mass_inertia=None,
                    lumped_mass_position=None):
+        """
+        Create SHARPy fem from the following inputs:
+
+        Args:coordinates: coordinates of every node                       
+             stiffness_db: stiffness matrix of each (different) element                       
+             mass_db: mass matrix of each (different) element                            
+             elem_stiffness: element index to stiffness_db mapping
+             elem_mass: element index to mass_db mapping  
+             sigma=1.: proportional constant to multiply each matrix in stiffness_db
+             sigma_m=1.: proportional constant to multiply each matrix in mass_db                        
+             num_node: total number of nodes (only needed as sanity check)                     
+             num_elem: Total number of elements                      
+             conn0=0: Start connectivity matrix at this node                         
+             connectivities:  connectivities of elements in the component               
+             num_node_elem=3: num_node_elem (legacy, always 3)                   
+             frame_of_reference_delta: vector (in A-frame) to define the plane of local y-component
+             boundary_conditions: 
+             beam_number: index of segments, use for things like paraview plotting         
+             structural_twist: local rotation around local x direction             
+             app_forces: application of steady forces at the selected nodes (required for trim thrust nodes) 
+             lumped_mass: Array of lumped masses in Kg                   
+             lumped_mass_nodes: maps lumped_mass to nodes
+             lumped_mass_inertia: 3x3 inertia to the previous masses
+             lumped_mass_position: relative position to the belonging node in the local B frame
+        """
 
         self.sharpy.fem['coordinates'] = coordinates
         if num_node is None:
@@ -278,9 +332,9 @@ class Components:
             self.sharpy.fem['app_forces'] = app_forces
         else:
             self.sharpy.fem['app_forces'] = np.zeros((self.sharpy.fem['num_node'], 6))
-        if len(np.shape(stiffness_db)) == 3:
+        if len(np.shape(stiffness_db)) == 3:  # matrix given 
             self.sharpy.fem['stiffness_db'] = sigma*stiffness_db
-        elif len(np.shape(stiffness_db)) == 2:
+        elif len(np.shape(stiffness_db)) == 2: # Vector given in the form of EA,GAy,GAz,GJ,EIy,EIz
             self.sharpy.fem['stiffness_db'] = sigma*self.create_stiff_db(stiffness_db[0],
                                                                          stiffness_db[1],
                                                                          stiffness_db[2],
@@ -300,8 +354,7 @@ class Components:
                                                                      mass_db[2],
                                                                      mass_db[3],
                                                                      mass_db[4],
-                                                                     mass_db[5],
-                                                                     mass_db[6])
+                                                                     mass_db[5])
         if elem_mass is None:
             self.sharpy.fem['elem_mass'] = np.zeros(self.sharpy.fem['num_elem'], dtype=int)
         else:
@@ -315,13 +368,13 @@ class Components:
         if lumped_mass_position is not None:
             self.sharpy.fem['lumped_mass_position'] = lumped_mass_position
         
-    def create_mass(self,
-                    vec_mass_per_unit_length,
-                    vec_mass_iner_x,
-                    vec_mass_iner_y,
-                    vec_mass_iner_z,
-                    vec_pos_cg_B,
-                    vec_mass_iner_yz=None):
+    def create_mass_db(self,
+                       vec_mass_per_unit_length,
+                       vec_mass_iner_x,
+                       vec_mass_iner_y,
+                       vec_mass_iner_z,
+                       vec_pos_cg_B,
+                       vec_mass_iner_yz=None):
         """
         Create the mass matrices from the vectors of properties
 
@@ -388,15 +441,28 @@ class Components:
         return stiffness_db
                 
     def cpacs_fem(self):
+        """
+        Create SHARPy fem from CPACS file
+
+        Args:
+        """
+        
         pass
     
     def nastran_fem(self):
+        """
+        Create SHARPy fem from NASTRAN file
+
+        Args:
+        """
+
         pass
         
     def sharpy_aero(self,
-                    chord,
-                    elastic_axis,
                     surface_m,
+                    chord=None,
+                    elastic_axis=None,
+                    point_platform=None,
                     twist=0.,
                     sweep=0.,
                     surface_distribution=None,
@@ -404,8 +470,37 @@ class Components:
                     aero_node=None,
                     airfoils=None,
                     airfoil_distribution=None,
-                    airfoil_efficiency=None):
+                    airfoil_efficiency=None,
+                    polars=None):
+        """
+        Create SHARPy aero from the following inputs:
 
+        Args:
+            surface_m (int): number of chordwise panels
+            chord (np.array): chord length              
+            elastic_axis (np.array): position of the chord with respect to the FE beam
+            point_platform (np.array): four points to define the aero platform (giving chord and ea)
+            twist (np.array): rotation in the local x axis
+            sweep (np.array): rotation of panels    
+            surface_distribution : index of the surface  
+            m_distribution (str): distribution of chordwise panels  
+            aero_node: indicates whether node has a lifting surface attached to it
+            airfoils : camber in a Group variable with 'n', x/chord, y/chord
+            airfoil_distribution: maps each node to the 'n' airfoil
+            airfoil_efficiency: modify the aero given by the UVLM   
+            polars (np.array): table of polars to correct VLM              
+        """
+
+        if point_platform is not None:
+            chord, elastic_axis = gu.from4points2chord(self.sharpy.fem['coordinates'],
+                                                       point_platform['leading_edge1'],
+                                                       point_platform['leading_edge2'],
+                                                       point_platform['trailing_edge1'],
+                                                       point_platform['trailing_edge2'])
+        else:
+            assert chord is not None and elastic_axis is not None, \
+             "Chord and elastic_axis variables need to be defined if point_platform is not"
+            
         for v in ['chord', 'twist', 'sweep', 'elastic_axis']:
             self.sharpy_aero_input(v, locals()[v])
         if isinstance(surface_m, int):
@@ -423,11 +518,11 @@ class Components:
                 self.sharpy.aero['surface_distribution'] = surface_distribution
         else:
             self.sharpy.aero['surface_distribution'] = np.zeros((self.sharpy.fem['num_elem'],), dtype=int)
-        if aero_node is None:
+        if aero_node is None: # By default all nodes have a lifting surface attached
             self.sharpy.aero['aero_node'] = np.ones((self.num_node,), dtype = bool)
-        elif aero_node is False:
+        elif aero_node is False: #No lifting surface atached
             self.sharpy.aero['aero_node'] = np.zeros((self.num_node,), dtype = bool)
-        else:
+        else:                   # Do as defined in aero_node
             self.sharpy.aero['aero_node'] = aero_node
         if airfoils is not None:
             self.sharpy.aero['airfoils'] = airfoils
@@ -441,43 +536,57 @@ class Components:
             self.sharpy.aero['airfoil_distribution'] = airfoil_distribution
         else:
             self.sharpy.aero['airfoil_distribution'] = np.zeros((self.sharpy.fem['num_elem'],
-                                                                 self.sharpy.fem['num_node_elem']), dtype=int)
+                                                                 self.sharpy.fem['num_node_elem']),
+                                                                dtype=int)
         if airfoil_efficiency is not None:
             self.sharpy.aero['airfoil_efficiency'] = airfoil_efficiency
+        if polars is not None:
+            self.sharpy.aero['polars'] = polars
 
     def sharpy_aero_input(self, key, var):
+        """
+        General function to create the aerodynamic inputs chord, elastic_axis, twist, sweep
 
-        right_size=(self.sharpy.fem['num_elem'], self.sharpy.fem['num_node_elem'])
-        if isinstance(var, float) or isinstance(var, int):
+        Args:
+            key (str): name of the variable
+            value (str): value of the variable
+        """
+
+        right_size = (self.sharpy.fem['num_elem'], self.sharpy.fem['num_node_elem'])
+        # Constant aero properties
+        if isinstance(var, float) or isinstance(var, int):             
             self.sharpy.aero[key] = var*np.ones(right_size, dtype=float)
-        elif (isinstance(var, np.ndarray) or isinstance(var,list)) and len(var) == 2:
+        # Linear interpolation between first and second value     
+        elif (isinstance(var[0], float) or isinstance(var[0], int)):
             self.sharpy.aero[key] = np.zeros(right_size)
             self.sharpy.aero[key][0, 0] = var[0]
-            dyds=(var[1]-var[0])/sum(self.ds_list)
-            #import pdb;pdb.set_trace()
+            dyds = (var[1]-var[0])/sum(self.ds_list)  # slope for linear extrapolation
             for k in range(self.num_node):
-                i=int(k/(right_size[1]-1))
-                j=k%(right_size[1]-1)
-                if i==0 and j==0:
-                    self.sharpy.aero[key][i,j] = var[0]
+                i = int(k/(right_size[1]-1))
+                j = k % (right_size[1]-1)
+                if i == 0 and j == 0:                    # first node
+                    self.sharpy.aero[key][i, j] = var[0]
                     var_p = var[0]
                     continue
-                elif i==int((self.num_node-1)/(right_size[1]-1)):
-                    self.sharpy.aero[key][i-1,1] = var[1]
-                    assert np.isclose(var[1],var_p + self.ds_list[k-1]*dyds)
+                elif i == int((self.num_node-1)/(right_size[1]-1)):   # last node
+                    self.sharpy.aero[key][i-1, 1] = var[1]
+                    assert np.isclose(var[1], var_p + self.ds_list[k-1]*dyds)
                     continue
-                elif j==0:
-                    self.sharpy.aero[key][i,j] = var_p + self.ds_list[k-1]*dyds
-                    self.sharpy.aero[key][i-1,1] = var_p + self.ds_list[k-1]*dyds
+                elif j == 0:
+                    self.sharpy.aero[key][i, j] = var_p + self.ds_list[k-1] * dyds
+                    self.sharpy.aero[key][i-1, 1] = var_p + self.ds_list[k-1] * dyds
                 else:
-                    self.sharpy.aero[key][i,2] = var_p + self.ds_list[k-1]*dyds
+                    self.sharpy.aero[key][i, 2] = var_p + self.ds_list[k-1] * dyds
 
                 var_p += self.ds_list[k-1]*dyds
-                    
-        elif (isinstance(var,np.ndarray) or isinstance(var,list)) and len(var)>2:
+        # Given distribution            
+        elif (isinstance(var[0], np.ndarray) or isinstance(var[0], list)):
             self.sharpy.aero[key] = var
             assert np.shape(self.sharpy.aero[key]) == right_size, \
-                "{} not complying with syze {}".format(key, right_size)
+                "{} not complying with size {}".format(key, right_size)
+        else:
+            raise Exception("Incorrect input variable (%s) in sharpy_aero_input" % key)
+            
     def generate_controls(self):
         pass
 
@@ -485,54 +594,70 @@ class Components:
 class Model:
 
     
-    def __init__(self, m_input, m_output, model_dict, components_dict, simulation_dict,
+    def __init__(self, m_input, m_output,
+                 model_dict, components_dict, simulation_dict,
                  model_name=None):
 
-        self.m_input = m_input
-        self.m_output = m_output
-        self.model_dict = model_dict
-        self.components_dict = components_dict
-        self.simulation_dict = simulation_dict
-        self.components = [*components_dict]
+        self.m_input = m_input          # model input (SHARPy, NASTRAN, CPACS...)
+        self.m_output = m_output        # model output model
+        self.model_dict = model_dict    # dictionary with the settings in the model definition 
+        self.components_dict = components_dict  # dictionary with the settings for each component
+        self.simulation_dict = simulation_dict  # dictionary with the settings for the simulation
+        self.components = [*components_dict]    # list with the names of the components in the model
         self.num_components = len(self.components)
         if model_name is None:
             self.model_name = self.components[0]
         else:
             self.model_name = model_name
         try:
-            if len(model_dict['iterate_vars']) == 0:
+            if len(model_dict['iterate_vars']) == 0: # One model built
                 self.num_models = 1
                 self.model_labels = ['']
-            else:
-                
-                self.iteration = Iterations(self.model_dict['iterate_vars'],
+            else:   # Various model built to be run
+                # Call the class that manages the various models inputs
+                self.iteration = Iterations(self.model_dict['iterate_vars'], 
                                             self.model_dict['iterate_type'])
                 self.num_models = self.iteration.num_combinations
                 self.model_labels = self.iteration.labels(**self.model_dict['iterate_labels'])
-                self.dict2iterate = self.iteration.get_combinations_dict()
+                self.dict2iterate = self.iteration.get_combinations_dict() # dictionary with iterations
                 for mi in range(self.num_models):
-                    #import pdb;pdb.set_trace()
                     for k in self.dict2iterate[mi].keys():
                         if len(k.split('*'))==1:
                             self.dict2iterate[mi][self.components[0]+'*'+k] = self.dict2iterate[mi].pop(k)
                 
-        except KeyError:
+        except KeyError: # No iteration defined and only one model built
             self.num_models = 1
             self.model_labels = ['']
         self.models = []
 
     def assemble_models(self, models, settings):
+        """
+        Assemble models with settings from
 
+        Args:
+            models: list of models to be assembled with each model formed by one or more components
+            settings: model_dict settings
+        """
+        
         self.built_models = [type('model%s'%i, (object,), {})() for i in range(self.num_models)]
         for mi in range(self.num_models):
-            self.built_models[mi].sharpy = Sharpy_data(workflow=['structure_input',
+            # Instance of SHARPy data
+            self.built_models[mi].sharpy = Sharpy_data(workflow=['structure_input', 
                                                                  'aero_input'])
+            # Get 
             dic_structure, dic_aero = self.assemble_components(models[mi], settings)
             self.built_models[mi].sharpy.input_structure(**dic_structure)
             if settings['include_aero']:
                 self.built_models[mi].sharpy.input_aero(**dic_aero)
     
     def assemble_components(self, model, settings):
+        """
+        Assemble models with settings from
+
+        Args:
+            models: list of models to be assembled with each model formed by one or more components
+            settings: model_dict settings
+        """
 
         dic_struc = dict()      # Dictionary to concatenate structural components
         dic_aero = dict()       # Dictionary to concatenate aero components
@@ -543,7 +668,7 @@ class Model:
         mass_dbi = 0
         for ci in range(self.num_components):
             self.dict_comp[self.components[ci]] = dict()
-            if ci == 0:
+            if ci == 0: # Father component 
                 dic_struc['num_node_elem'] = model[ci].sharpy.fem['num_node_elem']
                 coordinates = model[ci].sharpy.fem['coordinates']
                 boundary_conditions = model[ci].sharpy.fem['boundary_conditions']
@@ -592,22 +717,27 @@ class Model:
                     dic_aero['airfoil_distribution'] = model[ci].sharpy.aero['airfoil_distribution']
 
             else:
-                #import pdb; pdb.set_trace()
+                # translate the component to the upstream node
                 coordinates0 = self.dict_comp[settings[self.components[ci]]['upstream_component']]\
                               ['coordinates'][settings[self.components[ci]]['node_in_upstream']]
                 coordinates = model[ci].sharpy.fem['coordinates'][1:] + coordinates0 \
                     - model[ci].sharpy.fem['coordinates'][0]
+                # Save the coordinates of the component including the node at the connection
                 self.dict_comp[self.components[ci]]['coordinates'] = model[ci].sharpy.fem['coordinates'] + \
                 coordinates0 - model[ci].sharpy.fem['coordinates'][0]
                 boundary_conditions = model[ci].sharpy.fem['boundary_conditions'][1:]
+                # Do connectivities in increasing order from the last node
                 connectivities = gu.do_connectivities(node2add-1,
                                                    model[ci].sharpy.fem['num_elem'], lista=[])
+                # actual node index in the connection (as concatenation is performed)
                 node_connection = self.dict_comp[settings[self.components[ci]]['upstream_component']]['nodes']\
                                   [settings[self.components[ci]]['node_in_upstream']]
                 connectivities[0][0] = node_connection
+                # save nodes indexes of the component
                 self.dict_comp[self.components[ci]]['nodes'] = np.arange(model[ci].sharpy.fem['num_node']) \
                         + node2add-1
                 self.dict_comp[self.components[ci]]['nodes'][0] = node_connection
+                
                 #settings[self.components[ci]]['node2add'] = node2add
                 node2add += len(coordinates)
                 elem0 += model[ci].sharpy.fem['num_elem']
@@ -725,7 +855,7 @@ class Model:
                         'sweep' in components_dictx['geometry'].keys():    
                             components_dictx['geometry']['sweep'] = np.pi-components_dictx['geometry']['sweep']
                         elif 'geometry' in components_dictx.keys() and \
-                        'direction' in components_dictx['geometry'].keys():    
+                             'direction' in components_dictx['geometry'].keys():
                             components_dictx['geometry']['direction'][1] = -components_dictx['geometry']['direction'][1]
                         try:    
                             components_dictx['fem']['frame_of_reference_delta'] = -components_dictx['fem']['frame_of_reference_delta']
@@ -763,7 +893,9 @@ class Model:
                 self.built_models[mi].sharpy.write_structure(file2write+'.fem.h5')
                 self.built_models[mi].sharpy.write_aero(file2write+'.aero.h5')
                 self.built_models[mi].sharpy.write_sim(file2write+'.sharpy')
-                sharpy.sharpy_main.main(['', file2write+'.sharpy'])
+                data = sharpy.sharpy_main.main(['', file2write+'.sharpy'])
+                #import pdb;pdb.set_trace()
+                return data
 
 
 #folder_replace = partial(change_dic, oldstr='folder')
@@ -788,6 +920,7 @@ class Simulation:
         module = importlib.import_module(default_module)
         solution = getattr(module, default_solution)
         flow, settings = solution(**default_solution_vars)
+        
         return flow, settings
     
     def gen_sharpy_main(self, flow, **kwargs):

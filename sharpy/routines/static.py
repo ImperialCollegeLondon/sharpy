@@ -1,5 +1,4 @@
 import numpy as np
-import copy
 import sharpy.routines.basic as basic
 import sharpy.utils.algebra as algebra
 
@@ -30,17 +29,17 @@ def sol_101(forA=[0.,0.,0.],
     settings_new['NonLinearStatic']['num_load_steps'] = num_load_steps
     settings_new['NonLinearStatic']['newmark_damp'] = newmark_damp
         
-    settings_new = update_dic(settings_new, settings)        
+    settings_new = basic.update_dic(settings_new, settings)        
     return flow, settings_new
 
 
-def sol_102(alpha,
-            beta,
-            roll,
+def sol_102(alpha,                    # Static AoA 
+            beta,                     # Static sideslip angle    
+            roll,                     # Static roll angle
             u_inf,
             rho,
             panels_wake,
-            horseshoe='off',
+            horseshoe=False,
             dt=0.05,
             gravity_on=0,
             forA=[0.,0.,0.],
@@ -63,9 +62,16 @@ def sol_102(alpha,
     settings_new['BeamLoader']['for_pos'] = forA
     settings_new['BeamLoader']['orientation'] = orientation
     settings_new['BeamLoader']['usteady'] = 'off'
-    settings_new['AerogridLoader']['mstar'] = panels_wake
+    if horseshoe:
+        settings_new['AerogridLoader']['mstar'] = 1
+    else:
+        settings_new['AerogridLoader']['mstar'] = panels_wake
     settings_new['AerogridLoader']['unsteady'] = False
-    settings_new['AerogridLoader']['freestream_dir']=['1', '0', '0']
+    settings_new['AerogridLoader']['freestream_dir'] = [1.,0.,0.]
+    settings_new['AerogridLoader']['wake_shape_generator'] = 'StraightWake'
+    settings_new['AerogridLoader']['wake_shape_generator_input'] = {'u_inf': u_inf,
+                                                                    'u_inf_direction':['1', '0', '0'],
+                                                                    'dt': dt}
     settings_new['StaticCoupled']['n_load_steps'] = 1
     settings_new['StaticCoupled']['max_iter'] = fsi_maxiter
     settings_new['StaticCoupled']['tolerance'] = fsi_tolerance
@@ -106,8 +112,8 @@ def sol_144(u_inf,                        # Free stream velocity
             fx_tolerance=0.01,            # Tolerance in horizontal  force
             fz_tolerance=0.01,            # Tolerance in vertical force
             pitching_tolerance=0.01,      # Tolerance in pitching 
-            forA=[0., 0., 0.],            # Node A coordinates 
-            horseshoe='off',              # Horseshoe solution 
+            forA=[0., 0., 0.],            # Reference node A coordinates 
+            horseshoe='off',              # Horseshoe aerodynamic approximation 
             dt=0.05,                      # dt for uvlm 
             trim_max_iter=100,            # Mximum number of trim iterations
             trim_relaxation_factor=0.2,   # Relaxation factor 
@@ -128,13 +134,16 @@ def sol_144(u_inf,                        # Free stream velocity
     settings_new['BeamLoader']['for_pos'] = forA
     settings_new['BeamLoader']['orientation'] = orientation
     settings_new['BeamLoader']['usteady'] = 'on'
-    settings_new['AerogridLoader']['mstar'] = panels_wake
+    if horseshoe:
+        settings_new['AerogridLoader']['mstar'] = 1
+    else:
+        settings_new['AerogridLoader']['mstar'] = panels_wake
     settings_new['AerogridLoader']['unsteady'] = False
-    settings_new['AerogridLoader']['freestream_dir']=[1.,0.,0.]
-    settings_new['AerogridLoader']['wake_shape_generator']='StraightWake'
-    settings_new['AerogridLoader']['wake_shape_generator_input']={'u_inf': u_inf,
-                                                                  'u_inf_direction':['1', '0', '0'],
-                                                                  'dt': dt}
+    settings_new['AerogridLoader']['freestream_dir'] = [1.,0.,0.]
+    settings_new['AerogridLoader']['wake_shape_generator'] = 'StraightWake'
+    settings_new['AerogridLoader']['wake_shape_generator_input'] = {'u_inf': u_inf,
+                                                                    'u_inf_direction':['1', '0', '0'],
+                                                                    'dt': dt}
     settings_new['StaticTrim']['initial_alpha'] = alpha0
     settings_new['StaticTrim']['initial_deflection'] = cs0
     settings_new['StaticTrim']['initial_angle_eps'] = Dcs0
@@ -157,7 +166,7 @@ def sol_144(u_inf,                        # Free stream velocity
                                                                 'delta_curved': 1e-5,
                                                                 'min_delta': struct_tol,
                                                                 'gravity_on': 'on',
-                                                                'gravity':nz*9.807
+                                                                'gravity':nz*9.807,
                                                                 'initial_position':forA,
                                                                 'dt':dt
                                                                 },
@@ -198,6 +207,6 @@ def sol_143(flow=[], **settings):
         for k in flow:
             settings_new[k] = {}      
 
-    settings_new = update_dic(settings_new, settings)        
+    settings_new = basic.update_dic(settings_new, settings)        
     return flow, settings_new
 
