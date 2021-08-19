@@ -29,6 +29,10 @@ class InitialAeroelasticLoader(BaseSolver):
     settings_default['include_forces'] = True
     settings_description['include_forces'] = 'Map the forces'
 
+    settings_types['generate_aero'] = 'bool'
+    settings_default['generate_aero'] = False
+    settings_description['generate_aero'] = 'Generate the aerodynamics grids from scratch'
+
     settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -78,22 +82,36 @@ class InitialAeroelasticLoader(BaseSolver):
                 exceptions.NotValidInputFile(error_msg)
 
         # Copy aero information
-        attributes = ['zeta', 'zeta_star', 'normals',
-                      'gamma', 'gamma_star',
-                      'u_ext', 'u_ext_star',]
-                      # 'dist_to_orig', 'gamma_dot', 'zeta_dot',
+        if self.settings['generate_aero']:
+            # Generate aerodynamic surface
+            self.data.aero.generate_zeta_timestep_info(structural_step,
+                                                       aero_step,
+                                                       self.data.structure,
+                                                       self.data.aero.aero_settings)
+            # generate the wake because the solid shape might change
+            self.data.aero.wake_shape_generator.generate({'zeta': aero_step.zeta,
+                                            'zeta_star': aero_step.zeta_star,
+                                            'gamma': aero_step.gamma,
+                                            'gamma_star': aero_step.gamma_star,
+                                            'dist_to_orig': aero_step.dist_to_orig})
 
-        if self.settings['include_forces']:
-            attributes.extend(['dynamic_forces', 'forces',])
+        else:
+            attributes = ['zeta', 'zeta_star', 'normals',
+                          'gamma', 'gamma_star',
+                          'u_ext', 'u_ext_star',]
+                          # 'dist_to_orig', 'gamma_dot', 'zeta_dot',
 
-        for att in attributes:
-            for isurf in range(aero_step.n_surf):
-                new_attr = getattr(aero_step, att)[isurf]
-                db_attr = getattr(self.file_info.aero, att)[isurf]
-                if new_attr.shape == db_attr.shape:
-                    new_attr[...] = db_attr
-                else:
-                    error_msg = "Non matching shapes in attribute %s" % att
-                    exceptions.NotValidInputFile(error_msg)
+            if self.settings['include_forces']:
+                attributes.extend(['dynamic_forces', 'forces',])
+
+            for att in attributes:
+                for isurf in range(aero_step.n_surf):
+                    new_attr = getattr(aero_step, att)[isurf]
+                    db_attr = getattr(self.file_info.aero, att)[isurf]
+                    if new_attr.shape == db_attr.shape:
+                        new_attr[...] = db_attr
+                    else:
+                        error_msg = "Non matching shapes in attribute %s" % att
+                        exceptions.NotValidInputFile(error_msg)
 
         return self.data
