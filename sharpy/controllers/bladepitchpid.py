@@ -80,6 +80,14 @@ class BladePitchPid(controller_interface.BaseController):
     settings_default['ntime_steps'] = None
     settings_description['ntime_steps'] = 'Number of time steps'
 
+    #settings_types['tower_body'] = 'int'
+    #settings_default['tower_body'] = 0
+    #settings_description['tower_body'] = 'Body number of the tower'
+
+    #settings_types['tower_top_node'] = 'int'
+    #settings_default['tower_top_node'] = 0
+    #settings_description['tower_top_node'] = 'Global node number of the tower top'
+
     settings_types['blade_num_body'] = 'list(int)'
     settings_default['blade_num_body'] = [0,]
     settings_description['blade_num_body'] = 'Body number of the blade(s) to pitch'
@@ -88,13 +96,25 @@ class BladePitchPid(controller_interface.BaseController):
     settings_default['max_pitch_rate'] = 0.1396
     settings_description['max_pitch_rate'] = 'Maximum pitch rate [rad/s]'
 
+    settings_types['pitch_sp'] = 'float'
+    settings_default['pitch_sp'] = 0.
+    settings_description['pitch_sp'] = 'Pitch set point [rad]'
+    
     settings_types['initial_pitch'] = 'float'
     settings_default['initial_pitch'] = 0.
     settings_description['initial_pitch'] = 'Initial pitch [rad]'
+    
+    settings_types['initial_rotor_vel'] = 'float'
+    settings_default['initial_rotor_vel'] = 0.
+    settings_description['initial_rotor_vel'] = 'Initial rotor velocity [rad/s]'
 
     settings_types['min_pitch'] = 'float'
     settings_default['min_pitch'] = 0.
     settings_description['min_pitch'] = 'Minimum pitch [rad]'
+
+    settings_types['max_pitch'] = 'float'
+    settings_default['max_pitch'] = 0.
+    settings_description['max_pitch'] = 'Maximum pitch [rad]'
 
     settings_types['nocontrol_steps'] = 'int'
     settings_default['nocontrol_steps'] = -1
@@ -207,7 +227,8 @@ class BladePitchPid(controller_interface.BaseController):
             self.filter = ss(alpha, 1.-alpha, alpha, 1.-alpha, self.settings['dt'])
 
         self.pitch = self.settings['initial_pitch']
-
+        self.rotor_vel = self.settings['initial_rotor_vel']
+        self.rotor_acc = 0.
 
     def control(self, data, controlled_state):
         r"""
@@ -241,26 +262,35 @@ class BladePitchPid(controller_interface.BaseController):
         aero_torque = self.compute_aero_torque(data.structure, struct_tstep)
         # if self.settings['variable_speed']:
         if True:
-            rotor_vel, rotor_acc = self.drive_train_model(aero_torque,
-                                    struct_tstep.mb_FoR_vel[self.settings['blade_num_body'][0], 5],
-                                    struct_tstep.mb_FoR_acc[self.settings['blade_num_body'][0], 5])
+            #ielem, inode_in_elem = data.structure.node_master_elem[self.settings['tower_top_node']
+            #node_cga = ag.quat2rotation(struct_tstep.mb_quat[self.settings['tower_body'], :])
+            #cab = ag.crv2rotation(struct_tstep.psi[ielem, inode_in_elem, :])
+            #FoR_cga = ag.quat2rotation(struct_tstep.mb_quat[self.settings['blade_num_body'][0], :])
+
+            #ini_rotor_vel = ag.multiply_matrices(cab.T, node_cga.T, FoR_cga, 
+            #                                     struct_tstep.mb_FoR_vel[self.settings['blade_num_body'][0], 3:6])[2]
+            #ini_rotor_acc = ag.multiply_matrices(cab.T, node_cga.T, FoR_cga, 
+            #                                     struct_tstep.mb_FoR_acc[self.settings['blade_num_body'][0], 3:6])[2]
+            self.rotor_vel, self.rotor_acc = self.drive_train_model(aero_torque,
+                                                                    self.rotor_vel,
+                                                                    self.rotor_acc)
         else:
-            rotor_vel = self.settings['sp_const']
-            rotor_acc = 0.
+            self.rotor_vel = self.settings['sp_const']
+            self.rotor_acc = 0.
 
         # System set point
         prescribed_sp = self.compute_prescribed_sp(time)
         # System process value
         sys_pv = self.compute_system_pv(struct_tstep,
                                         data.structure,
-                                        gen_vel=rotor_vel*self.settings['GBR'])
+                                        gen_vel=self.rotor_vel*self.settings['GBR'])
 
         if data.ts < self.settings['nocontrol_steps']:
             sys_pv = prescribed_sp
             self.system_pv[-1] = sys_pv
             return controlled_state
         else:
-            controlled_state['info']['rotor_vel'] = rotor_vel
+            controlled_state['info']['rotor_vel'] = self.rotor_vel
             
         # Apply filter
         if self.filter_pv and (len(self.system_pv) > 1):
@@ -278,26 +308,29 @@ class BladePitchPid(controller_interface.BaseController):
 
         # i_current = len(self.real_state_input_history)
         # # apply it where needed.
-        control_command, detail = self.controller_wrapper(
+        # print("self.prescribed_sp", self.prescribed_sp)
+        # print("filtered_pv", filtered_pv)
+        delta_pitch_ref, detail = self.controller_wrapper(
                 required_input=self.prescribed_sp,
                 current_input=filtered_pv,
                 control_param={'P': self.settings['P'],
                                'I': self.settings['I'],
                                'D': self.settings['D']},
                 i_current=data.ts)
-        # control_command *= -1.
+        # NREL controller does error = state - reference. Here is done the other way
+        delta_pitch_ref *= -1.
         # Limit pitch and pitch rate
         # current_pitch = algebra.quat2euler(struct_tstep.mb_quat[self.settings['blade_num_body'][0]])[0]
         # print(control_command, current_pitch)
         # target_pitch = current_pitch + control_command
         # target_pitch = max(target_pitch, self.settings['min_pitch'])
         # pitch_rate = (target_pitch - current_pitch)/self.settings['dt']
-        pitch_rate = control_command/self.settings['dt']
-        
-        if pitch_rate < -self.settings['max_pitch_rate']:
-            pitch_rate = -self.settings['max_pitch_rate']
-        elif pitch_rate > self.settings['max_pitch_rate']:
-            pitch_rate = self.settings['max_pitch_rate']
+        # pitch_rate = control_command/self.settings['dt']
+        # 
+        # if pitch_rate < -self.settings['max_pitch_rate']:
+        #     pitch_rate = -self.settings['max_pitch_rate']
+        # elif pitch_rate > self.settings['max_pitch_rate']:
+        #     pitch_rate = self.settings['max_pitch_rate']
         # delta_pitch = pitch_rate*self.settings['dt']
         # if control_command > 0.:
         #     pitch_rate = self.settings['max_pitch_rate']
@@ -306,20 +339,43 @@ class BladePitchPid(controller_interface.BaseController):
         # else:
         #     pitch_rate = 0.
         # pitch_rate = 0.
+    
+        target_pitch = delta_pitch_ref + self.settings['pitch_sp']
+        pitch_rate = (target_pitch - self.pitch)/self.settings['dt']
+        #if target_pitch > self.pitch:
+        #    pitch_rate = self.settings['max_pitch_rate']
+        #elif target_pitch < self.pitch:
+        #    pitch_rate = -self.settings['max_pitch_rate']
+        #else:
+        #    pitch_rate = 0.
+        if pitch_rate < -self.settings['max_pitch_rate']:
+            pitch_rate = -self.settings['max_pitch_rate']
+        elif pitch_rate > self.settings['max_pitch_rate']:
+            pitch_rate = self.settings['max_pitch_rate']
 
         next_pitch = self.pitch + pitch_rate*self.settings['dt']
-        if next_pitch < 0.:
+        if next_pitch < self.settings['min_pitch']:
             pitch_rate = 0.
-            next_pitch = 0.
+            next_pitch = self.settings['min_pitch']
+        if next_pitch > self.settings['max_pitch']:
+            pitch_rate = 0.
+            next_pitch = self.settings['max_pitch']
+        
+        # elif pitch_rate > 0. and next_pitch > target_pitch:
+        #     pitch_rate = (target_pitch - self.pitch)/self.settings['dt']
+        # elif pitch_rate < 0. and next_pitch < target_pitch:
+        #     pitch_rate = (target_pitch - self.pitch)/self.settings['dt']
+
+        # next_pitch = self.pitch + pitch_rate*self.settings['dt']
         self.pitch = next_pitch
 
-        int_pitch = self.compute_blade_pitch(data.structure,
-                                         struct_tstep,
-                                         tower_ibody=self.settings['blade_num_body'][0] - 1,
-                                         blade_ibody=self.settings['blade_num_body'][0])
+        # int_pitch = self.compute_blade_pitch(data.structure,
+        #                                  struct_tstep,
+        #                                  tower_ibody=self.settings['blade_num_body'][0] - 1,
+        #                                  blade_ibody=self.settings['blade_num_body'][0])
         # print("int comp pitch:", self.pitch, int_pitch)
 
-        controlled_state['info']['pitch_vel'] = pitch_rate
+        controlled_state['info']['pitch_vel'] = -pitch_rate
 
         # Apply control order
         # rot_mat = algebra.rotation3d_x(control_command)
@@ -375,9 +431,9 @@ class BladePitchPid(controller_interface.BaseController):
                                                 detail[0],
                                                 detail[1],
                                                 detail[2],
-                                                control_command,
+                                                delta_pitch_ref,
                                                 aero_torque/self.settings['GBR'],
-                                                rotor_vel,
+                                                self.rotor_vel,
                                                 pitch_rate,
                                                 self.pitch))
         fid.close()
@@ -423,6 +479,8 @@ class BladePitchPid(controller_interface.BaseController):
                            current_input,
                            control_param,
                            i_current):
+        # print("ri[i-1]", required_input[i_current - 1])
+        # print("ci[-1]", current_input[-1])
         self.controller_implementation.set_point(required_input[i_current - 1])
         control_param, detailed_control_param = self.controller_implementation(current_input[-1])
         return (control_param, detailed_control_param)
