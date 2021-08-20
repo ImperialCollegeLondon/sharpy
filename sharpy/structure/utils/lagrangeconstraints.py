@@ -1052,8 +1052,6 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
             raise NotImplementedError("Hinges should be parallel to the xB, yB or zB of the reference node")
         self.set_rot_vel(MBdict_entry['rot_vect'][self.nonzero_comp])
 
-        self.pitch_vel = set_value_or_default(MBdict_entry, "pitch_vel", 0.)
-
         # self.static_constraint = fully_constrained_node_FoR()
         # self.static_constraint.initialise(MBdict_entry, ieq)
 
@@ -1062,10 +1060,6 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
 
     def set_rot_vel(self, rot_vel):
         self.rot_vel = rot_vel
-
-
-    def set_pitch_vel(self, pitch_vel):
-        self.pitch_vel = pitch_vel
 
 
     def staticmat(self, LM_C, LM_K, LM_Q, MB_beam, MB_tstep, ts, num_LM_eq,
@@ -1187,9 +1181,9 @@ class hinge_node_FoR_pitch(BaseLagrangeConstraint):
         cab = ag.crv2rotation(MB_tstep[self.node_body].psi[ielem, inode_in_elem, :])
         FoR_cga = MB_tstep[self.FoR_body].cga()
 
-        rel_vel = np.array([0., 0., self.rotor_vel])
-        rel_vel += ag.multiply_matrices(cab.T, node_cga.T, FoR_cga,
-                                        np.array([self.pitch_vel, 0., 0.]))
+        rel_vel = np.array([self.pitch_vel, 0., 0.])
+        rel_vel += ag.multiply_matrices(FoR_cga.T, node_cga, cab,
+                                        np.array([0., 0., self.rotor_vel]))
 
         # Define the equations
         ieq = equal_lin_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q, rel_posB=self.rel_posB)
