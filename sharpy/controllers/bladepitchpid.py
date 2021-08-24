@@ -113,7 +113,7 @@ class BladePitchPid(controller_interface.BaseController):
     settings_description['min_pitch'] = 'Minimum pitch [rad]'
 
     settings_types['max_pitch'] = 'float'
-    settings_default['max_pitch'] = 0.
+    settings_default['max_pitch'] = 1.5707963267948966
     settings_description['max_pitch'] = 'Maximum pitch [rad]'
 
     settings_types['nocontrol_steps'] = 'int'
