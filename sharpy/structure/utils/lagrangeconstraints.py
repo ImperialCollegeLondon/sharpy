@@ -1181,9 +1181,14 @@ class hinge_node_FoR_pitch(BaseLagrangeConstraint):
         cab = ag.crv2rotation(MB_tstep[self.node_body].psi[ielem, inode_in_elem, :])
         FoR_cga = MB_tstep[self.FoR_body].cga()
 
-        rel_vel = np.array([self.pitch_vel, 0., 0.])
-        rel_vel += ag.multiply_matrices(FoR_cga.T, node_cga, cab,
-                                        np.array([0., 0., self.rotor_vel]))
+        # rel_vel in A FoR
+        # rel_vel = np.array([self.pitch_vel, 0., 0.])
+        # rel_vel += ag.multiply_matrices(FoR_cga.T, node_cga, cab,
+        #                                 np.array([0., 0., self.rotor_vel]))
+        # rel_vel in B FoR
+        rel_vel = np.array([0., 0., self.rotor_vel])
+        rel_vel += ag.multiply_matrices(cab.T, node_cga.T, FoR_cga,
+                                        np.array([self.pitch_vel, 0., 0.]))
 
         # Define the equations
         ieq = equal_lin_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q, rel_posB=self.rel_posB)
