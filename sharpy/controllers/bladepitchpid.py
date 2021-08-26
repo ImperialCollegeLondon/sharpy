@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from control import ss, forced_response
+from control import ss, forced_response, TransferFunction
 
 import sharpy.utils.controller_interface as controller_interface
 import sharpy.utils.settings as settings
@@ -39,7 +39,7 @@ class BladePitchPid(controller_interface.BaseController):
     # Filter
     settings_types['lp_cut_freq'] = 'float'
     settings_default['lp_cut_freq'] = 0.
-    settings_description['lp_cut_freq'] = 'Cutting frequency of the low pass filter of the process value. Choose 0 for no filter'
+    settings_description['lp_cut_freq'] = 'Cutting frequency of the low pass filter of the process value in Hz. Choose 0 for no filter'
 
     settings_types['anti_windup_lim'] = 'list(float)'
     settings_default['anti_windup_lim'] = [-1., -1.]
@@ -223,8 +223,9 @@ class BladePitchPid(controller_interface.BaseController):
             self.filter_pv = False
         else:
             self.filter_pv = True
-            alpha = np.exp(-self.settings['lp_cut_freq']*self.settings['dt'])
-            self.filter = ss(alpha, 1.-alpha, alpha, 1.-alpha, self.settings['dt'])
+            w0 = self.settings['lp_cut_freq']*2*np.pi
+            self.filter = TransferFunction(np.array([w0]), np.array([1., w0]))
+            self.min_it_filter = int(1./(self.settings['lp_cut_freq']*self.settings['dt']))
 
         self.pitch = self.settings['initial_pitch']
         self.rotor_vel = self.settings['initial_rotor_vel']
@@ -293,7 +294,8 @@ class BladePitchPid(controller_interface.BaseController):
             controlled_state['info']['rotor_vel'] = self.rotor_vel
             
         # Apply filter
-        if self.filter_pv and (len(self.system_pv) > 1):
+        # Filter only after five periods of the cutoff frequency
+        if self.filter_pv and (len(self.system_pv) > self.min_it_filter):
             nit = len(self.system_pv)
             time = np.linspace(0, (nit - 1)*self.settings['dt'], nit)
             # print(time.shape, len(self.system_pv))
