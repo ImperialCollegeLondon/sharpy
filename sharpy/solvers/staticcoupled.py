@@ -212,6 +212,7 @@ class StaticCoupled(BaseSolver):
                         runtime_generator.generate(params)
 
                     struct_forces += self.data.structure.timestep_info[self.data.ts].runtime_steady_forces
+                    struct_forces += self.data.structure.timestep_info[self.data.ts].runtime_unsteady_forces
 
                 if not self.settings['relaxation_factor'] == 0.:
                     if i_iter == 0:
