@@ -1,6 +1,8 @@
 """sharpy_main: Where it all starts
 
 """
+import warnings
+import sys
 import dill as pickle
 import sharpy.utils.cout_utils as cout
 
@@ -137,3 +139,11 @@ def main(args=None, sharpy_input_dict=None):
         raise e
 
     return data
+
+
+
+def sharpy_run():
+    data = None
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        data = main(sys.argv)

@@ -4,7 +4,8 @@ import os
 
 
 def import_ctypes_lib(route, libname):
-    lib_path = route + libname
+    # lib_path = route + libname
+    lib_path = os.path.join(route, libname)
     if platform.system() == 'Darwin':
         ext = '.dylib'
     elif platform.system() == 'Linux':

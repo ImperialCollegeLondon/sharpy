@@ -9,7 +9,8 @@ from sharpy.utils.sharpydir import SharpyDir
 # from sharpy.utils.datastructures import StructTimeStepInfo
 import sharpy.utils.cout_utils as cout
 
-xbeam_lib_path = SharpyDir + '/lib/xbeam/lib/'
+# xbeam_lib_path = SharpyDir + '/lib/xbeam/lib/'
+xbeam_lib_path = SharpyDir
 
 class Xbopts(ct.Structure):
     """Structure skeleton for options input in xbeam
