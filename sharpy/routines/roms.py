@@ -7,7 +7,6 @@ def sol_500(panels_wake,
             rho,
             u_inf,
             c_ref,
-            folder,
             dt=0.1,
             gravity_on=1,
             u_inf_direction=[1., 0., 0.],
@@ -38,7 +37,7 @@ def sol_500(panels_wake,
         frequency_continuous_w = 2 * u_inf * frequency_continuous_k / c_ref
         rom_settings['frequency'] = frequency_continuous_w
 
-    settings_new['BeamLoader']['usteady'] = 'off'
+    settings_new['BeamLoader']['unsteady'] = 'off'
     settings_new['AerogridLoader'] = {
         'unsteady': 'off',
         'aligned_grid': 'on',
@@ -61,13 +60,13 @@ def sol_500(panels_wake,
                               'initial_velocity': u_inf * 1}
 
     step_uvlm_settings = {'print_info': 'on',
-                          'horseshoe': 'off',
+                          # 'horseshoe': 'off',
                           'num_cores': 4,
-                          'n_rollup': 1,
+                          # 'n_rollup': 1,
                           'convection_scheme': 2,
-                          'rollup_dt': dt,
-                          'rollup_aic_refresh': 1,
-                          'rollup_tolerance': 1e-4,
+                          # 'rollup_dt': dt,
+                          # 'rollup_aic_refresh': 1,
+                          # 'rollup_tolerance': 1e-4,
                           'vortex_radius': 1e-6,
                           'velocity_field_generator': 'SteadyVelocityField',
                           'velocity_field_input': {'u_inf': u_inf * 0,
@@ -93,15 +92,14 @@ def sol_500(panels_wake,
                                   'final_relaxation_factor': 0.5,
                                   'n_time_steps': 1,  # ws.n_tstep,
                                   'dt': dt}
-    settings_new['Modal'] = {'folder': folder,
-                            'NumLambda': num_modes,
-                            'rigid_body_modes': rigid_body,
-                            'print_matrices': 'on',
-                            'keep_linear_matrices': 'on',
-                            'write_dat': 'on',
-                            'continuous_eigenvalues': 'off',
-                            'write_modes_vtk': 'off',
-                            'use_undamped_modes': 'on'}
+    settings_new['Modal'] = {'NumLambda': num_modes,
+                             'rigid_body_modes': rigid_body,
+                             'print_matrices': 'on',
+                             'keep_linear_matrices': 'on',
+                             'write_dat': 'on',
+                             'continuous_eigenvalues': 'off',
+                             'write_modes_vtk': 'off',
+                             'use_undamped_modes': 'on'}
     settings_new['LinearAssembler']['linear_system'] = 'LinearAeroelastic'
     settings_new['LinearAssembler']['linear_system_settings'] = {
                                     'beam_settings': {'modal_projection': 'on',
@@ -132,7 +130,6 @@ def sol_500(panels_wake,
                                                       'rom_method_settings': {rom_method: rom_settings}},
                                     'rigid_body_motion': rigid_body}
     
-    settings_new['SaveData']['folder'] = folder
     settings_new['SaveData']['save_aero'] = False
     settings_new['SaveData']['save_struct'] = False
     settings_new['SaveData']['save_linear'] = True

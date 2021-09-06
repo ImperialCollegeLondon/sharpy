@@ -118,8 +118,8 @@ g1sm = {'sharpy': {'simulation_input':None,
                                              'num_modes':20,
                                              'rho': 1.225,
                                              'u_inf':1.,
-                                             'c_ref':3,
-                                             'folder':'./output'},
+                                             'c_ref':3
+                                             },
                    'default_sharpy':{},
                    'model_route':None}}
 

@@ -6,7 +6,7 @@ import sharpy.utils.algebra as algebra
 importlib.reload(gm)
 import sys
 
-split_path = [sys.path[i].split('/') for i in [0,1,2]]
+split_path = [sys.path[i].split('/') for i in range(len(sys.path))]
 for i in range(len(split_path)):
     if 'sharpy' in split_path[i]:
         ind = i
@@ -159,12 +159,10 @@ g1sm = {'sharpy': {'simulation_input':None,
                    'default_module':'sharpy.routines.basic',
                    'default_solution':'sol_0',
                    'default_solution_vars': {'panels_wake':16*5,
-                                             'AerogridPlot':{'folder':'./runs',
-                                                             'include_rbm': 'off',
+                                             'AerogridPlot':{'include_rbm': 'off',
                                                              'include_applied_forces': 'off',
                                                              'minus_m_star': 0},
-                                             'BeamPlot' : {'folder': './runs',
-                                                           'include_rbm': 'off',
+                                             'BeamPlot' : {'include_rbm': 'off',
                                                            'include_applied_forces': 'off'}},
                    'default_sharpy':{},
                    'model_route':None}}

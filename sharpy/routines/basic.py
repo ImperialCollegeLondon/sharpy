@@ -138,7 +138,7 @@ def sol_0(aero=1,
     for k in flow:
         settings_new[k] = {}
             
-    settings_new['BeamLoader']['usteady'] = 'off'
+    settings_new['BeamLoader']['unsteady'] = 'off'
     settings_new['AerogridLoader']['mstar'] = panels_wake
     settings_new['AerogridLoader']['wake_shape_generator'] = 'StraightWake'
     settings_new['AerogridLoader']['wake_shape_generator_input'] = \

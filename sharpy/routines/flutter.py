@@ -72,8 +72,8 @@ def sol_145(num_modes,                  # Num modes in the solution
 
     settings_new['StaticCoupled']['n_load_steps'] = 1
     settings_new['StaticCoupled']['aero_solver'] = 'StaticUvlm'
-    settings_new['StaticCoupled']['aero_solver_settings'] = {'rho': 0.,            # So there is no deformations
-                                                             'horseshoe': 'off',
+    settings_new['StaticCoupled']['aero_solver_settings'] = {'rho': 0.001,            # So there is no deformations
+                                                             'horseshoe':horseshoe,
                                                              'num_cores': 1,
                                                              'n_rollup': 0,
                                                              'rollup_dt': dt,
@@ -218,6 +218,9 @@ def sol_146(num_modes,                  # Num modes in the solution
             settings_new[k] = {}
             
     orientation = algebra.euler2quat(np.array([roll,alpha,beta]))
+    #orientation = algebra.euler2quat(np.array([0., 0, 0.]))
+    u_inf_direction = np.array([1., 0., 0.])
+    #u_inf_direction = np.array([np.cos(alpha), 0, np.sin(alpha)])
     settings_new['BeamLoader']['for_pos'] = forA
     settings_new['BeamLoader']['orientation'] = orientation
     settings_new['BeamLoader']['unsteady'] = 'off'
@@ -226,7 +229,7 @@ def sol_146(num_modes,                  # Num modes in the solution
                                       'freestream_dir': ['1', '0', '0'],
                                       'wake_shape_generator': 'StraightWake',
                                       'wake_shape_generator_input': {'u_inf': u_inf,
-                                                                     'u_inf_direction': np.array([1., 0., 0.]),
+                                                                     'u_inf_direction': u_inf_direction,
                                                                      'dt': dt}}
     if horseshoe:
         settings_new['AerogridLoader']['mstar'] = 1
@@ -248,7 +251,7 @@ def sol_146(num_modes,                  # Num modes in the solution
                                                              'SteadyVelocityField',
                                                              'velocity_field_input': \
                                                              {'u_inf': u_inf,
-                                                              'u_inf_direction':[1.,0.,0.]}
+                                                              'u_inf_direction':u_inf_direction}
                                                              }
     settings_new['StaticCoupled']['structural_solver'] = 'NonLinearStatic'
     settings_new['StaticCoupled']['structural_solver_settings'] = {'initial_position':forA,

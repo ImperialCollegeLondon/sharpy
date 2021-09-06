@@ -136,6 +136,7 @@ class Components:
 
         self.key = key
         if 'sharpy' in out_put: # Output a SHARPy model
+            
             self.sharpy = Sharpy_data(settings['workflow'])
             if self.sharpy.structure_create: # Create structural fem from dictionary variables   
                 if 'geometry' in settings.keys(): 
@@ -306,12 +307,12 @@ class Components:
             
         self.sharpy.fem['frame_of_reference_delta'] = np.zeros((self.sharpy.fem['num_elem'],
                                                                 self.sharpy.fem['num_node_elem'], 3))
-        if len(np.shape(frame_of_reference_delta)) == 1:
+        if len(np.shape(frame_of_reference_delta)) == 1: # constant along elements 
             self.sharpy.fem['frame_of_reference_delta'][:,:] = frame_of_reference_delta
-        elif len(np.shape(frame_of_reference_delta))==2:
+        elif len(np.shape(frame_of_reference_delta))==2: # constant on each element
             for ne in range(self.sharpy.fem['num_elem']):
                 self.sharpy.fem['frame_of_reference_delta'][ne,:] = frame_of_reference_delta[ne]
-        elif len(np.shape(frame_of_reference_delta))==3:
+        elif len(np.shape(frame_of_reference_delta))==3: # defined at every node
                 self.sharpy.fem['frame_of_reference_delta'] = frame_of_reference_delta
         if boundary_conditions is None:
             self.sharpy.fem['boundary_conditions'] = np.zeros(self.sharpy.fem['num_node'])
@@ -672,10 +673,30 @@ class Model:
                 dic_struc['num_node_elem'] = model[ci].sharpy.fem['num_node_elem']
                 coordinates = model[ci].sharpy.fem['coordinates']
                 boundary_conditions = model[ci].sharpy.fem['boundary_conditions']
-                connectivities = gu.do_connectivities(0,
-                                                   model[ci].sharpy.fem['num_elem'], lista=[])
+                connectivities = gu.do_connectivities(0, model[ci].sharpy.fem['num_elem'], lista=[])
                 self.dict_comp[self.components[ci]]['nodes'] = np.arange(model[ci].sharpy.fem['num_node']) \
                                                                + node2add
+                if 'lumped_mass' in model[ci].sharpy.fem.keys():
+                    if 'lumped_mass' not in dic_struc.keys():
+                        dic_struc['lumped_mass'] = model[ci].sharpy.fem['lumped_mass']
+                        dic_struc['lumped_mass_inertia'] = model[ci].sharpy.fem['lumped_mass_inertia']
+                        dic_struc['lumped_mass_position'] = model[ci].sharpy.fem['lumped_mass_position']
+                        dic_struc['lumped_mass_nodes'] = np.array([], dtype=int)
+                    else:    
+                        dic_struc['lumped_mass'] = np.concatenate((dic_struc['lumped_mass'],
+                                                                model[ci].sharpy.fem['lumped_mass']),
+                                                                  axis=0)
+                        dic_struc['lumped_mass_inertia'] = np.concatenate((dic_struc['lumped_mass_inertia'],
+                                                            model[ci].sharpy.fem['lumped_mass_inertia']),
+                                                                          axis=0)
+                        dic_struc['lumped_mass_position'] = np.concatenate((dic_struc['lumped_mass_position'],
+                                                            model[ci].sharpy.fem['lumped_mass_position']),
+                                                                           axis=0)
+                    lumped_mass_nodes = np.array(model[ci].sharpy.fem['lumped_mass_nodes']) + node2add
+                    #lumped_mass_nodes = np.array(lumped_mass_nodes, dtype=int)
+                    dic_struc['lumped_mass_nodes'] = np.concatenate((dic_struc['lumped_mass_nodes'],
+                                                                     lumped_mass_nodes), axis=0)
+                
                 node2add += len(coordinates)
                 elem0 = model[ci].sharpy.fem['num_elem']
                 dic_struc['num_node'] = node2add
@@ -698,7 +719,7 @@ class Model:
                 dic_struc['app_forces'] = model[ci].sharpy.fem['app_forces']
                 
                 aero_vars = ['chord', 'elastic_axis', 'twist', 'sweep',
-                             'airfoil_efficiency']
+                             'airfoil_efficiency', 'polars']
                 if model[ci].sharpy.aero_create or model[ci].sharpy.aero_create0:             
                     for k in aero_vars:
                         try:
@@ -717,28 +738,81 @@ class Model:
                     dic_aero['airfoil_distribution'] = model[ci].sharpy.aero['airfoil_distribution']
 
             else:
+                upstream_component = settings[self.components[ci]]['upstream_component']
+                node_in_upstream = settings[self.components[ci]]['node_in_upstream']
                 # translate the component to the upstream node
-                coordinates0 = self.dict_comp[settings[self.components[ci]]['upstream_component']]\
-                              ['coordinates'][settings[self.components[ci]]['node_in_upstream']]
+                coordinates0 = self.dict_comp[upstream_component]['coordinates'][node_in_upstream]
                 coordinates = model[ci].sharpy.fem['coordinates'][1:] + coordinates0 \
                     - model[ci].sharpy.fem['coordinates'][0]
                 # Save the coordinates of the component including the node at the connection
                 self.dict_comp[self.components[ci]]['coordinates'] = model[ci].sharpy.fem['coordinates'] + \
                 coordinates0 - model[ci].sharpy.fem['coordinates'][0]
-                boundary_conditions = model[ci].sharpy.fem['boundary_conditions'][1:]
                 # Do connectivities in increasing order from the last node
                 connectivities = gu.do_connectivities(node2add-1,
                                                    model[ci].sharpy.fem['num_elem'], lista=[])
-                # actual node index in the connection (as concatenation is performed)
-                node_connection = self.dict_comp[settings[self.components[ci]]['upstream_component']]['nodes']\
-                                  [settings[self.components[ci]]['node_in_upstream']]
+                # actual node index in the connection (as concatenation of components is performed)
+                node_connection = self.dict_comp[upstream_component]['nodes'][node_in_upstream]
                 connectivities[0][0] = node_connection
-                # save nodes indexes of the component
-                self.dict_comp[self.components[ci]]['nodes'] = np.arange(model[ci].sharpy.fem['num_node']) \
-                        + node2add-1
-                self.dict_comp[self.components[ci]]['nodes'][0] = node_connection
+
+                if 'chained_component' in settings[self.components[ci]] \
+                    and settings[self.components[ci]]['chained_component']:
+                    chained_component = settings[self.components[ci]]['chained_component']
+                    node_connection_chained = self.dict_comp[chained_component[0]]\
+                        ['nodes'][chained_component[1]]
+                    coordinates = np.delete(coordinates, -1, axis=0)
+                    connectivities[-1][1] = node_connection_chained
+                    if dic_struc['boundary_conditions'][node_connection] == -1:
+                        # free-tip is not free anymore
+                        dic_struc['boundary_conditions'][node_connection] = 0
+                    if dic_struc['boundary_conditions'][node_connection_chained] == -1:
+                        # free-tip is not free anymore
+                        dic_struc['boundary_conditions'][node_connection_chained] = 0
+
+                    boundary_conditions = model[ci].sharpy.fem['boundary_conditions'][1:-1]
+                    app_forces = model[ci].sharpy.fem['app_forces'][1:-1]
+                    # save nodes indexes of the component
+                    self.dict_comp[self.components[ci]]['nodes'] = np.arange(model[ci].sharpy.fem['num_node']) \
+                            + node2add-1
+                    self.dict_comp[self.components[ci]]['nodes'][0] = node_connection
+                    self.dict_comp[self.components[ci]]['nodes'][-1] = node_connection_chained
+
+                else:
+                    if dic_struc['boundary_conditions'][node_connection] == -1:
+                        # free-tip is not free anymore
+                        dic_struc['boundary_conditions'][node_connection] = 0
+                    boundary_conditions = model[ci].sharpy.fem['boundary_conditions'][1:]
+                    app_forces = model[ci].sharpy.fem['app_forces'][1:]
+                    # save nodes indexes of the component
+                    self.dict_comp[self.components[ci]]['nodes'] = np.arange(model[ci].sharpy.fem['num_node']) \
+                            + node2add-1
+                    self.dict_comp[self.components[ci]]['nodes'][0] = node_connection
+                    
+                # WARNING: VARIABLES WITH SHAPE [num_elem,num_node_elem] NEED TO BE MATCHED AT THE \
+                # THE CONNECTIONS IN THE DEFINITION LEVEL:    
+                frame_of_reference_delta = model[ci].sharpy.fem['frame_of_reference_delta']
+                structural_twist = model[ci].sharpy.fem['structural_twist']
                 
-                #settings[self.components[ci]]['node2add'] = node2add
+                if 'lumped_mass' in model[ci].sharpy.fem.keys():
+                    if 'lumped_mass' not in dic_struc.keys():
+                        dic_struc['lumped_mass'] = model[ci].sharpy.fem['lumped_mass']
+                        dic_struc['lumped_mass_inertia'] = model[ci].sharpy.fem['lumped_mass_inertia']
+                        dic_struc['lumped_mass_position'] = model[ci].sharpy.fem['lumped_mass_position']
+                        dic_struc['lumped_mass_nodes'] = np.array([], dtype=int)
+                    else:    
+                        dic_struc['lumped_mass'] = np.concatenate((dic_struc['lumped_mass'],
+                                                                model[ci].sharpy.fem['lumped_mass']),
+                                                                  axis=0)
+                        dic_struc['lumped_mass_inertia'] = np.concatenate((dic_struc['lumped_mass_inertia'],
+                                                            model[ci].sharpy.fem['lumped_mass_inertia']),
+                                                                          axis=0)
+                        dic_struc['lumped_mass_position'] = np.concatenate((dic_struc['lumped_mass_position'],
+                                                            model[ci].sharpy.fem['lumped_mass_position']),
+                                                                           axis=0)
+                    lumped_mass_nodes = np.array(model[ci].sharpy.fem['lumped_mass_nodes']) + node2add
+                    #lumped_mass_nodes = np.array(lumped_mass_nodes,dtype=int)
+                    dic_struc['lumped_mass_nodes'] = np.concatenate((dic_struc['lumped_mass_nodes'],
+                                                                     lumped_mass_nodes),axis=0)
+
                 node2add += len(coordinates)
                 elem0 += model[ci].sharpy.fem['num_elem']
                 dic_struc['num_node'] = node2add
@@ -747,9 +821,6 @@ class Model:
                                                             coordinates), axis=0)
                 dic_struc['connectivities'] = np.concatenate((dic_struc['connectivities'],
                                                             connectivities), axis=0)
-                if 'boundary_connection' in settings[self.components[ci]]:
-                    dic_struc['boundary_conditions'][node_connection] = settings[self.components[ci]]\
-                                                                        ['boundary_connection']
                 dic_struc['boundary_conditions'] = np.concatenate((dic_struc['boundary_conditions'],
                                                                  boundary_conditions), axis=0)
                 elem_stiffness = model[ci].sharpy.fem['elem_stiffness'] + len(dic_struc['stiffness_db'])
@@ -763,7 +834,7 @@ class Model:
                 dic_struc['mass_db'] = np.concatenate((dic_struc['mass_db'],
                                                         model[ci].sharpy.fem['mass_db']),axis=0)
                 dic_struc['frame_of_reference_delta'] = np.concatenate((dic_struc['frame_of_reference_delta'],
-                                                                      model[ci].sharpy.fem['frame_of_reference_delta']),axis=0)
+                                                                        frame_of_reference_delta),axis=0)
                 if settings['default_settings']:
                     beam_number = ci*np.ones(model[ci].sharpy.fem['num_elem'])
                 else:
@@ -771,27 +842,32 @@ class Model:
                 dic_struc['beam_number'] = np.concatenate((dic_struc['beam_number'],
                                                          beam_number), axis=0)
                 dic_struc['structural_twist'] = np.concatenate((dic_struc['structural_twist'],
-                                                                      model[ci].sharpy.fem['structural_twist']),axis=0)
-                app_forces = model[ci].sharpy.fem['app_forces'][1:]
+                                                                structural_twist),axis=0)
                 dic_struc['app_forces'] = np.concatenate((dic_struc['app_forces'],
                                                           app_forces),axis=0)
                 
                 if model[ci].sharpy.aero_create or model[ci].sharpy.aero_create0:
-                    #import pdb;pdb.set_trace()
-                    for k in aero_vars:
+                    # chord, elastic_axis, twist, sweep, airfoil_efficiency, polars
+                    # WARNING: VARIABLES SHAPE IS [num_elem, num_node_elem], WHICH can be problematic
+                    # in the connection; except for polars, which is a group relating to each 'airfoil'
+                    for k in aero_vars: 
                         try:
                             dic_aero[k] = np.concatenate((dic_aero[k],
                                                               model[ci].sharpy.aero[k]),axis=0)
                         except KeyError:
                             print('No variable %s defined in component %s'%(k,self.components[ci]))
-                    #import pdb;pdb.set_trace()
-                    aero_node = model[ci].sharpy.aero['aero_node'][1:]
+
+                    if 'chained_component' in settings[self.components[ci]] \
+                    and settings[self.components[ci]]['chained_component']:
+                        aero_node = model[ci].sharpy.aero['aero_node'][1:-1]
+                    else:                     
+                        aero_node = model[ci].sharpy.aero['aero_node'][1:]
                     if 'keep_aero_node' in settings[self.components[ci]]:
                         if settings[self.components[ci]]['keep_aero_node']:
                             dic_aero['aero_node'][node_connection] = model[ci].sharpy.aero['aero_node'][0]
                     dic_aero['aero_node'] = np.concatenate((dic_aero['aero_node'], aero_node),axis=0)
-                    if settings['default_settings']:
-                        if np.max(model[ci].sharpy.aero['surface_distribution'])>-1:
+                    if settings['default_settings']: # One surface_distribution per component
+                        if np.max(model[ci].sharpy.aero['surface_distribution'])>-1: # Component with no aero
                             surface_distributionx = np.max(dic_aero['surface_distribution'])+1
                         else:
                             surface_distributionx = np.max(model[ci].sharpy.aero['surface_distribution'])
@@ -817,59 +893,59 @@ class Model:
                 if model[ci].sharpy.aero_create:
                     dic_aero['m_distribution'] = model[ci].sharpy.aero['m_distribution']
 
-            if 'lumped_mass' in model[ci].sharpy.fem.keys():
-                dic_struc['lumped_mass'] = np.concatenate((dic_struc['lumped_mass'],
-                                                        model[ci].sharpy.fem['lumped_mass']),axis=0)
-                dic_struc['lumped_mass_inertia'] = np.concatenate((dic_struc['lumped_mass_inertia'],
-                                                        model[ci].sharpy.fem['lumped_mass_inertia']),axis=0)
-                dic_struc['lumped_mass_position'] = np.concatenate((dic_struc['lumped_mass_position'],
-                                                        model[ci].sharpy.fem['lumped_mass_position']),axis=0)
-                lumped_mass_nodes = model[ci].sharpy.fem['lumped_mass_nodes'] + settings[self.components[ci]]['node2add']
-                dic_struc['lumped_mass_nodes'] = np.concatenate((dic_struc['lumped_mass_nodes'],
-                                                               lumped_mass_nodes),axis=0)
-
         return dic_struc, dic_aero
         
     def build(self):
         
-        if self.num_models > 1:
-            for mi in range(self.num_models):
+        for mi in range(self.num_models):
+            if self.num_models > 1:
                 for k, i in self.dict2iterate[mi].items():
                     #k01 -> compont name ;
                     #k1 -> model_type (fem,aero,generate..) ; k2 -> variable name
                     k01, k02 = k.split('*')
                     k1, k2 = k02.split('-')
                     self.components_dict[k01][k1][k2] = i
-                compX = []
-                for ci in self.components:
-                    if 'symmetric' in self.components_dict[ci]:
-                        ci2 = self.components_dict[ci]['symmetric']['component']
-                        components_dictx = copy.deepcopy(self.components_dict[ci2])
-                        if 'geometry' not in self.components_dict[ci].keys():
-                            components_dictx['fem']['coordinates'][:,1] = \
-                                -self.components_dict[ci2]['fem']['coordinates'][:,1]
-                        if 'geometry' in self.components_dict[ci].keys() and \
-                           'node0' in self.components_dict[ci]['geometry'].keys():
-                            components_dictx['geometry']['node0'] = self.components_dict[ci]['geometry']['node0']
-                        if 'geometry' in components_dictx.keys() and \
-                        'sweep' in components_dictx['geometry'].keys():    
-                            components_dictx['geometry']['sweep'] = np.pi-components_dictx['geometry']['sweep']
-                        elif 'geometry' in components_dictx.keys() and \
-                             'direction' in components_dictx['geometry'].keys():
-                            components_dictx['geometry']['direction'][1] = -components_dictx['geometry']['direction'][1]
-                        try:    
-                            components_dictx['fem']['frame_of_reference_delta'] = -components_dictx['fem']['frame_of_reference_delta']
-                        except TypeError:
-                            components_dictx['fem']['frame_of_reference_delta'] = -np.array(components_dictx['fem']['frame_of_reference_delta'])
-                        compX.append(Components(ci, in_put=self.m_input, out_put=self.m_output, settings=components_dictx))
-                    else:
-                        compX.append(Components(ci, in_put=self.m_input, out_put=self.m_output, settings=self.components_dict[ci]))
-                self.models.append(compX)
-        elif self.num_models ==1:
-            compX = []    
-            for ci in self.components:    
-                compX.append(Components(ci, in_put=self.m_input, out_put=self.m_output, settings=self.components_dict[ci]))
+            compX = []
+            for ci in self.components:
+                if 'symmetric' in self.components_dict[ci]: # Symmetric component with respect to ci2
+
+                    ci2 = self.components_dict[ci]['symmetric']['component']
+                    components_dictx = copy.deepcopy(self.components_dict[ci2])
+                    if 'geometry' not in self.components_dict[ci].keys():
+                        components_dictx['fem']['coordinates'][:,1] = \
+                            -self.components_dict[ci2]['fem']['coordinates'][:,1]
+                    if 'geometry' in self.components_dict[ci].keys() and \
+                       'node0' in self.components_dict[ci]['geometry'].keys():
+                        components_dictx['geometry']['node0'] = self.components_dict[ci]['geometry']['node0']
+                    if 'geometry' in components_dictx.keys() and \
+                    'sweep' in components_dictx['geometry'].keys():    
+                        components_dictx['geometry']['sweep'] = np.pi-components_dictx['geometry']['sweep']
+                    elif 'geometry' in components_dictx.keys() and \
+                         'direction' in components_dictx['geometry'].keys():
+                        components_dictx['geometry']['direction'][1] = -components_dictx['geometry']['direction'][1]
+                    try:    
+                        components_dictx['fem']['frame_of_reference_delta'] = -components_dictx['fem']['frame_of_reference_delta']
+                    except TypeError:
+                        components_dictx['fem']['frame_of_reference_delta'] = -np.array(components_dictx['fem']['frame_of_reference_delta'])
+                    if 'aero' in components_dictx.keys() and \
+                    'point_platform' in components_dictx['aero'].keys():    
+                        components_dictx['aero']['point_platform']['leading_edge1'][1] = \
+                       -components_dictx['aero']['point_platform']['leading_edge1'][1]
+                        components_dictx['aero']['point_platform']['leading_edge2'][1] = \
+                       -components_dictx['aero']['point_platform']['leading_edge2'][1]
+                        components_dictx['aero']['point_platform']['trailing_edge1'][1] = \
+                       -components_dictx['aero']['point_platform']['trailing_edge1'][1]
+                        components_dictx['aero']['point_platform']['trailing_edge2'][1] = \
+                       -components_dictx['aero']['point_platform']['trailing_edge2'][1]
+                    compX.append(Components(ci, in_put=self.m_input, out_put=self.m_output, settings=components_dictx))
+                else:
+                    compX.append(Components(ci, in_put=self.m_input, out_put=self.m_output, settings=self.components_dict[ci]))
             self.models.append(compX)
+        # elif self.num_models ==1:
+        #     compX = []    
+        #     for ci in self.components:    
+        #         compX.append(Components(ci, in_put=self.m_input, out_put=self.m_output, settings=self.components_dict[ci]))
+        #     self.models.append(compX)
         if self.num_components > 1:
             self.assemble_models(self.models, self.model_dict['assembly'])
         elif self.num_components == 1:
