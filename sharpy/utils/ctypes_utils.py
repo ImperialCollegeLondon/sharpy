@@ -15,11 +15,7 @@ def import_ctypes_lib(route, libname):
 
     lib_path += ext
     lib_path = os.path.abspath(lib_path)
-    try:
-        library = ct.CDLL(lib_path, mode=ct.RTLD_GLOBAL)
-    except:
-        import traceback
-        import sys
-        traceback.print_exc(file=sys.stderr)
-        sys.exit(1)
+
+    library = ct.CDLL(lib_path, mode=ct.RTLD_GLOBAL)
+
     return library

@@ -7,7 +7,12 @@ import platform
 import os
 from sharpy.utils.constants import NDIM, vortex_radius_def
 
-UvlmLib = ct_utils.import_ctypes_lib(SharpyDir, 'libuvlm')
+try:
+    UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/UVLM', 'libuvlm')
+except OSError:
+    UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/UVLM/lib', 'libuvlm')
+
+
 
 
 class VMopts(ct.Structure):

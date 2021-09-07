@@ -14,14 +14,17 @@ with open(os.path.join(this_directory, "README.md"), encoding="utf-8") as f:
 setup(
     name="sharpy",
     version=__version__,
-    description="DESCRIPTION",
+    description="""SHARPy is a nonlinear aeroelastic analysis package developed
+    at the Department of Aeronautics, Imperial College London. It can be used
+    for the structural, aerodynamic and aeroelastic analysis of flexible
+    aircraft, flying wings and wind turbines.""",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    keywords="KEYWORDS",
+    keywords="nonlinear aeroelastic structural aerodynamic analysis",
     author="",
     author_email="",
-    url="URL",
-    license="LGPL version 2.1",
+    url="https://github.com/ImperialCollegeLondon/sharpy",
+    license="BSD 3-Clause License",
     packages=[
         "sharpy",
         "sharpy.aero",
@@ -45,21 +48,11 @@ setup(
         "sharpy.structure.utils",
         "sharpy.utils",
     ],
-    # package_data={"sharpy": [
-        # "/sharpy/libuvlm.so",
-        # "/sharpy/libxbeam.so",
-        # "/lib/xbeam/lib/*.so",
-        # ]},
-    # install_requires=[
-    #     "numpy>=1.16",
-    #     "mdolab-baseclasses>=1.4",
-    #     "mpi4py>=3.0",
-    #     "petsc4py>=3.11",
-    # ],
-    # extras_require={"testing": ["parameterized", "testflo"]},
+    install_requires=[
+    ],
     classifiers=[
         "Operating System :: Linux",
-        "Programming Language :: Python, Fortran",
+        "Programming Language :: Python, C++",
         ],
 
     entry_points = {
