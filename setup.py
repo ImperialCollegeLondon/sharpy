@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 import re
 import os
 
@@ -25,29 +25,11 @@ setup(
     author_email="",
     url="https://github.com/ImperialCollegeLondon/sharpy",
     license="BSD 3-Clause License",
-    packages=[
-        "sharpy",
-        "sharpy.aero",
-        "sharpy.aero.models",
-        "sharpy.aero.utils",
-        "sharpy.controllers",
-        "sharpy.generators",
-        "sharpy.io",
-        "sharpy.linear",
-        "sharpy.linear.assembler",
-        "sharpy.linear.dev",
-        "sharpy.linear.src",
-        "sharpy.linear.utils",
-        "sharpy.postproc",
-        "sharpy.presharpy",
-        "sharpy.rom",
-        "sharpy.rom.utils",
-        "sharpy.solvers",
-        "sharpy.structure",
-        "sharpy.structure.models",
-        "sharpy.structure.utils",
-        "sharpy.utils",
-    ],
+    packages=find_packages(
+        where='./',
+        include=['sharpy*'],
+        exclude=['tests']
+        ),
     install_requires=[
     ],
     classifiers=[
