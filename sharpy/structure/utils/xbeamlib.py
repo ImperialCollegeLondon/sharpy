@@ -10,7 +10,6 @@ from sharpy.utils.sharpydir import SharpyDir
 import sharpy.utils.cout_utils as cout
 
 
-
 try:
     xbeamlib = ct_utils.import_ctypes_lib(SharpyDir + '/xbeam', 'libxbeam')
 except OSError:
@@ -71,8 +70,6 @@ class Xbopts(ct.Structure):
         self.gravity_dir_z = ct.c_double(1.0)
         self.balancing = ct.c_bool(False)
         self.relaxation_factor = ct.c_double(0.3)
-
-
 
 
 def cbeam3_solv_nlnstatic(beam, settings, ts):
@@ -872,7 +869,6 @@ def cbeam3_asbly_dynamic(beam, tstep, settings):
     """
 
     # library load
-    # xbeamlib = ct_utils.import_ctypes_lib(xbeam_lib_path, 'libxbeam')
     f_cbeam3_asbly_dynamic_python = xbeamlib.cbeam3_asbly_dynamic_python
     f_cbeam3_asbly_dynamic_python.restype = None
 
@@ -976,7 +972,6 @@ def xbeam3_asbly_dynamic(beam, tstep, settings):
     """
 
     # library load
-    # xbeamlib = ct_utils.import_ctypes_lib(xbeam_lib_path, 'libxbeam')
     f_xbeam3_asbly_dynamic_python = xbeamlib.xbeam3_asbly_dynamic_python
     f_xbeam3_asbly_dynamic_python.restype = None
 
@@ -1069,7 +1064,6 @@ def cbeam3_correct_gravity_forces(beam, tstep, settings):
     """
 
     # library load
-    # xbeamlib = ct_utils.import_ctypes_lib(xbeam_lib_path, 'libxbeam')
     f_cbeam3_correct_gravity_forces_python = xbeamlib.cbeam3_correct_gravity_forces_python
     f_cbeam3_correct_gravity_forces_python.restype = None
 
@@ -1123,7 +1117,6 @@ def cbeam3_asbly_static(beam, tstep, settings, iLoadStep):
     """
 
     # library load
-    # xbeamlib = ct_utils.import_ctypes_lib(xbeam_lib_path, 'libxbeam')
     f_cbeam3_asbly_static_python = xbeamlib.cbeam3_asbly_static_python
     f_cbeam3_asbly_static_python.restype = None
 
