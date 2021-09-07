@@ -144,7 +144,7 @@ class Aerogrid(object):
             self.polars = []
             nairfoils = np.amax(self.aero_dict['airfoil_distribution']) + 1
             for iairfoil in range(nairfoils):
-                new_polar = ap.polar()
+                new_polar = ap.Polar()
                 new_polar.initialise(aero_dict['polars'][str(iairfoil)])
                 self.polars.append(new_polar)
 
@@ -194,7 +194,7 @@ class Aerogrid(object):
 
         self.aero_dimensions_star = self.aero_dimensions.copy()
         for i_surf in range(self.n_surf):
-            self.aero_dimensions_star[i_surf, 0] = self.aero_settings['mstar'].value
+            self.aero_dimensions_star[i_surf, 0] = self.aero_settings['mstar']
 
     def add_timestep(self):
         try:

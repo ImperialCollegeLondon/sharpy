@@ -87,18 +87,17 @@ def cbeam3_solv_nlnstatic(beam, settings, ts):
     xbopts = Xbopts()
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
     xbopts.Solution = ct.c_int(112)
-    xbopts.MaxIterations = settings['max_iterations']
-    xbopts.NumLoadSteps = settings['num_load_steps']
-    xbopts.DeltaCurved = settings['delta_curved']
-    xbopts.MinDelta = settings['min_delta']
-    xbopts.gravity_on = settings['gravity_on']
-    xbopts.gravity = settings['gravity']
-    gravity_vector = np.array([0.0, 0.0, 1.0])
-    gravity_vector = np.dot(beam.timestep_info[ts].cag(), gravity_vector)
+    xbopts.MaxIterations = ct.c_int(settings['max_iterations'])
+    xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'])
+    xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
+    xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
+    xbopts.gravity = ct.c_double(settings['gravity'])
+    gravity_vector = np.dot(beam.timestep_info[ts].cag(), settings['gravity_dir'])
     xbopts.gravity_dir_x = ct.c_double(gravity_vector[0])
     xbopts.gravity_dir_y = ct.c_double(gravity_vector[1])
     xbopts.gravity_dir_z = ct.c_double(gravity_vector[2])
-    xbopts.relaxation_factor = settings['relaxation_factor']
+    xbopts.relaxation_factor = ct.c_double(settings['relaxation_factor'])
 
     # here we only need to set the flags at True, all the forces are follower
     xbopts.FollowerForce = ct.c_bool(True)
@@ -167,15 +166,13 @@ def cbeam3_solv_nlndyn(beam, settings):
     f_cbeam3_solv_nlndyn = xbeamlib.cbeam3_solv_nlndyn_python
     f_cbeam3_solv_nlndyn.restype = None
 
-
     n_elem = ct.c_int(beam.num_elem)
     n_nodes = ct.c_int(beam.num_node)
     n_mass = ct.c_int(beam.n_mass)
     n_stiff = ct.c_int(beam.n_stiff)
 
-
-    dt = settings['dt'].value
-    n_tsteps = settings['num_steps'].value
+    dt = settings['dt']
+    n_tsteps = settings['num_steps']
     time = np.zeros((n_tsteps,), dtype=ct.c_double, order='F')
     for i in range(n_tsteps):
         time[i] = i*dt
@@ -194,18 +191,18 @@ def cbeam3_solv_nlndyn(beam, settings):
     # xbopts.OutInaframe = ct.c_bool(settings['out_a_frame'])
     # xbopts.OutInBframe = ct.c_bool(settings['out_b_frame'])
     # xbopts.ElemProj = settings['elem_proj']
-    xbopts.MaxIterations = settings['max_iterations']
-    xbopts.NumLoadSteps = settings['num_load_steps']
+    xbopts.MaxIterations = ct.c_int(settings['max_iterations'])
+    xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'])
     xbopts.NumGauss = ct.c_int(0)
-    xbopts.DeltaCurved = settings['delta_curved']
-    xbopts.MinDelta = settings['min_delta']
-    xbopts.NewmarkDamp = settings['newmark_damp']
-    xbopts.gravity_on = settings['gravity_on']
-    xbopts.gravity = settings['gravity']
+    xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
+    xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.NewmarkDamp = ct.c_double(settings['newmark_damp'])
+    xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
+    xbopts.gravity = ct.c_double(settings['gravity'])
     xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
     xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
     xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
-    xbopts.relaxation_factor = settings['relaxation_factor']
+    xbopts.relaxation_factor = ct.c_double(settings['relaxation_factor'])
 
     # here we only need to set the flags at True, all the forces are follower
     xbopts.FollowerForce = ct.c_bool(True)
@@ -271,25 +268,25 @@ def cbeam3_step_nlndyn(beam, settings, ts, tstep=None, dt=None):
     xbopts = Xbopts()
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
     xbopts.Solution = ct.c_int(312)
-    xbopts.MaxIterations = settings['max_iterations']
-    xbopts.NumLoadSteps = settings['num_load_steps']
+    xbopts.MaxIterations = ct.c_int(settings['max_iterations'])
+    xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'])
     xbopts.NumGauss = ct.c_int(0)
-    xbopts.DeltaCurved = settings['delta_curved']
-    xbopts.MinDelta = settings['min_delta']
-    xbopts.NewmarkDamp = settings['newmark_damp']
-    xbopts.gravity_on = settings['gravity_on']
-    xbopts.gravity = settings['gravity']
-    xbopts.gravity_dir_x = ct.c_double(tstep.gravity_vector_inertial[0])
-    xbopts.gravity_dir_y = ct.c_double(tstep.gravity_vector_inertial[1])
-    xbopts.gravity_dir_z = ct.c_double(tstep.gravity_vector_inertial[2])
-    xbopts.relaxation_factor = settings['relaxation_factor']
+    xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
+    xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.NewmarkDamp = ct.c_double(settings['newmark_damp'])
+    xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
+    xbopts.gravity = ct.c_double(settings['gravity'])
+    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
+    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
+    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
+    xbopts.relaxation_factor = ct.c_double(settings['relaxation_factor'])
 
     # here we only need to set the flags at True, all the forces are follower
     xbopts.FollowerForce = ct.c_bool(True)
     xbopts.FollowerForceRig = ct.c_bool(True)
 
     if dt is None:
-        in_dt = settings['dt']
+        in_dt = ct.c_double(settings['dt'])
     else:
         in_dt = ct.c_double(dt)
 
@@ -345,8 +342,8 @@ def xbeam_solv_couplednlndyn(beam, settings):
     n_mass = ct.c_int(beam.n_mass)
     n_stiff = ct.c_int(beam.n_stiff)
 
-    dt = settings['dt'].value
-    n_tsteps = settings['num_steps'].value
+    dt = settings['dt']
+    n_tsteps = settings['num_steps']
     time = np.zeros((n_tsteps,), dtype=ct.c_double, order='F')
     for i in range(n_tsteps):
         time[i] = i*dt
@@ -365,18 +362,18 @@ def xbeam_solv_couplednlndyn(beam, settings):
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
     xbopts.Solution = ct.c_int(910)
     xbopts.OutInaframe = ct.c_bool(True)
-    xbopts.MaxIterations = settings['max_iterations']
-    xbopts.NumLoadSteps = settings['num_load_steps']
+    xbopts.MaxIterations = ct.c_int(settings['max_iterations'])
+    xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'])
     # xbopts.NumGauss = ct.c_int(0)
-    xbopts.DeltaCurved = settings['delta_curved']
-    xbopts.MinDelta = settings['min_delta']
-    xbopts.NewmarkDamp = settings['newmark_damp']
-    xbopts.gravity_on = settings['gravity_on']
-    xbopts.gravity = settings['gravity']
-    xbopts.gravity_dir_x = ct.c_double(beam.ini_info.gravity_vector_inertial[0])
-    xbopts.gravity_dir_y = ct.c_double(beam.ini_info.gravity_vector_inertial[1])
-    xbopts.gravity_dir_z = ct.c_double(beam.ini_info.gravity_vector_inertial[2])
-    xbopts.relaxation_factor = settings['relaxation_factor']
+    xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
+    xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.NewmarkDamp = ct.c_double(settings['newmark_damp'])
+    xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
+    xbopts.gravity = ct.c_double(settings['gravity'])
+    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
+    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
+    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
+    xbopts.relaxation_factor = ct.c_double(settings['relaxation_factor'])
 
     pos_def_history = np.zeros((n_tsteps.value, beam.num_node, 3), order='F', dtype=ct.c_double)
     pos_dot_def_history = np.zeros((n_tsteps.value, beam.num_node, 3), order='F', dtype=ct.c_double)
@@ -473,29 +470,23 @@ def xbeam_step_couplednlndyn(beam, settings, ts, tstep=None, dt=None):
 
     xbopts = Xbopts()
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
-    xbopts.MaxIterations = settings['max_iterations']
-    xbopts.NumLoadSteps = settings['num_load_steps']
-    xbopts.DeltaCurved = settings['delta_curved']
-    xbopts.MinDelta = settings['min_delta']
-    xbopts.NewmarkDamp = settings['newmark_damp']
-    xbopts.gravity_on = settings['gravity_on']
-    xbopts.gravity = settings['gravity']
-    xbopts.balancing = settings['balancing']
-    xbopts.gravity_dir_x = ct.c_double(tstep.gravity_vector_inertial[0])
-    xbopts.gravity_dir_y = ct.c_double(tstep.gravity_vector_inertial[1])
-    xbopts.gravity_dir_z = ct.c_double(tstep.gravity_vector_inertial[2])
-    xbopts.relaxation_factor = settings['relaxation_factor']
+    xbopts.MaxIterations = ct.c_int(settings['max_iterations'])
+    xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'])
+    xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
+    xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.NewmarkDamp = ct.c_double(settings['newmark_damp'])
+    xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
+    xbopts.gravity = ct.c_double(settings['gravity'])
+    xbopts.balancing = ct.c_bool(settings['balancing'])
+    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
+    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
+    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
+    xbopts.relaxation_factor = ct.c_double(settings['relaxation_factor'])
 
     if dt is None:
-        try:
-            in_dt = ct.c_double(settings['dt'])
-        except TypeError:
-            in_dt = settings['dt']
+        in_dt = ct.c_double(settings['dt'])
     else:
-        try:
-            in_dt = ct.c_double(dt)
-        except TypeError:
-            in_dt = dt
+        in_dt = ct.c_double(dt)
 
     ctypes_ts = ct.c_int(ts)
     numdof = ct.c_int(beam.num_dof.value)
@@ -554,16 +545,16 @@ def xbeam_init_couplednlndyn(beam, settings, ts, dt=None):
 
     xbopts = Xbopts()
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
-    xbopts.MaxIterations = settings['max_iterations']
-    xbopts.NumLoadSteps = settings['num_load_steps']
-    xbopts.DeltaCurved = settings['delta_curved']
-    xbopts.MinDelta = settings['min_delta']
-    xbopts.NewmarkDamp = settings['newmark_damp']
-    xbopts.gravity_on = settings['gravity_on']
-    xbopts.gravity = settings['gravity']
-    xbopts.gravity_dir_x = ct.c_double(beam.timestep_info[ts].gravity_vector_inertial[0])
-    xbopts.gravity_dir_y = ct.c_double(beam.timestep_info[ts].gravity_vector_inertial[1])
-    xbopts.gravity_dir_z = ct.c_double(beam.timestep_info[ts].gravity_vector_inertial[2])
+    xbopts.MaxIterations = ct.c_int(settings['max_iterations'])
+    xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'])
+    xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
+    xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.NewmarkDamp = ct.c_double(settings['newmark_damp'])
+    xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
+    xbopts.gravity = ct.c_double(settings['gravity'])
+    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
+    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
+    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
 
     in_dt = ct.c_double(dt)
 
@@ -577,7 +568,7 @@ def xbeam_init_couplednlndyn(beam, settings, ts, dt=None):
                                     ct.byref(ctypes_ts),
                                     ct.byref(n_elem),
                                     ct.byref(n_nodes),
-                                    ct.byref(settings['dt']),
+                                    ct.byref(ct.c_double(settings['dt'])),
                                     beam.fortran['num_nodes'].ctypes.data_as(intP),
                                     beam.fortran['num_mem'].ctypes.data_as(intP),
                                     beam.fortran['connectivities'].ctypes.data_as(intP),
@@ -615,6 +606,7 @@ def xbeam_solv_state2disp(beam, tstep, cbeam3=False):
     numdof = beam.num_dof.value
     cbeam3_solv_state2disp(beam, tstep)
     if not cbeam3:
+        tstep.for_pos[0:3] = tstep.q[numdof:numdof+3].astype(dtype=ct.c_double, order='F', copy=True)
         tstep.for_vel = tstep.dqdt[numdof:numdof+6].astype(dtype=ct.c_double, order='F', copy=True)
         # tstep.for_acc = tstep.dqddt[numdof:numdof+6].astype(dtype=ct.c_double, order='F', copy=True)
         tstep.quat = algebra.unit_vector(tstep.dqdt[numdof+6:]).astype(dtype=ct.c_double, order='F', copy=True)
@@ -688,6 +680,7 @@ def cbeam3_solv_state2accel(beam, tstep):
 def xbeam_solv_disp2state(beam, tstep):
     numdof = beam.num_dof.value
     cbeam3_solv_disp2state(beam, tstep)
+    tstep.q[numdof:numdof+3] = tstep.for_pos[0:3]
     tstep.dqdt[numdof:numdof+6] = tstep.for_vel
     # tstep.dqddt[numdof:numdof+6] = tstep.for_acc
     tstep.dqdt[numdof+6:] = algebra.unit_vector(tstep.quat)
@@ -793,7 +786,7 @@ def cbeam3_solv_modal(beam, settings, ts, FullMglobal, FullCglobal, FullKglobal)
     # xbopts.MaxIterations = settings['max_iterations']
     # xbopts.NumLoadSteps = settings['num_load_steps']
     xbopts.NumGauss = ct.c_int(0)
-    xbopts.DeltaCurved = settings['delta_curved']
+    xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
     # xbopts.MinDelta = settings['min_delta']
     # xbopts.NewmarkDamp = settings['newmark_damp']
     # xbopts.gravity_on = settings['gravity_on']
@@ -878,23 +871,23 @@ def cbeam3_asbly_dynamic(beam, tstep, settings):
     num_dof = beam.num_dof.value
     n_mass = ct.c_int(beam.n_mass)
     n_stiff = ct.c_int(beam.n_stiff)
-    dt = settings['dt']
+    dt = ct.c_double(settings['dt'])
 
     # Options
     xbopts = Xbopts()
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
     xbopts.Solution = ct.c_int(312)
-    xbopts.MaxIterations = settings['max_iterations']
-    xbopts.NumLoadSteps = settings['num_load_steps']
+    xbopts.MaxIterations = ct.c_int(settings['max_iterations'])
+    xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'])
     xbopts.NumGauss = ct.c_int(0)
-    xbopts.DeltaCurved = settings['delta_curved']
-    xbopts.MinDelta = settings['min_delta']
-    xbopts.NewmarkDamp = settings['newmark_damp']
-    xbopts.gravity_on = settings['gravity_on']
-    xbopts.gravity = settings['gravity']
-    xbopts.gravity_dir_x = ct.c_double(tstep.gravity_vector_inertial[0])
-    xbopts.gravity_dir_y = ct.c_double(tstep.gravity_vector_inertial[1])
-    xbopts.gravity_dir_z = ct.c_double(tstep.gravity_vector_inertial[2])
+    xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
+    xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.NewmarkDamp = ct.c_double(settings['newmark_damp'])
+    xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
+    xbopts.gravity = ct.c_double(settings['gravity'])
+    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
+    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
+    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
 
     # Initialize matrices
     Mglobal = np.zeros((num_dof, num_dof), dtype=ct.c_double, order='F')
@@ -981,23 +974,23 @@ def xbeam3_asbly_dynamic(beam, tstep, settings):
     num_dof = beam.num_dof.value
     n_mass = ct.c_int(beam.n_mass)
     n_stiff = ct.c_int(beam.n_stiff)
-    dt = settings['dt']
+    dt = ct.c_double(settings['dt'])
 
     # Options
     xbopts = Xbopts()
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
     xbopts.Solution = ct.c_int(312)
-    xbopts.MaxIterations = settings['max_iterations']
-    xbopts.NumLoadSteps = settings['num_load_steps']
+    xbopts.MaxIterations = ct.c_int(settings['max_iterations'])
+    xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'])
     xbopts.NumGauss = ct.c_int(0)
-    xbopts.DeltaCurved = settings['delta_curved']
-    xbopts.MinDelta = settings['min_delta']
-    xbopts.NewmarkDamp = settings['newmark_damp']
-    xbopts.gravity_on = settings['gravity_on']
-    xbopts.gravity = settings['gravity']
-    xbopts.gravity_dir_x = ct.c_double(tstep.gravity_vector_inertial[0])
-    xbopts.gravity_dir_y = ct.c_double(tstep.gravity_vector_inertial[1])
-    xbopts.gravity_dir_z = ct.c_double(tstep.gravity_vector_inertial[2])
+    xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
+    xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.NewmarkDamp = ct.c_double(settings['newmark_damp'])
+    xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
+    xbopts.gravity = ct.c_double(settings['gravity'])
+    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
+    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
+    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
 
     # Initialize matrices
     Mtotal = np.zeros((num_dof+10, num_dof+10), dtype=ct.c_double, order='F')
@@ -1133,16 +1126,17 @@ def cbeam3_asbly_static(beam, tstep, settings, iLoadStep):
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
     # xbopts.Solution = ct.c_int(312)
     # xbopts.MaxIterations = settings['max_iterations']
-    xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'].value + 1)
+    xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'] + 1)
     # xbopts.NumGauss = ct.c_int(0)
     # xbopts.DeltaCurved = settings['delta_curved']
     # xbopts.MinDelta = settings['min_delta']
     # xbopts.NewmarkDamp = settings['newmark_damp']
-    xbopts.gravity_on = settings['gravity_on']
-    xbopts.gravity = settings['gravity']
-    xbopts.gravity_dir_x = ct.c_double(tstep.gravity_vector_inertial[0])
-    xbopts.gravity_dir_y = ct.c_double(tstep.gravity_vector_inertial[1])
-    xbopts.gravity_dir_z = ct.c_double(tstep.gravity_vector_inertial[2])
+    xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
+    xbopts.gravity = ct.c_double(settings['gravity'])
+    gravity_vector = np.dot(beam.timestep_info[ts].cag(), settings['gravity_dir'])
+    xbopts.gravity_dir_x = ct.c_double(gravity_vector[0])
+    xbopts.gravity_dir_y = ct.c_double(gravity_vector[1])
+    xbopts.gravity_dir_z = ct.c_double(gravity_vector[2])
 
     # Initialize matrices
     # Mglobal = np.zeros((num_dof, num_dof), dtype=ct.c_double, order='F')
@@ -1199,29 +1193,23 @@ def xbeam_step_coupledrigid(beam, settings, ts, tstep=None, dt=None):
 
     xbopts = Xbopts()
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
-    xbopts.MaxIterations = settings['max_iterations']
-    xbopts.NumLoadSteps = settings['num_load_steps']
-    xbopts.DeltaCurved = settings['delta_curved']
-    xbopts.MinDelta = settings['min_delta']
-    xbopts.NewmarkDamp = settings['newmark_damp']
-    xbopts.gravity_on = settings['gravity_on']
-    xbopts.gravity = settings['gravity']
-    xbopts.balancing = settings['balancing']
-    xbopts.gravity_dir_x = ct.c_double(tstep.gravity_vector_inertial[0])
-    xbopts.gravity_dir_y = ct.c_double(tstep.gravity_vector_inertial[1])
-    xbopts.gravity_dir_z = ct.c_double(tstep.gravity_vector_inertial[2])
-    xbopts.relaxation_factor = settings['relaxation_factor']
+    xbopts.MaxIterations = ct.c_int(settings['max_iterations'])
+    xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'])
+    xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
+    xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.NewmarkDamp = ct.c_double(settings['newmark_damp'])
+    xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
+    xbopts.gravity = ct.c_double(settings['gravity'])
+    xbopts.balancing = ct.c_bool(settings['balancing'])
+    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
+    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
+    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
+    xbopts.relaxation_factor = ct.c_double(settings['relaxation_factor'])
 
     if dt is None:
-        try:
-            in_dt = ct.c_double(settings['dt'])
-        except TypeError:
-            in_dt = settings['dt']
+        in_dt = ct.c_double(settings['dt'])
     else:
-        try:
-            in_dt = ct.c_double(dt)
-        except TypeError:
-            in_dt = dt
+        in_dt = ct.c_double(dt)
 
     ctypes_ts = ct.c_int(ts)
     numdof = ct.c_int(beam.num_dof.value)

@@ -11,13 +11,19 @@ class StraightWake(generator_interface.BaseGenerator):
     r"""
     Straight wake shape generator
 
-    ``StraightWake`` class inherited from ``BaseGenerator``
-
-    The object creates a straight wake shedding from the trailing edge based on
+    This generator creates a straight wake shedding from the trailing edge based on
     the time step ``dt``, the incoming velocity magnitude ``u_inf`` and
-    direction ``u_inf_direction``
+    direction ``u_inf_direction``. It is to be used as ``wake_generator`` in
+     :class:`~sharpy.solvers.aerogridloader.AerogridLoader`.
+
+    A wake where panels grow downstream is supported by using the settings ``dx1``, ``ndx1``,
+    ``r`` and ``dxmax`` as described below. Note that the wake will always have ``m_star`` panels, as specified in
+    :class:`~sharpy.solvers.aerogridloader.AerogridLoader`, thus these settings will modify the effective length
+    of the wake. Once the maximum size of panel ``dxmax`` is achieved, all panels are size ``dxmax`` thereinafter
+    until ``m_star`` panels are created.
     """
     generator_id = 'StraightWake'
+    generator_classification = 'wake'
 
     settings_types = dict()
     settings_default = dict()
@@ -99,12 +105,12 @@ class StraightWake(generator_interface.BaseGenerator):
                                      aero_solver.settings_default)
 
             if 'dt' in aero_solver_settings.keys():
-                dt = aero_solver_settings['dt'].value
+                dt = aero_solver_settings['dt']
             elif 'rollup_dt' in aero_solver_settings.keys():
-                dt = aero_solver_settings['rollup_dt'].value
+                dt = aero_solver_settings['rollup_dt']
             else:
                 # print(aero_solver['velocity_field_input']['u_inf'])
-                dt = 1./aero_solver_settings['velocity_field_input']['u_inf'].value
+                dt = 1./aero_solver_settings['velocity_field_input']['u_inf']
             self.in_dict = {'u_inf': aero_solver_settings['velocity_field_input']['u_inf'],
                             'u_inf_direction': aero_solver_settings['velocity_field_input']['u_inf_direction'],
                             'dt': dt}

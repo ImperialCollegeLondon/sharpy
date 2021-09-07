@@ -7,6 +7,5 @@ Structural Solvers
     ./structural/NonLinearDynamicMultibody
     ./structural/NonLinearDynamicPrescribedStep
     ./structural/NonLinearStatic
-    ./structural/NonLinearStaticMultibody
     ./structural/RigidDynamicCoupledStep
     ./structural/RigidDynamicPrescribedStep
