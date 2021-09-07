@@ -143,6 +143,9 @@ def main(args=None, sharpy_input_dict=None):
 
 
 def sharpy_run():
+    """
+    This is a wrapper function for the console command "sharpy"
+    """
     data = None
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
