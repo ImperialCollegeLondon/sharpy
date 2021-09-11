@@ -11,6 +11,7 @@ def sol_145(num_modes,                  # Num modes in the solution
             horseshoe=False,            # Horseshoe aerodynamic approximation
             velocity_range=[],          # Velocity vector at which stability of the linear system \
                                         # is computed in the AsymptoticStability solver
+            root_method='secant',       # Method to compute the eigenvalaues crossing the x-axis
             flutter_reference=None,     # Starting velocity for the algorithm in DynamicLoads \
                                         # that finds the flutter speed
             velocity_increment=10.,     # Increment of the velocity to find an interval on which \
@@ -147,6 +148,7 @@ def sol_145(num_modes,                  # Num modes in the solution
                                     'reference_velocity': flutter_reference,
                                     'velocity_increment': velocity_increment,
                                     'flutter_error': flutter_error,
+                                    'root_method': root_method,
                                     'damping_tolerance': damping_tolerance,
                                     'calculate_flutter': True,
                                     'frequency_cutoff': frequency_cutoff,
@@ -174,6 +176,7 @@ def sol_146(num_modes,                  # Num modes in the solution
             nz=1.,                      # Gravity factor
             velocity_range=[],          # Velocity vector at which stability of the linear system \
                                         # is computed in the AsymptoticStability solver
+            root_method='secant',       # Method to compute the eigenvalaues crossing the x-axis          
             flutter_reference=None,     # Starting velocity for the algorithm in DynamicLoads \
                                         # that finds the flutter speed
             velocity_increment=10.,     # Increment of the velocity to find an interval on which \
@@ -318,6 +321,7 @@ def sol_146(num_modes,                  # Num modes in the solution
                                     'reference_velocity': flutter_reference,
                                     'velocity_increment': velocity_increment,
                                     'flutter_error': flutter_error,
+                                    'root_method': root_method,                                    
                                     'damping_tolerance': damping_tolerance,
                                     'calculate_flutter': True,
                                     'frequency_cutoff': frequency_cutoff,
@@ -358,6 +362,7 @@ def sol_147(num_modes,                    # Num modes in the solution
             c_ref=1.,                     # Reference chord
             velocity_range=[],            # Velocity vector at which stability of the linear system \
                                         # is computed in the AsymptoticStability solver
+            root_method='secant',       # Method to compute the eigenvalaues crossing the x-axis
             flutter_reference=None,     # Starting velocity for the algorithm in DynamicLoads \
                                         # that finds the flutter speed
             velocity_increment=10.,     # Increment of the velocity to find an interval on which \
@@ -512,6 +517,7 @@ def sol_147(num_modes,                    # Num modes in the solution
                                     'reference_velocity': flutter_reference,
                                     'velocity_increment': velocity_increment,
                                     'flutter_error': flutter_error,
+                                    'root_method': root_method,                                    
                                     'damping_tolerance': damping_tolerance,
                                     'calculate_flutter': True,
                                     'frequency_cutoff': frequency_cutoff,

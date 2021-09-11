@@ -21,6 +21,7 @@ class DynamicLoads(BaseSolver):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_types['print_info'] = 'bool'
     settings_default['print_info'] = False
@@ -47,6 +48,12 @@ class DynamicLoads(BaseSolver):
     this value instead of 0. (useful for some ROMs where stability might not preserved and some \
     eigenvalues are slightly above 0. but do not determine flutter)'
 
+    settings_types['root_method'] = 'str'
+    settings_default['root_method'] = 'secant'
+    settings_description['root_method'] = 'Method to find the damping of the aeroelastic system \
+    crossing the x-axis'
+    settings_options['root_method'] = ['secant', 'bisection']
+    
     settings_types['calculate_flutter'] = 'bool'
     settings_default['calculate_flutter'] = True
     settings_description['calculate_flutter'] = 'Launch the computation of the flutter speed \
@@ -204,10 +211,13 @@ class DynamicLoads(BaseSolver):
         # Secant method (x-axis=speed, y-axis=damping)
         # self.u_flutter = u_new
         while np.abs(u_new - u_old) > epsilon: # Stop searching when interval is smaller than set error
-            ddamping = (damping_new-damping_old)/(u_new-u_old)  # Slope in secant method               
-            du = -damping_old/ddamping
-            u_secant = u_old - damping_old/ddamping # Calculated speed to set damping to 0: \
-                                                # damping_old + ddamping*(u_secant-u_old) = 0
+            if self.settings['root_method'] == 'secant':
+                ddamping = (damping_new-damping_old)/(u_new-u_old)  # Slope in secant method               
+                du = -damping_old/ddamping
+                u_secant = u_old - damping_old/ddamping # Calculated speed to set damping to 0: \
+                                                    # damping_old + ddamping*(u_secant-u_old) = 0
+            elif self.settings['root_method'] == 'bisection':
+                u_secant = (u_new + u_old)/2
             ss_aeroelastic = self.data.linear.linear_system.update(u_secant)
             #print('Secant velocity new: %s'%u_new)
             #print('Secant velocity: %s'%u_secant)
