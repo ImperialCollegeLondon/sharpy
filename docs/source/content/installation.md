@@ -127,7 +127,7 @@ change compilers see the Custom Installation.
     ```
     where the number after the `-j` flag will specify how many cores to use during installation.
 
-4. Finally, leave the build direcotry and install SHARPy
+4. Finally, leave the build directory and install SHARPy
     ```bash
     cd ..
     pip install .
@@ -192,11 +192,12 @@ file if you are installing SHARPy on Mac OS X
     cd ..
     pip install .
     ```
-    If you want to install it in devlopment mode (the source files will stay
-    where the are so you can modify them), use this command
+    If you want to install it in development mode (the source files will stay
+    where the are so you can modify them), you can make an editable install:
     ```
     pip install -e .
     ```
+    You can obtain further information on editable installs [here](https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs)
 
 8. This concludes the installation! Continue reading the [Running SHARPy](#running-sharpy) section.
 
