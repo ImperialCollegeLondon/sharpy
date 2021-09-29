@@ -28,20 +28,20 @@ class PolarCorrection(generator_interface.BaseGenerator):
           (the remaining force).
 
     If ``cd_from_cl == 'on'``.
-        2. The viscous drag and pitching moment is found at the computed lift coefficient and the forces and
-           moments updated
+        2. The viscous drag and pitching moment are found at the computed lift coefficient. Then forces and
+           moments are updated
 
     Else, the angle of attack is computed:
 
             2. The angle of attack is computed based on that lift force and the angle of zero lift computed from the
-               airfoil polar and taking the potential flow lift curve slope of :math:`2 \pi`
+               airfoil polar and assuming the potential flow lift curve slope of :math:`2 \pi`
 
         3. The drag force is computed based on the angle of attack and the polars provided by the user
 
-        4. If ``correct_lift == 'on'``, the lift coefficient is also corrected with the polar data. Else only the
+        4. If ``correct_lift == 'on'``, the lift coefficient is also corrected with the polar data. Else, only the
            UVLM results are used.
 
-    The pitching moment is added in a similar manner to the viscous drag. However, if ``moment_from_polar == 'on'``
+    The pitching moment is added in a similar manner as the viscous drag. However, if ``moment_from_polar == 'on'``
     and ``correct_lift == 'on'``, the total moment (the one used for the FSI) is computed just from polar data,
     overriding any moment computed in SHARPy. That is, the moment will include the polar pitching moment, and moments
     due to lift and drag computed from the polar data.
@@ -66,7 +66,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
     settings_types['moment_from_polar'] = 'bool'
     settings_default['moment_from_polar'] = False
     settings_description['moment_from_polar'] = 'If ``correct_lift`` is selected, it will compute the pitching moment ' \
-                                                'simply from poalr derived data, i.e. the polars Cm and the moments' \
+                                                'simply from polar derived data, i.e. the polars Cm and the moments' \
                                                 'arising from the lift and drag (derived from the polar) contribution. ' \
                                                 'Else, it will add the polar Cm to the moment already computed by ' \
                                                 'SHARPy.'
@@ -139,7 +139,8 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 cab = algebra.crv2rotation(structural_kstep.psi[ielem, inode_in_elem, :])
                 cgb = np.dot(cga, cab)
 
-                airfoil_coords = aerogrid.aero_dict['airfoils'][str(aero_dict['airfoil_distribution'][ielem, inode_in_elem])]
+                if not cd_from_cl:
+                    airfoil_coords = aerogrid.aero_dict['airfoils'][str(aero_dict['airfoil_distribution'][ielem, inode_in_elem])]
 
                 dir_span, span, dir_chord, chord = span_chord(i_n, aero_kstep.zeta[isurf])
 

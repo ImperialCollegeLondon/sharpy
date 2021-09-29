@@ -21,13 +21,13 @@ class Variable:
         self.node = None
         self.panel = None
         self.cs_index = None
+        self.var_type = kwargs.get('var_type', None)
 
-        var_type = kwargs.get('var_type', None)
-        if var_type == 'node':
+        if self.var_type == 'node':
             self.node = position
-        elif var_type == 'panel':
+        elif self.var_type == 'panel':
             self.panel = position
-        elif var_type == 'control_surface':
+        elif self.var_type == 'control_surface':
             self.cs_index = position
         elif self.name == 'dt' or self.name == 'nt':
             pass
@@ -59,13 +59,31 @@ class Variable:
         if self.node is not None:
             # structural variables for now
             variable = getattr(data.structure.timestep_info[timestep_index], self.name)
-            try:
-                value = variable[self.node, self.index]
-            except IndexError:
-                logger.error('Node {} and/or Index {} are out of index of variable {}, '
-                             'which is of size ({})'.format(self.node, self.index, self.dref_name,
-                                                            variable.shape))
-                raise IndexError
+            if len(variable.shape) == 2:
+                try:
+                    value = variable[self.node, self.index]
+                except IndexError:
+                    msg = 'Node {} and/or Index {} are out of index of variable {}, ' \
+                          'which is of size ({})'.format(self.node, self.index, self.dref_name,
+                                                         variable.shape)
+                    logger.error(msg)
+                    raise IndexError(msg)
+            elif len(variable.shape) == 3:
+                try:
+                    ielem, inode_in_elem = data.structure.node_master_elem[self.node]
+                    value = variable[ielem, inode_in_elem, self.index]
+                except IndexError:
+                    msg = 'Node {} and/or Index {} are out of index of variable {}, ' \
+                          'which is of size ({})'.format(self.node, self.index, self.dref_name,
+                                                         variable.shape)
+                    logger.error(msg)
+                    raise IndexError(msg)
+            else:
+                msg = f'Variable {self.name} is neither a node variable nor an element variable. The ' \
+                      f'variable {self.name} is stored as a {variable.shape} array.'
+                logger.error(msg)
+                raise IndexError(msg)
+
         elif self.name == 'dt':
             value = data.settings['DynamicCoupled']['dt']
         elif self.name == 'nt':
@@ -114,7 +132,7 @@ class Variable:
         Set the variable value in the time step
 
         Args:
-            data:
+            data (sharpy.presharpy.PreSharpy): Simulation data object
 
         """
         if self.node is not None: # structural variable then

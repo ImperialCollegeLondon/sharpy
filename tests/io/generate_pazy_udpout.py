@@ -150,8 +150,7 @@ def generate_pazy_udp(u_inf, case_name, output_folder='/output/', cases_folder='
 
     ws.config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                          'text_file_name': ws.case_name + '_aeroforces.csv',
-                                         'screen_output': 'on',
-                                         'unsteady': 'off'}
+                                         'screen_output': 'on'}
 
     ws.config['BeamPlot'] = {'include_rbm': 'off',
                              'include_applied_forces': 'on'}

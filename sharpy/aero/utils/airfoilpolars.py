@@ -128,6 +128,7 @@ class Polar:
                 while self.table[i, 1] > cl:
                         i -= 1
                 cd = np.interp(cl, self.table[i:i+2, 1], self.table[i:i+2, 2])
+                cm = np.interp(cl, self.table[i:i+2, 1], self.table[i:i+2, 3])
         
         return cd, cm
 

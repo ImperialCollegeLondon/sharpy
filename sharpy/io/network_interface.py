@@ -33,7 +33,7 @@ class NetworkLoader:
           inout: 'in'  # either `in`, `out` or `inout`
           position: 0  # control surface index
         - name: 'pos'  # variable name
-          var_type: 'node'  # type of variable. In this case a node variable. Others: `panel` or `control_surface`
+          var_type: 'node'  # type of variable. In this case a node variable. Others: `panel`, `control_surface`
           inout: 'out'
           position: 5  # node number
           index: 2  # vector index, in this case a 3d vector where the desired index is number 2
@@ -41,6 +41,11 @@ class NetworkLoader:
           inout: 'out'
           position: [0, 1, 2] # [i_surf, i_chordwise, i_spanwise]
           var_type: 'panel'
+        - name: 'psi'  # CRV
+          inout: 'out'
+          var_type: 'node'
+          position: 3  # node id
+          index: 2  # dimension index
         ...
 
     All variables in the aero and structural timestep info classes :class:`~sharpy.utils.datastructures` are supported,
@@ -68,8 +73,17 @@ class NetworkLoader:
     See Also:
         Endianness: https://docs.python.org/3/library/struct.html#byte-order-size-and-alignment
 
+
     Note:
         The SHARPy input and output sockets do not time out.
+
+
+    Note:
+        The first time step in a simulation with UDP inputs takes particularly long. Make sure your client has a
+        sufficient time out time to avoid issues. After the first time step, the UDP should not delay the simulation.
+
+    Warnings:
+        There is a limitation, for the moment, on just one control surface being supported for UDP input.
     """
     settings_types = dict()
     settings_default = dict()

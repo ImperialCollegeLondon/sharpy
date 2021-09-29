@@ -53,7 +53,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
     settings_description['track_body'] = 'UVLM inputs and outputs projected to coincide with lattice at linearisation'
 
     settings_types['use_euler'] = 'bool'
-    settings_default['use_euler'] = False
+    settings_default['use_euler'] = True
     settings_description['use_euler'] = 'Parametrise orientations in terms of Euler angles'
 
     settings_table = settings.SettingsTable()
