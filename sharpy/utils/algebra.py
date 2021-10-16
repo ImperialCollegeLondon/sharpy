@@ -269,7 +269,30 @@ def angle_between_vector_and_plane(vector, plane_normal):
                       (np.linalg.norm(vector)*np.linalg.norm(plane_normal)))
     return angle
 
+def panel_area(A, B, C, D):
+    """
+    Calculates the area of a quadrilateral panel from the corner 
+    points A,B,C, and D using Bertschneider's formula
+    
+    Args:
+        A (np.ndarray): Coordinates of point 1
+        B (np.ndarray): Coordinates of point 2
+        C (np.ndarray): Coordinates of point 3
+        D (np.ndarray): Coordinates of point 4
 
+    Returns:
+        float: Area of quadrilateral panel
+    """      
+    Theta_1 = angle_between_vectors(A-B, A-D)
+    Theta_2 = angle_between_vectors(B-C, B-D)
+    a = np.linalg.norm(D-A)
+    b = np.linalg.norm(A-B)
+    c = np.linalg.norm(B-C)
+    d = np.linalg.norm(C-D)
+    s = (a+b+c+d)/2
+    area = np.sqrt((s-a)*(s-b)*(s-c)*(s-d)-a*b*c*d*np.cos(0.5*(Theta_1+Theta_2))**2)
+    return area
+    
 # def mat2quat(mat):
 #     matT = mat.T
 

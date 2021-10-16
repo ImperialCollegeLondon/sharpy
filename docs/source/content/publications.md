@@ -5,6 +5,9 @@ Here we present a list of past papers which have used SHARPy for research purpos
 
 ## 2021
 
+* Artola, M., Goizueta, N., Wynn, A., & Palacios, R. (2021). Aeroelastic Control and Estimation with a Minimal 
+Nonlinear Modal Description. AIAA Journal, 1–17. [https://doi.org/10.2514/1.j060018](https://doi.org/10.2514/1.j060018)
+
 * Artola, M., Goizueta, N., Wynn, A., & Palacios, R. (2021). Proof of Concept for a Hardware-in-the-Loop Nonlinear. 
 In AIAA SciTech Forum (pp. 1–26). [https://doi.org/10.2514/6.2021-1392](https://doi.org/10.2514/6.2021-1392)
 
