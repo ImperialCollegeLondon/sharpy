@@ -84,7 +84,7 @@ class AerogridLoader(BaseSolver):
     settings_default['wake_shape_generator_input'] = dict()
     settings_description['wake_shape_generator_input'] = 'Dictionary of inputs needed by the wake shape generator'
 
-    settings_table = settings_utils.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
                                        settings_options=settings_options)
 
@@ -105,9 +105,9 @@ class AerogridLoader(BaseSolver):
         self.settings = data.settings[self.solver_id]
 
         # init settings
-        settings_utils.to_custom_types(self.settings,
-                                       self.settings_types,
-                                       self.settings_default, options=self.settings_options)
+        su.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default, options=self.settings_options)
 
         # read input file (aero)
         self.read_files()

@@ -2,6 +2,8 @@ import os
 
 import numpy as np
 
+import sharpy.utils.cout_utils as cout
+import sharpy.utils.algebra as algebra
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as su
 from sharpy.utils.datastructures import init_matrix_structure, standalone_ctypes_pointer
@@ -13,9 +15,9 @@ import sharpy.aero.utils.utils as aeroutils
 @solver
 class LiftDistribution(BaseSolver):
     """LiftDistribution
-    
+
     Calculates and exports the lift distribution on lifting surfaces
-    
+
     """
     solver_id = 'LiftDistribution'
     solver_classification = 'post-processor'
@@ -36,7 +38,7 @@ class LiftDistribution(BaseSolver):
     settings_default['rho'] = 1.225
     settings_description['rho'] = 'Reference freestream density [kg/m³]'
 
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -59,7 +61,7 @@ class LiftDistribution(BaseSolver):
             os.makedirs(self.folder)
 
     def run(self, **kwargs):
-        
+
         online = su.set_value_or_default(kwargs, 'online', False)
 
         if not online:
@@ -83,7 +85,7 @@ class LiftDistribution(BaseSolver):
             self.data.structure.connectivities,
             struct_tstep.cag(),
             self.data.aero.aero_dict)
-        # Prepare output matrix and file 
+        # Prepare output matrix and file
         N_nodes = self.data.structure.num_node
         numb_col = 4
         header = "x,y,z,fz"
@@ -102,7 +104,7 @@ class LiftDistribution(BaseSolver):
                 local_node = self.data.aero.struct2aero_mapping[inode][0]["i_n"]
                 ielem, inode_in_elem = self.data.structure.node_master_elem[inode]
                 i_surf = int(self.data.aero.surface_distribution[ielem])
-                # get c_gb                
+                # get c_gb
                 cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem, :])
                 cgb = np.dot(cga, cab)
                 # Get c_bs
