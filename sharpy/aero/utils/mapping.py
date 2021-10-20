@@ -75,3 +75,34 @@ def aero2struct_force_mapping(aero_forces,
                     struct_forces[i_global_node, 3:6] += np.dot(cbg, algebra.cross3(chi_g, aero_forces[i_surf][0:3, i_m, i_n]))
 
     return struct_forces
+
+
+def total_forces_moments(forces_nodes_a,
+                         pos_def,
+                         ref_pos=np.array([0., 0., 0.])):
+    """
+    Performs a summation of the forces and moments expressed at the structural nodes in the A frame of reference.
+
+    Note:
+        If you need to transform forces and moments at the nodes from B to A, use the
+        :func:`~sharpy.structure.models.beam.Beam.nodal_b_for_2_a_for()` function.
+
+    Args:
+        forces_nodes_a (np.array): ``n_node x 6`` vector of forces and moments at the nodes in A
+        pos_def (np.array): ``n_node x 3`` vector of nodal positions in A
+        ref_pos (np.array (optional)): Location in A about which to compute moments. Defaults to ``[0, 0, 0]``
+
+    Returns:
+        np.array: Vector of length 6 containing the total forces and moments expressed in A at the desired location.
+    """
+
+    num_node = pos_def.shape[0]
+    ra_vec = pos_def - ref_pos
+
+    total_forces = np.zeros(3)
+    total_moments = np.zeros(3)
+    for i_global_node in range(num_node):
+        total_forces += forces_nodes_a[i_global_node, :3]
+        total_moments += forces_nodes_a[i_global_node, 3:] + algebra.cross3(ra_vec[i_global_node], forces_nodes_a[i_global_node, :3])
+
+    return np.concatenate((total_forces, total_moments))
