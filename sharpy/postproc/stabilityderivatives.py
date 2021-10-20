@@ -260,11 +260,12 @@ class StabilityDerivatives(solver_interface.BaseSolver):
     def steady_aero_forces(self):
         # Find ref forces in G
         fx, fy, fz = self.data.linear.tsaero0.total_steady_inertial_forces[:3]
-        return fx, fy, fz
+        mx, my, mz = self.data.linear.tsaero0.total_steady_inertial_forces[3:]
+        return fx, fy, fz, mx, my, mz
 
     def static_state(self):
-        fx, fy, fz = self.steady_aero_forces()
-        force_coeff = 0.5 * self.data.linear.tsaero0.rho * self.settings['u_inf'].value ** 2 * self.settings['S_ref'].value
+        fx, fy, fz, mx, my, mz = self.steady_aero_forces()
+        force_coeff = 0.5 * self.data.linear.tsaero0.rho * self.settings['u_inf'].value ** 2 * self.settings['S_ref']
         Cfx = fx / force_coeff
         Cfy = fy / force_coeff
         Cfz = fz / force_coeff

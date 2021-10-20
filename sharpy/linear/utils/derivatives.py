@@ -34,7 +34,11 @@ class Derivatives:
                              'force_angular_vel': self.dynamic_pressure * s_ref * c_ref / u_inf,
                              'moment_lon_angular_vel': self.dynamic_pressure * s_ref * c_ref * c_ref / u_inf}  # missing rates
 
-        self.steady_coefficients = np.array(self.static_state) / self.coefficients['force']
+        self.steady_coefficients = np.array(self.static_state)
+        self.steady_coefficients[:3] /= self.coefficients['force']
+        self.steady_coefficients[3] /= self.coefficients['moment_lat']
+        self.steady_coefficients[4] /= self.coefficients['moment_lon']
+        self.steady_coefficients[5] /= self.coefficients['moment_lat']
 
         self.filename = 'stability_derivatives.txt'
         if target_system is not None:
@@ -69,6 +73,8 @@ class Derivatives:
         else:
             cls.modal = False
         cls.steady_forces = steady_forces
+
+        import pdb; pdb.set_trace()
 
         H0 = state_space.freqresp(np.array([1e-5]))[:, :, 0]
         # A, B, C, D = state_space.get_mats()
@@ -157,7 +163,7 @@ class Derivatives:
             outfile.write('\t{:4f}\t\t\t # Reference span\n'.format(b_ref))
 
             outfile.write(separator)
-            outfile.write('\nCoefficients:\n')
+            outfile.write('\nSteady-state Force and Moment Coefficients:\n')
             for ith, coeff in enumerate(self.steady_coefficients):
                 outfile.write('\t{:4e}\t\t\t # {:s}\n'.format(coeff,  labels_out[ith]))
 
