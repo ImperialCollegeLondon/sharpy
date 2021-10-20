@@ -16,15 +16,19 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Set up GCC
+        uses: egor-tensin/setup-gcc@v1
+        with:
+          version: 10
+          platform: x64
+      - name: Setup conda
+        uses: s-weigand/setup-conda@v1
+        with:
+          python-version: 3.6
       - name: Pre-Install dependencies
         run: |
-          sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-7 /usr/bin/gcc
-          sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-7 /usr/bin/g++
-          sudo ln -s /usr/bin/gfortran-7 /usr/bin/gfortran
           gfortran --version
-          wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-          bash miniconda.sh -b -p $HOME/miniconda
-          export PATH="$HOME/miniconda/bin:$PATH"
+          export PATH="$HOME/conda/bin:$PATH"
           hash -r
           conda config --set always_yes yes --set changeps1 no
           conda update -q conda
