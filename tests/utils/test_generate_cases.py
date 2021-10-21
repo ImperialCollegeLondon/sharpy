@@ -63,7 +63,7 @@ class TestGenerateCases(unittest.TestCase):
                     'n_points_camber': 100,
                     'm_distribution': 'uniform'}
 
-        excel_description = {'excel_file_name': route + '../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v02.xlsx',
+        excel_description = {'excel_file_name': route + '../../docs/source/content/example_notebooks/source/type04_db_nrel5mw_oc3_v06.xlsx',
                             'excel_sheet_parameters': 'parameters',
                             'excel_sheet_structural_blade': 'structural_blade',
                             'excel_sheet_discretization_blade': 'discretization_blade',
