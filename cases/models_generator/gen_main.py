@@ -114,22 +114,8 @@ class Nastran_data:
 
 class Components:
     """
-    This class 
-    The :class:`~sharpy.solvers.dynamiccoupled.DynamicCoupled` solver couples the aerodynamic and structural solvers
-    of choice to march forward in time the aeroelastic system's solution.
-
-    Using the :class:`~sharpy.solvers.dynamiccoupled.DynamicCoupled` solver requires that an instance of the
-    ``StaticCoupled`` solver is called in the SHARPy solution ``flow`` when defining the problem case.
-
-    Input data (from external controllers) can be received and data sent using the SHARPy network
-    interface, specified through the setting ``network_settings`` of this solver. For more detail on how to send
-    and receive data see the :class:`~sharpy.io.network_interface.NetworkLoader` documentation.
-
-    Changes to the structural properties or external forces that depend on the instantaneous situation of the system
-    can be applied through ``runtime_generators``. These runtime generators are parsed through dictionaries, with the
-    key being the name of the generator and the value the settings for such generator. The currently available
-    ``runtime_generators`` are :class:`~sharpy.generators.externalforces.ExternalForces` and
-    :class:`~sharpy.generators.modifystructure.ModifyStructure`.
+    This class builds a SHARPy model as one component of a general model that 
+    then needs to be assembled
 
     """
     def __init__(self, key, in_put, out_put, settings):
@@ -464,6 +450,7 @@ class Components:
                     chord=None,
                     elastic_axis=None,
                     point_platform=None,
+                    beam_origin=None,
                     twist=0.,
                     sweep=0.,
                     surface_distribution=None,
@@ -493,7 +480,10 @@ class Components:
         """
 
         if point_platform is not None:
-            chord, elastic_axis = gu.from4points2chord(self.sharpy.fem['coordinates'],
+            if beam_origin is None:
+                beam_origin = np.zeros(3)
+            chord, elastic_axis = gu.from4points2chord(self.sharpy.fem['coordinates']
+                                                       + beam_origin,
                                                        point_platform['leading_edge1'],
                                                        point_platform['leading_edge2'],
                                                        point_platform['trailing_edge1'],
