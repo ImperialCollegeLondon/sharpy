@@ -40,7 +40,7 @@ jobs:
           sudo apt install libeigen3-dev
           conda env create -f utils/environment_minimal.yml
           conda init bash
-          conda activate sharpy_minimal
+          source activate sharpy_minimal
           conda install coverage
       - name: Install
         run: |
