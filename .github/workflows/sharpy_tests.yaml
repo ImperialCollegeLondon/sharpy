@@ -39,7 +39,7 @@ jobs:
           export QT_QPA_PLATFORM='offscreen'
           sudo apt install libeigen3-dev
           conda env create -f utils/environment_minimal.yml
-          source activate sharpy_minimal
+          conda activate sharpy_minimal
           conda install coverage
       - name: Install
         run: |
@@ -51,4 +51,5 @@ jobs:
           cmake .. && make install -j 4 && cd ..
       - name: Test with pytest
         run: |
+          which coverage
           coverage run -m unittest discover
