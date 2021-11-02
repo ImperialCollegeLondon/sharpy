@@ -41,17 +41,12 @@ jobs:
           conda env create -f utils/environment_minimal.yml
           conda init bash
           source activate sharpy_minimal
-      - name: Install
-        run: |
           git submodule init
           git submodule update
           git fetch -t
           source bin/sharpy_vars.sh
           mkdir build && cd build
           cmake .. && make install -j 4 && cd ..
-      - name: Test with coverage
-        run: |
-          source activate sharpy_minimal
           pip install coverage
           coverage run -m unittest discover
       - name: Upload Coverage to Codecov
