@@ -51,6 +51,7 @@ jobs:
           cmake .. && make install -j 4 && cd ..
       - name: Test with coverage
         run: |
+          source activate sharpy_minimal
           pip install coverage
           coverage run -m unittest discover
       - name: Upload Coverage to Codecov
