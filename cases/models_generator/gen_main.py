@@ -331,6 +331,9 @@ class Components:
                                                                          stiffness_db[6])
         if elem_stiffness is None:
             self.sharpy.fem['elem_stiffness'] = np.zeros(self.sharpy.fem['num_elem'], dtype=int)
+            for i in range(len(self.sharpy.fem['stiffness_db'])):
+                self.sharpy.fem['elem_stiffness'][i] = i
+
         else:
             self.sharpy.fem['elem_stiffness'] = np.array(elem_stiffness)
         if len(np.shape(mass_db)) == 3:
@@ -344,6 +347,8 @@ class Components:
                                                                      mass_db[5])
         if elem_mass is None:
             self.sharpy.fem['elem_mass'] = np.zeros(self.sharpy.fem['num_elem'], dtype=int)
+            for i in range(len(self.sharpy.fem['mass_db'])):
+                self.sharpy.fem['elem_mass'][i] = i
         else:
             self.sharpy.fem['elem_mass'] = np.array(elem_mass)
         if lumped_mass is not None:
@@ -480,16 +485,31 @@ class Components:
             polars (np.array): table of polars to correct VLM              
         """
 
-        if point_platform is not None:
+        if point_platform is not None: # aero defined from 4 points
+                                       # (leading_and  trailing edge)
             if beam_origin is None:
                 beam_origin = np.zeros(3)
-            chord, elastic_axis = gu.from4points2chord(self.sharpy.fem['coordinates']
-                                                       + beam_origin,
-                                                       point_platform['leading_edge1'],
-                                                       point_platform['leading_edge2'],
-                                                       point_platform['trailing_edge1'],
-                                                       point_platform['trailing_edge2'],
-                                                       **point_platform_tolerances)
+            if twist: # remove twist from 4 points to obtain the resultant plane
+                points_platform = gu.plane_from_twist(self.sharpy.fem['coordinates']
+                                                      + beam_origin,
+                                                      twist,
+                                                      point_platform['leading_edge1'],
+                                                      point_platform['leading_edge2'],
+                                                      point_platform['trailing_edge1'],
+                                                      point_platform['trailing_edge2'])
+                chord, elastic_axis = gu.from4points2chord(self.sharpy.fem['coordinates']
+                                                           + beam_origin,
+                                                           points_platform[0],
+                                                           points_platform[1],
+                                                           points_platform[2],
+                                                           points_platform[3])
+            else:
+                chord, elastic_axis = gu.from4points2chord(self.sharpy.fem['coordinates']
+                                                           + beam_origin,
+                                                           point_platform['leading_edge1'],
+                                                           point_platform['leading_edge2'],
+                                                           point_platform['trailing_edge1'],
+                                                           point_platform['trailing_edge2'])
         else:
             assert chord is not None and elastic_axis is not None, \
              "Chord and elastic_axis variables need to be defined if point_platform is not"

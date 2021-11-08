@@ -192,9 +192,60 @@ def from4points2chord(beam, leading_edge1, leading_edge2,
     else:
         chord, ea = node2aero(chord1, ea1)
         return chord, ea
-    
 
-if __name__=='__main__':
+def plane_from_twist(beam, twist,
+                     leading_edge1, leading_edge2,
+                     trailing_edge1, trailing_edge2):
+    
+    beam_direction = (beam[-1] - beam[0])/np.linalg.norm(beam[-1] - beam[0])
+    chord_le1 = leading_edge1-beam[0]
+    chord_te1 = trailing_edge1-beam[0]
+    chord_le2 = leading_edge2-beam[-1]
+    chord_te2 = trailing_edge2-beam[-1]
+    # rotate chord at root
+    if twist[0] > 0.:
+        chord_le1r = rotate_vector(chord_le1, beam_direction, -twist[0])
+        chord_te1r = rotate_vector(chord_te1, beam_direction, -twist[0])
+    elif twist[0] < 0.:
+        chord_le1r = rotate_vector(chord_le1, beam_direction, twist[0])
+        chord_te1r = rotate_vector(chord_te1, beam_direction, twist[0])
+    else:
+        chord_le1r = chord_le1
+        chord_te1r = chord_te1
+    # rotate chord at tip
+    if twist[-1] > 0.:
+        chord_le2r = rotate_vector(chord_le2, beam_direction, -twist[-1])
+        chord_te2r = rotate_vector(chord_te2, beam_direction, -twist[-1])
+    elif twist[-1] < 0.:
+        chord_le2r = rotate_vector(chord_le2, beam_direction, twist[-1])
+        chord_te2r = rotate_vector(chord_te2, beam_direction, twist[-1])
+    else:
+        chord_le2r = chord_le2
+        chord_te2r = chord_te2
+
+    points_platform = [chord_le1r + beam[0],
+                       chord_le2r + beam[-1],
+                       chord_te1r + beam[0],
+                       chord_te2r + beam[-1]]
+    plane1 = np.cross(points_platform[0]-beam[0],
+                      points_platform[1]-points_platform[0])
+    plane2 = np.cross(points_platform[2]-beam[0],
+                      points_platform[3]-points_platform[2])
+    assert np.allclose(np.cross(plane1,plane2), np.zeros(3), 1e-4), \
+        "Resultant platform after removing twist does not conform a plane"
+    return points_platform
+
+def rotate_vector(v, k, theta):
+    """
+    Rotate vector v around axis k by theta using the right-hand side rule
+    """
+
+    cos_theta = np.cos(theta)
+    sin_theta = np.sin(theta)
+    v_rot = cos_theta*v + sin_theta*np.cross(k, v) + (1 - cos_theta)*k.dot(v)*k
+    return v_rot
+
+if (__name__=='__main__'):
     chord01 = 6.5
     ea01 = 0.4
     sweep1 = np.pi/180*20
@@ -215,3 +266,11 @@ if __name__=='__main__':
     ea1, chord1 = get_chord(ledge1, tedge1, beam1)
     ea1, chord1 = node2aero(ea1,chord1)
     ea,c = from4points2chord(beam1, ledge1[0], ledge1[-1], tedge1[0], tedge1[-1],True)
+    ######
+    twist = [0, 25/180*np.pi]
+    plane_points = plane_from_twist(beam=np.array([[0,0,0],[0,10,0]]),
+                                    twist=twist,
+                                    leading_edge1=np.array([-1,0,0]),
+                                    leading_edge2=np.array([-1*np.cos(twist[-1]),10, 1*np.sin(twist[-1])]),
+                                    trailing_edge1=np.array([1,0,0]),
+                                    trailing_edge2=np.array([1*np.cos(twist[-1]), 10, -1*np.sin(twist[-1])]))
