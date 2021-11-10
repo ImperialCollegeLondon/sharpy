@@ -288,26 +288,23 @@ class Aerogrid(Grid):
                                    orientation_in=self.aero_settings['freestream_dir'],
                                    calculate_zeta_dot=True))
         # set junction boundary conditions for later phantom cell creation in UVLM
-        if "junction_boundary_condition" in self.data_dict and sum(self.data_dict["junction_boundary_condition"])>0:
+        if "junction_boundary_condition" in self.data_dict:
+            if np.any(self.data_dict["junction_boundary_condition"] >= 0):
             self.generate_phantom_panels_at_junction(aero_tstep)
 
 
     def generate_phantom_panels_at_junction(self, aero_tstep):
         # To-Do: Extent for general case
-        list_global_node_junction = (np.where(self.data_dict["junction_boundary_condition"] > 0)[0]).tolist()
-        list_local_nodes = []
-        list_surfaces = []
-        for i_global_node in list_global_node_junction:
-            for i in range(len(self.struct2aero_mapping[i_global_node])):
-                list_local_nodes.append(self.struct2aero_mapping[i_global_node][i]['i_n'])
-                list_surfaces.append(self.struct2aero_mapping[i_global_node][i]['i_surf'])
-
+        # list_global_node_junction = np.where(self.data_dict["junction_boundary_condition"] >= 0)[0]
+        # list_local_nodes = []
+        # list_surfaces = []
+        # list_partner_surface = []
+        # for i_global_node in list_global_node_junction.tolist():
+        #     list_partner_surface.append(self.data_dict["junction_boundary_condition"][i_global_node])
+        #     for i in range(len(self.struct2aero_mapping[i_global_node])):
         for i_surf in range(self.n_surf):
-            if i_surf in list_surfaces:
-                idx = list_surfaces.index(i_surf)                
-                # assume that there is only one junction per surface yet
-                aero_tstep.flag_zeta_phantom[i_surf][list_local_nodes[idx], 0] = \
-                        self.data_dict["junction_boundary_condition"][list_global_node_junction[idx]]
+                aero_tstep.flag_zeta_phantom[0, i_surf] = self.data_dict["junction_boundary_condition"][0,i_surf] 
+
 
 
     @staticmethod
