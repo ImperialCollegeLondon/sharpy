@@ -201,7 +201,8 @@ class StepUvlm(BaseSolver):
             convect_wake=True,
             dt=None,
             t=None,
-            unsteady_contribution=False):
+            unsteady_contribution=False,
+            nl_body_tstep = None):
         """
         Runs a step of the aerodynamics as implemented in UVLM.
         """
