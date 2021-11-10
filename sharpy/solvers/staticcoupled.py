@@ -91,7 +91,7 @@ class StaticCoupled(BaseSolver):
         self.residual_table = None
 
         self.correct_forces = False
-        self.correct_forces_function = None
+        self.correct_forces_generator = None
 
         self.runtime_generators = dict()
         self.with_runtime_generators = False
@@ -125,7 +125,12 @@ class StaticCoupled(BaseSolver):
         # Define the function to correct aerodynamic forces
         if self.settings['correct_forces_method'] is not '':
             self.correct_forces = True
-            self.correct_forces_function = cf.dict_of_corrections[self.settings['correct_forces_method']]
+            self.correct_forces_generator = gen_interface.generator_from_string(self.settings['correct_forces_method'])()
+            self.correct_forces_generator.initialise(in_dict=self.settings['correct_forces_settings'],
+                                                     aero=self.data.aero,
+                                                     structure=self.data.structure,
+                                                     rho=self.settings['aero_solver_settings']['rho'],
+                                                     vortex_radius=self.settings['aero_solver_settings']['vortex_radius'])
 
         # initialise runtime generators
         self.runtime_generators = dict()
@@ -174,6 +179,7 @@ class StaticCoupled(BaseSolver):
                 self.data = self.aero_solver.run()
 
                 # map force
+                # TODO: case if nonlifting body only (coupling solvers do not make sense anyway for this case)
                 struct_forces = mapping.aero2struct_force_mapping(
                     self.data.aero.timestep_info[self.data.ts].forces,
                     self.data.aero.struct2aero_mapping,
@@ -186,10 +192,10 @@ class StaticCoupled(BaseSolver):
                     self.data.aero.data_dict)
 
                 if self.correct_forces:
-                    struct_forces = self.correct_forces_function(self.data,
-                                        self.data.aero.timestep_info[self.data.ts],
-                                        self.data.structure.timestep_info[self.data.ts],
-                                        struct_forces,
+                    struct_forces = \
+                        self.correct_forces_generator.generate(aero_kstep=self.data.aero.timestep_info[self.data.ts],
+                                                               structural_kstep=self.data.structure.timestep_info[self.data.ts],
+                                                               struct_forces=struct_forces)
                                         rho=self.aero_solver.settings['rho'])
 
                    
@@ -243,6 +249,7 @@ class StaticCoupled(BaseSolver):
                 # update grid
                 self.aero_solver.update_step()
 
+                self.structural_solver.update(self.data.structure.timestep_info[self.data.ts])
                 # convergence
                 if self.convergence(i_iter, i_step):
                     # create q and dqdt vectors
