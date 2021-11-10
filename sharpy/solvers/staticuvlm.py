@@ -143,50 +143,49 @@ class StaticUvlm(BaseSolver):
         self.velocity_generator.initialise(self.settings['velocity_field_input'])
 
     def run(self):
-        if not self.data.aero.timestep_info[self.data.ts].zeta:
-            return self.data
+        if not self.settings['only_nonlifting']:
+            if not self.data.aero.timestep_info[self.data.ts].zeta:
+                return self.data
 
-        # generate the wake because the solid shape might change
-        aero_tstep = self.data.aero.timestep_info[self.data.ts]
-        self.data.aero.wake_shape_generator.generate({'zeta': aero_tstep.zeta,
-                                            'zeta_star': aero_tstep.zeta_star,
-                                            'gamma': aero_tstep.gamma,
-                                            'gamma_star': aero_tstep.gamma_star,
-                                            'dist_to_orig': aero_tstep.dist_to_orig})
-
-        # check if nonlifting body interactions have to be considered
-        if not self.settings['nonlifting_body_interactions']:
-            self.velocity_generator.generate({'zeta': self.data.nonlifting_body.timestep_info[self.data.ts].zeta,
-                                            'override': True,
-                                            'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
-                                            self.data.nonlifting_body.timestep_info[self.data.ts].u_ext)
-            uvlmlib.vlm_solver_nonlifting_body(self.data.nonlifting_body.timestep_info[self.data.ts],
-                                            self.settings)
-        elif self.settings['nonlifting_body_interactions']:
-            # generate uext
-            self.velocity_generator.generate({'zeta': self.data.nonlifting_body.timestep_info[self.data.ts].zeta,
-                                            'override': True,
-                                            'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
-                                            self.data.nonlifting_body.timestep_info[self.data.ts].u_ext)
-            # generate uext
-            self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
-                                            'override': True,
-                                            'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},  
-                                            self.data.aero.timestep_info[self.data.ts].u_ext)
-            # grid orientation
-            uvlmlib.vlm_solver_lifting_and_nonlifting_bodies(self.data.aero.timestep_info[self.data.ts],
+            # generate the wake because the solid shape might change
+            aero_tstep = self.data.aero.timestep_info[self.data.ts]
+            self.data.aero.wake_shape_generator.generate({'zeta': aero_tstep.zeta,
+                                                'zeta_star': aero_tstep.zeta_star,
+                                                'gamma': aero_tstep.gamma,
+                                                'gamma_star': aero_tstep.gamma_star,
+                                                'dist_to_orig': aero_tstep.dist_to_orig})
+            if self.settings['nonlifting_body_interactions']:
+                # generate uext
+                self.velocity_generator.generate({'zeta': self.data.nonlifting_body.timestep_info[self.data.ts].zeta,
+                                                'override': True,
+                                                'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
+                                                self.data.nonlifting_body.timestep_info[self.data.ts].u_ext)
+                # generate uext
+                self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
+                                                'override': True,
+                                                'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},  
+                                                self.data.aero.timestep_info[self.data.ts].u_ext)
+                # grid orientation
+                uvlmlib.vlm_solver_lifting_and_nonlifting_bodies(self.data.aero.timestep_info[self.data.ts],
                                                             self.data.nonlifting_body.timestep_info[self.data.ts],
                                                             self.settings)
         else:        
             # generate uext
             self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
                                               'override': True,
-                                              'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
-                                             self.data.aero.timestep_info[self.data.ts].u_ext)
+                                                    'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
+                                                    self.data.aero.timestep_info[self.data.ts].u_ext)
 
-            # grid orientation
-            uvlmlib.vlm_solver(self.data.aero.timestep_info[self.data.ts],
-                               self.settings)
+                # grid orientation
+                uvlmlib.vlm_solver(self.data.aero.timestep_info[self.data.ts],
+                                    self.settings)
+        else:
+            self.velocity_generator.generate({'zeta': self.data.nonlifting_body.timestep_info[self.data.ts].zeta,
+                                            'override': True,
+                                            'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
+                                            self.data.nonlifting_body.timestep_info[self.data.ts].u_ext)
+            uvlmlib.vlm_solver_nonlifting_body(self.data.nonlifting_body.timestep_info[self.data.ts],
+                                               self.settings)
 
         return self.data
 
@@ -199,13 +198,12 @@ class StaticUvlm(BaseSolver):
         self.update_step()
 
     def update_step(self):
-        self.data.aero.generate_zeta(self.data.structure,
-                                     self.data.aero.aero_settings,
-                                     self.data.ts)
-        # for i_surf in range(self.data.aero.timestep_info[self.data.ts].n_surf):
-        #     self.data.aero.timestep_info[self.data.ts].forces[i_surf].fill(0.0)
-        #     self.data.aero.timestep_info[self.data.ts].dynamic_forces[i_surf].fill(0.0)
-        if self.settings['nonlifting_body_interactions']:
+        if not self.settings['only_nonlifting']:
+            self.data.aero.generate_zeta(self.data.structure,
+                                        self.data.aero.aero_settings,
+                                        self.data.ts)
+        if self.settings['nonlifting_body_interactions'] or self.settings['only_nonlifting']:
             self.data.nonlifting_body.generate_zeta(self.data.structure,
-                                                    self.data.aero.aero_settings,
+                                                    self.data.nonlifting_body.aero_settings,
                                                     self.data.ts)
+
