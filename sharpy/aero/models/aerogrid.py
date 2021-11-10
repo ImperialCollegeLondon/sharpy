@@ -294,14 +294,6 @@ class Aerogrid(Grid):
 
 
     def generate_phantom_panels_at_junction(self, aero_tstep):
-        # To-Do: Extent for general case
-        # list_global_node_junction = np.where(self.data_dict["junction_boundary_condition"] >= 0)[0]
-        # list_local_nodes = []
-        # list_surfaces = []
-        # list_partner_surface = []
-        # for i_global_node in list_global_node_junction.tolist():
-        #     list_partner_surface.append(self.data_dict["junction_boundary_condition"][i_global_node])
-        #     for i in range(len(self.struct2aero_mapping[i_global_node])):
         for i_surf in range(self.n_surf):
                 aero_tstep.flag_zeta_phantom[0, i_surf] = self.data_dict["junction_boundary_condition"][0,i_surf] 
 
@@ -429,7 +421,7 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
             # deflection velocity
             try:
                 cs_velocity[:, i_M] += np.cross(np.array([-node_info['control_surface']['deflection_dot'], 0.0, 0.0]),
-                                                relative_coords)
+                                            relative_coords)
             except KeyError:
                 pass
 
