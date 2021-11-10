@@ -61,10 +61,16 @@ class StaticCoupled(BaseSolver):
     settings_default['relaxation_factor'] = 0.
     settings_description['relaxation_factor'] = 'Relaxation parameter in the FSI iteration. 0 is no relaxation and -> 1 is very relaxed'
 
+
     settings_types['correct_forces_method'] = 'str'
-    settings_default['correct_forces_method'] = '' # 'efficiency'
-    settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. Check :py:mod:`sharpy.utils.correct_forces`'
-    settings_options['correct_forces_method'] = ['efficiency', 'polars']
+    settings_default['correct_forces_method'] = ''
+    settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. ' \
+                                                    'See :py:mod:`sharpy.generators.polaraeroforces`'
+    settings_options['correct_forces_method'] = ['EfficiencyCorrection', 'PolarCorrection']
+
+    settings_types['correct_forces_settings'] = 'dict'
+    settings_default['correct_forces_settings'] = {}
+    settings_description['correct_forces_settings'] = 'Settings for corrected forces evaluation'
 
     settings_types['runtime_generators'] = 'dict'
     settings_default['runtime_generators'] = dict()
