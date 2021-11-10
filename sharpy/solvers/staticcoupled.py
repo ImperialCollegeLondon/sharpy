@@ -202,8 +202,6 @@ class StaticCoupled(BaseSolver):
                         self.correct_forces_generator.generate(aero_kstep=self.data.aero.timestep_info[self.data.ts],
                                                                structural_kstep=self.data.structure.timestep_info[self.data.ts],
                                                                struct_forces=struct_forces)
-                                        rho=self.aero_solver.settings['rho'])
-
                    
                 # if self.settings['nonlifting_body_interaction']:
                 #     struct_forces +=  mapping.aero2struct_force_mapping(
