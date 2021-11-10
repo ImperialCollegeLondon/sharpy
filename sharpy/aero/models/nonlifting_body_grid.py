@@ -52,11 +52,26 @@ class Nonlifting_body_grid(Grid):
         cga_rotation_matrix = structure_tstep.cga()
 
         for node_counter, i_global_node in enumerate(self.aero2struct_mapping[i_surf]):
-            radius = self.data_dict["radius"][i_global_node]
+            # TODO: Adjust for ellipse input
+            if self.data_dict["shape"] == 'specific':
+                a_ellipse = self.data_dict["a_ellipse"][i_global_node]
+                b_ellipse = self.data_dict["b_ellipse"][i_global_node]
+                z_0 =self.data_dict["z_0_ellipse"][i_global_node]
+                if a_ellipse == 0. or b_ellipse == 0.:
+                    radius = 0
+                else:
+                    radius = a_ellipse*b_ellipse/np.sqrt(
+                        (b_ellipse*array_cos_phi)**2
+                        +(a_ellipse*array_sin_phi)**2)
+            else:
+                radius = self.data_dict["radius"][i_global_node]
+                z_0 = 0
+            
+            
             # get nodes position in B frame
-            #matrix_nodes[0, :numb_radial_nodes, node_counter] = 0
             matrix_nodes[1, :, node_counter] = radius*array_cos_phi
-            matrix_nodes[2, :, node_counter] = radius*array_sin_phi
+            matrix_nodes[2, :, node_counter] = radius*array_sin_phi + z_0
+            
             # convert position from B to A frame
             i_elem, i_local_node = self.get_elment_and_local_node_id(i_surf, i_global_node)
             psi_node = structure_tstep.psi[i_elem, i_local_node,:]
