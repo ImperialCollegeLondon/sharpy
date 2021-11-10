@@ -488,6 +488,8 @@ class DynamicCoupled(BaseSolver):
             aero_kstep = self.data.aero.timestep_info[-1].copy()
             if self.settings['nonlifting_body_interaction']:
                 nl_body_kstep = self.data.nonlifting_body.timestep_info[-1].copy()
+            else:
+                nl_body_kstep = None
             self.logger.debug('Time step {}'.format(self.data.ts))
 
             # Add the controller here
@@ -539,14 +541,17 @@ class DynamicCoupled(BaseSolver):
                     cout.cout_wrap(("The FSI solver did not converge!!! residuals: %f %f" % (print_res, print_res_dqdt)))
                     self.aero_solver.update_custom_grid(
                         structural_kstep,
-                        aero_kstep)
+                        aero_kstep,
+                        nl_body_kstep)
                     break
 
                 # generate new grid (already rotated)
                 aero_kstep = controlled_aero_kstep.copy()
+                
                 self.aero_solver.update_custom_grid(
-                    structural_kstep,
-                    aero_kstep)
+                        structural_kstep,
+                        aero_kstep,
+                        nl_body_kstep)
 
                 # compute unsteady contribution
                 force_coeff = 0.0
@@ -594,15 +599,10 @@ class DynamicCoupled(BaseSolver):
                 previous_kstep.runtime_generated_forces = previous_runtime_generated_forces.astype(dtype=ct.c_double, order='F', copy=True)
 
                 # move the aerodynamic surface according the the structural one
-                
-                if self.settings['nonlifting_body_interaction']:
-                    self.aero_solver.update_custom_grid(structural_kstep,
+                self.aero_solver.update_custom_grid(
+                        structural_kstep,
                                                         aero_kstep,
-                                                        nl_body_tstep = nl_body_kstep)
-                else:                    
-                    self.aero_solver.update_custom_grid(structural_kstep,
-                                                        aero_kstep,
-                                                        nl_body_tstep = nl_body_kstep)
+                        nl_body_kstep)
                 if self.settings['nonlifting_body_interaction']:
                     self.map_forces(aero_kstep,
                                 structural_kstep,
@@ -642,8 +642,8 @@ class DynamicCoupled(BaseSolver):
                         coeff=coeff)
 
                     self.data = self.structural_solver.run(
-                        structural_step=structural_kstep,
-                        dt=self.substep_dt)
+                        structural_step=structural_kstep) #,
+                        # dt=self.substep_dt)
 
                 self.time_struc += time.perf_counter() - ini_time_struc
 
@@ -655,16 +655,19 @@ class DynamicCoupled(BaseSolver):
                                     self.settings['aero_solver'].lower(),
                                     self.with_runtime_generators):
                     # move the aerodynamic surface according to the structural one
-                    self.aero_solver.update_custom_grid(
-                        structural_kstep,
-                        aero_kstep)
+                    self.aero_solver.update_custom_grid(structural_kstep,
+                                                        aero_kstep,
+                                                        nl_body_tstep = nl_body_kstep)
                     break
 
             # move the aerodynamic surface according the the structural one
-            self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
+            self.aero_solver.update_custom_grid(structural_kstep,
+                                                aero_kstep,
+                                                nl_body_tstep = nl_body_kstep)
 
             self.aero_solver.add_step()
             self.data.aero.timestep_info[-1] = aero_kstep.copy()
+            self.data.nonlifting_body.timestep_info[-1] = nl_body_kstep.copy()
             self.structural_solver.add_step()
             self.data.structure.timestep_info[-1] = structural_kstep.copy()
 
