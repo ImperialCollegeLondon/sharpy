@@ -124,7 +124,7 @@ def polars(data, aero_kstep, structural_kstep, struct_forces, **kwargs):
             iairfoil = data_dict['airfoil_distribution'][ielem, inode_in_elem]
             isurf = aerogrid.struct2aero_mapping[inode][0]['i_surf']
             i_n = aerogrid.struct2aero_mapping[inode][0]['i_n']
-            N = aerogrid.aero_dimensions[isurf, 1]
+            N = aerogrid.dimensions[isurf, 1]
             polar = aerogrid.polars[iairfoil]
             cab = algebra.crv2rotation(structural_kstep.psi[ielem, inode_in_elem, :])
             cga = algebra.quat2rotation(structural_kstep.quat)
