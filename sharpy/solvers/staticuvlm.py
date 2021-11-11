@@ -169,12 +169,13 @@ class StaticUvlm(BaseSolver):
                 uvlmlib.vlm_solver_lifting_and_nonlifting_bodies(self.data.aero.timestep_info[self.data.ts],
                                                             self.data.nonlifting_body.timestep_info[self.data.ts],
                                                             self.settings)
-        else:        
-            # generate uext
-            self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
-                                              'override': True,
-                                                    'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
-                                                    self.data.aero.timestep_info[self.data.ts].u_ext)
+            else:        
+                # generate uext
+                self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
+                                                'override': True,
+                                                        'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
+                                                        self.data.aero.timestep_info[self.data.ts].u_ext)
+
 
                 # grid orientation
                 uvlmlib.vlm_solver(self.data.aero.timestep_info[self.data.ts],

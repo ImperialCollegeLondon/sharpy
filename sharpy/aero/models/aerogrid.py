@@ -290,7 +290,7 @@ class Aerogrid(Grid):
         # set junction boundary conditions for later phantom cell creation in UVLM
         if "junction_boundary_condition" in self.data_dict:
             if np.any(self.data_dict["junction_boundary_condition"] >= 0):
-            self.generate_phantom_panels_at_junction(aero_tstep)
+                self.generate_phantom_panels_at_junction(aero_tstep)
 
 
     def generate_phantom_panels_at_junction(self, aero_tstep):
