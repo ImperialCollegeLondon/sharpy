@@ -311,7 +311,6 @@ def vlm_solver_lifting_and_nonlifting_bodies(ts_info_lifting, ts_info_nonlifting
             ts_info_lifting.ct_p_gamma_star,
             ts_info_lifting.ct_p_forces,
             ts_info_lifting.ct_p_flag_zeta_phantom,
-            p_rbm_vel_g,
             ts_info_nonlifting.ct_p_dimensions,
             ts_info_nonlifting.ct_p_zeta,
             ts_info_nonlifting.ct_p_u_ext,
