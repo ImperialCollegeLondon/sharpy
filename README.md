@@ -74,7 +74,7 @@ For the latest documentation, see the
 [installation docs](https://ic-sharpy.readthedocs.io/en/latest/content/installation.html).
 
 As of version v1.0.1, SHARPy can also be obtained from Docker Hub to avoid compilation
-and platform-dependant issues. If you are interested, make sure you check
+and platform-dependant issues. If you are interested, make sure you check 
 the [SHARPy Docker distribution docs](https://ic-sharpy.readthedocs.io/en/latest/content/installation.html#using-sharpy-from-a-docker-container).
 
 ## Contributing and Bug reports
