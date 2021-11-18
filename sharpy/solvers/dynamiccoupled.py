@@ -494,10 +494,13 @@ class DynamicCoupled(BaseSolver):
 
             structural_kstep = self.data.structure.timestep_info[-1].copy()
             aero_kstep = self.data.aero.timestep_info[-1].copy()
+            nl_body_kstep = None
             if self.settings['nonlifting_body_interaction']:
-                nl_body_kstep = self.data.nonlifting_body.timestep_info[-1].copy()
-            else:
-                nl_body_kstep = None
+                try:
+                    nl_body_kstep = self.data.nonlifting_body.timestep_info[-1].copy()
+                except: 
+                    nl_body_kstep = None                  
+                    pass 
             self.logger.debug('Time step {}'.format(self.data.ts))
 
             # Add the controller here

@@ -103,7 +103,7 @@ class AerogridLoader(GridLoader):
                                        settings_options=settings_options)
 
     def __init__(self):
-        super().__init__
+        super().__init__()
         self.file_name = '.aero.h5'
 
         # aero storage

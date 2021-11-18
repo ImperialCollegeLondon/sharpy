@@ -56,7 +56,9 @@ class GridLoader(BaseSolver):
         # read input file
         self.read_files()
 
-
+    def run(self):
+        pass
+    
     def read_files(self):
         #  first check that the file exists
         self.file_name = (self.data.case_route +
