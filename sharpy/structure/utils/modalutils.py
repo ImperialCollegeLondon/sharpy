@@ -166,8 +166,8 @@ def get_mode_zeta(data, eigvect):
             # print('%.2d,%.2d'%(nn,ss))
 
             # surface panelling
-            M = aero.aero_dimensions[ss][0]
-            N = aero.aero_dimensions[ss][1]
+            M = aero.dimensions[ss][0]
+            N = aero.dimensions[ss][1]
 
             for mm in range(M + 1):
                 # get position of vertex in B FoR

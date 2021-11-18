@@ -527,8 +527,8 @@ class LinAeroEla():
                 # print('%.2d,%.2d'%(nn,ss))
 
                 # surface panelling
-                M = aero.aero_dimensions[ss][0]
-                N = aero.aero_dimensions[ss][1]
+                M = aero.dimensions[ss][0]
+                N = aero.dimensions[ss][1]
 
                 Kzeta_start = 3 * sum(self.linuvlm.MS.KKzeta[:ss])
                 shape_zeta = (3, M + 1, N + 1)

@@ -477,8 +477,8 @@ class StepLinearUVLM(BaseSolver):
         for i_surf in range(aero_tstep.n_surf):
             # Tuple with dimensions of the aerogrid zeta, which is the same shape for forces
             dimensions = aero_tstep.zeta[i_surf].shape
-            dimensions_gamma = self.data.aero.aero_dimensions[i_surf]
-            dimensions_wake = self.data.aero.aero_dimensions_star[i_surf]
+            dimensions_gamma = self.data.aero.dimensions[i_surf]
+            dimensions_wake = self.data.aero.dimensions_star[i_surf]
 
             # Number of entries in zeta
             points_in_surface = aero_tstep.zeta[i_surf].size

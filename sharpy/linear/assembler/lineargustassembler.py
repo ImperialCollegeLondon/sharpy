@@ -41,7 +41,7 @@ class LinearGustGenerator(object):
 
         for i_surf in range(aero.n_surf):
 
-            M_surf, N_surf = aero.aero_dimensions[i_surf]
+            M_surf, N_surf = aero.dimensions[i_surf]
             Kzeta_start = 3 * sum(linuvlm.MS.KKzeta[:i_surf])  # number of coordinates up to current surface
             shape_zeta = (3, M_surf + 1, N_surf + 1)
 
