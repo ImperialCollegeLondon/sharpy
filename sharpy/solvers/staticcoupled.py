@@ -199,9 +199,10 @@ class StaticCoupled(BaseSolver):
                 if self.correct_forces:
                     struct_forces = \
                         self.correct_forces_generator.generate(aero_kstep=self.data.aero.timestep_info[self.data.ts],
-                                                               structural_kstep=self.data.structure.timestep_info[self.data.ts],
-                                                               struct_forces=struct_forces)
-                                        rho=self.aero_solver.settings['rho'])
+                                                               structural_kstep=self.data.structure.timestep_info[
+                                                                   self.data.ts],
+                                                               struct_forces=struct_forces,
+                                                               rho=self.aero_solver.settings['rho'])
                 self.data.aero.timestep_info[self.data.ts].aero_steady_forces_beam_dof = struct_forces
                 self.data.structure.timestep_info[self.data.ts].postproc_node['aero_steady_forces'] = struct_forces  # B
                    

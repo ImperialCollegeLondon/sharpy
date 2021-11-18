@@ -42,6 +42,19 @@ class AerogridLoader(GridLoader):
         data_dict (dict): key-value pairs of aerodynamic data
         wake_shape_generator (class): Wake shape generator
 
+    Notes:
+        The ``control_surface_deflection`` setting allows the user to use a time specific control surface deflection,
+        should the problem include them. This setting takes a list of strings, each for the required control
+        surface generator.
+
+        The ``control_surface_deflection_generator_settings`` setting is a list of dictionaries, one for each control
+        surface. The dictionaries specify the settings for the generator ``DynamicControlSurface``. If the relevant control
+        surface is simply static, an empty string should be parsed. See the documentation for ``DynamicControlSurface``
+        generators for accepted key-value pairs as settings.
+
+        The initial wake shape is now defined in SHARPy (instead of UVLM) through a wake shape generator ``wake_shape_generator`` and the
+        required inputs ``wake_shape_generator_input``
+
     """
     solver_id = 'AerogridLoader'
     solver_classification = 'loader'
