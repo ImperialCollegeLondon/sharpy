@@ -180,7 +180,7 @@ class DynamicCoupled(BaseSolver):
 
 
     settings_types['nonlifting_body_interaction'] = 'bool'
-    settings_default['nonlifting_body_interaction'] = True #False
+    settings_default['nonlifting_body_interaction'] = False
     settings_description['nonlifting_body_interaction'] = 'Effect of Nonlifting Bodies on Lifting bodies are considered'
     
     settings_table = settings.SettingsTable()
