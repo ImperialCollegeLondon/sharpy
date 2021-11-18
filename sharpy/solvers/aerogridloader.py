@@ -16,6 +16,19 @@ class AerogridLoader(GridLoader):
 
     Generates aerodynamic grid based on the input data
 
+    The initial wake shape is now defined in SHARPy (instead of UVLM) through a wake shape generator
+    ``wake_shape_generator`` and the required inputs ``wake_shape_generator_input``. The supported wake generators are
+    :class:`sharpy.generators.straightwake.StraighWake` and :class:`sharpy.generators.helicoidalwake.HelicoidalWake`.
+
+    The ``control_surface_deflection`` setting allows the user to use a time specific control surface deflection,
+    should the problem include them. This setting takes a list of strings, each for the required control
+    surface generator.
+
+    The ``control_surface_deflection_generator_settings`` setting is a list of dictionaries, one for each control
+    surface. The dictionaries specify the settings for the generator ``DynamicControlSurface``. If the relevant control
+    surface is simply static, an empty string should be parsed. See the documentation for ``DynamicControlSurface``
+    generators for accepted key-value pairs as settings.
+
     Args:
         data (PreSharpy): ``ProblemData`` class structure
 
@@ -29,19 +42,6 @@ class AerogridLoader(GridLoader):
         data_dict (dict): key-value pairs of aerodynamic data
         wake_shape_generator (class): Wake shape generator
 
-    Notes:
-        The ``control_surface_deflection`` setting allows the user to use a time specific control surface deflection,
-        should the problem include them. This setting takes a list of strings, each for the required control
-        surface generator.
-
-        The ``control_surface_deflection_generator_settings`` setting is a list of dictionaries, one for each control
-        surface. The dictionaries specify the settings for the generator ``DynamicControlSurface``. If the relevant control
-        surface is simply static, an empty string should be parsed. See the documentation for ``DynamicControlSurface``
-        generators for accepted key-value pairs as settings.
-
-        The initial wake shape is now defined in SHARPy (instead of UVLM) through a wake shape generator ``wake_shape_generator`` and the
-        required inputs ``wake_shape_generator_input``
-
     """
     solver_id = 'AerogridLoader'
     solver_classification = 'loader'
@@ -49,6 +49,7 @@ class AerogridLoader(GridLoader):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_types['unsteady'] = 'bool'
     settings_default['unsteady'] = False
@@ -78,13 +79,15 @@ class AerogridLoader(GridLoader):
     settings_types['wake_shape_generator'] = 'str'
     settings_default['wake_shape_generator'] = 'StraightWake'
     settings_description['wake_shape_generator'] = 'ID of the generator to define the initial wake shape'
+    settings_options['wake_shape_generator'] = ['StraightWake', 'HelicoidalWake']
 
     settings_types['wake_shape_generator_input'] = 'dict'
     settings_default['wake_shape_generator_input'] = dict()
     settings_description['wake_shape_generator_input'] = 'Dictionary of inputs needed by the wake shape generator'
 
     settings_table = settings_utils.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
+                                       settings_options=settings_options)
 
     def __init__(self):
         super().__init__

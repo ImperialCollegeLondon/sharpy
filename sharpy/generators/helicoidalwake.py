@@ -18,6 +18,7 @@ class HelicoidalWake(generator_interface.BaseGenerator):
     the shear parameters
     """
     generator_id = 'HelicoidalWake'
+    generator_classification = 'wake'
 
     settings_types = dict()
     settings_default = dict()

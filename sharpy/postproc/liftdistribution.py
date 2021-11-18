@@ -2,11 +2,11 @@ import os
 
 import numpy as np
 
-import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.aero.utils.mapping as mapping
 import sharpy.utils.algebra as algebra
+import sharpy.aero.utils.utils as aeroutils
 
 
 @solver
@@ -40,6 +40,7 @@ class LiftDistribution(BaseSolver):
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
     def __init__(self):
         self.settings = None
         self.data = None

@@ -17,6 +17,7 @@ modules:
   - 'sharpy/utils/plot_utils.py'
   - 'sharpy/utils/solver_interface.py'
   - 'sharpy/linear/test'
+  - 'sharpy/linear/utils'
 #  - 'sharpy/generators'
   - 'sharpy/presharpy'
   - 'sharpy/lib'

@@ -242,7 +242,7 @@ class AerogridPlot(BaseSolver):
                                                                               coords,
                                                                               self.settings['vortex_radius'],
                                                                               struct_tstep.for_pos,
-                                                                              self.settings['numcores'])
+                                                                              self.settings['num_cores'])
 
             ug = tvtk.UnstructuredGrid(points=coords)
             ug.set_cells(tvtk.Quad().cell_type, conn)
