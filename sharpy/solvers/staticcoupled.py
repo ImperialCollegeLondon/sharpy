@@ -101,12 +101,6 @@ class StaticCoupled(BaseSolver):
         self.runtime_generators = dict()
         self.with_runtime_generators = False
 
-        self.correct_forces = False
-        self.correct_forces_generator = None
-
-        self.runtime_generators = dict()
-        self.with_runtime_generators = False
-
     def initialise(self, data, input_dict=None):
         self.data = data
         if input_dict is None:

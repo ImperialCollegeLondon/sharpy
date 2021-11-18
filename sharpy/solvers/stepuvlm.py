@@ -252,7 +252,6 @@ class StepUvlm(BaseSolver):
                                               'is_wake': False},
                                              nl_body_tstep.u_ext)
             
-            print("convection scheme = ", self.settings['convection_scheme'])
             uvlmlib.uvlm_solver_lifting_and_nonlifting(self.data.ts,
                                                        aero_tstep, 
                                                        nl_body_tstep,
