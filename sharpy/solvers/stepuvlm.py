@@ -134,7 +134,7 @@ class StepUvlm(BaseSolver):
     settings_description['quasi_steady'] = 'Use quasi-steady approximation in UVLM'
     
     settings_types['nonlifting_body_interactions'] = 'bool'
-    settings_default['nonlifting_body_interactions'] = True #False
+    settings_default['nonlifting_body_interactions'] = False
     settings_description['nonlifting_body_interactions'] = 'Consider nonlifting body interactions'
 
     settings_types['only_nonlifting'] = 'bool'
