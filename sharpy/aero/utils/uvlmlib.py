@@ -109,7 +109,7 @@ class VMopts(ct.Structure):
         self.vortex_radius_wake_ind = ct.c_double(options['vortex_radius_wake_ind'])
 
         self.only_nonlifting = ct.c_bool(options["only_nonlifting"])
-        self.only_lifting = ct.c_bool(not options["nonlifting_body_interactions"])
+        self.only_lifting = ct.c_bool(not options["nonlifting_body_interaction"])
 
         for i in range(len(options["centre_rot_g"])):
             self.centre_rot_g[i] = ct.c_double(options["centre_rot_g"][i])
@@ -201,7 +201,7 @@ class UVMopts(ct.Structure):
         self.quasi_steady = ct.c_bool(options['quasi_steady'])
  
         self.only_nonlifting = ct.c_bool(options["only_nonlifting"])
-        self.only_lifting = ct.c_bool(not options["nonlifting_body_interactions"])
+        self.only_lifting = ct.c_bool(not options["nonlifting_body_interaction"])
         self.num_spanwise_panels_wo_induced_velocity = n_span_panels_wo_u_ind
 
         for i in range(len(options["centre_rot_g"])):
