@@ -46,9 +46,9 @@ class StaticUvlm(BaseSolver):
     settings_default['horseshoe'] = False
     settings_description['horseshoe'] = 'Horseshoe wake modelling for steady simulations.'
 
-    settings_types['nonlifting_body_interactions'] = 'bool'
-    settings_default['nonlifting_body_interactions'] = False
-    settings_description['nonlifting_body_interactions'] = 'Consider nonlifting body interactions'
+    settings_types['nonlifting_body_interaction'] = 'bool'
+    settings_default['nonlifting_body_interaction'] = False
+    settings_description['nonlifting_body_interaction'] = 'Consider nonlifting body interactions'
 
     settings_types['only_nonlifting'] = 'bool'
     settings_default['only_nonlifting'] = False
@@ -154,7 +154,7 @@ class StaticUvlm(BaseSolver):
                                                 'gamma': aero_tstep.gamma,
                                                 'gamma_star': aero_tstep.gamma_star,
                                                 'dist_to_orig': aero_tstep.dist_to_orig})
-            if self.settings['nonlifting_body_interactions']:
+            if self.settings['nonlifting_body_interaction']:
                 # generate uext
                 self.velocity_generator.generate({'zeta': self.data.nonlifting_body.timestep_info[self.data.ts].zeta,
                                                 'override': True,
@@ -194,7 +194,7 @@ class StaticUvlm(BaseSolver):
         """ Updates de aerogrid based on the info of the step, and increases
         the self.ts counter """
         self.data.aero.add_timestep()
-        if self.settings['nonlifting_body_interactions']:
+        if self.settings['nonlifting_body_interaction']:
             self.data.nonlifting_body.add_timestep()
         self.update_step()
 
@@ -203,7 +203,7 @@ class StaticUvlm(BaseSolver):
             self.data.aero.generate_zeta(self.data.structure,
                                         self.data.aero.aero_settings,
                                         self.data.ts)
-        if self.settings['nonlifting_body_interactions'] or self.settings['only_nonlifting']:
+        if self.settings['nonlifting_body_interaction'] or self.settings['only_nonlifting']:
             self.data.nonlifting_body.generate_zeta(self.data.structure,
                                                     self.data.nonlifting_body.aero_settings,
                                                     self.data.ts)

@@ -133,9 +133,9 @@ class StepUvlm(BaseSolver):
     settings_default['quasi_steady'] = False
     settings_description['quasi_steady'] = 'Use quasi-steady approximation in UVLM'
     
-    settings_types['nonlifting_body_interactions'] = 'bool'
-    settings_default['nonlifting_body_interactions'] = False
-    settings_description['nonlifting_body_interactions'] = 'Consider nonlifting body interactions'
+    settings_types['nonlifting_body_interaction'] = 'bool'
+    settings_default['nonlifting_body_interaction'] = False
+    settings_description['nonlifting_body_interaction'] = 'Consider nonlifting body interactions'
 
     settings_types['only_nonlifting'] = 'bool'
     settings_default['only_nonlifting'] = False
@@ -239,7 +239,7 @@ class StepUvlm(BaseSolver):
                                               'for_pos': structure_tstep.for_pos,
                                               'is_wake': True},
                                              aero_tstep.u_ext_star)
-        if self.settings['nonlifting_body_interactions']:
+        if self.settings['nonlifting_body_interaction']:
             if nl_body_tstep is None:
                 nl_body_tstep = self.data.nonlifting_body.timestep_info[-1]
             # TODO: Extent velocity field generators
@@ -298,7 +298,7 @@ class StepUvlm(BaseSolver):
 
     def add_step(self):
         self.data.aero.add_timestep()
-        if self.settings['nonlifting_body_interactions']:              
+        if self.settings['nonlifting_body_interaction']:              
             self.data.nonlifting_body.add_timestep()
 
     def update_grid(self, beam):
@@ -306,7 +306,7 @@ class StepUvlm(BaseSolver):
                                      self.data.aero.aero_settings,
                                      -1,
                                      beam_ts=-1)
-        if self.settings['nonlifting_body_interactions']:                            
+        if self.settings['nonlifting_body_interaction']:                            
             self.data.nonlifting_body.generate_zeta(beam,
                                                     self.data.aero.aero_settings,
                                                     -1,
@@ -318,7 +318,7 @@ class StepUvlm(BaseSolver):
                                                    self.data.structure,
                                                    self.data.aero.aero_settings,
                                                    dt=self.settings['dt'])
-        if self.settings['nonlifting_body_interactions']:
+        if self.settings['nonlifting_body_interaction']:
             if nl_body_tstep is None:
                 nl_body_tstep  =  self.data.nonlifting_body.timestep_info[-1] 
             self.data.nonlifting_body.generate_zeta_timestep_info(structure_tstep,
