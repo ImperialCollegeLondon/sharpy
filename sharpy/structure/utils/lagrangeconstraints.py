@@ -322,12 +322,12 @@ def equal_lin_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, 
     node_cga = MB_tstep[node_body].cga()
     node_FoR_va = MB_tstep[node_body].for_vel[0:3]
     node_FoR_wa = MB_tstep[node_body].for_vel[3:6]
-    
+
     ielem, inode_in_elem = MB_beam[node_body].node_master_elem[node_number]
     psi = MB_tstep[node_body].psi[ielem, inode_in_elem, :]
     node_cab = ag.crv2rotation(psi)
     node_Ra = MB_tstep[node_body].pos[node_number,:] + np.dot(node_cab, rel_posB)
-    
+
     node_dot_Ra = MB_tstep[node_body].pos_dot[node_number,:]
     FoR_cga = MB_tstep[FoR_body].cga()
     FoR_va = MB_tstep[FoR_body].for_vel[0:3]
@@ -512,17 +512,11 @@ def def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, FoR_body, node_body, no
         n1 = np.linalg.norm(aux_Bnh[1,:])
         n2 = np.linalg.norm(aux_Bnh[2,:])
         if ((n0 < n1) and (n0 < n2)):
-            # indep = np.array([1,2], dtype = int)
             indep[:] = [1, 2]
-            # new_Lambda_dot = np.array([0., Lambda_dot[ieq], Lambda_dot[ieq+1]])
         elif ((n1 < n0) and (n1 < n2)):
-            # indep = np.array([0,2], dtype = int)
             indep[:] = [0, 2]
-            # new_Lambda_dot = np.array([Lambda_dot[ieq], 0.0, Lambda_dot[ieq+1]])
         elif ((n2 < n0) and (n2 < n1)):
-            # indep = np.array([0,1], dtype = int)
             indep[:] = [0, 1]
-            # new_Lambda_dot = np.array([Lambda_dot[ieq], Lambda_dot[ieq+1], 0.0])
 
     new_Lambda_dot = np.zeros(3)
     new_Lambda_dot[indep[0]] = Lambda_dot[ieq]
@@ -531,9 +525,6 @@ def def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, FoR_body, node_body, no
     num_LM_eq_specific = 2
     Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
     B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
-
-    # Lambda_dot[ieq:ieq+num_LM_eq_specific]
-    # np.concatenate((Lambda_dot[ieq:ieq+num_LM_eq_specific], np.array([0.])))
 
     Bnh[:, FoR_dof+3:FoR_dof+6] = ag.multiply_matrices(ag.skew(rot_axisB),
                                                        cab.T,
@@ -823,43 +814,6 @@ def def_rot_vel_mod_FoR_wrt_node(MB_tstep, MB_beam, FoR_body, node_body, node_nu
     LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += scalingFactor*ag.multiply_matrices(FoR_cga.T, node_cga, ag.der_Ccrv_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:],
                                                                                                                                   np.dot(Znon.T, Lambda_dot[ieq:ieq+num_LM_eq_specific])))
 
-    # Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
-    # B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
-#
-    # ielem, inode_in_elem = MB_beam[node_body].node_master_elem[node_number]
-    # Bnh[:, FoR_dof+3:FoR_dof+6] = ag.multiply_matrices(rot_axisB,
-    #                                               ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
-    #                                               MB_tstep[node_body].cga().T,
-    #                                               MB_tstep[FoR_body].cga())
-#
-    # # Constrain angular velocities
-    # LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
-    # LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*ag.multiply_matrices(rot_axisB,
-    #                                               ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
-    #                                               MB_tstep[node_body].cga().T,
-    #                                               MB_tstep[FoR_body].cga(),
-    #                                               MB_tstep[FoR_body].for_vel[3:6]) - scalingFactor*rot_vel
-#
-    # LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
-    # LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
-#
-    # if MB_beam[node_body].FoR_movement == 'free':
-    #     LM_C[FoR_dof+3:FoR_dof+6,node_FoR_dof+6:node_FoR_dof+10] += scalingFactor*np.dot(MB_tstep[FoR_body].cga().T,
-    #                                                                        ag.der_Cquat_by_v(MB_tstep[node_body].quat,
-    #                                                                                               ag.multiply_matrices(ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]),
-    #                                                                                                                 # rot_axisB.T,
-    #                                                                                                                 rot_axisB.T*Lambda_dot[ieq:ieq+num_LM_eq_specific])))
-#
-    # LM_C[FoR_dof+3:FoR_dof+6,FoR_dof+6:FoR_dof+10] += scalingFactor*ag.der_CquatT_by_v(MB_tstep[FoR_body].quat,
-    #                                                                           ag.multiply_matrices(MB_tstep[node_body].cga(),
-    #                                                                                             ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:]).T,
-    #                                                                                             rot_axisB.T*Lambda_dot[ieq:ieq+num_LM_eq_specific]))
-#
-    # LM_K[FoR_dof+3:FoR_dof+6,node_dof+3:node_dof+6] += scalingFactor*ag.multiply_matrices(MB_tstep[FoR_body].cga().T,
-    #                                                                      MB_tstep[node_body].cga(),
-    #                                                                      ag.der_Ccrv_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:],
-    #                                                                                             rot_axisB.T*Lambda_dot[ieq:ieq+num_LM_eq_specific]))
-
     ieq += 1
     return ieq
 
@@ -1052,9 +1006,6 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
             raise NotImplementedError("Hinges should be parallel to the xB, yB or zB of the reference node")
         self.set_rot_vel(MBdict_entry['rot_vect'][self.nonzero_comp])
 
-        # self.static_constraint = fully_constrained_node_FoR()
-        # self.static_constraint.initialise(MBdict_entry, ieq)
-
         return self._ieq + self._n_eq
 
 
@@ -1095,18 +1046,6 @@ class hinge_node_FoR_constant_vel(BaseLagrangeConstraint):
         MB_tstep[self.FoR_body].for_pos[0:3] = (np.dot(node_cga,
                                                        MB_tstep[self.node_body].pos[self.node_number,:] + np.dot(cab, self.rel_posB)) +
                                                 MB_tstep[self.node_body].for_pos[0:3])
-
-        # ielem, inode_in_elem = MB_beam[self.node_body].node_master_elem[self.node_number]
-        # node_cga = MB_tstep[self.node_body].cga()
-        # cab = ag.crv2rotation(MB_tstep[self.node_body].psi[ielem,inode_in_elem,:])
-        # FoR_cga = MB_tstep[self.FoR_body].cga()
-
-        # rot_vect_A = ag.multiply_matrices(FoR_cga.T,
-        #                                  node_cga,
-        #                                  cab,
-        #                                  self.rot_vect)
-
-        # MB_tstep[self.FoR_body].for_vel[3:6] = rot_vect_A.copy()
         return
 
 
@@ -1181,10 +1120,6 @@ class hinge_node_FoR_pitch(BaseLagrangeConstraint):
         cab = ag.crv2rotation(MB_tstep[self.node_body].psi[ielem, inode_in_elem, :])
         FoR_cga = MB_tstep[self.FoR_body].cga()
 
-        # rel_vel in A FoR
-        # rel_vel = np.array([self.pitch_vel, 0., 0.])
-        # rel_vel += ag.multiply_matrices(FoR_cga.T, node_cga, cab,
-        #                                 np.array([0., 0., self.rotor_vel]))
         # rel_vel in B FoR
         rel_vel = np.array([0., 0., self.rotor_vel])
         rel_vel += ag.multiply_matrices(cab.T, node_cga.T, FoR_cga,

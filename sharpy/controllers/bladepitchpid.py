@@ -99,11 +99,11 @@ class BladePitchPid(controller_interface.BaseController):
     settings_types['pitch_sp'] = 'float'
     settings_default['pitch_sp'] = 0.
     settings_description['pitch_sp'] = 'Pitch set point [rad]'
-    
+
     settings_types['initial_pitch'] = 'float'
     settings_default['initial_pitch'] = 0.
     settings_description['initial_pitch'] = 'Initial pitch [rad]'
-    
+
     settings_types['initial_rotor_vel'] = 'float'
     settings_default['initial_rotor_vel'] = 0.
     settings_description['initial_rotor_vel'] = 'Initial rotor velocity [rad/s]'
@@ -119,12 +119,8 @@ class BladePitchPid(controller_interface.BaseController):
     settings_types['nocontrol_steps'] = 'int'
     settings_default['nocontrol_steps'] = -1
     settings_description['nocontrol_steps'] = 'Time steps without control action'
-    
-    # Generator and drive train model
-    #settings_types['variable_speed'] = 'bool'
-    #settings_default['variable_speed'] = True
-    #settings_description['variable_speed'] = 'Allow the change in the rotor velocity'
 
+    # Generator and drive train model
     settings_types['gen_model_const_var'] = 'str'
     settings_default['gen_model_const_var'] = ''
     settings_description['gen_model_const_var'] = 'Generator metric to be kept constant at a value `target_gen_value`'
@@ -166,21 +162,8 @@ class BladePitchPid(controller_interface.BaseController):
         self.prescribed_sp_time_history = None
         self.prescribed_sp = list()
         self.system_pv = list()
-        # self.nblades = None
-
-        # Time histories are ordered such that the [i]th element of each
-        # is the state of the controller at the time of returning.
-        # That means that for the timestep i,
-        # state_input_history[i] == input_time_history_file[i] + error[i]
-        # self.p_error_history = list()
-        # self.i_error_history = list()
-        # self.d_error_history = list()
-        # self.real_sp_history = list()
-        # self.control_history = list()
 
         self.controller_implementation = None
-
-        # self.n_control_surface = 0
 
         self.log_fname = None
 
@@ -193,10 +176,7 @@ class BladePitchPid(controller_interface.BaseController):
 
         self.settings = self.in_dict
         self.newmark_beta = 0.5 + self.settings['newmark_damp']
-        # self.controller_id = controller_id
 
-        # self.nblades = len(self.settings['blade_num_body'])
-        
         if self.settings['write_controller_log']:
             folder = data.output_folder + '/controllers/'
             if not os.path.exists(folder):
@@ -268,9 +248,9 @@ class BladePitchPid(controller_interface.BaseController):
             #cab = ag.crv2rotation(struct_tstep.psi[ielem, inode_in_elem, :])
             #FoR_cga = ag.quat2rotation(struct_tstep.mb_quat[self.settings['blade_num_body'][0], :])
 
-            #ini_rotor_vel = ag.multiply_matrices(cab.T, node_cga.T, FoR_cga, 
+            #ini_rotor_vel = ag.multiply_matrices(cab.T, node_cga.T, FoR_cga,
             #                                     struct_tstep.mb_FoR_vel[self.settings['blade_num_body'][0], 3:6])[2]
-            #ini_rotor_acc = ag.multiply_matrices(cab.T, node_cga.T, FoR_cga, 
+            #ini_rotor_acc = ag.multiply_matrices(cab.T, node_cga.T, FoR_cga,
             #                                     struct_tstep.mb_FoR_acc[self.settings['blade_num_body'][0], 3:6])[2]
             self.rotor_vel, self.rotor_acc = self.drive_train_model(aero_torque,
                                                                     self.rotor_vel,
@@ -292,7 +272,7 @@ class BladePitchPid(controller_interface.BaseController):
             return controlled_state
         else:
             controlled_state['info']['rotor_vel'] = self.rotor_vel
-            
+
         # Apply filter
         # Filter only after five periods of the cutoff frequency
         if self.filter_pv and (len(self.system_pv) > self.min_it_filter):
@@ -306,12 +286,6 @@ class BladePitchPid(controller_interface.BaseController):
             filtered_pv = self.system_pv
 
         # get current state input
-        # self.real_state_input_history.append(self.extract_time_history(controlled_state))
-
-        # i_current = len(self.real_state_input_history)
-        # # apply it where needed.
-        # print("self.prescribed_sp", self.prescribed_sp)
-        # print("filtered_pv", filtered_pv)
         delta_pitch_ref, detail = self.controller_wrapper(
                 required_input=self.prescribed_sp,
                 current_input=filtered_pv,
@@ -322,34 +296,8 @@ class BladePitchPid(controller_interface.BaseController):
         # NREL controller does error = state - reference. Here is done the other way
         delta_pitch_ref *= -1.
         # Limit pitch and pitch rate
-        # current_pitch = algebra.quat2euler(struct_tstep.mb_quat[self.settings['blade_num_body'][0]])[0]
-        # print(control_command, current_pitch)
-        # target_pitch = current_pitch + control_command
-        # target_pitch = max(target_pitch, self.settings['min_pitch'])
-        # pitch_rate = (target_pitch - current_pitch)/self.settings['dt']
-        # pitch_rate = control_command/self.settings['dt']
-        # 
-        # if pitch_rate < -self.settings['max_pitch_rate']:
-        #     pitch_rate = -self.settings['max_pitch_rate']
-        # elif pitch_rate > self.settings['max_pitch_rate']:
-        #     pitch_rate = self.settings['max_pitch_rate']
-        # delta_pitch = pitch_rate*self.settings['dt']
-        # if control_command > 0.:
-        #     pitch_rate = self.settings['max_pitch_rate']
-        # elif control_command < 0.:
-        #     pitch_rate = -self.settings['max_pitch_rate']
-        # else:
-        #     pitch_rate = 0.
-        # pitch_rate = 0.
-    
         target_pitch = delta_pitch_ref + self.settings['pitch_sp']
         pitch_rate = (target_pitch - self.pitch)/self.settings['dt']
-        #if target_pitch > self.pitch:
-        #    pitch_rate = self.settings['max_pitch_rate']
-        #elif target_pitch < self.pitch:
-        #    pitch_rate = -self.settings['max_pitch_rate']
-        #else:
-        #    pitch_rate = 0.
         if pitch_rate < -self.settings['max_pitch_rate']:
             pitch_rate = -self.settings['max_pitch_rate']
         elif pitch_rate > self.settings['max_pitch_rate']:
@@ -362,43 +310,22 @@ class BladePitchPid(controller_interface.BaseController):
         if next_pitch > self.settings['max_pitch']:
             pitch_rate = 0.
             next_pitch = self.settings['max_pitch']
-        
-        # elif pitch_rate > 0. and next_pitch > target_pitch:
-        #     pitch_rate = (target_pitch - self.pitch)/self.settings['dt']
-        # elif pitch_rate < 0. and next_pitch < target_pitch:
-        #     pitch_rate = (target_pitch - self.pitch)/self.settings['dt']
 
-        # next_pitch = self.pitch + pitch_rate*self.settings['dt']
         self.pitch = next_pitch
-
-        # int_pitch = self.compute_blade_pitch(data.structure,
-        #                                  struct_tstep,
-        #                                  tower_ibody=self.settings['blade_num_body'][0] - 1,
-        #                                  blade_ibody=self.settings['blade_num_body'][0])
-        # print("int comp pitch:", self.pitch, int_pitch)
 
         controlled_state['info']['pitch_vel'] = -pitch_rate
 
         # Apply control order
-        # rot_mat = algebra.rotation3d_x(control_command)
-        # print("control_command: ", control_command)
-        # print("init euler: ", algebra.quat2euler(struct_tstep.quat))
         change_quat = False
         if change_quat:
             for ibody in self.settings['blade_num_body']:
                 quat = algebra.rotate_quaternion(struct_tstep.mb_quat[ibody, :],
                                                  delta_pitch*np.array([1., 0., 0.]))
-                # print("final euler: ", algebra.quat2euler(quat))
-                # euler = np.array([prescribed_sp[0], 0., 0.])
                 struct_tstep.mb_quat[ibody, :] = quat.copy()
                 if ibody == 0:
                     struct_tstep.quat = quat.copy()
         change_vel = False
         if change_vel:
-            # struct_tstep.for_vel[3] = control_command/self.settings['dt']
-            # struct_tstep.for_acc[3] = (data.structure.timestep_info[data.ts - 1].for_vel[3] - struct_tstep.for_vel[3])/self.settings['dt']
-            # struct_tstep.for_vel[3] = np.sign(control_command)*self.settings['max_pitch_rate']
-            # struct_tstep.for_acc[3] = (data.structure.timestep_info[data.ts - 1].for_vel[3] - struct_tstep.for_vel[3])/self.settings['dt']
             for ibody in self.settings['blade_num_body']:
                 struct_tstep.mb_FoR_vel[ibody, 3] = pitch_rate
                 struct_tstep.mb_FoR_acc[ibody, 3] = (data.structure.timestep_info[data.ts - 1].mb_FoR_vel[ibody, 3] -
@@ -416,13 +343,7 @@ class BladePitchPid(controller_interface.BaseController):
                                               data.structure,
                                               data.aero.aero_settings,
                                               dt=self.settings['dt'])
-        # controlled_state['aero'].control_surface_deflection = (
-        #     np.array(self.settings['controlled_surfaces_coeff'])*control_command)
 
-        #print("gen torque [MNm]:", aero_torque/self.settings['GBR']*1e-6,
-        #      "rotor_vel:", rotor_vel,
-        #      "pitch_vel:", pitch_rate,
-        #      "control_c:", control_command)
         fid = open(self.log_fname, 'a')
         fid.write(('{:>6d} '
                         + 10*'{:>12.6f} '
@@ -467,10 +388,8 @@ class BladePitchPid(controller_interface.BaseController):
         elif self.settings['sp_type'] == 'rbm':
             steady, unsteady, grav = struct_tstep.extract_resultants(beam, force_type=['steady', 'unsteady', 'gravity'],
                                                                                        ibody=0)
-            # rbm = np.linalg.norm(steady[3:6] + unsteady[3:6] + grav[3:6])
             rbm = steady[4] + unsteady[4] + grav[4]
             self.system_pv.append(rbm)
-            # print("rbm: ", rbm)
         elif self.settings['sp_type'] == 'gen_vel':
             self.system_pv.append(kwargs['gen_vel'])
 
@@ -481,8 +400,6 @@ class BladePitchPid(controller_interface.BaseController):
                            current_input,
                            control_param,
                            i_current):
-        # print("ri[i-1]", required_input[i_current - 1])
-        # print("ci[-1]", current_input[-1])
         self.controller_implementation.set_point(required_input[i_current - 1])
         control_param, detailed_control_param = self.controller_implementation(current_input[-1])
         return (control_param, detailed_control_param)
@@ -494,28 +411,15 @@ class BladePitchPid(controller_interface.BaseController):
     def drive_train_model(self, aero_torque, ini_rot_vel, ini_rot_acc):
 
         # Assuming contant generator torque demand
-        # print(ini_rot_vel)
         if self.settings['gen_model_const_var'] == 'power':
             gen_torque = self.settings['gen_model_const_value']/self.settings['GBR']/ini_rot_vel
         elif self.settings['gen_model_const_var'] == 'torque':
             gen_torque = self.settings['gen_model_const_value']
 
-        # print("aero_torque", aero_torque)
-        # print("gen_torque", gen_torque*self.settings['GBR'])
-        # print("error_torque", (aero_torque - gen_torque*self.settings['GBR'])/aero_torque*100)
-
         rot_acc = (aero_torque - self.settings['GBR']*gen_torque)/self.settings['inertia_dt']
-        # rot_acc = ini_rot_acc + delta_rot_acc
-
-        # Integrate according to newmark-beta scheme
-        # rot_vel = (ini_rot_vel +
-        #            (1. - self.newmark_beta)*self.settings['dt']*ini_rot_acc +
-        #            self.newmark_beta*self.settings['dt']*rot_acc)
         rot_vel = ini_rot_vel + rot_acc*self.settings['dt']
-        # print("rot vel acc", rot_vel, rot_acc)
 
         return rot_vel, rot_acc
-        # return ini_rot_vel, ini_rot_acc
 
     def compute_aero_torque(self, beam, struct_tstep):
         # Compute total forces
@@ -549,14 +453,8 @@ class BladePitchPid(controller_interface.BaseController):
         zg_tower_top = algebra.multiply_matrices(cga0, ca0b, np.array([0., 0., 1.]))
 
         # blade root
-        # hub_elem = np.where(beam.body_number == blade_ibody)[0][0]
-        # hub_node = beam.connectivities[hub_elem, 0]
-        # ielem, inode_in_elem = beam.node_master_elem[hub_node]
-        # cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem, :])
         cga = algebra.quat2rotation(struct_tstep.mb_quat[blade_ibody, :])
-        # zg_hub = algebra.multiply_matrices(cga, cab, np.array([0., 0., 1.]))
         zg_hub = algebra.multiply_matrices(cga, np.array([0., 0., 1.]))
-        
+
         pitch = algebra.angle_between_vectors(zg_tower_top, zg_hub)
         return pitch
-

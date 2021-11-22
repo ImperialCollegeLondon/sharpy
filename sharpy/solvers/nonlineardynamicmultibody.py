@@ -326,7 +326,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
         fid_lambda_dot = open(self.fname_lambda_dot, "a")
         fid_lambda_ddot = open(self.fname_lambda_ddot, "a")
         fid_cond_num = open(self.fname_cond_num, "a")
-        
+
         fid_lambda.write("%d %d " % (self.data.ts, iteration))
         fid_lambda_dot.write("%d %d " % (self.data.ts, iteration))
         fid_lambda_ddot.write("%d %d " % (self.data.ts, iteration))
@@ -339,36 +339,22 @@ class NonLinearDynamicMultibody(_BaseStructural):
         fid_lambda_dot.write("\n")
         fid_lambda_ddot.write("\n")
         fid_cond_num.write("%e %e\n" % (cond_num, cond_num_lm))
-        
+
         fid_lambda.close()
         fid_lambda_dot.close()
         fid_lambda_ddot.close()
         fid_cond_num.close()
-        
+
 
 
     def run(self, **kwargs):
         structural_step = su.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
-        dt= su.set_value_or_default(kwargs, 'dt', self.settings['dt'])                                              
+        dt= su.set_value_or_default(kwargs, 'dt', self.settings['dt'])
 
         if structural_step.mb_dict is not None:
             MBdict = structural_step.mb_dict
         else:
             MBdict = self.data.structure.ini_mb_dict
-        
-        #if self.data.ts == 1:
-        #    compute_psi_local = True
-        #    print("Computing psi local")
-        #else:
-        #    compute_psi_local = False
-
-        #if self.data.structure.ini_info.in_global_AFoR:
-        #    self.data.structure.ini_info.whole_structure_to_local_AFoR(self.data.structure,
-        #                                                               compute_psi_local)
-#
-        #if structural_step.in_global_AFoR:
-        #    structural_step.whole_structure_to_local_AFoR(self.data.structure,
-        #                                                  compute_psi_local)
 
         MB_beam, MB_tstep = mb.split_multibody(
             self.data.structure,
@@ -443,8 +429,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
             if self.settings['rigid_bodies']:
                 rigid_LM_dofs = self.rigid_dofs + (np.arange(self.num_LM_eq, dtype=int) + self.sys_size).tolist()
-                # rigid_Asys = np.zeros((self.n_rigid_dofs + self.num_LM_eq, self.n_rigid_dofsi + self.num_LM_eq))
-                # rigid_Q = np.zeros((self.n_rigid_dofs + self.num_LM_eq,))
 
                 rigid_Asys = Asys[np.ix_(rigid_LM_dofs, rigid_LM_dofs)].copy()
                 rigid_Q = Q[rigid_LM_dofs].copy()
@@ -454,14 +438,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
             else:
                 Dq = np.linalg.solve(Asys, -Q)
-
-            #if (not np.isnan(Dq).any()) and (not (Dq == 0.).all()):
-            #    msg = ("k:%d pos_min:%d min:%e pos_max:%d max:%e" % (iteration,
-            #                                                    np.where(Dq == np.min(Dq))[0],
-            #                                                    np.min(Dq),
-            #                                                    np.where(Dq == np.max(Dq))[0],
-            #                                                    np.max(Dq)))
-            #    print(msg)
 
             # Relaxation
             relax_Dq = np.zeros_like(Dq)
@@ -533,12 +509,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 xbeamlib.cbeam3_correct_gravity_forces(MB_beam[ibody], MB_tstep[ibody], self.settings)
         mb.merge_multibody(MB_tstep, MB_beam, self.data.structure, structural_step, MBdict, dt)
 
-        # if not structural_step.in_global_AFoR:
-        #     structural_step.whole_structure_to_global_AFoR(self.data.structure)
-
         self.Lambda = Lambda.astype(dtype=ct.c_double, copy=True, order='F')
         self.Lambda_dot = Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
         self.Lambda_ddot = Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
 
         return self.data
-

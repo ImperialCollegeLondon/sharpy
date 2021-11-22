@@ -145,12 +145,9 @@ def quasisteady_mooring(xf, zf, l, w, EA, cb, hf0=None, vf0=None):
         inv_J_est = np.linalg.inv(J_est)
         hf_est += inv_J_est[0, 0]*(xf - xf_est) + inv_J_est[0, 1]*(zf - zf_est)
         vf_est += inv_J_est[1, 0]*(xf - xf_est) + inv_J_est[1, 1]*(zf - zf_est)
-        # hf += (xf - xf_est)/J[0, 0] + (zf - zf_est)/J[1, 0]
-        # vf += (xf - xf_est)/J[0, 1] + (zf - zf_est)/J[1, 1]
 
         xf_est, zf_est = compute_xf_zf(hf_est, vf_est, l, w, EA, cb)
         error = np.maximum(np.abs(xf - xf_est), np.abs(zf - zf_est))
-        # print(error)
         it += 1
     if ((it == max_iter) and (error > tol)):
         cout.cout_wrap(("Mooring system did not converge. error %f" % error), 4)
@@ -185,30 +182,6 @@ def change_of_to_sharpy(matrix_of):
 
     matrix_sharpy = np.dot(C_of_s.T, np.dot(matrix_of, C_of_s))
     return matrix_sharpy
-
-
-# def interp_1st_dim_matrix(A, vec, value):
-#
-#     # Make sure vec is ordered in strictly ascending order
-#     if (np.diff(vec) <= 0).any():
-#         cout.cout_wrap("ERROR: vec should be in strictly increasing order", 4)
-#     if not A.shape[0] == vec.shape[0]:
-#         cout.cout_wrap("ERROR: Incoherent vector and matrix size", 4)
-#
-#     # Compute the positions to interpolate
-#     if value <= vec[0]:
-#         return A[0, ...]
-#     elif ((value >= vec[-1]) or (value > vec[-2] and np.isinf(vec[-1]))):
-#         return A[-1, ...]
-#     else:
-#         i = 0
-#         while value > vec[i]:
-#             i += 1
-#         dist = vec[i] - vec[i - 1]
-#         rel_dist_to_im1 = (value - vec[i - 1])/dist
-#         rel_dist_to_i = (vec[i] - value)/dist
-#
-#     return A[i - 1, ...]*rel_dist_to_i + A[i, ...]*rel_dist_to_im1
 
 
 def rfval(num, den, z):
@@ -247,7 +220,6 @@ def response_freq_dep_matrix(H, omega_H, q, it_, dt):
 
     # Compute the constant component
     if type(H) is np.ndarray:
-        # H_omega = interp_1st_dim_matrix(H, omega_H, omega_fft[0])
         interp_H = interp1d(omega_H, H, axis=0)
         H_omega = interp_H(omega_fft[0])
     elif type(H) is tuple:
@@ -268,8 +240,6 @@ def response_freq_dep_matrix(H, omega_H, q, it_, dt):
 
     # Compute the inverse Fourier tranform
     f[:] = np.real(ifft(fourier_f, axis=0)[it_, :])
-
-    # (T, yout, xout) = lsim(H, q[:it_ + 1, :], T, X0=X0)
 
     return f
 
@@ -357,7 +327,6 @@ def noise_freq_1s(w):
         u2w = u2[iomega]
         wn[iomega] = np.sqrt(-2.*np.log(u1w))*(np.cos(2*np.pi*u2w) +
                              1j*np.sin(2*np.pi*u2w))
-        # wn[iomega] = 1. + 0j
     return wn*sigma
 
 
@@ -582,14 +551,6 @@ class FloatingForces(generator_interface.BaseGenerator):
         # hydrodynamics
         self.cd = self.floating_data['hydrodynamics']['CD']*self.settings['cd_multiplier']
         if self.settings['method_matrices_freq'] == 'constant':
-            # self.hd_added_mass_const = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['added_mass_matrix'],
-            #                             self.floating_data['hydrodynamics']['ab_freq_rads'],
-            #                             self.settings['matrices_freq'])
-
-            # self.hd_damping_const = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['damping_matrix'],
-            #                             self.floating_data['hydrodynamics']['ab_freq_rads'],
-            #                             self.settings['matrices_freq'])
-
             interp_am = interp1d(self.floating_data['hydrodynamics']['ab_freq_rads'],
                                  self.floating_data['hydrodynamics']['added_mass_matrix'],
                                  axis=0)
@@ -643,13 +604,6 @@ class FloatingForces(generator_interface.BaseGenerator):
         # Wave forces
         self.wave_forces_node = self.floating_data['wave_forces']['node']
         if self.settings['method_wave'] == 'sin':
-            # xi_matrix2 = interp_1st_dim_matrix(self.floating_data['wave_forces']['xi'],
-            #                                 self.floating_data['wave_forces']['xi_freq_rads'],
-            #                                 self.settings['wave_freq'])
-            # xi = interp_1st_dim_matrix(xi_matrix2,
-            #                                 self.floating_data['wave_forces']['xi_beta_deg']*deg2rad,
-            #                                 self.settings['wave_incidence'])
-
             interp_x1 = interp1d(self.floating_data['wave_forces']['xi_freq_rads'],
                                  self.floating_data['wave_forces']['xi'],
                                  axis=0,
@@ -657,16 +611,10 @@ class FloatingForces(generator_interface.BaseGenerator):
                                  fill_value=(self.floating_data['wave_forces']['xi'][0, ...],
                                              self.floating_data['wave_forces']['xi'][-1, ...]))
             xi_matrix2 = interp_x1(self.settings['wave_freq'])
-            # xi_matrix2 = interp_x1(self.floating_data['wave_forces']['xi_freq_rads'][2:4])
             interp_x2 = interp1d(self.floating_data['wave_forces']['xi_beta_deg']*deg2rad,
                                  xi_matrix2,
                                  axis=0)
             self.xi_interp = interp_x2(self.settings['wave_incidence'])
-            # xi = interp_x2(self.floating_data['wave_forces']['xi_beta_deg'][5]*deg2rad)
-            # print(xi[0, :])
-            # print(self.floating_data['wave_forces']['xi'][2, 5, :])
-            # print(xi[0, :] - self.floating_data['wave_forces']['xi'][2, 5, :])
-
 
         elif self.settings['method_wave'] == 'jonswap':
 
@@ -764,7 +712,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         """
         # Compute time and frequency discretisations
         ntime_steps = time.shape[0]
-    
+
         nomega = ntime_steps//2 + 1
         w = np.zeros((nomega))
         w_temp = np.fft.fftfreq(ntime_steps, d=dt)*2.*np.pi
@@ -774,7 +722,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         else:
             w[-1] = w_temp[ntime_steps//2]
         nomega_2s = ntime_steps
-    
+
         # Compute the one-sided spectrums
         noise_freq = noise_freq_1s(w)
         jonswap_1s = jonswap_spectrum(Tp, Hs, w)*2.*np.pi
@@ -782,15 +730,15 @@ class FloatingForces(generator_interface.BaseGenerator):
         jonswap_freq[0] = np.sqrt(ntime_steps/dt*jonswap_1s[0]/2) + 0j # The DC values does not have the 2
 
         self.noise_freq = noise_freq
-        self.jonswap_freq = jonswap_freq    
+        self.jonswap_freq = jonswap_freq
         self.omega = w
         self.nomega_2s = nomega_2s
-    
+
         self.xi_interp = np.zeros((nomega, 6), dtype=np.complex)
         for iomega in range(nomega):
             for idim in range(6):
                 self.xi_interp[iomega, idim] = np.interp(self.omega[iomega], w_xi, xi[:, idim])
-        
+
 
     def time_wave_forces(self, dx, grav):
         """
@@ -812,10 +760,10 @@ class FloatingForces(generator_interface.BaseGenerator):
                                                         0.5*self.jonswap_freq[iomega]*
                                                         np.conj(self.xi_interp[iomega, idim])*
                                                         np.exp(1j*k*dx))
-    
+
         # Compute the inverse Fourier transform
         force_waves = ifft(force_freq_2s, axis=0)
-    
+
         return np.real(force_waves)
 
 
@@ -908,14 +856,6 @@ class FloatingForces(generator_interface.BaseGenerator):
             self.x0_K[data.ts] = xout[:, 1]
             hd_f_qdot_g -= yout[:, 1]
             hd_f_qdotdot_g = np.zeros((6))
-            #(T, yout, xout) = forced_response(self.hd_K,
-            #                                  T=[0, self.settings['dt']],
-            #                                  U=self.qdotdot[data.ts-1:data.ts+1, :].T,
-            #                                  X0=self.x0_K[data.ts-1])
-            #                                  # transpose=True)
-            #self.x0_K[data.ts] = xout[:, 1]
-            #hd_f_qdot_g -= np.zeros((6))
-            #hd_f_qdotdot_g = -yout[:, 1]
 
         else:
             cout.cout_wrap(("ERROR: Unknown method_matrices_freq %s" % self.settings['method_matrices_freq']), 4)
@@ -1011,4 +951,3 @@ class FloatingForces(generator_interface.BaseGenerator):
         if self.settings['write_output']:
             self.write_output(data.ts, k, mooring_forces, mooring_yaw, hs_f_g,
                      hd_f_qdot_g, hd_f_qdotdot_g, hd_correct_grav, total_drag_force, wave_forces_g)
-

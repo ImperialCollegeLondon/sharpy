@@ -127,11 +127,11 @@ def spar_from_excel_type04(op_params,
     TowerBaseHeight = gc.read_column_sheet_type01(excel_file_name,
                                                   excel_sheet_parameters,
                                                   'TowerBaseHeight')
-    
+
     # Generate the spar
     if options['concentrate_spar']:
         mtower = wt.StructuralInformation.mass_db[0, 0, 0]
- 
+
         PlatformTotalMass = gc.read_column_sheet_type01(excel_file_name,
                                                  excel_sheet_parameters,
                                                  'PlatformTotalMass')
@@ -147,31 +147,19 @@ def spar_from_excel_type04(op_params,
         PlatformCMbelowSWL = gc.read_column_sheet_type01(excel_file_name,
                                                  excel_sheet_parameters,
                                                  'PlatformCMbelowSWL')
-        
-        # PlatformIpitch = PlatformIpitchCM + PlatformTotalMass*(PlatformCMbelowSWL + TowerBaseHeight)**2
-        # PlatformIroll = PlatformIrollCM + PlatformTotalMass*(PlatformCMbelowSWL + TowerBaseHeight)**2
 
-        # iner_mat = np.zeros((6,6))
-        # iner_mat[0:3, 0:3] = PlatformTotalMass*np.eye(3)
-        # iner_mat[3, 3] = PlatformIyawCM       
-        # iner_mat[4, 4] = PlatformIpitch       
-        # iner_mat[5, 5] = PlatformIroll       
-    
         mpoint = PlatformTotalMass - mtower*TowerBaseHeight
-        # IyawPoint = PlatformIyawCM - (1./6)*mtower*TowerBaseHeight**2
-        # IpitchPoint = PlatformIpitchCM + PlatformTotalMass*PlatformCMbelowSWL**2 - (1./3)*mtower*TowerBaseHeight**2
-        # IrollPoint = PlatformIrollCM + PlatformTotalMass*PlatformCMbelowSWL**2 - (1./3)*mtower*TowerBaseHeight**2
         IyawPoint = PlatformIyawCM - (1./6)*mtower*TowerBaseHeight**3
         IpitchPoint = PlatformIpitchCM + PlatformTotalMass*PlatformCMbelowSWL**2 - (1./3)*mtower*TowerBaseHeight**3
         IrollPoint = PlatformIrollCM + PlatformTotalMass*PlatformCMbelowSWL**2 - (1./3)*mtower*TowerBaseHeight**3
         xpoint = (PlatformTotalMass*PlatformCMbelowSWL + 0.5*mtower*TowerBaseHeight**2)/mpoint
- 
+
         iner_mat = np.zeros((6,6))
         iner_mat[0:3, 0:3] = mpoint*np.eye(3)
         iner_mat[0:3, 3:6] = -mpoint*algebra.skew(np.array([-xpoint, 0, 0]))
         iner_mat[3:6, 0:3] = -iner_mat[0:3, 3:6]
-        iner_mat[3, 3] = IyawPoint       
-        iner_mat[4, 4] = IpitchPoint       
+        iner_mat[3, 3] = IyawPoint
+        iner_mat[4, 4] = IpitchPoint
         iner_mat[5, 5] = IrollPoint
 
         base_stiffness_top = wt.StructuralInformation.stiffness_db[0, :, :]
@@ -368,10 +356,9 @@ def spar_from_excel_type04(op_params,
                 spar.StructuralInformation.body_number[ielem] -= 1
 
         # Update Lagrange Constraints and Multibody information
-        # LC[0].node_in_body += nodes_spar - 1
         for ilc in range(len(LC)):
             LC[ilc].node_in_body += nodes_spar - 1
-    
+
     MB[0].FoR_movement = 'free'
     for ibody in range(1, len(MB)):
         MB[ibody].FoR_position[0] += TowerBaseHeight
@@ -922,7 +909,7 @@ def generate_from_excel_type03(op_params,
 
     # Overhang
     tilt = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'ShftTilt')*deg2rad
-    if not tilt == 0.:        
+    if not tilt == 0.:
         raise NonImplementedError("Non-zero tilt not supported")
     NodesOverhang = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'NodesOverhang')
     overhang_len = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'overhang')
@@ -951,7 +938,7 @@ def generate_from_excel_type03(op_params,
         oh_GA = tower.StructuralInformation.stiffness_db[-1, 1, 1]
         oh_GJ = tower.StructuralInformation.stiffness_db[-1, 3, 3]
         oh_EI = tower.StructuralInformation.stiffness_db[-1, 4, 4]
-    
+
         overhang.StructuralInformation.generate_uniform_sym_beam(node_pos,
                                                             oh_mass_per_unit_length,
                                                             oh_mass_iner,
@@ -962,7 +949,7 @@ def generate_from_excel_type03(op_params,
                                                             num_node_elem=3,
                                                             y_BFoR='y_AFoR',
                                                             num_lumped_mass=0)
-    
+
         overhang.StructuralInformation.boundary_conditions[-1] = -1
 
         overhang.AerodynamicInformation.set_to_zero(overhang.StructuralInformation.num_node_elem,
@@ -972,7 +959,7 @@ def generate_from_excel_type03(op_params,
         tower.assembly(overhang)
         tower.remove_duplicated_points(tol_remove_points)
         tower.StructuralInformation.body_number *= 0
-    
+
     # Hub mass
     HubMass = gc.read_column_sheet_type01(excel_file_name, excel_sheet_parameters, 'HubMass')
     if HubMass is not None:
@@ -1004,10 +991,6 @@ def generate_from_excel_type03(op_params,
         hub_position += np.array([0., 0., overhang_len])
     rotor.StructuralInformation.coordinates += hub_position
     wt.assembly(rotor)
-
-    # Redefine the body numbers
-    # wt.StructuralInformation.body_number *= 0
-    # wt.StructuralInformation.body_number[tower.StructuralInformation.num_elem:wt.StructuralInformation.num_elem] += 1
 
     ######################################################################
     ## MULTIBODY
