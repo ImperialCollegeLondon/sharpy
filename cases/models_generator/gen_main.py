@@ -332,7 +332,7 @@ class Components:
         if elem_stiffness is None:
             self.sharpy.fem['elem_stiffness'] = np.zeros(self.sharpy.fem['num_elem'], dtype=int)
         else:
-            self.sharpy.fem['elem_stiffness'] = elem_stiffness
+            self.sharpy.fem['elem_stiffness'] = np.array(elem_stiffness)
         if len(np.shape(mass_db)) == 3:
             self.sharpy.fem['mass_db'] = sigma_m*mass_db
         elif len(np.shape(mass_db)) == 2:
@@ -345,7 +345,7 @@ class Components:
         if elem_mass is None:
             self.sharpy.fem['elem_mass'] = np.zeros(self.sharpy.fem['num_elem'], dtype=int)
         else:
-            self.sharpy.fem['elem_mass'] = elem_mass
+            self.sharpy.fem['elem_mass'] = np.array(elem_mass)
         if lumped_mass is not None:
             self.sharpy.fem['lumped_mass'] = lumped_mass
         if lumped_mass_nodes is not None:
