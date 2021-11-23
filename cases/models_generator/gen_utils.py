@@ -147,11 +147,11 @@ def get_tl_edge(beam, leading_edge1, leading_edge2, trailing_edge1, trailing_edg
     num_nodes = len(beam)
     plane_verctor = np.cross(leading_edge1 - leading_edge2,
                              leading_edge1 - trailing_edge1)
-    assert np.dot(trailing_edge2-leading_edge1, plane_verctor)==0., \
+    assert np.allclose(np.dot(trailing_edge2-leading_edge1, plane_verctor), 0.), \
                  'Leading and trailing edge points not defined in the same plane'
     
     for i in range(num_nodes):
-        assert np.dot(beam[i]-leading_edge1, plane_verctor)==0., \
+        assert np.allclose(np.dot(beam[i]-leading_edge1, plane_verctor), 0.), \
                'beam nodes not defined in aerodynamic plane'
 
     l_edge = [leading_edge1]
@@ -161,9 +161,9 @@ def get_tl_edge(beam, leading_edge1, leading_edge2, trailing_edge1, trailing_edg
     for i in range(1, num_nodes):
         l_edge.append(get_edge(beam[i], v_pl, leading_edge1, leading_edge2))
         t_edge.append(get_edge(beam[i], v_pt, trailing_edge1, trailing_edge2))
-    assert np.allclose(l_edge[-1], leading_edge2), \
+    assert np.allclose(l_edge[-1], leading_edge2, 1e-4, 5e-4), \
         'leading edge end point not coincident with given one' 
-    assert np.allclose(t_edge[-1], trailing_edge2), \
+    assert np.allclose(t_edge[-1], trailing_edge2, 1e-4, 5e-4), \
         'trailing edge end point not coincident with given one' 
 
     return l_edge, t_edge
