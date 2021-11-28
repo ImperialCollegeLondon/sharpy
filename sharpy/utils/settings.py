@@ -29,7 +29,10 @@ def cast(k, v, pytype, ctype, default):
     except TypeError:
         raise exceptions.NoDefaultValueException(k)
     except ValueError:
-        val = ctype(v.value)
+        try:
+            val = ctype(v.value)
+        except AttributeError:
+            raise exceptions.NotValidSetting(k, v)
     return val
 
 

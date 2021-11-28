@@ -66,8 +66,11 @@ class NotValidSetting(DefaultValueBaseException):
     Raised when a user gives a setting an invalid value
     """
 
-    def __init__(self, setting, variable, options, value=None, message=''):
-        message = 'The setting %s with entry %s is not one of the valid options: %s' % (setting, variable, options)
+    def __init__(self, setting, variable, options=None, value=None, message=''):
+        if options is not None:
+            message = 'The setting %s with entry %s is not one of the valid options: %s' % (setting, variable, options)
+        else:
+            message = f'The setting {setting} with value {variable} is not valid. Check documentation.'
         super().__init__(variable, value, message=message)
         self.output_message(message, color_id = 4)
 
