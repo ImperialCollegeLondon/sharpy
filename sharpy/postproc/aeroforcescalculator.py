@@ -76,7 +76,7 @@ class AeroForcesCalculator(BaseSolver):
         self.caller = caller
 
         self.folder = data.output_folder + '/forces/'
-        if not os.path.exists(self.folder):
+        if not os.path.exists(self.folder) and self.settings['write_text_file']:
             os.makedirs(self.folder)
 
         if self.settings['screen_output']:
