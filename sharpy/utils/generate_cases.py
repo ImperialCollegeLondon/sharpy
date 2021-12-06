@@ -23,6 +23,7 @@ import os
 import sys
 import pandas as pd
 import scipy.integrate
+import scipy.interpolate
 from copy import deepcopy
 
 import sharpy.utils.algebra as algebra
@@ -249,6 +250,32 @@ def get_ielem_inode(connectivities, inode):
     raise RuntimeError("ERROR: cannot find ielem and inode_in_elem")
 
 
+def normalize_and_equispace_coordinates(x, y):
+    """
+    Given coordinates ``x`` and ``y``, it normalizes them over the chord and spaces them
+    equally in an array of the same size
+
+    Args:
+        x (np.array): chordwise coordinates
+        y (np.array): vertical coordinates
+
+    Returns:
+        tuple: (x/c, y/c) where coordinates are equispaced in x
+    """
+    xc = np.linspace(0, 1, len(x))
+    c = x[-1] - x[0]
+
+    interpolator = (scipy.interpolate.interp1d((x - x[0]) / c,
+                                               (y - y[0]) / c,
+                                               kind='quadratic',
+                                               copy=False,
+                                               fill_value='extrapolate',
+                                               assume_sorted=True))
+
+    yc = interpolator(xc)
+    return xc, yc
+
+
 def get_aoacl0_from_camber(x, y):
     """
     This section provies the angle of attach of zero lift for a thin
@@ -257,10 +284,9 @@ def get_aoacl0_from_camber(x, y):
     Check Theory of wing sections. Abbott. pg 69
     """
 
-    # Scale
-    c = x[-1] - x[0]
-    xc = (x - x[0])/c
-    yc = (y - y[0])/c
+    # in the case x is not equally spaced, may have issues with integral
+    # therefore - lets interpolate onto a linear scale
+    xc, yc = normalize_and_equispace_coordinates(x, y)
 
     # Remove the first and last points that may give rise to problems
     xc = xc[1:-1]
