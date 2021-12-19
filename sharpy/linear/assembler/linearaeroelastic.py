@@ -132,7 +132,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
         self.get_gebm2uvlm_gains(data)
 
-    def assemble(self):
+    def assemble(self, uvlm=None, beam=None):
         r"""
         Assembly of the linearised aeroelastic system.
 
@@ -161,19 +161,29 @@ class LinearAeroelastic(ss_interface.BaseElement):
         Returns:
 
         """
-        uvlm = self.uvlm
-        beam = self.beam
-
+        ##### control whether assemble inner ss system of the class or one given externally #
+        if uvlm == None:
+            uvlm = self.uvlm
+            outer_system = False
+        else:
+            outer_system = True
+        if beam == None:
+            beam = self.beam
+            outer_system += False
+        else:
+            outer_system = True
+        ######
         # Linearisation of the aerodynamic forces introduces stiffenning and damping terms into the beam matrices
-        flex_nodes = self.beam.sys.num_dof_flex
+        flex_nodes = beam.sys.num_dof_flex
 
         rigid_dof = beam.sys.Kstr.shape[0] - flex_nodes
         total_dof = flex_nodes + rigid_dof
 
-        if uvlm.scaled:
-            beam.assemble(t_ref=uvlm.sys.ScalingFacts['time'])
-        else:
-            beam.assemble()
+        if not outer_system: # if True, scaling should have taken place in the input uvlm/beam systems
+            if uvlm.scaled:
+                beam.assemble(t_ref=uvlm.sys.ScalingFacts['time'])
+            else:
+                beam.assemble()
 
         if not self.load_uvlm_from_file:
             # Projecting the UVLM inputs and outputs onto the structural degrees of freedom
@@ -208,7 +218,11 @@ class LinearAeroelastic(ss_interface.BaseElement):
             # Scaling
             if uvlm.scaled:
                 Kas /= uvlm.sys.ScalingFacts['length']
-
+                
+            # uvlm.input_gain = libss.Gain(np.eye(uvlm.ss.inputs),
+            #                              input_vars=uvlm.ss.input_variables.copy(),
+            #                              output_vars=LinearVector.transform(uvlm.ss.input_variables,
+            #                                                     to_type=ss_interface.OutputVariable))
             uvlm.connect_output(gain_ksa)
             uvlm.connect_input(gain_kas)
 
@@ -224,8 +238,6 @@ class LinearAeroelastic(ss_interface.BaseElement):
                     Dmod /= uvlm.sys.ScalingFacts['force']
                 uvlm.ss.D += Dmod
 
-            self.couplings['Ksa'] = gain_ksa
-            self.couplings['Kas'] = gain_kas
 
             if self.settings['beam_settings']['modal_projection'] is True and \
                     self.settings['beam_settings']['inout_coords'] == 'modes':
@@ -255,8 +267,6 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
                 uvlm.connect_input(in_mode_gain)
                 uvlm.connect_output(out_mode_gain)
-                self.couplings['in_mode_gain'] = in_mode_gain
-                self.couplings['out_mode_gain'] = out_mode_gain
 
             # Reduce uvlm projected onto structural coordinates
             if uvlm.rom:
@@ -289,29 +299,35 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
         ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
 
-        self.couplings['Tas'] = Tas
-        self.couplings['Tsa'] = Tsa
-        self.state_variables = {'aero': uvlm.ss.states,
-                                'beam': beam.ss.states}
+        if outer_system:
+            return ss
+        else:
+            self.couplings['Ksa'] = gain_ksa
+            self.couplings['Kas'] = gain_kas
+            self.couplings['Tas'] = Tas
+            self.couplings['Tsa'] = Tsa
+            self.state_variables = {'aero': uvlm.ss.states,
+                                    'beam': beam.ss.states}
 
-        # Save zero force reference
-        self.linearisation_vectors['forces_aero_beam_dof'] = Ksa.dot(self.linearisation_vectors['forces_aero'])
-        if self.settings['beam_settings']['modal_projection']:
-            self.linearisation_vectors['mode_shapes'] = beam.sys.U
+            # Save zero force reference
+            self.linearisation_vectors['forces_aero_beam_dof'] = Ksa.dot(self.linearisation_vectors['forces_aero'])
+            if self.settings['beam_settings']['modal_projection']:
+                self.linearisation_vectors['mode_shapes'] = beam.sys.U
+                if self.settings['beam_settings']['inout_coords'] == 'modes':
+                    self.linearisation_vectors['forces_aero_beam_dof'] = \
+                    out_mode_matrix.dot(self.linearisation_vectors['forces_aero_beam_dof'])
+                    self.couplings['in_mode_gain'] = in_mode_gain
+                    self.couplings['out_mode_gain'] = out_mode_gain
 
-        if self.settings['beam_settings']['modal_projection'] is True and \
-                self.settings['beam_settings']['inout_coords'] == 'modes':
-            self.linearisation_vectors['forces_aero_beam_dof'] = out_mode_matrix.dot(self.linearisation_vectors['forces_aero_beam_dof'])
+            cout.cout_wrap('Aeroelastic system assembled:')
+            cout.cout_wrap('\tAerodynamic states: %g' % uvlm.ss.states, 1)
+            cout.cout_wrap('\tStructural states: %g' % beam.ss.states, 1)
+            cout.cout_wrap('\tTotal states: %g' % ss.states, 1)
+            cout.cout_wrap('\tInputs: %g' % ss.inputs, 1)
+            cout.cout_wrap('\tOutputs: %g' % ss.outputs, 1)
 
-        cout.cout_wrap('Aeroelastic system assembled:')
-        cout.cout_wrap('\tAerodynamic states: %g' % uvlm.ss.states, 1)
-        cout.cout_wrap('\tStructural states: %g' % beam.ss.states, 1)
-        cout.cout_wrap('\tTotal states: %g' % ss.states, 1)
-        cout.cout_wrap('\tInputs: %g' % ss.inputs, 1)
-        cout.cout_wrap('\tOutputs: %g' % ss.outputs, 1)
-
-        self.ss = ss
-        return self.ss
+            self.ss = ss
+            return self.ss
 
     def update(self, u_infty):
         """

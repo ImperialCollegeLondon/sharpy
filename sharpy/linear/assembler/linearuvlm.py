@@ -524,7 +524,7 @@ class LinearUVLM(ss_interface.BaseElement):
             self.ss = libss.series(element, self.ss)
         elif type(element) is libss.Gain:
             self.ss.addGain(element, where='in')
-            self.input_gain = self.input_gain.dot(element)
+            #self.input_gain = self.input_gain.dot(element)
         else:
             TypeError('Unable to connect system that is not StateSpace or Gain')
 

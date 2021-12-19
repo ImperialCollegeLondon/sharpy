@@ -74,7 +74,7 @@ class LinearGust:
     def assemble(self):
         pass
 
-    def apply(self, ssuvlm):
+    def apply(self, ssuvlm, ssturb=None):
         r"""
         Couples in series the gust system assembled by the LinearGust with the Linear UVLM.
 
@@ -110,6 +110,8 @@ class LinearGust:
             libss.StateSpace: Coupled gust system with Linear UVLM.
         """
         ssgust = self.assemble()
+        if ssturb is not None: # connect a turbulence system to the inputs of ssgust
+            ssgust = libss.series(ssturb, ssgust)
         #
         # Feed through UVLM inputs
         b_aug = np.zeros((ssgust.states, ssuvlm.inputs - ssgust.outputs + ssgust.inputs))
@@ -394,7 +396,7 @@ def spanwise_interpolation(y_vertex, span_loc, x_vertex, x_domain):
     return interpolation_weights, interpolation_columns
 
 
-def campbell(sigma_w, length_scale, velocity, dt=None):
+def campbell(velocity, sigma_w=1., length_scale=2500., dt=None):
     """
     Campbell approximation to the Von Karman turbulence filter.
 
