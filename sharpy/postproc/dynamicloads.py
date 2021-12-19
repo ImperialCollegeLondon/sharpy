@@ -2,11 +2,16 @@ import os
 #import warnings as warn
 import numpy as np
 import scipy.linalg as sclalg
+##########
 import sharpy.utils.settings as settings
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.cout_utils as cout
 import sharpy.structure.utils.modalutils as modalutils
-
+import sharpy.linear.src.libss as libss
+import sharpy.linear.assembler.lineargustassembler as lineargustassembler
+import sharpy.utils.cs25 as cs25
+import sharpy.utils.stochastic as stochastic
+##########
 
 @solver
 class DynamicLoads(BaseSolver):
@@ -68,9 +73,41 @@ class DynamicLoads(BaseSolver):
     settings_default['save_eigenvalues'] = False
     settings_description['save_eigenvalues'] = 'Save eigenvalues to file. '
 
+    settings_types['calculate_rootloads'] = 'bool'
+    settings_default['calculate_rootloads'] = False
+    settings_description['calculate_rootloads'] = ''
+
+    settings_types['flight_conditions'] = 'dict'
+    settings_default['flight_conditions'] = {}
+    settings_description['flight_conditions'] = ''
+
+    settings_types['gust_regulation'] = 'str'
+    settings_default['gust_regulation'] = 'Continuous_gust'
+    settings_description['gust_regulation'] = ''
+
+    settings_types['white_noise_covariance'] = 'list(float)'
+    settings_default['white_noise_covariance'] = []
+    settings_description['white_noise_covariance'] = ''
+
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+
+    flight_conditions_settings_types = dict()
+    flight_conditions_settings_default = dict()
+    flight_conditions_settings_description = dict()
+
+    flight_conditions_settings_types['U_inf'] = 'float'
+    flight_conditions_settings_default['U_inf'] = 1.0
+    flight_conditions_settings_description['U_inf'] = ''
+
+    flight_conditions_settings_types['altitude'] = 'float'
+    flight_conditions_settings_default['altitude'] = 1.0
+    flight_conditions_settings_description['altitude'] = ''
+    
+    __doc__ += settings_table.generate(flight_conditions_settings_types,
+                                       flight_conditions_settings_default,
+                                       flight_conditions_settings_description)
 
     def __init__(self):
         self.settings = None
@@ -85,6 +122,7 @@ class DynamicLoads(BaseSolver):
 
     def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
+        #import pdb; pdb.set_trace();
 
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -93,9 +131,15 @@ class DynamicLoads(BaseSolver):
 
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
                                  no_ctype=True)
+        settings.to_custom_types(self.settings['flight_conditions'],
+                                 self.flight_conditions_settings_types,
+                                 self.flight_conditions_settings_default, no_ctype=True)
 
         self.save_eigenvalues = self.settings['save_eigenvalues']
         self.frequency_cutoff = self.settings['frequency_cutoff']
+        self.white_noise_covariance = self.settings['white_noise_covariance']
+        self.flight_conditions = self.settings['flight_conditions']
+        self.gust_regulation = self.settings['gust_regulation']
 
         self.folder = data.output_folder + '//'
         if not os.path.exists(self.folder):
@@ -104,7 +148,7 @@ class DynamicLoads(BaseSolver):
         # Output dict
         self.data.linear.dynamic_loads = dict()
         self.data.linear.dynamic_loads['flutter_results'] = dict()
-        self.data.linear.dynamic_loads['turbulenceloads_results'] = dict()
+        self.data.linear.dynamic_loads['loads_results'] = dict()
 
         self.caller = caller
 
@@ -121,28 +165,67 @@ class DynamicLoads(BaseSolver):
         if not self.frequency_cutoff:
             self.frequency_cutoff = np.inf
 
-        try:
-            ss = self.data.linear.linear_system.update(self.settings['reference_velocity'])
-        except:
-            ss = self.data.linear.ss
+        # try:
+        #     ss = self.data.linear.linear_system.update(self.settings['reference_velocity'])
+        # except:
+        #     ss = self.data.linear.ss
             
-        # Convert DT eigenvalues into CT
-        if ss.dt:
-            # Obtain dimensional time step
-            try:
-                ScalingFacts = self.data.linear.linear_system.uvlm.sys.ScalingFacts
-                if ScalingFacts['length'] != 1.0 and ScalingFacts['time'] != 1.0:
-                    self.dt = ScalingFacts['length'] / self.settings['reference_velocity'] * ss.dt
-                else:
-                    self.dt = ss.dt
-            except AttributeError:
-                self.dt = ss.dt
-
+        # # Convert DT eigenvalues into CT
+        # if ss.dt:
+        #     # Obtain dimensional time step
+        #     try:
+        #         ScalingFacts = self.data.linear.linear_system.uvlm.sys.ScalingFacts
+        #         if ScalingFacts['length'] != 1.0 and ScalingFacts['time'] != 1.0:
+        #             self.dt = ScalingFacts['length'] / self.settings['reference_velocity'] * ss.dt
+        #         else:
+        #             self.dt = ss.dt
+        #     except AttributeError:
+        #         self.dt = ss.dt
+        # import pdb; pdb.set_trace();
+                                
         if self.settings['calculate_flutter']:
             self.get_flutter_speed()
+        if self.settings['calculate_rootloads']:
+            self.get_max_rootloads()
                
         return self.data
 
+    def get_rootloads(self):
+
+        Max_x = dict() ; Max_y = dict()
+        key_factory = [ki for ki in self.data.linear.statespaces.keys()
+                       if 'ss_factory_' in ki]
+        for ki in key_factory:
+            Sigma_x, Sigma_y = stochastic.system_covariance(
+                self.data.linear.statespaces[ki].A,
+                self.data.linear.statespaces[ki].B,
+                self.data.linear.statespaces[ki].C,
+                self.white_noise_covariance)
+            sigma, rho = stochastic.correlation_coeff(Sigma_y)
+            rho = rho[0,1]
+            gust = getattr(cs25, self.gust_regulation)(
+                              **self.flight_conditions)
+            U_sigma = gust.U_sigma
+            points_xaxis, points_yaxis = cs25.bivariate_ellipse_design(sigma,
+                                                                       rho,
+                                                                       U_sigma,
+                                                                       P_1g=[0., 0.])
+            max_x = max(points_xaxis)
+            max_y = max(points_yaxis)
+            Max_x[ki] = max_x
+            Max_y[ki] = max_y
+        return Max_x, Max_y
+
+    def get_max_rootloads(self):
+
+        self.root_x, self.root_y = self.get_rootloads()
+        self.root_max_x = max([vi for ki,vi in self.root_x.items()])
+        self.root_max_y = max([vi for ki,vi in self.root_y.items()])
+        self.data.linear.dynamic_loads['loads_results']['root_max_x'] = \
+            self.root_max_x
+        self.data.linear.dynamic_loads['loads_results']['root_max_y'] = \
+            self.root_max_y
+        
     def get_flutter_speed(self):
         """
         Calculates the flutter speed
@@ -295,3 +378,183 @@ class DynamicLoads(BaseSolver):
         order = np.argsort(eigenvalues_truncated.real)[::-1]
 
         return eigenvalues_truncated[order], eigenvectors_truncated[:, order]
+
+
+class LoadPaths(object):
+    """Documentation for ClassName
+
+    """
+    def __init__(self,
+                 component_nodes,
+                 father_components=None):
+        
+        self.component_nodes = component_nodes
+        self.component_names = list(component_nodes.keys())
+        self.components = self.get_components(**component_nodes)
+        if father_components == None: 
+            self.father_components = [self.component_names[0]]
+        else:
+            self.father_components = father_components
+        self.num_father_components = len(self.father_components)
+        self.node2component = dict() # dictionary that relates any node in the model to
+        # the component it belongs to
+        self.get_node2component()
+        self.connection_nodes = collections.defaultdict(list)
+        self.connection_nodes_upstream = collections.defaultdict(list)
+        self.get_connection_nodes()
+        self.check_connections()
+        
+    def get_components(self, **kwargs):
+        
+        components = dict()
+        for ci, vi in kwargs.items():
+            if (type(vi[0]) is list or type(vi[0]) is range or type(vi[0]) is np.ndarray) \
+               and len(vi)==1: # [[0,1,2...]] 
+                components[ci] = list(vi[0])
+            elif type(vi[0]) is int and len(vi)==2: 
+                components[ci] = list(range(vi[0],vi[1]+1))
+            else:
+                raise ValueError('Components (%s) values (%s) incorrect in get_components'
+                                 %(ci, vi))
+        return components
+
+    def get_node2component(self):
+
+        for ci in self.component_names:
+            if ci in self.father_components:
+                for ni in self.components[ci]:
+                    self.node2component[ni] = ci
+            else:
+                for ni in self.components[ci][1:]:
+                    self.node2component[ni] = ci
+
+    def get_connection_nodes(self):
+
+        for ci in self.component_names[self.num_father_components:]:
+            ni0 = self.components[ci][0]  # first node in a non-father component must be shared
+            self.connection_nodes[ni0] += [ci]
+            
+        for ni in self.connection_nodes.keys():
+            for ci in self.component_names:
+                if ci not in self.connection_nodes[ni] and \
+                   ni in self.components[ci]:
+                    self.connection_nodes_upstream[ni] = ci
+                    self.connection_nodes[ni].insert(0, ci)
+                                    
+    def get_loadpaths(self, node_i, forward=True):
+
+        loadpath = dict()
+        component0 = self.node2component[node_i]
+        index = self.components[component0].index(node_i)
+        if forward:
+            nodes = self.components[component0][index:]
+        else:
+            if component0 in self.father_components:
+                nodes = self.components[component0][:index]
+            else:
+                nodes = self.components[component0][1:index]
+                
+        self.load_components(loadpath, component0, nodes)
+        self.loadpath = loadpath
+        path_nodes = []
+        for ci, vi in loadpath.items():
+            path_nodes += vi
+        assert len(set(path_nodes)) == len(path_nodes), "Incorrect definition of load path: repeated \
+        nodes in different component"
+        path_nodes.sort()
+        return path_nodes
+
+    def load_components(self, loadpath, component_name, nodes):
+
+        for ni in nodes: # cycle through nodes in component_name
+            if ni in self.connection_nodes.keys(): # branches of components coming out
+                # of this node: cycle through them 
+                for component_i in self.connection_nodes[ni]:
+                    if component_name != component_i:
+                        if component_i == self.connection_nodes_upstream[ni]: # not a forward path
+                            index = self.components[component_i].index(ni)
+                            nodes_i = self.components[component_i][:index]
+                        else:
+                            nodes_i = self.components[component_i][1:]
+                        self.load_components(loadpath, component_i, nodes_i)
+        loadpath[component_name] = nodes
+        
+    def check_connections(self):
+        
+        for ni in self.connection_nodes.keys():
+            assert self.node2component[ni] == self.connection_nodes_upstream[ni], \
+            "The upstream component of node %s (%s) is not the same as the output of \
+            node to component, %s" %(ni, self.connection_nodes_upstream[ni],
+                                     self.node2component[ni])
+            
+    def check_boundary_conditions(self, nodes, boundary_conditions):
+        
+        for ni in nodes:
+            if boundary_conditions[ni] == 1:
+                raise NameError('Boundary condition (%d) of A-frame node (%d) in the path!' \
+                                % (boundary_conditions[ni], ni))
+            elif boundary_conditions[ni] != -1 or \
+                 boundary_conditions[ni] != 0:
+                raise NameError('Invalid boundary condition (%d) at node %d!' \
+                                % (boundary_conditions[ni], ni))
+
+
+if (__name__ == '__main__'):
+
+    import unittest
+
+    class Test_LoadPaths(unittest.TestCase):
+        """ Test methods into this module """
+
+        def __init__(self, *args, **kwargs):
+            super(Test_LoadPaths, self).__init__(*args, **kwargs)
+            self.path1 = LoadPaths({'c1':[1,4],'c2':[[3,5]],'c3':[[3,6,7,8]],'c4':[8,11]})
+
+        def test_loadpath0(self):
+            """
+            to do: add check on moments gain
+            """
+            path_nodes = self.path1.get_loadpaths(1,forward=False)
+            assert self.path1.loadpath['c1'] == [], 'Error in test_loadpath0 c1'
+        def test_loadpath0f(self):
+            """
+            to do: add check on moments gain
+            """
+            path_nodes = self.path1.get_loadpaths(1,forward=True)
+            assert self.path1.loadpath['c1'] == [1, 2, 3, 4], 'Error in test_loadpath0f c1'
+            assert self.path1.loadpath['c2'] == [5], 'Error in test_loadpath0f c2'
+            assert self.path1.loadpath['c3'] == [6, 7, 8], 'Error in test_loadpath0f c3'
+            assert self.path1.loadpath['c4'] == [9, 10, 11], 'Error in test_loadpath0f c4'
+            
+        def test_loadpath1(self):
+            """
+            to do: add check on moments gain
+            """
+            path_nodes = self.path1.get_loadpaths(3,forward=False)
+            assert self.path1.loadpath['c1'] == [1, 2], 'Error in test_loadpath1 c1'
+        def test_loadpath1f(self):
+            """
+            to do: add check on moments gain
+            """
+            path_nodes = self.path1.get_loadpaths(3,forward=True)
+            assert self.path1.loadpath['c1'] == [3, 4], 'Error in test_loadpath1f c1'
+            assert self.path1.loadpath['c2'] == [5], 'Error in test_loadpath1f c2'
+            assert self.path1.loadpath['c3'] == [6, 7, 8], 'Error in test_loadpath1f c3'
+            assert self.path1.loadpath['c4'] == [9, 10, 11], 'Error in test_loadpath1f c4'
+            
+        def test_loadpath2(self):
+            """
+            to do: add check on moments gain
+            """
+            path_nodes = self.path1.get_loadpaths(8,forward=False)
+            assert self.path1.loadpath['c3'] == [6, 7], 'Error in test_loadpath2 c1'
+        def test_loadpath2f(self):
+            """
+            to do: add check on moments gain
+            """
+            path_nodes = self.path1.get_loadpaths(8,forward=True)
+            assert self.path1.loadpath['c3'] == [8], 'Error in test_loadpath2f c3'
+            assert self.path1.loadpath['c4'] == [9, 10, 11], 'Error in test_loadpath2f c4'
+
+    unittest.main()
+
