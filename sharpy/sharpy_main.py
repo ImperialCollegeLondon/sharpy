@@ -99,6 +99,10 @@ def main(args=None, sharpy_input_dict=None):
                         missing_solvers = True
                         solvers = dict()
                         cout.cout_wrap('Solvers not found in Pickle file. Using the settings in *.sharpy file.')
+                    if "UpdatePickle" in solvers.keys():
+                        # For backwards compatibility
+                        missing_solvers = True
+                        solvers = dict()
             except FileNotFoundError:
                 raise FileNotFoundError('The file specified for the snapshot \
                     restart (-r) does not exist. Please check.')
