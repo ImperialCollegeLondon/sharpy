@@ -142,16 +142,17 @@ def get_edge(x, v_p, edge1, edge2):
 
     return intersercting_p
 
-def get_tl_edge(beam, leading_edge1, leading_edge2, trailing_edge1, trailing_edge2):
+def get_tl_edge(beam, leading_edge1, leading_edge2, trailing_edge1, trailing_edge2,
+                rtol=1e-5, atol=1e-8, **kwargs):
 
     num_nodes = len(beam)
     plane_verctor = np.cross(leading_edge1 - leading_edge2,
                              leading_edge1 - trailing_edge1)
-    assert np.allclose(np.dot(trailing_edge2-leading_edge1, plane_verctor), 0.), \
+    assert np.allclose(np.dot(trailing_edge2-leading_edge1, plane_verctor), 0., rtol, atol), \
                  'Leading and trailing edge points not defined in the same plane'
     
     for i in range(num_nodes):
-        assert np.allclose(np.dot(beam[i]-leading_edge1, plane_verctor), 0.), \
+        assert np.allclose(np.dot(beam[i]-leading_edge1, plane_verctor), 0., rtol, atol), \
                'beam nodes not defined in aerodynamic plane'
 
     l_edge = [leading_edge1]
@@ -161,16 +162,20 @@ def get_tl_edge(beam, leading_edge1, leading_edge2, trailing_edge1, trailing_edg
     for i in range(1, num_nodes):
         l_edge.append(get_edge(beam[i], v_pl, leading_edge1, leading_edge2))
         t_edge.append(get_edge(beam[i], v_pt, trailing_edge1, trailing_edge2))
-    assert np.allclose(l_edge[-1], leading_edge2, 1e-4, 5e-4), \
+    assert np.allclose(l_edge[-1], leading_edge2, rtol, atol), \
         'leading edge end point not coincident with given one' 
-    assert np.allclose(t_edge[-1], trailing_edge2, 1e-4, 5e-4), \
+    assert np.allclose(t_edge[-1], trailing_edge2, rtol, atol), \
         'trailing edge end point not coincident with given one' 
 
     return l_edge, t_edge
 
 def from4points2chord(beam, leading_edge1, leading_edge2,
-                      trailing_edge1, trailing_edge2, out_consecutive=False):
-
+                      trailing_edge1, trailing_edge2, out_consecutive=False, **kwargs):
+    """
+    This function gets the chord and elastic_axis variables in SHARPy from the beam
+    nodes and 4 corners defining the aerodynamic surface
+    """
+    
     if isinstance(leading_edge1, list):
         leading_edge1 = np.array(leading_edge1)
     if isinstance(leading_edge2, list):
@@ -180,7 +185,7 @@ def from4points2chord(beam, leading_edge1, leading_edge2,
     if isinstance(trailing_edge2, list):
         trailing_edge2 = np.array(trailing_edge2)
         
-    le, te = get_tl_edge(beam, leading_edge1, leading_edge2, trailing_edge1, trailing_edge2)
+    le, te = get_tl_edge(beam, leading_edge1, leading_edge2, trailing_edge1, trailing_edge2, **kwargs)
     chord1, ea1 = get_chord(le, te, beam)
     if out_consecutive:
         return chord1, ea1

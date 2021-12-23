@@ -450,6 +450,7 @@ class Components:
                     chord=None,
                     elastic_axis=None,
                     point_platform=None,
+                    point_platform_tolerances={},
                     beam_origin=None,
                     twist=0.,
                     sweep=0.,
@@ -487,7 +488,8 @@ class Components:
                                                        point_platform['leading_edge1'],
                                                        point_platform['leading_edge2'],
                                                        point_platform['trailing_edge1'],
-                                                       point_platform['trailing_edge2'])
+                                                       point_platform['trailing_edge2'],
+                                                       **point_platform_tolerances)
         else:
             assert chord is not None and elastic_axis is not None, \
              "Chord and elastic_axis variables need to be defined if point_platform is not"
