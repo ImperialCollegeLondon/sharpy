@@ -16,8 +16,8 @@ import sharpy.utils.stochastic as stochastic
 @solver
 class DynamicLoads(BaseSolver):
     """
-    Calculates a series of figures of merit for the assessment of dynamic_loads around 
-    a static equilibrium. 
+    Calculates flutter and a series of figures of merit for 
+    the assessment of dynamic loads around a static equilibrium. 
 
     """
     solver_id = 'DynamicLoads'
@@ -31,6 +31,11 @@ class DynamicLoads(BaseSolver):
     settings_types['print_info'] = 'bool'
     settings_default['print_info'] = False
     settings_description['print_info'] = 'Print information and table of eigenvalues'
+
+    settings_types['calculate_flutter'] = 'bool'
+    settings_default['calculate_flutter'] = True
+    settings_description['calculate_flutter'] = 'Launch the computation of the flutter speed \
+    at the reference velocity'
 
     settings_types['reference_velocity'] = 'float'
     settings_default['reference_velocity'] = 1.
@@ -49,21 +54,27 @@ class DynamicLoads(BaseSolver):
 
     settings_types['damping_tolerance'] = 'float'
     settings_default['damping_tolerance'] = 1e-6
-    settings_description['damping_tolerance'] = 'Determine the flutter speed when damping is above \
-    this value instead of 0. (useful for some ROMs where stability might not preserved and some \
-    eigenvalues are slightly above 0. but do not determine flutter)'
+    settings_description['damping_tolerance'] = 'Determine the flutter speed when \
+    damping is above this value instead of 0. (useful for some ROMs where \
+    stability might not preserved and some eigenvalues are slightly above 0. \
+    but do not determine flutter)'
 
     settings_types['root_method'] = 'str'
     settings_default['root_method'] = 'secant'
     settings_description['root_method'] = 'Method to find the damping of the aeroelastic system \
     crossing the x-axis'
     settings_options['root_method'] = ['secant', 'bisection']
-    
-    settings_types['calculate_flutter'] = 'bool'
-    settings_default['calculate_flutter'] = True
-    settings_description['calculate_flutter'] = 'Launch the computation of the flutter speed \
-    at the reference velocity'        
-    
+
+    settings_types['secant_max_calls'] = 'int'
+    settings_default['secant_max_calls'] = 0
+    settings_description['secant_max_calls'] = 'Maximum number of calls in secant algorithm, \
+    after which bisection is employed (secant is usually faster but convergence is not guaranteed)'
+
+    settings_types['flutter_bound'] = 'float'
+    settings_default['flutter_bound'] = 0.
+    settings_description['flutter_bound'] = 'Set an upper velocity bound (> reference_velocity) after \
+    which flutter is not calculated (useful for optimization problems where flutter is a constraint)'
+
     settings_types['frequency_cutoff'] = 'float'
     settings_default['frequency_cutoff'] = 0
     settings_description['frequency_cutoff'] = 'Truncate higher frequency modes. \
@@ -99,11 +110,11 @@ class DynamicLoads(BaseSolver):
 
     flight_conditions_settings_types['U_inf'] = 'float'
     flight_conditions_settings_default['U_inf'] = 1.0
-    flight_conditions_settings_description['U_inf'] = ''
+    flight_conditions_settings_description['U_inf'] = 'Flying speed'
 
     flight_conditions_settings_types['altitude'] = 'float'
     flight_conditions_settings_default['altitude'] = 1.0
-    flight_conditions_settings_description['altitude'] = ''
+    flight_conditions_settings_description['altitude'] = 'Flying altitude'
     
     __doc__ += settings_table.generate(flight_conditions_settings_types,
                                        flight_conditions_settings_default,
@@ -228,7 +239,8 @@ class DynamicLoads(BaseSolver):
         
     def get_flutter_speed(self):
         """
-        Calculates the flutter speed
+        Calculates the flutter speed by updating the beam DLTI system with new velocities
+        until the velocity of 0 damping is found
 
         """
         
@@ -236,7 +248,18 @@ class DynamicLoads(BaseSolver):
         h = self.settings['velocity_increment']
         epsilon = self.settings['flutter_error']
         damping_tolerance = self.settings['damping_tolerance']
-
+        if self.settings['secant_max_calls'] == 0:
+            secant_max_calls = np.inf
+        else:
+            secant_max_calls = self.settings['secant_max_calls']
+            
+        if self.settings['flutter_bound'] == 0:
+            flutter_bound = np.inf
+        else:
+            flutter_bound = self.settings['flutter_bound']
+            
+        flutter_calculation = 1 # find flutter speed unless an upper bound is
+                                # defined and the speed is beyond that bound   
         if self.save_eigenvalues:
             eigs_r_series = [] 
             eigs_i_series = []
@@ -261,8 +284,11 @@ class DynamicLoads(BaseSolver):
             eigs_r_series.append(eigs.real)
             eigs_i_series.append(eigs.imag)
             u_inf_series.append(np.ones_like(eigs.real)*u_new)
-        
-        while damping_old*damping_new > 0.:   # Find bounds (+- h) to the flutter speed 
+            
+        ###########################################
+        # Find bounds (+- h) to the flutter speed #
+        ###########################################
+        while damping_old*damping_new > 0.:
             if damping_new > damping_tolerance: # Decrease the velocity by h
                 u_old = u_new
                 u_new-=h                
@@ -272,7 +298,7 @@ class DynamicLoads(BaseSolver):
             else:  # Singularity: only possible if damping_tolerance=0 and damping_new=0 too
                 u_old = u_new
                 break
-            #print('Increment velocity: %s'%u_new)
+            
             ss_aeroelastic = self.data.linear.linear_system.update(u_new) #Build new aeroelastic system
             eigs, eigenvectors = sclalg.eig(ss_aeroelastic.A)
             if self.dt:
@@ -290,16 +316,23 @@ class DynamicLoads(BaseSolver):
                 eigs_r_series.append(eigs.real)
                 eigs_i_series.append(eigs.imag)
                 u_inf_series.append(np.ones_like(eigs.real)*u_new)
-
-        # Secant method (x-axis=speed, y-axis=damping)
-        # self.u_flutter = u_new
-        while np.abs(u_new - u_old) > epsilon: # Stop searching when interval is smaller than set error
-            if self.settings['root_method'] == 'secant':
+            if u_new > flutter_bound:
+                flutter_calculation = 0
+                break
+        ##############################################################################
+        # root finding via secant or bisection method (x-axis=speed, y-axis=damping) #
+        ##############################################################################
+        self.flutter_root_calls = 0 # counter for number of calls inside next while loop
+        while np.abs(u_new - u_old) > epsilon and flutter_calculation:
+            # Stop searching when interval is smaller than set error
+            if (self.settings['root_method'] == 'secant' and
+                self.flutter_root_calls <= secant_max_calls):
                 ddamping = (damping_new-damping_old)/(u_new-u_old)  # Slope in secant method               
                 du = -damping_old/ddamping
                 u_secant = u_old - damping_old/ddamping # Calculated speed to set damping to 0: \
                                                     # damping_old + ddamping*(u_secant-u_old) = 0
-            elif self.settings['root_method'] == 'bisection':
+            elif (self.settings['root_method'] == 'bisection' or
+                  self.flutter_root_calls > secant_max_calls):
                 u_secant = (u_new + u_old)/2
             ss_aeroelastic = self.data.linear.linear_system.update(u_secant)
             #print('Secant velocity new: %s'%u_new)
@@ -309,7 +342,7 @@ class DynamicLoads(BaseSolver):
                 eigs = np.log(eigs) / self.dt
             eigs, eigenvectors = self.sort_eigenvalues(eigs, eigenvectors, self.frequency_cutoff)
             damping_vector = eigs.real/np.abs(eigs)
-            # Store eigenvalues for plot
+            # Store eigenvalues
             eigs_r_series.append(eigs.real)
             eigs_i_series.append(eigs.imag)
             u_inf_series.append(np.ones_like(eigs.real)*u_secant)
@@ -334,6 +367,9 @@ class DynamicLoads(BaseSolver):
                     damping_old = damping_secant
             else:
                 u_new = u_old = u_secant  # break the loop, damping = 0.
+
+            self.flutter_root_calls += 1
+            
         self.u_flutter = u_new
         
         if self.settings['print_info']:
