@@ -86,6 +86,11 @@ class Sharpy_data:
                     for iairfoil in range(len(v)):
                         airfoils_group.create_dataset("%d" % iairfoil,
                                                       data=v[iairfoil])
+                elif k == 'polars':
+                    polars_group = h5file.create_group('polars')
+                    for ipolar in range(len(v)):
+                        polars_group.create_dataset("%d" % ipolar,
+                                                      data=v[ipolar])
                 elif k =='m_distribution':
                     h5file.create_dataset('m_distribution', data=v.encode('ascii', 'ignore'))
                 else:
@@ -466,7 +471,8 @@ class Components:
                     airfoils=None,
                     airfoil_distribution=None,
                     airfoil_efficiency=None,
-                    polars=None):
+                    polars=None,
+                    airfoils_global=False):
         """
         Create SHARPy aero from the following inputs:
 
@@ -484,6 +490,8 @@ class Components:
             airfoil_distribution: maps each node to the 'n' airfoil
             airfoil_efficiency: modify the aero given by the UVLM   
             polars (np.array): table of polars to correct VLM              
+            airfoils_global (bool): whether airfoils and related elements are defined in a
+                                    global sense at the first component or component-by-component
         """
 
         if point_platform is not None: # aero defined from 4 points
@@ -534,28 +542,42 @@ class Components:
             self.sharpy.aero['surface_distribution'] = np.zeros((self.sharpy.fem['num_elem'],), dtype=int)
         if aero_node is None: # By default all nodes have a lifting surface attached
             self.sharpy.aero['aero_node'] = np.ones((self.num_node,), dtype = bool)
-        elif aero_node is False: #No lifting surface atached
+        elif aero_node is False: #No lifting surface attached
             self.sharpy.aero['aero_node'] = np.zeros((self.num_node,), dtype = bool)
         else:                   # Do as defined in aero_node
             self.sharpy.aero['aero_node'] = aero_node
         if airfoils is not None:
-            self.sharpy.aero['airfoils'] = airfoils
+            if isinstance(airfoils, list):
+                self.sharpy.aero['airfoils'] = airfoils
+            else: # needs to be a list and not np.array as there might be different sizes
+                self.sharpy.aero['airfoils'] = [airfoils[i] for i in range(len(airfoils))]
         else:
             camber_points = self.sharpy.aero['surface_m'][0]+1
-            self.sharpy.aero['airfoils'] = np.zeros((1,
-                                                     camber_points,
-                                                     2), dtype=float)
-            self.sharpy.aero['airfoils'][0, :, 0] = np.linspace(0.0, 1.0, camber_points)
+            self.sharpy.aero['airfoils'] = [np.zeros((camber_points,
+                                                     2), dtype=float)]
+            self.sharpy.aero['airfoils'][0][:, 0] = np.linspace(0.0, 1.0, camber_points)
+            
         if airfoil_distribution is not None:
-            self.sharpy.aero['airfoil_distribution'] = airfoil_distribution
+            if len(np.shape(airfoil_distribution)) == 2: # matrix with the distribution 
+                self.sharpy.aero['airfoil_distribution'] = airfoil_distribution
+            elif len(np.shape(airfoil_distribution)) == 1: # vector with node values that
+                # needs to be converted to matrix distribution
+                self.sharpy.aero['airfoil_distribution'] = gu.node2aero(airfoil_distribution)
+            elif len(np.shape(airfoil_distribution)) == 0: # constant value
+                self.sharpy.aero['airfoil_distribution'] = airfoil_distribution * \
+                    np.ones((self.sharpy.fem['num_elem'],
+                             self.sharpy.fem['num_node_elem']),
+                            dtype=int)
         else:
             self.sharpy.aero['airfoil_distribution'] = np.zeros((self.sharpy.fem['num_elem'],
                                                                  self.sharpy.fem['num_node_elem']),
-                                                                dtype=int)
+                                                                 dtype=int)
         if airfoil_efficiency is not None:
             self.sharpy.aero['airfoil_efficiency'] = airfoil_efficiency
         if polars is not None:
             self.sharpy.aero['polars'] = polars
+            
+        self.sharpy.aero['airfoils_global'] = airfoils_global
 
     def sharpy_aero_input(self, key, var):
         """
@@ -594,7 +616,7 @@ class Components:
 
                 var_p += self.ds_list[k-1]*dyds
         # Given distribution            
-        elif (isinstance(var[0], np.ndarray) or isinstance(var[0], list)):
+        elif isinstance(var[0], (np.ndarray, list)):
             self.sharpy.aero[key] = var
             assert np.shape(self.sharpy.aero[key]) == right_size, \
                 "{} not complying with size {}".format(key, right_size)
@@ -732,7 +754,7 @@ class Model:
                 dic_struc['app_forces'] = model[ci].sharpy.fem['app_forces']
                 
                 aero_vars = ['chord', 'elastic_axis', 'twist', 'sweep',
-                             'airfoil_efficiency', 'polars']
+                             'airfoil_efficiency']
                 if model[ci].sharpy.aero_create or model[ci].sharpy.aero_create0:             
                     for k in aero_vars:
                         try:
@@ -746,11 +768,15 @@ class Model:
                     else:
                         dic_aero['surface_m'] = model[ci].sharpy.aero['surface_m']
                     dic_aero['m_distribution'] = model[ci].sharpy.aero['m_distribution']
-                    dic_aero['airfoils'] = [model[ci].sharpy.aero['airfoils'][i] for i \
-                                            in range(len(model[ci].sharpy.aero['airfoils']))]
-                    dic_aero['airfoil_distribution'] = model[ci].sharpy.aero['airfoil_distribution']
 
-            else:
+                    dic_aero['airfoils'] = model[ci].sharpy.aero['airfoils']
+                    dic_aero['airfoil_distribution'] = model[ci].sharpy.aero['airfoil_distribution']
+                    try:
+                        dic_aero['polars'] = model[ci].sharpy.aero['polars']
+                    except KeyError:
+                        pass
+                    
+            else: # rest of components
                 upstream_component = settings[self.components[ci]]['upstream_component']
                 node_in_upstream = settings[self.components[ci]]['node_in_upstream']
                 # translate the component to the upstream node
@@ -768,7 +794,8 @@ class Model:
                 connectivities[0][0] = node_connection
 
                 if 'chained_component' in settings[self.components[ci]] \
-                    and settings[self.components[ci]]['chained_component']:
+                    and settings[self.components[ci]]['chained_component']: # this component forms a close loop,
+                    # i.e. is attached to other components in both ends
                     chained_component = settings[self.components[ci]]['chained_component']
                     node_connection_chained = self.dict_comp[chained_component[0]]\
                         ['nodes'][chained_component[1]]
@@ -859,11 +886,12 @@ class Model:
                 dic_struc['app_forces'] = np.concatenate((dic_struc['app_forces'],
                                                           app_forces),axis=0)
                 
-                if model[ci].sharpy.aero_create or model[ci].sharpy.aero_create0:
+                if model[ci].sharpy.aero_create or model[ci].sharpy.aero_create0: # component with aerodynamics OR
+                                                           # without but within a model that contains aerodynamics
                     # chord, elastic_axis, twist, sweep, airfoil_efficiency, polars
-                    # WARNING: VARIABLES SHAPE IS [num_elem, num_node_elem], WHICH can be problematic
-                    # in the connection; except for polars, which is a group relating to each 'airfoil'
-                    for k in aero_vars: 
+                    # WARNING: VARIABLES SHAPE IS [num_elem, num_node_elem], WHICH can be problematic in terms 
+                    # of continuity in the connection; except for polars, which is a group relating to each 'airfoil'
+                    for k in aero_vars:
                         try:
                             dic_aero[k] = np.concatenate((dic_aero[k],
                                                               model[ci].sharpy.aero[k]),axis=0)
@@ -895,13 +923,23 @@ class Model:
                     else:
                         surface_m = dic_aero['surface_m'] + model[ci].sharpy.aero['surface_m']
                     dic_aero['surface_m'] = gu.flatten2(surface_m)
-                    airfoil_distribution = model[ci].sharpy.aero['airfoil_distribution']+ \
-                                                       len(dic_aero['airfoils'])
-                    dic_aero['airfoil_distribution'] = np.concatenate((dic_aero['airfoil_distribution'],
-                                                                       airfoil_distribution),axis=0)
-                    airfoils = [model[ci].sharpy.aero['airfoils'][i] for i \
-                                            in range(len(model[ci].sharpy.aero['airfoils']))]
-                    dic_aero['airfoils'] +=airfoils 
+                    if model[ci].sharpy.aero['airfoils_global']:
+                        # airfoils and polars defined globally in the first component
+                        pass
+                    else:
+                        airfoil_distribution = model[ci].sharpy.aero['airfoil_distribution']+ \
+                            len(dic_aero['airfoils'])
+                        dic_aero['airfoil_distribution'] = np.concatenate((dic_aero['airfoil_distribution'],
+                                                                       airfoil_distribution), axis=0)
+
+                    airfoils = model[ci].sharpy.aero['airfoils']
+                    dic_aero['airfoils'] += airfoils
+                    try:
+                        polars = model[ci].sharpy.aero['polars']
+                        dic_aero['polars'] = np.concatenate((dic_aero['polars'],
+                                                             polars), axis=0)
+                    except KeyError:
+                        pass
 
                 if model[ci].sharpy.aero_create:
                     dic_aero['m_distribution'] = model[ci].sharpy.aero['m_distribution']

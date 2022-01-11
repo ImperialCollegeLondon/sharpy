@@ -7,9 +7,9 @@ import sharpy.utils.rom_interface as rom_interface
 import sharpy.rom.balanced as balanced
 
 
-solvers = copy.deepcopy(solver_interface.dictionary_of_solvers())     
-linear_solvers = copy.deepcopy(ss_interface.dictionary_of_systems())
-roms = copy.deepcopy(rom_interface.dictionary_of_solvers())
+# solvers = copy.deepcopy(solver_interface.dictionary_of_solvers())     
+# linear_solvers = copy.deepcopy(ss_interface.dictionary_of_systems())
+# roms = copy.deepcopy(rom_interface.dictionary_of_solvers())
 
 def print_solver_names():
     """
