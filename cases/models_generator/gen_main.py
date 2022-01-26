@@ -462,6 +462,7 @@ class Components:
                     elastic_axis=None,
                     point_platform=None,
                     point_platform_tolerances={},
+                    point_platform_twist=None,
                     beam_origin=None,
                     twist=0.,
                     sweep=0.,
@@ -480,7 +481,13 @@ class Components:
             surface_m (int): number of chordwise panels
             chord (np.array): chord length              
             elastic_axis (np.array): position of the chord with respect to the FE beam
-            point_platform (np.array): four points to define the aero platform (giving chord and ea)
+            point_platform (np.array): four points to define the aero platform 
+                                       (giving chord and ea)
+            point_platform_tolerances (np.array): tolerance for checking points lie in a plane
+            point_platform_twist (bool): points in point_platform do have a twist that needs
+                                         to be removed
+            beam_origin (np.array): an origin coordinates if point_platform points are not 
+                                    defined with respect to a [0, 0, 0] origin
             twist (np.array): rotation in the local x axis
             sweep (np.array): rotation of panels    
             surface_distribution : index of the surface  
@@ -498,7 +505,8 @@ class Components:
                                        # (leading_and  trailing edge)
             if beam_origin is None:
                 beam_origin = np.zeros(3)
-            if twist: # remove twist from 4 points to obtain the resultant plane
+            if point_platform_twist: # remove twist from 4 points
+                                       # to obtain the resultant plane
                 points_platform = gu.plane_from_twist(self.sharpy.fem['coordinates']
                                                       + beam_origin,
                                                       twist,
