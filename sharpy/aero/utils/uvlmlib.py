@@ -32,8 +32,6 @@ class VMopts(ct.Structure):
             bool cfl1;
             double vortex_radius;
             double vortex_radius_wake_ind;
-            double* centre_rot_g[3];
-            double* rbm_vel_g[6];
         };
     """
     _fields_ = [("ImageMethod", ct.c_bool),
@@ -58,8 +56,7 @@ class VMopts(ct.Structure):
                 ("cfl1", ct.c_bool),
                 ("vortex_radius", ct.c_double),
                 ("vortex_radius_wake_ind", ct.c_double),
-                ("centre_rot_g", ct.c_double * 3),
-                ("rbm_vel_g", ct.c_double * 6)]
+                ]
     
 
 
@@ -87,11 +84,9 @@ class VMopts(ct.Structure):
         self.cfl1 = ct.c_bool(True)
         self.vortex_radius = ct.c_double(vortex_radius_def)
         self.vortex_radius_wake_ind = ct.c_double(vortex_radius_def)
-        self.centre_rot_g = np.ctypeslib.as_ctypes(np.zeros((3)))
-        self.rbm_vel_g = np.ctypeslib.as_ctypes(np.zeros((6)))
 
 
-    def set_options(self, options, n_surfaces = 0, n_surfaces_nonlifting = 0, rbm_vel_g = np.zeros(6)):
+    def set_options(self, options, n_surfaces = 0, n_surfaces_nonlifting = 0):
         self.Steady = ct.c_bool(True)
         self.NumSurfaces = ct.c_uint(n_surfaces)
         self.NumSurfacesNonlifting = ct.c_uint(n_surfaces_nonlifting)
@@ -111,10 +106,6 @@ class VMopts(ct.Structure):
         self.only_nonlifting = ct.c_bool(options["only_nonlifting"])
         self.only_lifting = ct.c_bool(not options["nonlifting_body_interaction"])
 
-        for i in range(len(options["centre_rot_g"])):
-            self.centre_rot_g[i] = ct.c_double(options["centre_rot_g"][i])
-        for i in range(len(rbm_vel_g)):            
-            self.rbm_vel_g[i] = ct.c_double(rbm_vel_g[i])
 
 class UVMopts(ct.Structure):
     # TODO: add set_options function
@@ -143,8 +134,6 @@ class UVMopts(ct.Structure):
                 ("interp_method", ct.c_uint),
                 ("yaw_slerp", ct.c_double),
                 ("quasi_steady", ct.c_bool),
-                ("centre_rot_g", ct.c_double * 3),
-                ("rbm_vel_g", ct.c_double * 6),
                 ("num_spanwise_panels_wo_induced_velocity", ct.c_uint)]
 
     def __init__(self):
@@ -165,8 +154,6 @@ class UVMopts(ct.Structure):
         self.vortex_radius_wake_ind = ct.c_double(vortex_radius_def)
         self.yaw_slerp = ct.c_double(0.)
         self.quasi_steady = ct.c_bool(False)
-        self.centre_rot_g = np.ctypeslib.as_ctypes(np.zeros((3)))
-        self.rbm_vel_g = np.ctypeslib.as_ctypes(np.zeros((6)))
         self.num_spanwise_panels_wo_induced_velocity = ct.c_uint(0)
 
     def set_options(self, 
@@ -175,7 +162,6 @@ class UVMopts(ct.Structure):
                     n_surfaces_nonlifting = 0, 
                     dt = None, 
                     convect_wake = False, 
-                    rbm_vel_g = np.zeros(6),
                     image_method = False,
                      n_span_panels_wo_u_ind = 0):
         if dt is None:
@@ -204,10 +190,6 @@ class UVMopts(ct.Structure):
         self.only_lifting = ct.c_bool(not options["nonlifting_body_interaction"])
         self.num_spanwise_panels_wo_induced_velocity = n_span_panels_wo_u_ind
 
-        for i in range(len(options["centre_rot_g"])):
-            self.centre_rot_g[i] = ct.c_double(options["centre_rot_g"][i])
-        for i in range(len(rbm_vel_g)):     
-            self.rbm_vel_g[i] = ct.c_double(rbm_vel_g[i])       
 
 class FlightConditions(ct.Structure):
     _fields_ = [("uinf", ct.c_double),
@@ -297,6 +279,8 @@ def vlm_solver_lifting_and_nonlifting_bodies(ts_info_lifting, ts_info_nonlifting
     flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info_lifting.u_ext[0][:, 0, 0]/flightconditions.uinf)
 
     p_rbm_vel_g = options['rbm_vel_g'].ctypes.data_as(ct.POINTER(ct.c_double))
+
+    p_centre_rot_g = options['centre_rot_g'].ctypes.data_as(ct.POINTER(ct.c_double))
     ts_info_lifting.generate_ctypes_pointers()
     ts_info_nonlifting.generate_ctypes_pointers()
     run_VLM_lifting_and_nonlifting(ct.byref(vmopts),
@@ -315,7 +299,9 @@ def vlm_solver_lifting_and_nonlifting_bodies(ts_info_lifting, ts_info_nonlifting
             ts_info_nonlifting.ct_p_zeta,
             ts_info_nonlifting.ct_p_u_ext,
             ts_info_nonlifting.ct_p_sigma,
-            ts_info_nonlifting.ct_p_forces)
+            ts_info_nonlifting.ct_p_forces,
+            p_rbm_vel_g,
+            p_centre_rot_g)
 
     ts_info_lifting.remove_ctypes_pointers()
     ts_info_nonlifting.remove_ctypes_pointers()
@@ -338,7 +324,6 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
                         n_surfaces_nonlifting = 0, 
                         dt = dt, 
                         convect_wake = convect_wake, 
-                        rbm_vel_g = rbm_vel,
                         image_method = False,
                         n_span_panels_wo_u_ind=0)
 
@@ -370,7 +355,9 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
              # previous_ts_info.ct_p_gamma,
              ts_info.ct_p_normals,
              ts_info.ct_p_forces,
-             ts_info.ct_p_dynamic_forces)
+             ts_info.ct_p_dynamic_forces,
+             p_rbm_vel,
+             p_centre_rot)
     ts_info.remove_ctypes_pointers()
     # previous_ts_info.remove_ctypes_pointers()
 
@@ -387,7 +374,6 @@ def uvlm_solver_lifting_and_nonlifting(i_iter, ts_info, ts_info_nonlifting, stru
                         n_surfaces_nonlifting = ts_info_nonlifting.n_surf, 
                         dt = dt, 
                         convect_wake = convect_wake, 
-                        rbm_vel_g = rbm_vel,
                         image_method = False,
                         n_span_panels_wo_u_ind=4)
     uvmopts.only_lifting = ct.c_bool(False)
