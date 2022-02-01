@@ -21,9 +21,9 @@ class TestCoupledDynamic(unittest.TestCase):
         mod = importlib.import_module('tests.coupled.dynamic.' + case + '.generate_' + case)
         pass
 
-    @classmethod
-    def tearDownClass(cls):
-        pass
+
+
+
     def test_hale_dynamic(self):
         """
         Case and results from:
@@ -56,5 +56,20 @@ class TestCoupledDynamic(unittest.TestCase):
                                         verbose=True)
 
 
+    @classmethod
+    def tearDownClass(cls):
 
+        import shutil
+        list_cases = ['hale']
+        list_file_extensions = ['.fem.h5', '.aero.h5', '.sharpy']
+        list_folders = ['output', '__pycache__']
+        for case in list_cases:
+            file_path = os.path.join(os.path.abspath(os.path.dirname(os.path.realpath(__file__))),
+                                    case)
+            for folder in list_folders:
+                if os.path.isdir(folder):
+                    shutil.rmtree(folder)
+            for extension in list_file_extensions:
+                os.remove(os.path.join(file_path, case + extension))
+        pass
 
