@@ -261,6 +261,8 @@ def sol_146(num_modes,                  # Num modes in the solution
                                                                    'dt': dt,
                                                                    'gravity_on':gravity_on,
                                                                    'gravity':nz*9.807,
+                                                                   'num_load_steps': 10,
+                                                                   'min_delta':1e-6
                                                                    }
     settings_new['Modal']['NumLambda'] = num_modes
     settings_new['Modal']['write_modes_vtk'] = 'off'

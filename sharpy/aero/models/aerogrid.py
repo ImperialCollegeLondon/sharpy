@@ -144,8 +144,11 @@ class Aerogrid(object):
             self.polars = []
             nairfoils = np.amax(self.aero_dict['airfoil_distribution']) + 1
             for iairfoil in range(nairfoils):
-                new_polar = ap.Polar()
-                new_polar.initialise(aero_dict['polars'][str(iairfoil)])
+                try:
+                    new_polar = ap.Polar()
+                    new_polar.initialise(aero_dict['polars'][str(iairfoil)])
+                except KeyError:
+                    new_polar = None
                 self.polars.append(new_polar)
 
     def output_info(self):

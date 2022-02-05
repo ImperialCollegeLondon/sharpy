@@ -70,6 +70,9 @@ class PolarCorrection(generator_interface.BaseGenerator):
                                                 'arising from the lift and drag (derived from the polar) contribution. ' \
                                                 'Else, it will add the polar Cm to the moment already computed by ' \
                                                 'SHARPy.'
+    settings_types['airfoil2_polar'] = 'dict'
+    settings_default['airfoil2_polar'] = {}
+    settings_description['airfoil2_polar'] = 'Map airfoils to corresponding polars'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options,
@@ -91,7 +94,12 @@ class PolarCorrection(generator_interface.BaseGenerator):
         self.structure = kwargs.get('structure')
         self.rho = kwargs.get('rho')
         self.vortex_radius = kwargs.get('vortex_radius', 1e-6)
-
+        
+        if len(self.settings['airfoil2_polar'].keys()) == 0:
+            self.airfoil2_polar = {str(i):i for i in range(len(self.aero.aero_dict['airfoils']))}
+        else:
+            self.airfoil2_polar = self.settings['airfoil2_polar']
+            
     def generate(self, **params):
         """
         Keyword Args:
@@ -133,7 +141,13 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 isurf = aerogrid.struct2aero_mapping[inode][0]['i_surf']
                 i_n = aerogrid.struct2aero_mapping[inode][0]['i_n']
                 N = aerogrid.aero_dimensions[isurf, 1]
-                polar = aerogrid.polars[iairfoil]
+                try:
+                    ipolar = int(self.airfoil2_polar[str(iairfoil)])
+                    polar = aerogrid.polars[ipolar]
+                except KeyError:
+                    polar = None
+                if polar is None:
+                    continue
                 cab = algebra.crv2rotation(structural_kstep.psi[ielem, inode_in_elem, :])
                 cgb = np.dot(cga, cab)
 

@@ -513,20 +513,23 @@ class Components:
                                                       point_platform['leading_edge1'],
                                                       point_platform['leading_edge2'],
                                                       point_platform['trailing_edge1'],
-                                                      point_platform['trailing_edge2'])
+                                                      point_platform['trailing_edge2'],
+                                                      **point_platform_tolerances)
                 chord, elastic_axis = gu.from4points2chord(self.sharpy.fem['coordinates']
                                                            + beam_origin,
                                                            points_platform[0],
                                                            points_platform[1],
                                                            points_platform[2],
-                                                           points_platform[3])
+                                                           points_platform[3],
+                                                           **point_platform_tolerances)
             else:
                 chord, elastic_axis = gu.from4points2chord(self.sharpy.fem['coordinates']
                                                            + beam_origin,
                                                            point_platform['leading_edge1'],
                                                            point_platform['leading_edge2'],
                                                            point_platform['trailing_edge1'],
-                                                           point_platform['trailing_edge2'])
+                                                           point_platform['trailing_edge2'],
+                                                           **point_platform_tolerances)
         else:
             assert chord is not None and elastic_axis is not None, \
              "Chord and elastic_axis variables need to be defined if point_platform is not"
@@ -570,7 +573,7 @@ class Components:
                 self.sharpy.aero['airfoil_distribution'] = airfoil_distribution
             elif len(np.shape(airfoil_distribution)) == 1: # vector with node values that
                 # needs to be converted to matrix distribution
-                self.sharpy.aero['airfoil_distribution'] = gu.node2aero(airfoil_distribution)
+                self.sharpy.aero['airfoil_distribution'] = gu.node2aero(airfoil_distribution).astype(int)
             elif len(np.shape(airfoil_distribution)) == 0: # constant value
                 self.sharpy.aero['airfoil_distribution'] = airfoil_distribution * \
                     np.ones((self.sharpy.fem['num_elem'],
@@ -935,8 +938,12 @@ class Model:
                         # airfoils and polars defined globally in the first component
                         pass
                     else:
+                        #import pdb; pdb.set_trace();
+                        
+                        # airfoil_distribution = model[ci].sharpy.aero['airfoil_distribution']+ \
+                        #     (len(dic_aero['airfoils']))
                         airfoil_distribution = model[ci].sharpy.aero['airfoil_distribution']+ \
-                            len(dic_aero['airfoils'])
+                            (np.max(dic_aero['airfoil_distribution'])+1)                        
                         dic_aero['airfoil_distribution'] = np.concatenate((dic_aero['airfoil_distribution'],
                                                                        airfoil_distribution), axis=0)
 

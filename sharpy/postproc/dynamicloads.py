@@ -69,6 +69,9 @@ class DynamicLoads(BaseSolver):
     settings_default['secant_max_calls'] = 0
     settings_description['secant_max_calls'] = 'Maximum number of calls in secant algorithm, \
     after which bisection is employed (secant is usually faster but convergence is not guaranteed)'
+    settings_types['mach_number'] = 'float'
+    settings_default['mach_number'] = 0.
+    settings_description['mach_number'] = 'Scale results with Mach number'
 
     settings_types['flutter_bound'] = 'float'
     settings_default['flutter_bound'] = 0.
@@ -371,7 +374,8 @@ class DynamicLoads(BaseSolver):
             self.flutter_root_calls += 1
             
         self.u_flutter = u_new
-        
+        if self.settings['mach_number'] > 0.:
+            self.u_flutter *= np.sqrt(1 - self.settings['mach_number']**2)
         if self.settings['print_info']:
             cout.cout_wrap('Calculated flutter speed: %.2f m/s' %self.u_flutter, 1)
         if self.save_eigenvalues:

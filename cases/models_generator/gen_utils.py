@@ -195,7 +195,8 @@ def from4points2chord(beam, leading_edge1, leading_edge2,
 
 def plane_from_twist(beam, twist,
                      leading_edge1, leading_edge2,
-                     trailing_edge1, trailing_edge2):
+                     trailing_edge1, trailing_edge2,
+                     rtol=1e-5, atol=1e-8, **kwargs):
     
     beam_direction = (beam[-1] - beam[0])/np.linalg.norm(beam[-1] - beam[0])
     chord_le1 = leading_edge1-beam[0]
@@ -231,7 +232,7 @@ def plane_from_twist(beam, twist,
                       points_platform[1]-points_platform[0])
     plane2 = np.cross(points_platform[2]-beam[0],
                       points_platform[3]-points_platform[2])
-    assert np.allclose(np.cross(plane1,plane2), np.zeros(3), 1e-4), \
+    assert np.allclose(np.cross(plane1,plane2), np.zeros(3), rtol, atol), \
         "Resultant platform after removing twist does not conform a plane"
     return points_platform
 
