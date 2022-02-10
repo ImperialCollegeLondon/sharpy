@@ -1101,7 +1101,14 @@ class Simulation:
     @staticmethod
     def sharpy_defaults(default_module, default_solution, default_solution_vars):
         module = importlib.import_module(default_module)
-        solution = getattr(module, default_solution)
+        if hasattr(module, default_solution):
+            solution = getattr(module, default_solution)
+        elif hasattr(module, default_module.split('.')[-1].capitalize()):
+            class_sol = getattr(module, default_module.split('.')[-1].capitalize())
+            class_inst = class_sol()
+            solution = getattr(class_inst, default_solution)
+        else:
+            raise NameError('default_module and default_solution not found')
         flow, settings = solution(**default_solution_vars)
         
         return flow, settings
