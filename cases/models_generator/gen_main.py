@@ -200,6 +200,7 @@ class Components:
             if isinstance(node0, list):
                 node0 = np.array(node0)
             self.coordinates = [node0]
+            
             if direction is not None:
                 if isinstance(direction,list):
                     self.direction = np.array(direction)
@@ -207,13 +208,19 @@ class Components:
                     self.direction = direction
                 self.direction = self.direction/np.linalg.norm(self.direction)    
             else:
+                self.direction = np.array([0., 1., 0.])
+            if (dihedral or sweep) is not None:
+                if dihedral is None:
+                    dihedral = 0.
+                if sweep is None:
+                    sweep = 0.
                 Rotation =  np.array([[1., 0., 0.],
-                                     [0.,np.cos(dihedral), np.sin(dihedral)],
-                                     [0.,-np.sin(dihedral), np.cos(dihedral)]]).dot(
+                                     [0.,np.cos(dihedral), -np.sin(dihedral)],
+                                     [0.,np.sin(dihedral), np.cos(dihedral)]]).dot(
                             np.array([[np.cos(sweep), np.sin(sweep), 1.],
                                      [-np.sin(sweep), np.cos(sweep), 0.],
                                      [0., 0., 1.]]))
-                self.direction = Rotation.dot(np.array([0., 1., 0.]))
+                self.direction = Rotation.dot(self.direction)
             for ni in range(1,self.num_node):
                 if self.ds_string:
                     self.coordinates.append(node0+sum(ds[:ni])*self.direction)
@@ -467,6 +474,7 @@ class Components:
                     twist=0.,
                     sweep=0.,
                     surface_distribution=None,
+                    merge_surface=None,
                     m_distribution='uniform',
                     aero_node=None,
                     airfoils=None,
@@ -551,6 +559,8 @@ class Components:
                 self.sharpy.aero['surface_distribution'] = surface_distribution
         else:
             self.sharpy.aero['surface_distribution'] = np.zeros((self.sharpy.fem['num_elem'],), dtype=int)
+            
+        self.sharpy.aero['merge_surface'] = merge_surface
         if aero_node is None: # By default all nodes have a lifting surface attached
             self.sharpy.aero['aero_node'] = np.ones((self.num_node,), dtype = bool)
         elif aero_node is False: #No lifting surface attached
@@ -656,6 +666,7 @@ class Model:
             self.model_name = self.components[0]
         else:
             self.model_name = model_name
+            
         try:
             if len(model_dict['iterate_vars']) == 0: # One model built
                 self.num_models = 1
@@ -886,8 +897,15 @@ class Model:
                                                         model[ci].sharpy.fem['mass_db']),axis=0)
                 dic_struc['frame_of_reference_delta'] = np.concatenate((dic_struc['frame_of_reference_delta'],
                                                                         frame_of_reference_delta),axis=0)
+
                 if settings['default_settings']:
-                    beam_number = ci*np.ones(model[ci].sharpy.fem['num_elem'])
+                    merged_beams = 0
+                    # merge aero surface and beam to the previous one
+                    if hasattr(model[ci].sharpy, 'aero') and model[ci].sharpy.aero['merge_surface']: 
+                        beam_number = np.max(dic_struc['beam_number'])*np.ones(model[ci].sharpy.fem['num_elem'])
+                        merged_beams += 1
+                    else:
+                        beam_number = ci*np.ones(model[ci].sharpy.fem['num_elem'])
                 else:
                     beam_number = model[ci].sharpy.fem['beam_number']
                 dic_struc['beam_number'] = np.concatenate((dic_struc['beam_number'],
@@ -919,17 +937,20 @@ class Model:
                             dic_aero['aero_node'][node_connection] = model[ci].sharpy.aero['aero_node'][0]
                     dic_aero['aero_node'] = np.concatenate((dic_aero['aero_node'], aero_node),axis=0)
                     if settings['default_settings']: # One surface_distribution per component
-                        if np.max(model[ci].sharpy.aero['surface_distribution'])>-1: # Component with no aero
-                            surface_distributionx = np.max(dic_aero['surface_distribution'])+1
+                        if model[ci].sharpy.aero['merge_surface']:
+                            surface_distributionx = np.max(dic_aero['surface_distribution'])
                         else:
-                            surface_distributionx = np.max(model[ci].sharpy.aero['surface_distribution'])
+                            if np.max(model[ci].sharpy.aero['surface_distribution'])>-1: # Component with no aero
+                                surface_distributionx = np.max(dic_aero['surface_distribution'])+1
+                            else:
+                                surface_distributionx = np.max(model[ci].sharpy.aero['surface_distribution'])
                         surface_distribution = surface_distributionx*np.ones(model[ci].sharpy.fem['num_elem'],
-                                                                         dtype=int)
+                                                                             dtype=int)
                     else:
                         surface_distribution = model[ci].sharpy.aero['surface_distribution']
                     dic_aero['surface_distribution'] = np.concatenate((dic_aero['surface_distribution'],
                                                                        surface_distribution),axis=0)
-                    if np.max(model[ci].sharpy.aero['surface_distribution'])<0:
+                    if np.max(model[ci].sharpy.aero['surface_distribution']) < 0 or model[ci].sharpy.aero['merge_surface']:
                         surface_m = dic_aero['surface_m']
                     else:
                         surface_m = dic_aero['surface_m'] + model[ci].sharpy.aero['surface_m']
@@ -984,10 +1005,16 @@ class Model:
                        'node0' in self.components_dict[ci]['geometry'].keys():
                         components_dictx['geometry']['node0'] = self.components_dict[ci]['geometry']['node0']
                     if 'geometry' in components_dictx.keys() and \
-                    'sweep' in components_dictx['geometry'].keys():    
-                        components_dictx['geometry']['sweep'] = np.pi-components_dictx['geometry']['sweep']
-                    elif 'geometry' in components_dictx.keys() and \
-                         'direction' in components_dictx['geometry'].keys():
+                       'sweep' in components_dictx['geometry'].keys() and \
+                       components_dictx['geometry']['sweep'] > 0.:
+                        components_dictx['geometry']['sweep'] = -components_dictx['geometry']['sweep']
+                    if 'geometry' in components_dictx.keys() and \
+                       'dihedral' in components_dictx['geometry'].keys() and \
+                       components_dictx['geometry']['dihedral'] > 0.:
+                        components_dictx['geometry']['dihedral'] = -components_dictx['geometry']['dihedral']
+                    if 'geometry' in components_dictx.keys() and \
+                         'direction' in components_dictx['geometry'].keys() and \
+                         components_dictx['geometry']['direction'] is not None:
                         components_dictx['geometry']['direction'][1] = -components_dictx['geometry']['direction'][1]
                     try:    
                         components_dictx['fem']['frame_of_reference_delta'] = -components_dictx['fem']['frame_of_reference_delta']
@@ -1020,7 +1047,8 @@ class Model:
     def run(self):
         self.build()
         if 'sharpy' in self.m_output:
-
+            data = []
+            
             for mi in range(self.num_models):
                 case_route = self.model_dict['model_route']
                 case_name = self.model_dict['model_name'] + self.model_labels[mi]
@@ -1031,14 +1059,21 @@ class Model:
                                                               settings_sim=self.simulation_dict['sharpy'],
                                                               case_route=folder2write,
                                                               case_name=self.model_dict['model_name'])
-                self.built_models[mi].sharpy.sim.get_sharpy(inp=self.simulation_dict['sharpy']['simulation_input'])
+                self.built_models[mi].sharpy.sim.get_sharpy(
+                    inp=self.simulation_dict['sharpy']['simulation_input'])
                 self.built_models[mi].sharpy.write_structure(file2write+'.fem.h5')
                 self.built_models[mi].sharpy.write_aero(file2write+'.aero.h5')
                 self.built_models[mi].sharpy.write_sim(file2write+'.sharpy')
-                data = sharpy.sharpy_main.main(['', file2write+'.sharpy'])
-                #import pdb;pdb.set_trace()
-                return data
+                dataX = sharpy.sharpy_main.main(['', file2write+'.sharpy'])
+                data.append(dataX)
+        if (self.num_models > 1 and 'write_iterate_vars' in self.model_dict.keys() and
+            self.model_dict['write_iterate_vars']):
+            self.iteration.write_vars2text(self.model_dict['model_route']+
+                                           '/iteration_vars.txt',
+                                           labels_list=self.model_labels)
 
+        
+            return data
 
 #folder_replace = partial(change_dic, oldstr='folder')
 #'run_in_loop','generate_sharpy','run_sharpy','generate_nastran','run_nastran','generate_cpacs'

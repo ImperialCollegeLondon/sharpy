@@ -137,10 +137,23 @@ class Iterations:
         elif label_type == 'number':
             return self.label_number(**kwargs)
 
-    def write_vars2text(self):
-        pass
+    def write_vars2text(self, to_file,
+                        vars_dict=None,
+                        labels_list=None, **kwargs):
 
+        import pandas as pd
 
+        if vars_dict == None:
+            vars_dict = self.get_combinations_dict()
+        if labels_list == None:
+            labels_list = self.labels()
+            
+        df = pd.DataFrame(vars_dict)
+        df.insert(0, "Labels", labels_list, True)
+        with open(to_file, 'w') as f:
+            df_str = df.to_string(**kwargs)
+            f.write(df_str)
+        
 class LoadPaths(object):
     """
     Define the load-paths in an aircraft geometry
@@ -150,7 +163,8 @@ class LoadPaths(object):
                  component_nodes,
                  father_components=None,
                  monitoring_stations=None):
-        
+        """
+        """
         self.component_nodes = component_nodes
         self.component_names = list(component_nodes.keys())
         self.components = self.get_components(**component_nodes)
@@ -307,11 +321,13 @@ class LoadPaths(object):
 
 def system_covariance(A, B, C, Sigma_n=[]):
 
-    if not Sigma_n:
-        Sigma_n = np.eye(np.shape(B)[1])
-    else:
+    if len(Sigma_n) > 0:
         Sigma_n = np.diag(Sigma_n)
-    Sigma_x = linalg.solve_continuous_lyapunov(A,-B.dot(Sigma_n.dot(B.T)))
+    else:
+        Sigma_n = np.eye(np.shape(B)[1])
+    import pdb; pdb.set_trace()
+    Sigma_x = linalg.solve_discrete_lyapunov(A, B.dot(Sigma_n.dot(B.T)))
+    #Sigma_x = linalg.solve_continuous_lyapunov(A,-B.dot(Sigma_n.dot(B.T)))
     Sigma_y = C.dot(Sigma_x.dot(C.T))
     return Sigma_x, Sigma_y
 
@@ -403,5 +419,5 @@ if (__name__ == '__main__'):
             assert self.path1.loadpath['c3'] == [8], 'Error in test_loadpath2f c3'
             assert self.path1.loadpath['c4'] == [9, 10, 11], 'Error in test_loadpath2f c4'
 
-    unittest.main()
+    #unittest.main()
 
