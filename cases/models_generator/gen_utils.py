@@ -191,6 +191,8 @@ def from4points2chord(beam, leading_edge1, leading_edge2,
         return chord1, ea1
     else:
         chord, ea = node2aero(chord1, ea1)
+        chord = np.round(chord, 4)
+        ea = np.round(ea, 4)
         return chord, ea
 
 def plane_from_twist(beam, twist,

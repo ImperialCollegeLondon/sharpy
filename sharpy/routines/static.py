@@ -61,7 +61,7 @@ def sol_102(alpha,                    # Static AoA
     orientation = algebra.euler2quat(np.array([roll,alpha,beta]))
     settings_new['BeamLoader']['for_pos'] = forA
     settings_new['BeamLoader']['orientation'] = orientation
-    settings_new['BeamLoader']['usteady'] = 'off'
+    settings_new['BeamLoader']['unsteady'] = 'off'
     if horseshoe:
         settings_new['AerogridLoader']['mstar'] = 1
     else:
@@ -80,14 +80,14 @@ def sol_102(alpha,                    # Static AoA
     settings_new['StaticCoupled']['aero_solver_settings'] = {'rho':rho,
                                                              'horseshoe': horseshoe,
                                                              'num_cores': 1,
-                                                             'n_rollup': 1.15*panels_wake,
+                                                             'n_rollup': int(1.15*panels_wake),
                                                              'rollup_dt': dt,
                                                              'velocity_field_generator': \
                                                              'SteadyVelocityField',
                                                              'velocity_field_input': \
                                                              {'u_inf': u_inf,
                                                               'u_inf_direction':[1.,0.,0.]}
-                                                             },
+                                                             }
     settings_new['StaticCoupled']['structural_solver'] = 'NonLinearStatic'
     settings_new['StaticCoupled']['structural_solver_settings'] = {'initial_position':forA,
                                                                    'dt': dt,
