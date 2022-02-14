@@ -176,13 +176,20 @@ class Krylov(rom_interface.BaseRom):
         if not isinstance(self.V, libss.Gain):
             V = libss.Gain(self.V)
             W = libss.Gain(self.W)
-            # raise NotImplementedError(f'For rom algorithm ``{self.algorithm}``, the gains are not yet given as '
-            #                           f'instances of the ``libss.Gain`` class')
+
+            if self.W is None:
+                W = V.copy()
         else:
             V = self.V
             W = self.W
 
-        libss.Gain.save_multiple_gains(file_name, ('V', V), ('W', W))
+            if W is None:
+                W = V  # for single sided cases
+
+        try:
+            libss.Gain.save_multiple_gains(file_name, ('V', V), ('W', W))
+        except TypeError:
+            import pdb; pdb.set_trace()
         cout.cout_wrap(f'Saved Krylov reduced order bases, V and W to file: {file_name}', 1)
 
     def run(self, ss):
