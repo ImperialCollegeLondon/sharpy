@@ -690,6 +690,12 @@ class Gain:
     def T(self):
         return self.transpose()
 
+    def copy(self):
+        if self.input_variables is not None:
+            return Gain(self.value, input_vars=self.input_variables.copy(), output_vars=self.output_variables.copy())
+        else:
+            return Gain(self.value)
+
     def save(self, path):
         """Save gain object to h5 file"""
         with h5py.File(path, 'w') as f:
