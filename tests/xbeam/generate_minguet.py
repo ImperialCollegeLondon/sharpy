@@ -175,24 +175,27 @@ def plot_results(pos, minguet=None, label=None):
     y_0 = [abs(pos[i][0][0]- p0[0]) for i in range(0, len_y)]
     y_1 = [abs(pos[i][0][1]- p0[1]) for i in range(0, len_y)]
     y_2 = [abs(pos[i][0][2]- p0[2]) for i in range(0, len_y)]
-    ax.plot(x, y_0)
-    ax.plot(x, y_1)
-    ax.plot(x, y_2)
+    ax.plot(x, y_0, label='sharpy (x-component)')
+    ax.plot(x, y_1, label='sharpy (y-component)')
+    ax.plot(x, y_2, label='sharpy (z-component)')
     if minguet is not None:
         res = getattr(minguet, label)
         ax.plot(1e-3*np.array(res.experiment['u'][0]),
-                1e-3*np.array(res.experiment['u'][1]), 'o')
+                1e-3*np.array(res.experiment['u'][1]), 'o', label='Minguet experiments')
         ax.plot(1e-3*np.array(res.experiment['v'][0]),
                 1e-3*np.array(res.experiment['v'][1]), 'o')
         ax.plot(1e-3*np.array(res.experiment['w'][0]),
                 1e-3*np.array(res.experiment['w'][1]), 'o')
         ax.plot(1e-3*np.array(res.comp['u'][0]),
-                1e-3*np.array(res.comp['u'][1]), '--')
+                1e-3*np.array(res.comp['u'][1]), '--', label='Minguet computational')
         ax.plot(1e-3*np.array(res.comp['v'][0]),
                 1e-3*np.array(res.comp['v'][1]), '--')
         ax.plot(1e-3*np.array(res.comp['w'][0]),
                 1e-3*np.array(res.comp['w'][1]), '--')
+    ax.set_xlabel('Tip mass [Kg]')
+    ax.set_ylabel('Monitoring-station displacement [m]')
     #plt.ion()
+    plt.legend()
     plt.show()
 
 
