@@ -165,6 +165,26 @@ class Krylov(rom_interface.BaseRom):
                           ClassesToSave=(libss.StateSpace, ),
                           compress_float=True)
 
+    def save_reduced_order_bases(self, file_name):
+        """
+        Save reduced order bases to an h5 file
+
+        Args:
+            file_name (str): path to h5 file
+
+        """
+        if not isinstance(self.V, libss.Gain):
+            V = libss.Gain(self.V)
+            W = libss.Gain(self.W)
+            # raise NotImplementedError(f'For rom algorithm ``{self.algorithm}``, the gains are not yet given as '
+            #                           f'instances of the ``libss.Gain`` class')
+        else:
+            V = self.V
+            W = self.W
+
+        libss.Gain.save_multiple_gains(file_name, ('V', V), ('W', W))
+        cout.cout_wrap(f'Saved Krylov reduced order bases, V and W to file: {file_name}', 1)
+
     def run(self, ss):
         """
         Performs Model Order Reduction employing Krylov space projection methods.
@@ -692,6 +712,8 @@ class Krylov(rom_interface.BaseRom):
         if self.settings['single_side'] == 'controllability' or self.settings['single_side'] == 'observability':
             if self.settings['single_side'] == 'observability':
                 V = W
+            if self.settings['single_side'] == 'controllability':
+                W = V  # needed to properly save gains
             Ar = V.T.dot(self.ss.A.dot(V))
             Br = V.T.dot(self.ss.B)
             Cr = self.ss.C.dot(V)
@@ -715,8 +737,12 @@ class Krylov(rom_interface.BaseRom):
             Br = W.T.dot(self.ss.B)
             Cr = self.ss.C.dot(V.dot(Tinv))
 
-        self.W = W
-        self.V = V
+        self.W = libss.Gain(W,
+                            input_vars=LinearVector([InputVariable('krylov', size=W.shape[1], index=0)]),
+                            output_vars=LinearVector.transform(self.ss.state_variables, OutputVariable))
+        self.V = libss.Gain(V,
+                            input_vars=LinearVector([InputVariable('krylov', size=V.shape[1], index=0)]),
+                            output_vars=LinearVector.transform(self.ss.state_variables, OutputVariable))
 
         # for state recovery purposes
         self.projection_gain = libss.Gain(V,
