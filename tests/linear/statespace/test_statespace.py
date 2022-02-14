@@ -187,7 +187,7 @@ class Test_dlti(unittest.TestCase):
                                                 InputVariable('input2', size=4, index=1),
                                                 InputVariable('input3', size=2, index=2),
                                                 InputVariable('input4', size=1, index=3)])
-        self.SSsp.input_variables = self.SS.input_variables
+        self.SSsp.input_variables = self.SS.input_variables.copy()
 
         rows_loc = self.SS.input_variables.num_variables * [None]
         for ith, variable in enumerate(self.SS.input_variables):
