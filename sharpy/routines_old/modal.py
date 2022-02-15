@@ -1,8 +1,8 @@
 import numpy as np
 import copy
-import sharpy.routines.basic as basic
+import sharpy.routines_old.basic as basic
 
-def sol_400(num_modes,
+def sol_103(num_modes,
             forA=[0.,0.,0.],
             beam_orientation=[1., 0, 0, 0],
             rigid_body_modes=False,
@@ -33,7 +33,7 @@ def sol_400(num_modes,
     settings_new = basic.update_dic(settings_new, settings)        
     return flow, settings_new
 
-def sol_402(flow=[], **settings):
+def sol_104(flow=[], **settings):
     """
     Modal solution (stiffness and mass matrices, and natural frequencies)
     in a deformed structural or aeroelastic configuration
@@ -51,7 +51,7 @@ def sol_402(flow=[], **settings):
     settings_new = basic.update_dic(settings_new, settings)        
     return flow, settings_new
 
-def sol_402(flow=[], **settings):
+def sol_105(flow=[], **settings):
     """
     Modal solution (stiffness and mass matrices, and natural frequencies)
     in a deformed  configuration after trim analysis

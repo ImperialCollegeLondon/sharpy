@@ -1,7 +1,7 @@
 import numpy as np
 import copy
 from cases.models_generator.gen_utils import update_dic
-import sharpy.routines.basic
+import sharpy.routines_old.basic
 
 def sol_145(panels_wake,
             num_modes,
