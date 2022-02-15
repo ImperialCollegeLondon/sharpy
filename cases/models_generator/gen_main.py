@@ -209,17 +209,23 @@ class Components:
                 self.direction = self.direction/np.linalg.norm(self.direction)    
             else:
                 self.direction = np.array([0., 1., 0.])
-            if (dihedral or sweep) is not None:
-                if dihedral is None:
-                    dihedral = 0.
-                if sweep is None:
-                    sweep = 0.
-                Rotation =  np.array([[1., 0., 0.],
-                                     [0.,np.cos(dihedral), -np.sin(dihedral)],
-                                     [0.,np.sin(dihedral), np.cos(dihedral)]]).dot(
-                            np.array([[np.cos(sweep), np.sin(sweep), 1.],
-                                     [-np.sin(sweep), np.cos(sweep), 0.],
-                                     [0., 0., 1.]]))
+                
+            if (dihedral or sweep):
+                if (dihedral is None) or dihedral == 0.:
+                    Rotation =np.array([[np.cos(sweep), np.sin(sweep), 0.],
+                                        [-np.sin(sweep), np.cos(sweep), 0.],
+                                        [0., 0., 1.]])
+                elif (sweep is None) or sweep == 0.:
+                    Rotation =  np.array([[1., 0., 0.],
+                                          [0.,np.cos(dihedral), -np.sin(dihedral)],
+                                          [0.,np.sin(dihedral), np.cos(dihedral)]])
+                else:
+                    Rotation =  np.array([[1., 0., 0.],
+                                          [0.,np.cos(dihedral), -np.sin(dihedral)],
+                                          [0.,np.sin(dihedral), np.cos(dihedral)]]).dot(
+                                np.array([[np.cos(sweep), np.sin(sweep),  0.],
+                                          [-np.sin(sweep), np.cos(sweep), 0.],
+                                          [0., 0., 1.]]))
                 self.direction = Rotation.dot(self.direction)
             for ni in range(1,self.num_node):
                 if self.ds_string:
