@@ -177,9 +177,9 @@ class Flutter(Linear, Static, Basic):
                                         'save_flutter': 'txt'
                                        }
 
-        settings_new = basic.update_dic(settings_new, settings)
-
-        return flow, settings_new
+        if primary:
+            self.modify_settings(self.flow, **kwargs)
+            return self.flow, self.settings_new
 
     def sol_152(self,
                 num_modes,                  # Num modes in the solution
@@ -347,10 +347,9 @@ class Flutter(Linear, Static, Basic):
                                         'save_flutter': 'txt'
                                         }
 
-        settings_new = basic.update_dic(settings_new, settings)
-
-
-        return flow, settings_new
+        if primary:
+            self.modify_settings(self.flow, **kwargs)
+            return self.flow, self.settings_new
 
 
     def sol_154(num_modes,                    # Num modes in the solution
@@ -543,6 +542,6 @@ class Flutter(Linear, Static, Basic):
                                         'save_eigenvalues': True
                                        }
 
-        settings_new = basic.update_dic(settings_new, settings)        
-        return flow, settings_new
-
+        if primary:
+            self.modify_settings(self.flow, **kwargs)
+            return self.flow, self.settings_new

@@ -6,6 +6,7 @@ import h5py as h5
 from functools import partial
 import importlib
 from sharpy.utils.stochastic import Iterations
+from sharpy.utils.algebra import skew
 import sharpy.utils.generate_cases as gc
 import sharpy.utils.h5utils as h5utils
 import sharpy.utils.solver_interface as solver_interface
@@ -287,10 +288,10 @@ class Components:
              beam_number: index of segments, use for things like paraview plotting         
              structural_twist: local rotation around local x direction             
              app_forces: application of steady forces at the selected nodes (required for trim thrust nodes) 
-             lumped_mass: Array of lumped masses in Kg                   
-             lumped_mass_nodes: maps lumped_mass to nodes
-             lumped_mass_inertia: 3x3 inertia to the previous masses
-             lumped_mass_position: relative position to the belonging node in the local B frame
+             lumped_mass (list): Array of lumped masses in Kg                   
+             lumped_mass_nodes (list): maps lumped_mass to nodes
+             lumped_mass_inertia (list(nd.array)): 3x3 inertia to the previous masses
+             lumped_mass_position (list(nd.array)): relative position to the belonging node in the local B frame
         """
 
         self.sharpy.fem['coordinates'] = coordinates
@@ -405,7 +406,7 @@ class Components:
         mass = np.zeros((6, 6),)
         for i in range(len(vec_mass_per_unit_length)):
             mass[0:3, 0:3] = np.eye(3)*vec_mass_per_unit_length[i]
-            mass[0:3, 3:6] = -1.0*vec_mass_per_unit_length[i]*algebra.skew(vec_pos_cg_B[i])
+            mass[0:3, 3:6] = -1.0*vec_mass_per_unit_length[i]*skew(vec_pos_cg_B[i])
             mass[3:6, 0:3] = -1.0*mass[0:3, 3:6]
             mass[3:6, 3:6] = np.diag([vec_mass_iner_x[i],
                                       vec_mass_iner_y[i],
@@ -1144,7 +1145,7 @@ class Simulation:
         elif isinstance(inp, str):
             self.read_sharpy(inp)
         elif isinstance(inp, dict):
-            self.input_simulation()
+            self.input_simulation(**inp)
 
     def write_sharpy(self, file_name=''):
         

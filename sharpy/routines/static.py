@@ -31,7 +31,9 @@ class Static(basic.Basic):
             
             self.set_constants(**kwargs)
             self.set_flow(predefined_flow, **kwargs)
-            self.set_struct_loader(**kwargs)
+            self.set_struct_loader(unsteady=False,
+                                   rotationA=[1.0, 0., 0., 0.],
+                                   **kwargs)
             self.set_plot(**kwargs)
             
         self.settings_new['NonLinearStatic'] = self.get_solver_sett('NonLinearStatic',
@@ -45,8 +47,7 @@ class Static(basic.Basic):
                                              num_load_steps=s_load_steps,
                                              relaxation_factor=s_relaxation)
         if primary:
-            if modify_settings is not None:
-                self.settings_new = basic.update_dic(self.settings_new, modify_settings)
+            self.modify_settings(self.flow, **kwargs)
             return self.flow, self.settings_new
 
     def sol_112(self,
@@ -54,7 +55,7 @@ class Static(basic.Basic):
                 rho,
                 dt,
                 primary=1,
-                rotationA=[1.0, 0., 0., 0.],
+                rotationA=[0., 0., 0.],
                 panels_wake=1,
                 horseshoe=False,
                 gravity_on=0,
@@ -69,18 +70,22 @@ class Static(basic.Basic):
                 s_delta_curved=1e-4,
                 correct_forces_method=None,
                 correct_forces_settings=None,
-                modify_settings=None,
                 **kwargs):
 
         """ Aeroelastic equilibrium"""
 
-        predefined_flow = list(self.predefined_flows['102'])
+        predefined_flow = list(self.predefined_flows['112'])
         if horseshoe:
             panels_wake = 1
         if primary:
             self.set_constants(**kwargs)            
             self.set_flow(predefined_flow, **kwargs)
-            self.set_loaders(**kwargs)
+            self.set_loaders(panels_wake,
+                             u_inf,
+                             dt,
+                             rotationA,
+                             unsteady=False,                            
+                             **kwargs)
             self.set_plot(u_inf,
                           dt,
                           **kwargs)
@@ -120,9 +125,7 @@ class Static(basic.Basic):
             self.settings_new['StaticCoupled']['correct_forces_settings'] = correct_forces_settings
 
         if primary:
-            if modify_settings is not None:
-                self.settings_new = basic.update_dic(self.settings_new,
-                                               modify_settings)
+            self.modify_settings(self.flow, **kwargs)
             return self.flow, self.settings_new
         
     def sol_144(self,
@@ -163,10 +166,16 @@ class Static(basic.Basic):
         if horseshoe:
             panels_wake = 1        
         if primary:
-            self.set_constants(**kwargs)
+            self.set_constants(**kwargs)            
             self.set_flow(predefined_flow, **kwargs)
-            self.set_loaders(**kwargs)
-            self.set_plot(**kwargs)
+            self.set_loaders(panels_wake,
+                             u_inf,
+                             dt,
+                             unsteady=False,                            
+                             **kwargs)
+            self.set_plot(u_inf,
+                          dt,
+                          **kwargs)
 
         gravity_on = True
         self.settings_new['StaticTrim']['initial_alpha'] = alpha0
@@ -214,11 +223,11 @@ class Static(basic.Basic):
              'tolerance': fsi_tolerance,
              'relaxation_factor': fsi_relaxation
             }
-        if primary:
-            if modify_settings is not None:
-                self.settings_new = basic.update_dic(self.settings_new, modify_settings)
-            return self.flow, self.settings_new
 
+        if primary:
+            self.modify_settings(self.flow, **kwargs)
+            return self.flow, self.settings_new
+        
     def sol_148(self):
         """ Aircraft general trim"""
 

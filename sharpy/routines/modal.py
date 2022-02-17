@@ -49,8 +49,7 @@ class Modal(Static, Basic):
                                     write_modes_vtk=True)
 
         if primary:
-            if modify_settings is not None:
-                self.settings_new = update_dic(self.settings_new, modify_settings)
+            self.modify_settings(self.flow, **kwargs)
             return self.flow, self.settings_new
 
     def sol_132(self,
@@ -124,9 +123,7 @@ class Modal(Static, Basic):
                      **kwargs)
 
         if primary:
-            if modify_settings is not None:
-                self.settings_new = update_dic(self.settings_new,
-                                               modify_settings)
+            self.modify_settings(self.flow, **kwargs)
             return self.flow, self.settings_new
 
     def sol_134(self,
@@ -216,6 +213,5 @@ class Modal(Static, Basic):
                      primary=False)
         
         if primary:
-            if modify_settings is not None:
-                self.settings_new = update_dic(self.settings_new, modify_settings)
+            self.modify_settings(self.flow, **kwargs)
             return self.flow, self.settings_new
