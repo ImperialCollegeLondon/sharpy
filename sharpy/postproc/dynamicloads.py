@@ -29,7 +29,7 @@ class DynamicLoads(BaseSolver):
     settings_options = dict()
 
     settings_types['print_info'] = 'bool'
-    settings_default['print_info'] = False
+    settings_default['print_info'] = True
     settings_description['print_info'] = 'Print information and table of eigenvalues'
 
     settings_types['calculate_flutter'] = 'bool'

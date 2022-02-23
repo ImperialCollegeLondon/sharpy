@@ -16,8 +16,13 @@ class LinControlSurfaceDeflector(object):
 
     """
     sys_id = 'LinControlSurfaceDeflector'
+    
+    settings_default = dict()
+    settings_types = dict()
+    settings_description = dict()
 
     def __init__(self):
+        
         # Has the back bone structure for a future actuator model
         # As of now, it simply maps a deflection onto the aerodynamic grid by means of Kzeta_delta
         self.n_control_surfaces = 0

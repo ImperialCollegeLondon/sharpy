@@ -80,7 +80,7 @@ def dictionary_of_systems():
     dictionary = dict()
     for linear_system in dict_of_systems:
         init_sys = initialise_system(linear_system)
-        dictionary[linear_system] = init_sys.settins_default
+        dictionary[linear_system] = init_sys.settings_default
 
     return dictionary
 

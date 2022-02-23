@@ -9,6 +9,9 @@ class LinearGustGenerator(object):
     """Reduces the entire gust field input to a user-defined set of more comprehensive inputs
     """
     sys_id = 'LinearGustGenerator'
+    settings_default = dict()
+    settings_types = dict()
+    settings_description = dict()
 
     def __init__(self):
         self.aero = None
