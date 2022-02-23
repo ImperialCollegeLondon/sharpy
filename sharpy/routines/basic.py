@@ -38,7 +38,6 @@ class Basic:
         new_settings = update_dic(default_settings, kwargs)
         return new_settings
         
-        
     def set_constants(self, **kwargs):
 
         self.constants['num_cores'] = kwargs.get('num_cores', 1)

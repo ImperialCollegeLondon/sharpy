@@ -1,10 +1,11 @@
 import numpy as np
-import sharpy.routines.basic as basic
+from sharpy.routines.basic import Basic
 import sharpy.utils.algebra as algebra
 
 
-class Static(basic.Basic):
+class Static(Basic):
 
+    #global predefined_flows
     predefined_flows = dict()
     predefined_flows['101'] = ('BeamLoader','NonLinearStatic')
     predefined_flows['112'] = ('BeamLoader', 'AerogridLoader', 'StaticCoupled')
@@ -14,21 +15,19 @@ class Static(basic.Basic):
         super().__init__()
         
     def sol_101(self,
-                primary=1,
                 gravity_on=0,
                 s_maxiter=300,
                 s_tolerance=1e-8,
                 s_delta_curved=1e-3,
                 s_load_steps=1,
                 s_relaxation=0.01,
-                modify_settings=None,              
+                primary=True,
                 **kwargs):
 
         """Structural equilibrium"""
 
-        predefined_flow = list(self.predefined_flows['101'])
         if primary:
-            
+            predefined_flow = list(self.predefined_flows['101'])            
             self.set_constants(**kwargs)
             self.set_flow(predefined_flow, **kwargs)
             self.set_struct_loader(unsteady=False,
@@ -54,7 +53,6 @@ class Static(basic.Basic):
                 u_inf,
                 rho,
                 dt,
-                primary=1,
                 rotationA=[0., 0., 0.],
                 panels_wake=1,
                 horseshoe=False,
@@ -70,14 +68,15 @@ class Static(basic.Basic):
                 s_delta_curved=1e-4,
                 correct_forces_method=None,
                 correct_forces_settings=None,
+                primary=True,
                 **kwargs):
 
         """ Aeroelastic equilibrium"""
 
-        predefined_flow = list(self.predefined_flows['112'])
         if horseshoe:
             panels_wake = 1
         if primary:
+            predefined_flow = list(self.predefined_flows['112'])
             self.set_constants(**kwargs)            
             self.set_flow(predefined_flow, **kwargs)
             self.set_loaders(panels_wake,
@@ -138,7 +137,6 @@ class Static(basic.Basic):
                 cs0,                          # Number of wake panels 
                 thrust_nodes,                 # Nodes where thrust is applied
                 cs_i,                         # Indices of control surfaces to be trimmed
-                primary=1,
                 horseshoe='off',              # Horseshoe aerodynamic approximation
                 nz=1.,                        # Gravity factor for manoeuvres          
                 Dcs0=0.01,                    # Initial control surface deflection
@@ -157,15 +155,15 @@ class Static(basic.Basic):
                 s_relaxation=1e-3,
                 s_load_steps=1,
                 s_delta_curved=1e-4,
-                modify_settings = None,
+                primary=True,
                 **kwargs):
         
         """ Longitudinal aircraft trim"""
 
-        predefined_flow = list(self.predefined_flows['144'])
         if horseshoe:
             panels_wake = 1        
         if primary:
+            predefined_flow = list(self.predefined_flows['144'])
             self.set_constants(**kwargs)            
             self.set_flow(predefined_flow, **kwargs)
             self.set_loaders(panels_wake,
@@ -198,7 +196,7 @@ class Static(basic.Basic):
              'structural_solver_settings': self.get_solver_sett('NonLinearStatic',   
                                            gravity_on=gravity_on,                    
                                            gravity_dir=self.constants['gravity_dir'],
-                                           gravity=self.constants['gravity'],        
+                                           gravity=self.constants['gravity']*nz,        
                                            initial_position=self.constants['forA'],  
                                            max_iterations=s_maxiter,                 
                                            min_delta=s_tolerance,                    
