@@ -560,7 +560,8 @@ class Components:
         else:
             self.sharpy.aero['surface_distribution'] = np.zeros((self.sharpy.fem['num_elem'],), dtype=int)
             
-        self.sharpy.aero['merge_surface'] = merge_surface
+        self.sharpy.merge_surface = merge_surface # not put as part of aero since is not
+                                                  # a sharpy variable
         if aero_node is None: # By default all nodes have a lifting surface attached
             self.sharpy.aero['aero_node'] = np.ones((self.num_node,), dtype = bool)
         elif aero_node is False: #No lifting surface attached
@@ -901,7 +902,7 @@ class Model:
                 if settings['default_settings']:
                     merged_beams = 0
                     # merge aero surface and beam to the previous one
-                    if hasattr(model[ci].sharpy, 'aero') and model[ci].sharpy.aero['merge_surface']: 
+                    if hasattr(model[ci].sharpy, 'aero') and model[ci].sharpy.merge_surface: 
                         beam_number = np.max(dic_struc['beam_number'])*np.ones(model[ci].sharpy.fem['num_elem'])
                         merged_beams += 1
                     else:
@@ -937,7 +938,7 @@ class Model:
                             dic_aero['aero_node'][node_connection] = model[ci].sharpy.aero['aero_node'][0]
                     dic_aero['aero_node'] = np.concatenate((dic_aero['aero_node'], aero_node),axis=0)
                     if settings['default_settings']: # One surface_distribution per component
-                        if model[ci].sharpy.aero['merge_surface']:
+                        if model[ci].sharpy.merge_surface:
                             surface_distributionx = np.max(dic_aero['surface_distribution'])
                         else:
                             if np.max(model[ci].sharpy.aero['surface_distribution'])>-1: # Component with no aero
@@ -950,7 +951,7 @@ class Model:
                         surface_distribution = model[ci].sharpy.aero['surface_distribution']
                     dic_aero['surface_distribution'] = np.concatenate((dic_aero['surface_distribution'],
                                                                        surface_distribution),axis=0)
-                    if np.max(model[ci].sharpy.aero['surface_distribution']) < 0 or model[ci].sharpy.aero['merge_surface']:
+                    if np.max(model[ci].sharpy.aero['surface_distribution']) < 0 or model[ci].sharpy.merge_surface:
                         surface_m = dic_aero['surface_m']
                     else:
                         surface_m = dic_aero['surface_m'] + model[ci].sharpy.aero['surface_m']
