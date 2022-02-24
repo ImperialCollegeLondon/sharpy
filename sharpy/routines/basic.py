@@ -38,7 +38,6 @@ class Basic:
         new_settings = update_dic(default_settings, kwargs)
         return new_settings
         
-        
     def set_constants(self, **kwargs):
 
         self.constants['num_cores'] = kwargs.get('num_cores', 1)
@@ -49,7 +48,7 @@ class Basic:
 
     def set_struct_loader(self,
                           unsteady=False,
-                          rotationA=[1.0, 0, 0, 0],
+                          rotationA=[1.0, 0., 0., 0.],
                           **kwargs):
         
         if len(rotationA) == 3:
@@ -62,8 +61,8 @@ class Basic:
                     panels_wake,
                     u_inf,
                     dt,
-                    unsteady=False,
                     rotationA=[1.0, 0, 0, 0],
+                    unsteady=False,
                     aligned_grid=True,
                     wake_shape_generator='StraightWake',
                     control_surface_deflection=[],
@@ -101,10 +100,17 @@ class Basic:
             self.flow = new_flow
         for i, fi in enumerate(add2_flow):
             assert fi[0] in self.flow, "%s in add2_flow not in flow variable"%fi[0]
-            index = self.flow.index(fi[0])+1
+            index = self.flow.index(fi[0])+1            
             if isinstance(fi[1], list):
+                count = 0
                 for j, fj in enumerate(fi[1]):
-                    self.flow.insert(index+j, fj)                
+                    if fj.lower() == 'plot':
+                        self.flow.insert(index + count, 'BeamPlot')
+                        self.flow.insert(index + count + 1, 'AerogridPlot')
+                        count += 2
+                    else:
+                        self.flow.insert(index + count, fj)
+                        count += 1
             elif fi[1].lower() == 'plot':
                 self.flow.insert(index, 'BeamPlot')
                 self.flow.insert(index + 1, 'AerogridPlot')
@@ -165,38 +171,41 @@ class Basic:
         self.settings_new['BeamPlot']['include_rbm'] = include_rbm
         self.settings_new['BeamPlot']['output_rbm'] = output_rbm
         
+    def modify_settings(self, flow, **kwargs):
+
+        dic2update = {k:v for k, v in kwargs.items() if k in flow}
+        if len(dic2update) > 0:
+            self.settings_new = update_dic(self.settings_new, dic2update)
+        
     def sol_0(self,
               aero=1,
               u_inf=1.,
               dt=1.,
               panels_wake=10,
               rotationA=[0, 0, 0],
-              modify_settings=None,
               **kwargs):
         """
         Solution to plot the reference configuration
         """
 
-        unsteady = False
+        self.set_constants(**kwargs)
         if aero:
             predefined_flow = ['BeamLoader', 'AerogridLoader',
                                'BeamPlot', 'AerogridPlot']
+            self.set_flow(predefined_flow, **kwargs)
             self.set_loaders(panels_wake,
                              u_inf,
                              dt,
-                             unsteady,
-                             rotationA=[1.0, 0, 0, 0],
+                             rotationA,
+                             unsteady=False,
                              **kwargs)
         else:
             predefined_flow = ['BeamLoader','BeamPlot']
+            self.set_flow(predefined_flow, **kwargs)
             self.set_struct_loader(rotationA,
                                    **kwargs)
-        self.set_constants(**kwargs)
-        self.set_flow(predefined_flow, **kwargs)
-        self.set_loaders(**kwargs)
         self.set_plot(**kwargs)
-        self.settings_new = update_dic(self.settings_new, modify_settings)
-
+        self.modify_settings(self.flow, **kwargs)
         return self.flow, self.settings_new
 
     def write_sharpy(self,
