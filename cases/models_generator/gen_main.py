@@ -909,7 +909,9 @@ class Model:
                 if settings['default_settings']:
                     merged_beams = 0
                     # merge aero surface and beam to the previous one
-                    if hasattr(model[ci].sharpy, 'aero') and model[ci].sharpy.merge_surface: 
+                    if (hasattr(model[ci].sharpy, 'aero') and
+                        model[ci].sharpy.aero and
+                        model[ci].sharpy.merge_surface): 
                         beam_number = np.max(dic_struc['beam_number'])*np.ones(model[ci].sharpy.fem['num_elem'])
                         merged_beams += 1
                     else:
@@ -1038,6 +1040,8 @@ class Model:
                        -components_dictx['aero']['point_platform']['trailing_edge1'][1]
                         components_dictx['aero']['point_platform']['trailing_edge2'][1] = \
                        -components_dictx['aero']['point_platform']['trailing_edge2'][1]
+                        if 'beam_origin' in components_dictx['aero'].keys():
+                            components_dictx['aero']['beam_origin'][1] = -components_dictx['aero']['beam_origin'][1]
                     compX.append(Components(ci, in_put=self.m_input, out_put=self.m_output, settings=components_dictx))
                 else:
                     compX.append(Components(ci, in_put=self.m_input, out_put=self.m_output, settings=self.components_dict[ci]))
