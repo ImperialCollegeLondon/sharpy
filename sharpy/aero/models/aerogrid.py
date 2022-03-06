@@ -351,7 +351,8 @@ class Aerogrid(object):
                                    self.airfoil_db,
                                    aero_settings['aligned_grid'],
                                    orientation_in=aero_settings['freestream_dir'],
-                                   calculate_zeta_dot=True))
+                                   calculate_zeta_dot=True,
+                                   shift_panels14=aero_settings['shift_panels']))
 
     def generate_zeta(self, beam, aero_settings, ts=-1, beam_ts=-1):
         self.generate_zeta_timestep_info(beam.timestep_info[beam_ts],
@@ -482,7 +483,7 @@ class Aerogrid(object):
 
 
 
-def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array([1, 0, 0]), calculate_zeta_dot = False):
+def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array([1, 0, 0]), calculate_zeta_dot = False, shift_panels14=True):
     """
     Returns a strip of panels in ``A`` frame of reference, it has to be then rotated to
     simulate angles of attack, etc
@@ -605,12 +606,14 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
         strip_coordinates_a_frame[:, i_M] += node_info['beam_coord']
 
     # add quarter-chord disp
-    delta_c = (strip_coordinates_a_frame[:, -1] - strip_coordinates_a_frame[:, 0])/node_info['M']
-    if node_info['M_distribution'] == 'uniform':
-        for i_M in range(node_info['M'] + 1):
-                strip_coordinates_a_frame[:, i_M] += 0.25*delta_c
-    else:
-        warnings.warn("No quarter chord disp of grid for non-uniform grid distributions implemented", UserWarning)
+    if shift_panels14:
+        delta_c = (strip_coordinates_a_frame[:, -1] - strip_coordinates_a_frame[:, 0])/node_info['M']
+        if node_info['M_distribution'] == 'uniform':
+            for i_M in range(node_info['M'] + 1):
+                    strip_coordinates_a_frame[:, i_M] += 0.25*delta_c
+        else:
+            warnings.warn("No quarter chord disp of grid for non-uniform grid distributions implemented",
+                          UserWarning)
 
     # rotation from a to g
     for i_M in range(node_info['M'] + 1):

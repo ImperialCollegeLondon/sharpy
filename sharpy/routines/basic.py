@@ -67,6 +67,7 @@ class Basic:
                     wake_shape_generator='StraightWake',
                     control_surface_deflection=[],
                     control_surface_deflection_generator_settings={},
+                    shift_panels=True,                    
                     **kwargs):
 
         self.set_struct_loader(unsteady,
@@ -87,6 +88,7 @@ class Basic:
                                       {'u_inf': u_inf,
                                        'u_inf_direction': self.constants['u_inf_direction'],
                                        'dt': dt}
+        self.settings_new['AerogridLoader']["shift_panels"] = shift_panels
         
     def set_flow(self,
                  predefined_flow,

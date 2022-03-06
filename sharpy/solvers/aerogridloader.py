@@ -84,6 +84,10 @@ class AerogridLoader(BaseSolver):
     settings_default['wake_shape_generator_input'] = dict()
     settings_description['wake_shape_generator_input'] = 'Dictionary of inputs needed by the wake shape generator'
 
+    settings_types['shift_panels'] = 'bool'
+    settings_default['shift_panels'] = True
+    settings_description['shift_panels'] = ''
+
     settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
                                        settings_options=settings_options)
