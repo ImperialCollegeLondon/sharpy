@@ -35,6 +35,10 @@ class LiftDistribution(BaseSolver):
     settings_default['rho'] = 1.225
     settings_description['rho'] = 'Reference freestream density [kg/m³]'
 
+    settings_types['u_inf'] = 'float'
+    settings_default['u_inf'] = 1.
+    settings_description['u_inf'] = 'Reference freestream velocity [m/s]'
+    
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -80,9 +84,9 @@ class LiftDistribution(BaseSolver):
         cga = algebra.quat2rotation(struct_tstep.quat)
         if self.settings["coefficients"]:
             # TODO: add nondimensional spanwise column y/s
-            header += ", y/s, cl"
-            numb_col += 2
-            lift_distribution = np.concatenate((lift_distribution, np.zeros((N_nodes, 2))), axis=1)
+            header += ",y/s,cl,Cl"
+            numb_col += 3
+            lift_distribution = np.concatenate((lift_distribution, np.zeros((N_nodes, 3))), axis=1)
 
         for inode in range(N_nodes):
             if self.data.aero.aero_dict['aero_node'][inode]:
@@ -118,6 +122,10 @@ class LiftDistribution(BaseSolver):
                     # Check if shared nodes from different surfaces exist (e.g. two wings joining at symmetry plane)
                     # Leads to error since panel area just donates for half the panel size while lift forces is summed up
                     lift_distribution[inode, 5] /= len(self.data.aero.struct2aero_mapping[inode])
+                    lift_distribution[inode, 6] = np.sign(lift_force) * np.linalg.norm(lift_force) \
+                                                  / (0.5 * self.settings['rho'] \
+                                                     * self.settings['u_inf'] ** 2 * span * chord)  
+                    lift_distribution[inode, 6] /= len(self.data.aero.struct2aero_mapping[inode])
 
         # Export lift distribution data
         np.savetxt(os.path.join(self.folder, self.settings['text_file_name']), lift_distribution,
