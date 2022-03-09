@@ -85,15 +85,26 @@ class Sharpy_data:
                 if k == 'airfoils':
                     airfoils_group = h5file.create_group('airfoils')
                     for iairfoil in range(len(v)):
-                        airfoils_group.create_dataset("%d" % iairfoil,
-                                                      data=v[iairfoil])
+                        try:
+                            airfoils_group.create_dataset("%d" % iairfoil,
+                                                          data=v[iairfoil])
+                        except KeyError:
+                            airfoils_group.create_dataset("%d" % iairfoil,
+                                                          data=v[str(iairfoil)])
                 elif k == 'polars':
                     polars_group = h5file.create_group('polars')
                     for ipolar in range(len(v)):
                         polars_group.create_dataset("%d" % ipolar,
                                                       data=v[ipolar])
-                elif k =='m_distribution':
-                    h5file.create_dataset('m_distribution', data=v.encode('ascii', 'ignore'))
+                elif k == 'm_distribution':
+                    try:
+                        h5file.create_dataset('m_distribution',
+                                              data=v.encode('ascii', 'ignore'))
+                    except AttributeError:
+                        h5file.create_dataset('m_distribution',
+                                              data=v.decode().encode('ascii', 'ignore'))
+                elif k == 'Attributes':
+                    pass
                 else:
                     h5file.create_dataset(k, data=v)
     def read_sim(self,file_name):
