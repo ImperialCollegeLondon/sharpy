@@ -111,9 +111,9 @@ class Direct(BaseBalancedRom):
 
         S, T, Tinv = librom.balreal_direct_py(A, B, C, DLTI=dtsystem, Schur=self.settings['use_schur'])
 
-        Ar = T.dot(A.dot(Tinv))
-        Br = T.dot(B)
-        Cr = C.dot(Tinv)
+        Ar = Tinv.dot(A.dot(T))
+        Br = Tinv.dot(B)
+        Cr = C.dot(T)
 
         if dtsystem:
             ss_bal = libss.ss(Ar, Br, Cr, D, dt=ss.dt)
