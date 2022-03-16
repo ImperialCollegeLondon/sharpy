@@ -29,6 +29,7 @@ class Linear(Modal):
                 newmark_damp=1e-4,
                 use_euler=False,
                 track_body=True,
+                mach_number=0.,
                 c_ref=1.,
                 gravity_on=1,
                 horseshoe=False,
@@ -132,7 +133,8 @@ class Linear(Modal):
                                                       beam_settings=beam_settings,
                                                       aero_settings=aero_settings,
                                                       track_body=track_body,
-                                                      use_euler=use_euler)
+                                                      use_euler=use_euler,
+                                                      mach_number=mach_number)
         
         self.settings_new['LinearAssembler'] = self.get_solver_sett('LinearAssembler',
                                                                     linear_system='LinearAeroelastic',

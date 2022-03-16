@@ -204,7 +204,8 @@ class Basic:
         else:
             predefined_flow = ['BeamLoader','BeamPlot']
             self.set_flow(predefined_flow, **kwargs)
-            self.set_struct_loader(rotationA,
+            self.set_struct_loader(False,
+                                   rotationA,
                                    **kwargs)
         self.set_plot(**kwargs)
         self.modify_settings(self.flow, **kwargs)
