@@ -129,6 +129,7 @@ change compilers see the Custom Installation.
 
 4. Finally, load the SHARPy variables
     ```bash
+    cd ../
     source bin/sharpy_vars.sh
     ```
 
