@@ -110,6 +110,10 @@ class StaticUvlm(BaseSolver):
     settings_default['centre_rot_g'] = [0., 0., 0.]
     settings_description['centre_rot_g'] = 'Centre of rotation in G FoR around which ``rbm_vel_g`` is applied'
 
+    settings_types['mach_number'] = 'float'
+    settings_default['mach_number'] = 0.
+    settings_description['mach_number'] = 'Scale results with Mach number'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -118,6 +122,8 @@ class StaticUvlm(BaseSolver):
         self.data = None
         self.settings = None
         self.velocity_generator = None
+        self.M_inf = None
+        self.beta_inf = None
 
     def initialise(self, data, custom_settings=None):
         self.data = data
@@ -134,6 +140,12 @@ class StaticUvlm(BaseSolver):
             self.settings['velocity_field_generator'])
         self.velocity_generator = velocity_generator_type()
         self.velocity_generator.initialise(self.settings['velocity_field_input'])
+
+        self.M_inf = self.settings['mach_number']
+        if self.M_inf == 0.:
+            self.beta_inf = 1.
+        else:
+            self.beta_inf = np.sqrt(1. - self.M_inf**2)
 
     def run(self):
         if not self.data.aero.timestep_info[self.data.ts].zeta:
@@ -155,7 +167,9 @@ class StaticUvlm(BaseSolver):
         # grid orientation
         uvlmlib.vlm_solver(self.data.aero.timestep_info[self.data.ts],
                            self.settings)
-
+        
+        if self.beta_inf != 1.:
+            self.data.aero.timestep_info[self.data.ts].forces /= (self.beta_inf)
         return self.data
 
     def next_step(self):
