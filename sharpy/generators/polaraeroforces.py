@@ -187,7 +187,8 @@ class PolarCorrection(generator_interface.BaseGenerator):
                     # slope is 2pi and the zero-lift angle of attack is given by thin airfoil theory. From this,
                     # the effective angle of attack is computed for the section and includes 3D effects.
                     aoa_0cl = get_aoacl0_from_camber(airfoil_coords[:, 0], airfoil_coords[:, 1])
-                    aoa = cl / 2 / np.pi + aoa_0cl
+                    #aoa = cl / 2 / np.pi + aoa_0cl
+                    aoa = polar.get_aoa(cl, aoa_0cl)
                     # Compute the coefficients associated to that angle of attack
                     cl_polar, cd, cm = polar.get_coefs(aoa)
 

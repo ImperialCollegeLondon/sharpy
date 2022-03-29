@@ -50,7 +50,12 @@ class Polar:
                 aux = np.abs(matches[imin])
                 iaoacl0 = imin
         self.aoa_cl0_deg = matches[iaoacl0]
-
+        if len(self.table[0]) > 4:
+            self.Cl0 = self.table[0, 4]
+            self.rigid_slope = self.table[1, 4]
+        else:
+            self.rigid_slope = None
+            
     def get_coefs(self, aoa_deg):
 
         cl = np.interp(aoa_deg, self.table[:, 0], self.table[:, 1])
@@ -59,6 +64,14 @@ class Polar:
 
         return cl, cd, cm
 
+    def get_aoa(self, cl, aoa_0cl=0.):
+
+        if self.rigid_slope is not None:
+            aoa = (cl - self.Cl0) / self.rigid_slope
+        else:
+            aoa = cl / 2 / np.pi + aoa_0cl
+        return aoa
+    
     def get_aoa_deg_from_cl_2pi(self, cl):
 
         return cl/2/np.pi/deg2rad + self.aoa_cl0_deg
