@@ -107,7 +107,88 @@ class one_minus_cos(BaseGust):
         vel[2] = (1.0 - np.cos(2.0 * np.pi * x / gust_length)) * gust_intensity * 0.5
         return vel
 
+@gust
+class one_minus_cos_aircraft_certification(one_minus_cos):
+    r"""
+    One minus cos gust (single bump) as defined in EASA's certification requirements (CS 25.341)
 
+        .. math:: U_z = \frac{u_{de}}{2}\left[1-\cos\left(\frac{2\pi x}{S}\right)\right]
+
+    This gust can be used by using the setting ``gust_shape = '1-cos_aircraft_certification'`` in :class:`.GustVelocityField`.
+    """
+    gust_id = '1-cos_aircraft_certification'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
+
+    settings_types['gust_length'] = 'float'
+    settings_default['gust_length'] = 0.0
+    settings_description['gust_length'] = 'Length of gust, :math:`S`.'
+
+    settings_types['altitude'] = 'float'
+    settings_default['altitude'] = 0.0
+    settings_description['altitude'] = 'Flight altitude.'
+
+    settings_types['aircraft_design_speed'] = 'bool'
+    settings_default['aircraft_design_speed'] = True
+    settings_description['aircraft_design_speed'] = 'Flight speed equal to aircraft design speed.'
+
+    settings_types['Z_mo'] = 'float'
+    settings_default['Z_mo'] = 800.
+    settings_description['Z_mo'] = 'Maximum operating altitude, , :math:`Z_{mo}`, in meter.'
+
+    settings_types['R1'] = 'float'
+    settings_default['R1'] = 1.
+    settings_description['R1'] = 'Ratio of maximum landing weight to maximum take-off weight,  :math:`R1`.'
+
+    settings_types['R2'] = 'float'
+    settings_default['R2'] = 0.96
+    settings_description['R2'] = 'Ratio of zero fuel weight to maximum take-off weight,  :math:`R2`.'
+ 
+    setting_table = settings.SettingsTable()
+    __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
+                                      header_line=doc_settings_description)
+
+    def initialise(self, in_dict):
+        self.settings = in_dict
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+    
+    def get_flight_profile_alleviation_factor(self):
+        r"""
+        Computes the flight profile alleviation factor :math:`F_g` according to CS25.341(a)(6).
+        """
+        Fgz = 1. - self.settings['Z_mo'] / 76200
+        Fgm = np.sqrt( self.settings['R2'] * np.tan(np.pi *  self.settings['R1'] / 4.))
+        return 0.5 * (Fgz + Fgm)
+    
+    def get_reference_velocity(self):
+        r"""
+        Computes the reference velocity :math:`U_{ref}` according to CS25.341(a)(5).
+        """
+        if self.settings['altitude'] <= 0:
+            U_ref = 17.07
+        elif self.settings['altitude'] <= 13.41:
+            U_ref = 17.07 - self.settings['altitude'] * (17.07 - 13.41) / 4572
+        elif self.settings['altitude'] >= 18288:
+            U_ref = 6.36
+        else:
+            U_ref = 13.41 - self.settings['altitude'] * (13.41 - 6.36) / (18288 - 4572)
+        return U_ref
+
+    def get_gust_design_speed(self):        
+        r"""
+        Computes the design gust velocity which is equivalent to the intensity of the gust :math:`u_{de}` 
+        as specified in CS25.341(a)(4).
+        """
+        return self.get_reference_velocity() * self.get_flight_profile_alleviation_factor() * \
+            (self.settings['gust_length'] / 107.)**(1/6)
+
+    def gust_shape(self, x, y, z, time=0):
+        
+        self.settings['gust_intensity'] = self.get_gust_design_speed()
+        return super.gust_shape(x, y, z, time)
+ 
 @gust
 class DARPA(BaseGust):
     r"""
