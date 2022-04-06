@@ -174,6 +174,8 @@ class one_minus_cos_aircraft_certification(one_minus_cos):
             U_ref = 6.36
         else:
             U_ref = 13.41 - self.settings['altitude'] * (13.41 - 6.36) / (18288 - 4572)
+        if self.settings['aircraft_design_speed']:
+            U_ref *= 0.5
         return U_ref
 
     def get_gust_design_speed(self):        
