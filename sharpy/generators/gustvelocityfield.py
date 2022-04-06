@@ -188,8 +188,15 @@ class one_minus_cos_aircraft_certification(one_minus_cos):
 
     def gust_shape(self, x, y, z, time=0):
         
-        self.settings['gust_intensity'] = self.get_gust_design_speed()
-        return super.gust_shape(x, y, z, time)
+        gust_intensity = self.get_gust_design_speed()
+        gust_length = self.settings['gust_length']
+        vel = np.zeros((3,))
+        if x > 0.0 or x < - 2 * gust_length:
+            return vel
+
+        vel[2] = (1.0 - np.cos(np.pi * x / gust_length)) * gust_intensity * 0.5
+        return vel
+        # return super.gust_shape(x, y, z, time)
  
 @gust
 class DARPA(BaseGust):
