@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import pandas as pd
 
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
@@ -67,6 +68,7 @@ class AeroForcesCalculator(BaseSolver):
         self.caller = None
 
         self.table = None
+        self.df1 = None
 
     def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
@@ -143,6 +145,12 @@ class AeroForcesCalculator(BaseSolver):
         unsteady_forces_a = self.data.structure.nodal_b_for_2_a_for(unsteady_forces_b,
                                                                     self.data.structure.timestep_info[ts])
 
+        # Steady forces distribution
+        steady_forces_g = np.block([[rot, np.zeros((3, 3))],
+                                    [np.zeros((3, 3)), rot]]).dot(steady_forces_a.T).T
+        self.df1 = pd.DataFrame(np.concatenate([steady_forces_g, steady_forces_a], axis=1),
+                                columns=['fx_g','fy_g','fz_g','mx_g','my_g','mz_g',
+                                         'fx_a','fy_a','fz_a', 'mx_a','my_a','mz_a'])
         # Express total forces in A frame
         self.data.aero.timestep_info[ts].total_steady_body_forces = np.sum(steady_forces_a, axis=0)
         self.data.aero.timestep_info[ts].total_unsteady_body_forces = np.sum(unsteady_forces_a, axis=0)
@@ -247,3 +255,4 @@ class AeroForcesCalculator(BaseSolver):
                    delimiter=',',
                    header=header,
                    comments='#')
+        self.df1.to_csv(self.folder + 'distribution_' + filename)

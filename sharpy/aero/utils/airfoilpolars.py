@@ -64,14 +64,17 @@ class Polar:
 
         return cl, cd, cm
 
-    def get_aoa(self, cl, aoa_0cl=0.):
+    def get_aoa(self, cl, aoa_0cl=0., aoa_in_degrees=True):
 
         if self.rigid_slope is not None:
             aoa = (cl - self.Cl0) / self.rigid_slope
         else:
             aoa = cl / 2 / np.pi + aoa_0cl
-        return aoa
-    
+        if aoa_in_degrees:
+            return aoa*180/np.pi
+        else:
+            return aoa
+        
     def get_aoa_deg_from_cl_2pi(self, cl):
 
         return cl/2/np.pi/deg2rad + self.aoa_cl0_deg
