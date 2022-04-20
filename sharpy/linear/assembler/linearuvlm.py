@@ -170,7 +170,7 @@ class LinearUVLM(ss_interface.BaseElement):
         self.sys = None
         self.ss = None
         self.tsaero0 = None
-        self.rom = None
+        self.rom = None  # dict: rom_name: rom_class dictionary
 
         self.settings = dict()
         self.state_variables = None

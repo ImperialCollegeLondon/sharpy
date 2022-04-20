@@ -1,5 +1,6 @@
 import copy
 import unittest
+import os
 
 import numpy as np
 
@@ -237,6 +238,9 @@ class Test_dlti(unittest.TestCase):
 
 class TestStateSpaceManipulation(unittest.TestCase):
 
+    route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+    files_created_by_test = []
+
     def setUp(self):
         Ny, Nx, Nu = 6, 3, 10
         A = np.random.rand(Nx, Nx)
@@ -281,8 +285,40 @@ class TestStateSpaceManipulation(unittest.TestCase):
         assert self.ss.output_variables[1].size == 1, 'output3 not properly trimmed'
         assert self.ss.output_variables[1].index == 1, 'output3 not properly indexed'
 
+    def test_input_output(self):
+
+        h5_filename = self.route_test_dir + '/file_test_statespace_inout.h5'
+        self.files_created_by_test.append(h5_filename)
+
+        self.ss.save(h5_filename)
+
+        loaded_ss = StateSpace.load_from_h5(h5_filename)
+
+        LinearVector.check_same_vectors(self.ss.input_variables,
+                                        loaded_ss.input_variables)
+
+        LinearVector.check_same_vectors(self.ss.output_variables,
+                                        loaded_ss.output_variables)
+
+        LinearVector.check_same_vectors(self.ss.state_variables,
+                                        loaded_ss.state_variables)
+
+        np.testing.assert_array_almost_equal(self.ss.A, loaded_ss.A)
+        np.testing.assert_array_almost_equal(self.ss.B, loaded_ss.B)
+        np.testing.assert_array_almost_equal(self.ss.C, loaded_ss.C)
+        np.testing.assert_array_almost_equal(self.ss.D, loaded_ss.D)
+
+    @classmethod
+    def tearDownClass(cls):
+        for file in cls.files_created_by_test:
+            if os.path.exists(file):
+                os.remove(file)
+
 
 class TestGains(unittest.TestCase):
+
+    route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+    files_created_by_test = []
 
     def test_dot(self):
         """
@@ -336,6 +372,55 @@ class TestGains(unittest.TestCase):
         with self.subTest('connection_check'):
             gain = gain2.dot(gain1)
             np.testing.assert_array_almost_equal(gain.value, k2.dot(k1))
+
+    def test_input_output_gains(self):
+        m1 = 4
+        p1 = 3
+        k1 = np.random.rand(p1, m1)
+        gain1 = Gain(k1,
+                     input_vars=LinearVector([InputVariable('input', size=m1, index=0)]),
+                     output_vars=LinearVector([OutputVariable('output1', size=p1, index=0)]))
+
+        m2 = 2
+        p2 = 5
+        k2 = np.random.rand(p2, m2)
+        gain2 = Gain(k2,
+                     input_vars=LinearVector([InputVariable('output1', size=m2, index=0)]),
+                     output_vars=LinearVector([OutputVariable('output', size=p2, index=0)]))
+
+        with self.subTest('Save to single h5 file'):
+            h5_file_name = self.route_test_dir + '/gain1.h5'
+            self.files_created_by_test.append(h5_file_name)
+            gain1.save(h5_file_name)
+
+        with self.subTest('Load from single h5 file'):
+            loaded_gain = Gain.load_from_h5(h5_file_name)
+            self.check_gains_equal(gain1, loaded_gain)
+
+        with self.subTest('Save both gains to single h5'):
+            h5_file_name = self.route_test_dir + '/multi_gain.h5'
+            self.files_created_by_test.append(h5_file_name)
+
+            Gain.save_multiple_gains(h5_file_name, ('gain1', gain1), ('gain2', gain2))
+
+        with self.subTest('Load multiple gains from a single h5'):
+            out_gains = Gain.load_multiple_gains(h5_file_name)
+            self.check_gains_equal(gain1, out_gains['gain1'])
+            self.check_gains_equal(gain2, out_gains['gain2'])
+
+    @staticmethod
+    def check_gains_equal(gain1, gain2):
+        np.testing.assert_array_almost_equal(gain1.value, gain2.value)
+        LinearVector.check_same_vectors(gain1.input_variables,
+                                        gain2.input_variables)
+        LinearVector.check_same_vectors(gain1.output_variables,
+                                        gain2.output_variables)
+
+    @classmethod
+    def tearDownClass(cls):
+        for file in cls.files_created_by_test:
+            if os.path.exists(file):
+                os.remove(file)
 
 
 if __name__ == '__main__':

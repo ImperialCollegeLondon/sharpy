@@ -1,9 +1,15 @@
 import unittest
+import os
+import h5py
+import sharpy.utils.h5utils as h5utils
 
 from sharpy.linear.utils.ss_interface import InputVariable, LinearVector, OutputVariable
 
 
 class TestVariables(unittest.TestCase):
+
+    route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+    files_created_by_test = []
 
     def setUp(self):
         # initialising with index out of order
@@ -131,6 +137,31 @@ class TestVariables(unittest.TestCase):
                                                                                    'updated in the original object'
         assert new_vector[-1].name == 'last_var', 'Variable not correctly appended'
         assert new_vector[-1].index == new_vector.num_variables - 1, 'Variable not correctly appended'
+
+    def test_save_to_h5(self):
+        Kzeta = 4
+        input_variables_list = [InputVariable('zeta', size=3 * Kzeta, index=0),
+                                InputVariable('zeta_dot', size=3 * Kzeta, index=1),  # this should be one
+                                InputVariable('u_gust', size=3 * Kzeta, index=2)]
+
+        input_variables = LinearVector(input_variables_list)
+
+        h5_file_name = self.route_test_dir + '/test_save_variables.h5'
+        self.files_created_by_test.append(h5_file_name)
+        with h5py.File(h5_file_name, 'w') as fid:
+            input_variables.add_to_h5_file(fid)
+
+        with h5py.File(h5_file_name, 'r') as fid:
+            data_dict = h5utils.load_h5_in_dict(fid)
+
+        loaded_variable = LinearVector.load_from_h5_file('InputVariable', data_dict['InputVariable'])
+
+        LinearVector.check_same_vectors(input_variables, loaded_variable)
+
+    def tearDown(self):
+        for file in self.files_created_by_test:
+            if os.path.exists(file):
+                os.remove(file)
 
 
 if __name__ == '__main__':
