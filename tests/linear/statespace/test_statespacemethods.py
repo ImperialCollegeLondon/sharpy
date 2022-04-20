@@ -80,6 +80,7 @@ class TestGolandFlutter(unittest.TestCase):
                  'LinearAssembler',
                  'FrequencyResponse',
                  'AsymptoticStability',
+                 'SaveParametricCase'
                  ],
             'case': ws.case_name, 'route': ws.route,
             'write_screen': 'off', 'write_log': 'on',
@@ -229,6 +230,10 @@ class TestGolandFlutter(unittest.TestCase):
                                           'frequency_unit': 'k',
                                           'frequency_bounds': [0.0001, 1.0],
                                           }
+
+        ws.config['SaveParametricCase'] = {'save_pmor_items': 'on',
+                                           'save_pmor_subsystems': 'on',
+                                           'parameters': {'u_inf': ws.u_inf}}
 
         ws.config.write()
 
