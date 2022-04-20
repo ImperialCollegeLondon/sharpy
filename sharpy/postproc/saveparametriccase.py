@@ -16,6 +16,16 @@ class SaveParametricCase(BaseSolver):
     If the setting ``save_case`` is selected and the post processor :class:`~sharpy.solvers.pickledata.PickleData`
     is not present in the SHARPy flow, this solver will pickle the data to the path given in the ``folder`` setting.
 
+    The setting ``save_pmor_items`` saves to h5 the following state-spaces and gains, if present:
+        * Aeroelastic state-space saved to: <output_folder> / save_pmor_data / <case_name>_statespace.h5
+        * Aerodynamic ROM reduced order bases saved to: <output_folder> / save_pmor_data / <case_name>_aerorob.h5
+        * Structural ROM reduced order bases saved to: <output_folder> / save_pmor_data / <case_name>_modal_structrob.h5
+
+    The setting ``save_pmor_subsystem saves the additional state-spaces to h5 files:
+        * Structural matrices saved to: <output_folder> / save_pmor_data / <case_name>_struct_matrices.h5
+        * Structural state-space saved to: <output_folder> / save_pmor_data / <case_name>_beamstatespace.h5
+        * Aerodynamic state-space saved to: <output_folder> / save_pmor_data / <case_name>_aerostatespace.h5
+
     Examples:
 
         In the case you are running several SHARPy cases, varying for instance the velocity, the settings would
@@ -111,15 +121,20 @@ class SaveParametricCase(BaseSolver):
         config.write()
 
         if self.settings['save_pmor_items']:
-            if not os.path.exists(self.folder + '/save_pmor_data/'):
-                os.makedirs(self.folder + '/save_pmor_data/')
-            self.save_state_space()
-            self.save_aero_rom_bases()
-            self.save_structural_modal_matrix()
+            try:
+                self.data.linear
+            except AttributeError:
+                pass
+            else:
+                if not os.path.exists(self.folder + '/save_pmor_data/'):
+                    os.makedirs(self.folder + '/save_pmor_data/')
+                self.save_state_space()
+                self.save_aero_rom_bases()
+                self.save_structural_modal_matrix()
 
-            if self.settings['save_pmor_subsystems']:
-                self.save_structural_matrices()
-                self.save_aero_state_space()
+                if self.settings['save_pmor_subsystems']:
+                    self.save_structural_matrices()
+                    self.save_aero_state_space()
 
         return self.data
 
