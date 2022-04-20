@@ -177,20 +177,17 @@ class Krylov(rom_interface.BaseRom):
             V = libss.Gain(self.V)
             W = libss.Gain(self.W)
 
-            if self.W is None:
-                W = V.copy()
         else:
             V = self.V
             W = self.W
 
-            if W is None:
-                W = V  # for single sided cases
-
-        try:
+        if self.settings['single_side'] == 'observability' or self.settings['single_side'] == 'controllability':
+            # if single sided, the projector is V and W = V therefore no need to duplicate
+            libss.Gain.save_multiple_gains(file_name, ('V', V))
+            cout.cout_wrap(f'Saved Krylov reduced order bases, V to file: {file_name}', 1)
+        else:
             libss.Gain.save_multiple_gains(file_name, ('V', V), ('W', W))
-        except TypeError:
-            import pdb; pdb.set_trace()
-        cout.cout_wrap(f'Saved Krylov reduced order bases, V and W to file: {file_name}', 1)
+            cout.cout_wrap(f'Saved Krylov reduced order bases, V and W to file: {file_name}', 1)
 
     def run(self, ss):
         """
