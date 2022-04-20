@@ -2,6 +2,7 @@
 Linear State Beam Element Class
 
 """
+import h5py
 
 from sharpy.linear.utils.ss_interface import BaseElement, linear_system, LinearVector
 import sharpy.linear.src.lingebm as lingebm
@@ -578,3 +579,13 @@ class LinearBeam(BaseElement):
             self.sys.acceleration_modal_gain = modal_gain
 
         return acceleration_recovery
+
+    def save_reduced_order_bases(self, file_name):
+        gain = libss.Gain(self.sys.U)
+        gain.save(file_name)
+
+    def save_structural_matrices(self, file_name):
+        with h5py.File(file_name, 'w') as f:
+            f.create_dataset('m', data=self.sys.Mstr)
+            f.create_dataset('c', data=self.sys.Cstr)
+            f.create_dataset('k', data=self.sys.Kstr)

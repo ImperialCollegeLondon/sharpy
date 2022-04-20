@@ -1,5 +1,8 @@
 """State-space modules loading utilities"""
 import os
+
+import h5py
+
 import sharpy.utils.cout_utils as cout
 from abc import ABCMeta, abstractmethod
 import numpy as np
@@ -140,9 +143,14 @@ class VectorVariable:
     def copy(self):
         return copy.deepcopy(self)
 
+    def save(self):
+        """
+        Return:
+            tuple: info to save to h5
+        """
+        return type(self).__name__, self.name, self.size, self.index
 
-# should have a dedicated class for Input vs Output variables? in the output the columns should not change
-# in the input it is the rows the ones that do not change
+
 class OutputVariable(VectorVariable):
 
     @property
@@ -209,7 +217,7 @@ class LinearVector:
             try:
                 remove_variable_index = list_of_variable_names.index(variable_name)
             except ValueError:
-                ValueError('Trying to remove non-existent {:s} variable'.format(variable_name))
+                raise ValueError('Trying to remove non-existent {:s} variable'.format(variable_name))
             else:
                 self.__remove_variable(remove_variable_index)
 
@@ -416,6 +424,63 @@ class LinearVector:
 
     def copy(self):
         return copy.deepcopy(self)
+
+    def add_to_h5_file(self, file_handle):
+        """
+        Given an h5 handle ``file_handle``, creates and adds a group named with the type of variable and adds the fields
+        ``names`` (encoded in ascii), ``sizes`` and ``indices``.
+
+        Args:
+            file_handle (h5py.File): file handle of h5py.File
+
+        Returns:
+            file_handle
+        """
+        variable_data = []
+        for variable in self.vector_variables:
+            variable_data.append(variable.save())
+
+        types, names, sizes, indices = zip(*variable_data)
+
+        # encode strings to bytes
+        names = [name.encode('ascii', 'ignore') for name in names]
+
+        variable_group = file_handle.create_group(types[0])
+        variable_group.create_dataset(name='names', data=names)
+        variable_group.create_dataset(name='sizes', data=sizes, dtype=int)
+        variable_group.create_dataset(name='indices', data=indices, dtype=int)
+
+        return file_handle
+
+    @classmethod
+    def load_from_h5_file(cls, variable_type, variables_data):
+        """
+        Loads data from the information saved in an h5file
+
+        Args:
+            variable_type (str): Type of variable (InputVariable, OutputVariable or StateVariable)
+            variables_data (dict): Dictionary containing variable info from h5 with keys: names, sizes and indices
+
+        Returns:
+            LinearVector: of ``variable_type``
+        """
+        var_class_dict = {'InputVariable': InputVariable,
+                          'OutputVariable': OutputVariable,
+                          'StateVariable': StateVariable}
+        n_variables = len(variables_data['names'])
+        list_of_variables = []
+        try:
+            var_class = var_class_dict[variable_type]
+        except KeyError:
+            raise KeyError(f'Unknown variable type {variable_type}. Must be either InputVariable, OutputVariable '
+                           f'or StateVariable')
+        for ith_variable in range(n_variables):
+            name = variables_data['names'][ith_variable].astype('U13')  # decode to unicode
+            list_of_variables.append(var_class(name,
+                                               size=variables_data['sizes'][ith_variable],
+                                               index=variables_data['indices'][ith_variable]),
+                                     )
+        return cls(list_of_variables)
 
     def __iter__(self):
         return SetIterator(self)
