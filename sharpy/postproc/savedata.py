@@ -182,11 +182,11 @@ class SaveData(BaseSolver):
                                        sharpy.linear.assembler.linearaeroelastic.LinearAeroelastic,
                                        sharpy.linear.assembler.linearbeam.LinearBeam,
                                        sharpy.linear.assembler.linearuvlm.LinearUVLM,
-                                       sharpy.linear.src.libss.ss,
+                                       sharpy.linear.src.libss.ss_block,
                                        sharpy.linear.src.lingebm.FlexDynamic,)
 
             if self.settings['save_linear_uvlm']:
-                self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss)
+                self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss_block)
         self.caller = caller
 
     def run(self, online=False):

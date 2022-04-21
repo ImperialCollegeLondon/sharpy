@@ -11,6 +11,8 @@ import sharpy.linear.src.libss as libss
 
 class TestLinearDerivatives(unittest.TestCase):
 
+    print_info = False
+
     def run_sharpy(self, alpha_deg, flow, target_system, not_run=False):
         # Problem Set up
         u_inf = 10.
@@ -77,7 +79,7 @@ class TestLinearDerivatives(unittest.TestCase):
         ws.config['SHARPy'] = {
             'flow': flow,
             'case': ws.case_name, 'route': ws.route,
-            'write_screen': 'on', 'write_log': 'on',
+            'write_screen': 'off', 'write_log': 'on',
             'log_folder': self.route_test_dir + '/output/',
             'log_file': ws.case_name + '.log'}
 
@@ -263,12 +265,14 @@ class TestLinearDerivatives(unittest.TestCase):
         ws.config['AsymptoticStability'] = {'print_info': 'on'}
 
         ws.config['SaveParametricCase'] = {'save_case': 'off',
-                                           'parameters': {'alpha': alpha_deg}}
+                                           'parameters': {'alpha': alpha_deg},
+                                           'save_pmor_items': 'on',
+                                           'save_pmor_subsystems': 'on'}
 
         ws.config['SaveData'] = {'save_aero': 'off',
                                  'save_struct': 'off',
                                  'save_linear': 'on',
-                                 'save_linear_uvlm': 'on',
+                                 'save_linear_uvlm': 'off',
                                  'format': 'mat',
                                  }
 
@@ -319,7 +323,10 @@ class TestLinearDerivatives(unittest.TestCase):
         ref_case_name = ref.case_name
         case_name_db.append(ref_case_name)
         qS = 0.5 * ref.rho * u_inf ** 2 * ref.c_ref * ref.wing_span
-        print(ref.wing_span, ref.main_chord, ref.aspect_ratio)
+        if self.print_info:
+            print(f'Reference span: {ref.wing_span} m')
+            print(f'Reference chord: {ref.main_chord} m')
+            print(f'Aspect ratio: {ref.aspect_ratio}')
 
         # Run nonlinear cases in the vicinity
         nonlinear_sim_flow = ['BeamLoader',
@@ -347,44 +354,39 @@ class TestLinearDerivatives(unittest.TestCase):
         nlin_forces_g /= qS
         nlin_forces_a /= qS
 
-        print('Nonlinear coefficients')
         lift_poly = np.polyfit(alpha_vec * np.pi/180, nlin_forces_g[:, 2], deg=1)
         nonlin_cla = lift_poly[0]
-        print('CLa', nonlin_cla)
         drag_poly = np.polyfit(alpha_vec * np.pi/180, nlin_forces_g[:, 0], deg=2)
         nonlin_cda = 2 * drag_poly[0] * alpha0 + drag_poly[1]
-        print('CDa', nonlin_cda)
+        if self.print_info:
+            print('Nonlinear coefficients')
+            print('CLa', nonlin_cla)
+            print('CDa', nonlin_cda)
 
-        print('Nonlinear coefficients - body axes')
         lift_poly = np.polyfit(alpha_vec * np.pi/180, nlin_forces_a[:, 2], deg=1)
         nonlin_cza = lift_poly[0]
-        print('CZa', nonlin_cza)
         drag_poly = np.polyfit(alpha_vec * np.pi/180, nlin_forces_a[:, 0], deg=2)
         nonlin_cxa = 2 * drag_poly[0] * alpha0 + drag_poly[1]
-        print('CXa', nonlin_cxa)
+        if self.print_info:
+            print('Nonlinear coefficients - body axes')
+            print('CZa', nonlin_cza)
+            print('CXa', nonlin_cxa)
 
         # Get Linear ROM at reference case
         import scipy.io as scio
-        linuvlm_data = scio.loadmat(self.route_test_dir + '/output/{:s}/savedata/{:s}.uvlmss.mat'.format(ref_case_name,
-                                                                                                     ref_case_name))
         linss_data = scio.loadmat(self.route_test_dir + '/output/{:s}/savedata/{:s}.linss.mat'.format(ref_case_name,
                                                                                                   ref_case_name))
         
         # Steady State transfer function
         if target_system == 'aerodynamic':
-            A, B, C, D = linuvlm_data['A'], linuvlm_data['B'], linuvlm_data['C'], linuvlm_data['D']
-            try:
-                dt = linuvlm_data['dt']
-            except KeyError:
-                dt = None
+            ss = libss.StateSpace.load_from_h5(self.route_test_dir +
+                                               f'/output/{ref_case_name}/' +
+                                               f'save_pmor_data/{ref_case_name}_aerostatespace.h5')
         else:
-            A, B, C, D = linss_data['A'], linss_data['B'], linss_data['C'], linss_data['D']
-            try:
-                dt = linss_data['dt']
-            except KeyError:
-                dt = None
+            ss = libss.StateSpace.load_from_h5(self.route_test_dir +
+                                               f'/output/{ref_case_name}/' +
+                                               f'save_pmor_data/{ref_case_name}_statespace.h5')
 
-        ss = libss.StateSpace(A, B, C, D, dt=dt)
         H0 = ss.freqresp(np.array([1e-5]))[:, :, 0].real
 
         cga = algebra.quat2rotation(algebra.euler2quat(np.array([0, alpha0, 0])))
@@ -397,17 +399,18 @@ class TestLinearDerivatives(unittest.TestCase):
         moments = np.zeros_like(forces)
         body_forces = np.zeros_like(forces)
 
-        phi = linss_data['mode_shapes'].copy().real
+        phi = libss.Gain.load_from_h5(self.route_test_dir +
+                                      f'/output/{ref_case_name}/' +
+                                      f'save_pmor_data/{ref_case_name}_modal_structrob.h5').value.real # other Gain features not needed
 
         eps = 1e-5
         dalpha_vec = np.array([-eps, +eps])
         for i_alpha, dalpha in enumerate(dalpha_vec):
-            print(dalpha)
             alpha = alpha0 + dalpha  # rad
             deuler = np.array([0, dalpha, 0])
             euler0 = np.array([0, alpha0, 0])
 
-            u = np.zeros((B.shape[1]))  # input vector
+            u = np.zeros(ss.inputs)  # input vector
             V0 = np.array([-1, 0, 0], dtype=float) * u_inf  # G
             Vp = u_inf * np.array([-np.cos(dalpha), 0, -np.sin(dalpha)])  # G
 
@@ -445,20 +448,22 @@ class TestLinearDerivatives(unittest.TestCase):
             u_body = np.zeros_like(u)
             u_body[vz_ind] = dvz / phi[-7, 2]
             body_forces[i_alpha, 1:] = H0.dot(u_body)[:3].real / phi[-9, 0] / qS # C_Z_w in A frame
-            print(H0[:3, vx_ind:vx_ind+3].real / phi[-7, 2] / phi[-9, 0] / qS)
+            if self.print_info:
+                print('Transfer function coefficients (normalised by qS)')
+                print(H0[:3, vx_ind:vx_ind+3].real / phi[-7, 2] / phi[-9, 0] / qS)
 
             MD = M0G + algebra.der_Ceuler_by_v(euler0, M0A).dot(deuler) + cga.dot(mlin)
             moments[i_alpha, 0] = forces[i_alpha, 0]
             moments[i_alpha, 1:] = MD / qS / ref.main_chord
 
         cla = (forces[-1, -1] - forces[0, -1]) / (forces[-1, 0] - forces[0, 0]) * 180 / np.pi
-        print('Lift curve slope perturbation {:.6e}'.format(cla))
-
         cda = (forces[-1, 1] - forces[0, 1]) / (forces[-1, 0] - forces[0, 0]) * 180 / np.pi
-        print('Drag curve slope perturbation {:.6e}'.format(cda))
-
         cma = (moments[-1, 2] - moments[0, 2]) / (moments[-1, 0] - moments[0, 0]) * 180 / np.pi
-        print('Moment curve slope perturbation {:.6e}'.format(cma))
+
+        if self.print_info:
+            print('Lift curve slope perturbation {:.6e}'.format(cla))
+            print('Drag curve slope perturbation {:.6e}'.format(cda))
+            print('Moment curve slope perturbation {:.6e}'.format(cma))
 
         # body derivative
         # czwa = (body_forces[-1, -1] - body_forces[0, -1]) / (forces[-1, 0] - forces[0, 0]) * 180 / np.pi

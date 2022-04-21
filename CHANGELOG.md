@@ -1,12 +1,50 @@
 # Changelog
 
-## [1.2.1](https://github.com/imperialcollegelondon/sharpy/tree/1.2.1) (2021-02-09)
+## [1.3](https://github.com/imperialcollegelondon/sharpy/tree/1.3) (2021-11-11)
 
-[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.2...1.2.1)
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.2.1...1.3)
+
+**Implemented enhancements:**
+
+- Include gravity direction as input for structural solvers [\#112](https://github.com/ImperialCollegeLondon/sharpy/issues/112)
+- Simulation settings check - Unrecognised settings raise Error [\#148](https://github.com/ImperialCollegeLondon/sharpy/pull/148) ([ngoiz](https://github.com/ngoiz))
+- Aerodynamic forces correction enhancements [\#140](https://github.com/ImperialCollegeLondon/sharpy/pull/140) ([ngoiz](https://github.com/ngoiz))
+- New feature: apply external forces to the system at runtime [\#125](https://github.com/ImperialCollegeLondon/sharpy/pull/125) ([ArturoMS13](https://github.com/ArturoMS13))
+- Lift distribution post-processor [\#121](https://github.com/ImperialCollegeLondon/sharpy/pull/121) ([sduess](https://github.com/sduess))
+
+**Fixed bugs:**
+
+- Fix bug in computing total moments in A frame [\#177](https://github.com/ImperialCollegeLondon/sharpy/pull/177) ([ngoiz](https://github.com/ngoiz))
+
+**Closed issues:**
+
+- Unrecognised model in goland test case [\#143](https://github.com/ImperialCollegeLondon/sharpy/issues/143)
+
+**Merged pull requests:**
+
+- Implement GitHub Actions as testing suite provider [\#179](https://github.com/ImperialCollegeLondon/sharpy/pull/179) ([ngoiz](https://github.com/ngoiz))
+- Update submodules and conda environments [\#161](https://github.com/ImperialCollegeLondon/sharpy/pull/161) ([sduess](https://github.com/sduess))
+- Support element variables in UDP output [\#160](https://github.com/ImperialCollegeLondon/sharpy/pull/160) ([ngoiz](https://github.com/ngoiz))
+- Output directory in the location specified in settings\[SHARPy\]\[log\_folder\] [\#130](https://github.com/ImperialCollegeLondon/sharpy/pull/130) ([ngoiz](https://github.com/ngoiz))
+- Update and include features in multibody [\#126](https://github.com/ImperialCollegeLondon/sharpy/pull/126) ([ArturoMS13](https://github.com/ArturoMS13))
+- Update linear UVLM to account for CFL not equal to one in the wake convection [\#124](https://github.com/ImperialCollegeLondon/sharpy/pull/124) ([ArturoMS13](https://github.com/ArturoMS13))
+- Minor changes [\#123](https://github.com/ImperialCollegeLondon/sharpy/pull/123) ([ArturoMS13](https://github.com/ArturoMS13))
+
+## [v1.2.1](https://github.com/imperialcollegelondon/sharpy/tree/v1.2.1) (2021-02-09)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.2...v1.2.1)
+
+**Implemented enhancements:**
+
+- Allow CFL != 1in shedding step [\#78](https://github.com/ImperialCollegeLondon/sharpy/issues/78)
+- Vortex wake managed by SHARPy [\#77](https://github.com/ImperialCollegeLondon/sharpy/issues/77)
+- Recover vortex core in UVLM [\#76](https://github.com/ImperialCollegeLondon/sharpy/issues/76)
+- Include viscous drag force from airfoil properties [\#75](https://github.com/ImperialCollegeLondon/sharpy/issues/75)
 
 **Fixed bugs:**
 
 - Bug in beamstructure.py [\#117](https://github.com/ImperialCollegeLondon/sharpy/issues/117)
+- Definition of control surfaces and impact of node ordering in mirrored wings [\#43](https://github.com/ImperialCollegeLondon/sharpy/issues/43)
 
 **Closed issues:**
 
