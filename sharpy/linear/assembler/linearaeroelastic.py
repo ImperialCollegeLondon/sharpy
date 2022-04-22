@@ -845,12 +845,19 @@ class LinearAeroelastic(ss_interface.BaseElement):
                             np.dot(Tan.T, np.dot(Cbg, algebra.skew(Xg)))
                     # or, equivalently, np.dot( algebra.skew(Xb),Cbg)
 
-                    # total forces
-                    Kforces[np.ix_(jj_for_tra, ii_vert)] += Cag
+                    # Total forces
+                    if not self.correct_forces:
+                        # total forces
+                        Kforces[np.ix_(jj_for_tra, ii_vert)] += Cag
 
-                    # total moments
-                    Kforces[np.ix_(jj_for_rot, ii_vert)] += \
-                        np.dot(Cag, algebra.skew(zetag))
+                        # total moments
+                        Kforces[np.ix_(jj_for_rot, ii_vert)] += \
+                            np.dot(Cag, algebra.skew(zetag))
+                    else:
+                        pass
+                        # when forces are corrected via polar these terms are included in the polar_gain,
+                        # as the coefficient for each nodal force cannot be added to the total component
+                        # a posteriori
 
                     # quaternion equation
                     # null, as not dep. on external forces

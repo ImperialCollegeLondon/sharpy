@@ -217,8 +217,42 @@ class PolarCorrection(generator_interface.BaseGenerator):
         return new_struct_forces
 
     def generate_linear(self, **params):
-        """
-        Generate Linear Gain matrix with correction factors (lift only at the moment)
+        r"""
+        Generate Linear Gain matrix with correction factors (lift only at the moment). These corrections are implemented
+        by means of a Gain that goes from forces and moments in A frame to corrected forces and moments in A frame.
+
+        The nodal corrections are implemented as
+
+        .. math:: K_f^i \leftarrow w_f^i
+
+        where
+
+        .. math:: w_f^i = C^{AS} W_f^i C^{SA}
+
+        and :math:`W_f` is a 3x3 correction matrix expressed in stability axes and is given for each node.
+
+        For the moments, the correction is applied in a similar way, noting that the moments are expressed as
+        :math:`T^\top \delta m_B` and thus need pre- and post- multiplication
+
+        .. math::  K_m^i \leftarrow T^\top C^{BA} w_m^i C^{AB} T^{-\top}
+
+        where
+
+        .. math:: w_m^i = C^{AS} W_m^i C^{SA}
+
+        and :math:`W_m^i` is a 3x3 correction matrix expressed in stability axes for the moment correction at each node.
+
+        The total forces and moments are then computed as a summation of the above, where the total forces
+
+        are computed simply as
+
+        .. math:: K_F \leftarrow \Sum w_f^i
+
+        and the total moments
+
+        .. math:: K_M \leftarrow \Sum \tilde{R}_{A,i} w_f^i + \Sum w_m^i C^{AB} T^{-\top}
+
+        which leaves the end result expressed in the A frame.
 
         Keyword Args:
             beam (sharpy.linear.assembler.linearbeam.LinearBeam): Beam object
@@ -292,8 +326,11 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 i_n = aerogrid.struct2aero_mapping[inode][0]['i_n']
                 N = aerogrid.aero_dimensions[isurf, 1]
                 polar = aerogrid.polars[iairfoil]
-                cab = algebra.crv2rotation(structural_kstep.psi[ielem, inode_in_elem, :])
+                psi = structural_kstep.psi[ielem, inode_in_elem, :]
+                cab = algebra.crv2rotation(psi)
                 cgb = np.dot(cga, cab)
+                Tan = algebra.crv2tan(psi)
+                r_a = tsstruct0.pos
 
                 dir_span, span, dir_chord, chord = span_chord(i_n, aero_kstep.zeta[isurf])
 
@@ -313,13 +350,24 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 cla, cda, cma = polar.get_derivatives_at_aoa(tsstruct0.postproc_node['aoa'][inode])
                 local_correction[2, 2] = cla / 2 / np.pi
 
-                weight = 1 / np.sum(aero_dict['aero_node'])
-                if bc_here != 1:
-                    polar_gain[np.ix_(jj_tra, jj_tra)] += cas.dot(local_correction[:3, :3]).dot(cas.T)
-                    polar_gain[np.ix_(jj_rot, jj_rot)] += cas.dot(local_correction[3:, 3:]).dot(cas.T)
+                mom_b2a = cab.dot(np.linalg.inv(Tan.T))
+                mom_a2b = Tan.T.dot(cab)
 
-                polar_gain[np.ix_(jj_for_tra, jj_for_tra)] += weight * cas.dot(local_correction[:3, :3]).dot(cas.T)
-                polar_gain[np.ix_(jj_for_rot, jj_for_rot)] += weight * cas.dot(local_correction[3:, 3:]).dot(cas.T)
+                wfi = cas.dot(local_correction[:3, :3]).dot(cas.T)
+                wmi = cas.dot(local_correction[3:, 3:]).dot(cas.T)
+
+                if bc_here != 1:
+                    polar_gain[np.ix_(jj_tra, jj_tra)] += wfi
+                    polar_gain[np.ix_(jj_rot, jj_rot)] += mom_a2b.dot(wmi.dot(mom_b2a))
+
+                # Total forces and moments
+                # total forces
+                polar_gain[np.ix_(jj_for_tra, jj_tra)] += wfi
+
+                # forces contribution to total moments
+                polar_gain[np.ix_(jj_for_rot, jj_tra)] += algebra.skew(r_a).dot(wfi)
+                # moments contribution to total moments
+                polar_gain[np.ix_(jj_for_rot, jj_rot)] += wmi.dot(mom_b2a)
 
         return polar_gain
 
@@ -457,10 +505,13 @@ class EfficiencyCorrection(generator_interface.BaseGenerator):
                 isurf = aerogrid.struct2aero_mapping[inode][0]['i_surf']
                 i_n = aerogrid.struct2aero_mapping[inode][0]['i_n']
                 N = aerogrid.aero_dimensions[isurf, 1]
+                psi = structural_kstep.psi[ielem, inode_in_elem, :]
+                cab = algebra.crv2rotation(psi)
+                Tan = algebra.crv2tan(psi)
+                r_a = tsstruct0.pos
 
                 airfoil_efficiency = aero_dict['airfoil_efficiency']
 
-                cab = algebra.crv2rotation(structural_kstep.psi[ielem, inode_in_elem, :])
                 cgb = np.dot(cga, cab)
 
                 dir_span, span, dir_chord, chord = span_chord(i_n, aero_kstep.zeta[isurf])
@@ -478,12 +529,18 @@ class EfficiencyCorrection(generator_interface.BaseGenerator):
 
                 local_correction = np.diag(airfoil_efficiency[ielem, inode_in_elem, 0, :])
 
-                weight = 1 / np.sum(aero_dict['aero_node'])
                 if bc_here != 1:
                     polar_gain[np.ix_(jj_tra, jj_tra)] += cas.dot(local_correction[:3, :3]).dot(cas.T)
                     polar_gain[np.ix_(jj_rot, jj_rot)] += cas.dot(local_correction[3:, 3:]).dot(cas.T)
 
-                polar_gain[np.ix_(jj_for_tra, jj_for_tra)] += weight * cas.dot(local_correction[:3, :3]).dot(cas.T)
-                polar_gain[np.ix_(jj_for_rot, jj_for_rot)] += weight * cas.dot(local_correction[3:, 3:]).dot(cas.T)
+                # Total forces and moments
+                # total forces
+                polar_gain[np.ix_(jj_for_tra, jj_tra)] += cas.dot(local_correction[:3, :3]).dot(cas.T)
 
+                # forces contribution to total moments
+                polar_gain[np.ix_(jj_for_rot, jj_tra)] += \
+                    algebra.skew(r_a) * cas.dot(local_correction[:3, :3]).dot(cas.T)
+                # moments contribution to total moments
+                polar_gain[np.ix_(jj_for_rot, jj_rot)] += \
+                    cas.dot(local_correction[3:, 3:]).dot(cas.T) * cab * np.linalg.inv(Tan.T)
         return polar_gain
