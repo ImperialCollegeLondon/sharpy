@@ -74,8 +74,6 @@ class Derivatives:
             cls.modal = False
         cls.steady_forces = steady_forces
 
-        import pdb; pdb.set_trace()
-
         H0 = state_space.freqresp(np.array([1e-5]))[:, :, 0]
         # A, B, C, D = state_space.get_mats()
         # H0 = C.dot(np.linalg.inv(np.eye(state_space.states) - A).dot(B)) + D
@@ -397,7 +395,6 @@ if __name__ == '__main__':
     phi = data.linear.linear_system.linearisation_vectors['mode_shapes']
 
     coefficients = {'force': 1960., 'moment_lon': 1960., 'moment_lat': 62720.}
-    import pdb; pdb.set_trace()
 
     DerivativeSet.initialise_derivatives(state_space, steady_forces, quat, np.array([-10., 0, 0]), phi)
 
