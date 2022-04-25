@@ -330,7 +330,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 cab = algebra.crv2rotation(psi)
                 cgb = np.dot(cga, cab)
                 Tan = algebra.crv2tan(psi)
-                r_a = tsstruct0.pos
+                r_a = tsstruct0.pos[inode]
 
                 dir_span, span, dir_chord, chord = span_chord(i_n, aero_kstep.zeta[isurf])
 
@@ -508,7 +508,7 @@ class EfficiencyCorrection(generator_interface.BaseGenerator):
                 psi = structural_kstep.psi[ielem, inode_in_elem, :]
                 cab = algebra.crv2rotation(psi)
                 Tan = algebra.crv2tan(psi)
-                r_a = tsstruct0.pos
+                r_a = tsstruct0.pos[inode]
 
                 airfoil_efficiency = aero_dict['airfoil_efficiency']
 
