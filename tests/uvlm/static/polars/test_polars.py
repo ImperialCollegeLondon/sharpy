@@ -32,6 +32,8 @@ class TestAirfoilPolars(unittest.TestCase):
     polar.initialise(np.column_stack((polar_data[:, 0] * np.pi / 180, polar_data[:, 1], polar_data[:, 2],
                                       polar_data[:, 4])))
 
+    print_info = False
+
     def test_infinite_wing(self):
         """
         Infinite wing should yield same results as airfoil polar
@@ -111,9 +113,15 @@ class TestAirfoilPolars(unittest.TestCase):
         derivatives = self.postprocess_linear(case_name)
 
         with self.subTest(msg='CL_alpha at {:f}'.format(alpha)):
+            # Corrections are only implemented in the lift
             cla_sharpy = derivatives['force_angle_velocity'][2, 1]
             cla_polar = self.polar.get_derivatives_at_aoa(alpha * np.pi / 180)[0]
             delta = np.abs(cla_sharpy - cla_polar) / cla_polar
+            if self.print_info:
+                print(f'Alpha = {alpha}')
+                print(f'Polar CL_alpha =  {cla_polar:0.3f}')
+                print(f'SHARPy CL_alpha = {cla_sharpy:0.3f}')
+                print(f'Relative difference =  ({delta * 100:0.3f} %)')
             np.testing.assert_array_less(delta, 0.15, f'Difference in polar {cla_polar:0.3f} and '
                                                       f'SHARPy CL_alpha {cla_sharpy:0.3f} '
                                                       f'greater than 15% ({delta * 100:0.3f} %)')

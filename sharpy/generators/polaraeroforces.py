@@ -254,6 +254,11 @@ class PolarCorrection(generator_interface.BaseGenerator):
 
         which leaves the end result expressed in the A frame.
 
+        An additional gain, referred to as ``forces_at_ref_gain`` is needed to obtain the nodal force at the
+        :math:`A` frame in order to correct the forces at this point with the local polar. Thus, this gain
+        subtracts from the total forces and moments the sum of those from the remaining nodes. Then the ``polar_gain``
+        corrects the local force at the A frame and sums the corrected forces and moments at the other nodes.
+
         Keyword Args:
             beam (sharpy.linear.assembler.linearbeam.LinearBeam): Beam object
             tsstruct0 (sharpy.utils.datastructures.StructTimestepInfo): Ref structural time step
@@ -298,6 +303,10 @@ class PolarCorrection(generator_interface.BaseGenerator):
             jj_quat = range(num_dof_str - 4, num_dof_str)
 
         polar_gain = np.zeros((num_dof_str, num_dof_str))
+
+        # this gain computes the aerodynamic forces and moments at the node at the A frame, which else
+        # would be included in the total force and total moment. This is needed to correct these nodal forces too
+        forces_at_ref_gain = np.zeros_like(polar_gain)
 
         jj = 0  # Global DOF index
         for inode in range(nnode):
@@ -351,7 +360,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 local_correction[2, 2] = cla / 2 / np.pi
 
                 mom_b2a = cab.dot(np.linalg.inv(Tan.T))
-                mom_a2b = Tan.T.dot(cab)
+                mom_a2b = Tan.T.dot(cab.T)
 
                 wfi = cas.dot(local_correction[:3, :3]).dot(cas.T)
                 wmi = cas.dot(local_correction[3:, 3:]).dot(cas.T)
@@ -360,16 +369,39 @@ class PolarCorrection(generator_interface.BaseGenerator):
                     polar_gain[np.ix_(jj_tra, jj_tra)] += wfi
                     polar_gain[np.ix_(jj_rot, jj_rot)] += mom_a2b.dot(wmi.dot(mom_b2a))
 
-                # Total forces and moments
-                # total forces
-                polar_gain[np.ix_(jj_for_tra, jj_tra)] += wfi
+                    # Total forces and moments
+                    # total forces
+                    polar_gain[np.ix_(jj_for_tra, jj_tra)] += wfi
 
-                # forces contribution to total moments
-                polar_gain[np.ix_(jj_for_rot, jj_tra)] += algebra.skew(r_a).dot(wfi)
-                # moments contribution to total moments
-                polar_gain[np.ix_(jj_for_rot, jj_rot)] += wmi.dot(mom_b2a)
+                    # forces contribution to total moments
+                    polar_gain[np.ix_(jj_for_rot, jj_tra)] += algebra.skew(r_a).dot(wfi)
+                    # moments contribution to total moments
+                    polar_gain[np.ix_(jj_for_rot, jj_rot)] += wmi.dot(mom_b2a)
 
-        return polar_gain
+                    # keep nodal forces and moments
+                    forces_at_ref_gain[np.ix_(jj_tra, jj_tra)] += np.eye(3)
+                    forces_at_ref_gain[np.ix_(jj_rot, jj_rot)] += np.eye(3)
+
+                    # obtain the nodal force at the A frame
+                    # total force minus the sum of all other nodes
+                    # f_node_at_A = F_A - sum(f)
+                    forces_at_ref_gain[np.ix_(jj_for_tra, jj_tra)] -= np.eye(3)
+
+                    # obtain the nodal moment in A frame at the A frame
+                    # m_node_at_A = M_A - sum(C^AB T^-\top m_b) - sum(r_a.cross(f_a))
+                    forces_at_ref_gain[np.ix_(jj_for_rot, jj_tra)] -= algebra.skew(r_a)
+                    forces_at_ref_gain[np.ix_(jj_for_rot, jj_rot)] -= mom_b2a
+
+                else:
+                    # local force and moment at the A frame
+                    forces_at_ref_gain[np.ix_(jj_for_tra, jj_for_tra)] = np.eye(3)
+                    forces_at_ref_gain[np.ix_(jj_for_rot, jj_for_rot)] = np.eye(3)
+
+                    # scale nodal force at A frame node
+                    polar_gain[np.ix_(jj_for_tra, jj_for_tra)] = wfi
+                    polar_gain[np.ix_(jj_for_rot, jj_for_rot)] = wmi
+
+        return polar_gain.dot(forces_at_ref_gain)
 
 
 @generator_interface.generator
