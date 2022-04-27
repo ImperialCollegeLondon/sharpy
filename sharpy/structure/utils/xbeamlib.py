@@ -35,6 +35,7 @@ class Xbopts(ct.Structure):
                 ("gravity_dir_z", ct.c_double),
                 ("balancing", ct.c_bool),
                 ("relaxation_factor", ct.c_double),
+                ("load_ramping_conv", ct.c_bool)
                 ]
 
     def __init__(self):
@@ -59,6 +60,7 @@ class Xbopts(ct.Structure):
         self.gravity_dir_z = ct.c_double(1.0)
         self.balancing = ct.c_bool(False)
         self.relaxation_factor = ct.c_double(0.3)
+        self.load_ramping_conv = ct.c_bool(False)
 
 
 xbeamlib = ct_utils.import_ctypes_lib(xbeam_lib_path, 'libxbeam')
@@ -67,7 +69,7 @@ xbeamlib = ct_utils.import_ctypes_lib(xbeam_lib_path, 'libxbeam')
 doubleP = ct.POINTER(ct.c_double)
 intP = ct.POINTER(ct.c_int)
 charP = ct.POINTER(ct.c_char_p)
-
+boolP = ct.POINTER(ct.c_bool)
 
 def cbeam3_solv_nlnstatic(beam, settings, ts):
     """@brief Python wrapper for f_cbeam3_solv_nlnstatic
@@ -81,6 +83,8 @@ def cbeam3_solv_nlnstatic(beam, settings, ts):
     n_mass = ct.c_int(beam.n_mass)
     n_stiff = ct.c_int(beam.n_stiff)
 
+
+    
     xbopts = Xbopts()
     xbopts.PrintInfo = ct.c_bool(settings['print_info'])
     xbopts.Solution = ct.c_int(112)
@@ -95,6 +99,7 @@ def cbeam3_solv_nlnstatic(beam, settings, ts):
     xbopts.gravity_dir_y = ct.c_double(gravity_vector[1])
     xbopts.gravity_dir_z = ct.c_double(gravity_vector[2])
     xbopts.relaxation_factor = ct.c_double(settings['relaxation_factor'])
+    xbopts.load_ramping_conv = ct.c_bool(settings['load_ramping_conv'])
 
     # here we only need to set the flags at True, all the forces are follower
     xbopts.FollowerForce = ct.c_bool(True)
@@ -127,6 +132,9 @@ def cbeam3_solv_nlnstatic(beam, settings, ts):
                             beam.timestep_info[ts].steady_applied_forces.ctypes.data_as(doubleP),
                             beam.timestep_info[ts].gravity_forces.ctypes.data_as(doubleP)
                             )
+    
+#   print(xbopts.load_ramping_conv)
+    settings['load_ramping_conv']=xbopts.load_ramping_conv
 
 
 def cbeam3_loads(beam, ts):
