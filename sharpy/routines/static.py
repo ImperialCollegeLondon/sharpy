@@ -21,6 +21,7 @@ class Static(basic.Basic):
                 s_delta_curved=1e-3,
                 s_load_steps=1,
                 s_relaxation=0.01,
+                l_ramp=False,
                 modify_settings=None,              
                 **kwargs):
 
@@ -43,6 +44,7 @@ class Static(basic.Basic):
                                              min_delta=s_tolerance,
                                              delta_curved=s_delta_curved,
                                              num_load_steps=s_load_steps,
+                                             load_ramping=l_ramp,
                                              relaxation_factor=s_relaxation)
         if primary:
             if modify_settings is not None:
