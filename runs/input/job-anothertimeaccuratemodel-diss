@@ -1,0 +1,14 @@
+#!/bin/sh
+#PBS -lwalltime=08:00:00
+#PBS -lselect=1:ncpus=8:mpiprocs=8:mem=16gb
+
+module load anaconda3/personal
+
+cd $HOME/SHARPy_dev/sharpy
+source bin/sharpy_vars.sh
+
+source activate sharpy_env_xbeamdev
+
+cd "$PBS_O_WORKDIR"
+python3 directest-anothertimeaccuratemodel-diss.py
+
