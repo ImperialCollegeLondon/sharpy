@@ -108,7 +108,7 @@ output*/
 snapshots/
 
 # OSX files
-.DS_Store
+*.DS_Store
 
 # linear tools / tests cases
 *.prof
