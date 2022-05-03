@@ -33,11 +33,11 @@ setup(
     install_requires=[
     ],
     classifiers=[
-        "Operating System :: Linux",
+        "Operating System :: Linux, Mac OS",
         "Programming Language :: Python, C++",
         ],
 
-    entry_points = {
+    entry_points={
         'console_scripts': ['sharpy=sharpy.sharpy_main:sharpy_run'],
         }
 )
