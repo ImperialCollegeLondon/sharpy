@@ -4,6 +4,9 @@ on:
   push:
     paths:
       - '*.py'
+      - '.github/workflows/*'
+      - .gitmodules
+      - 'utils/environment*'
   pull_request:
     branches:
       - master
