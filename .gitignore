@@ -40,7 +40,7 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
-*,cover
+*.cover
 .hypothesis/
 
 # Translations
@@ -89,10 +89,9 @@ ENV/
 # Vim stuff
 *.*~
 *.swp
-*.txt
 *.h5
 
-# project dependant stuff
+# project dependent stuff
 lib/*.so
 output/*
 .idea
@@ -100,42 +99,20 @@ output/*
 # figure folders
 *figs/*
 
-*.csv
 *.eps
 *.vtu
 
-utils/eigen_debug/__init__\.py
-
-utils/eigen_debug/printers\.py
-
-tests/uvlm/\.DS_Store
-
-*/.DS_Store
 
 output*/
 
 snapshots/
 
-
-.DS_Store
-
-tests/coupled/dynamic/horten/BFF/
-
-tests/coupled/dynamic/horten/BFF2/
-
-tests/coupled/prescribed/goland_linear/model_diff/
-
+# OSX files
+*.DS_Store
 
 # linear tools / tests cases
 *.prof
-sharpy/linear/test/test_cases/*
-tests/linear/uvlm/figs/*
-tests/linear/uvlm/res/*
-cases/linear/coupled/figs/*
-cases/linear/coupled/res/*
 figs/*
-
-tests/linear/rom/figs/
 
 \.spyproject/
 
