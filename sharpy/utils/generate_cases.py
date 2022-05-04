@@ -164,7 +164,7 @@ def read_column_sheet_type01(excel_file_name, excel_sheet, column_name):
     """
 
     xls = pd.ExcelFile(excel_file_name)
-    excel_db = pd.read_excel(xls, sheet_name=excel_sheet)
+    excel_db = pd.read_excel(xls, sheet_name=excel_sheet, engine='openpyxl')
     num_elem = excel_db.index.stop - 2
 
     try:
