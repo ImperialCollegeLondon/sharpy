@@ -651,7 +651,7 @@ def generate_solver_file():
     settings['StepUvlm'] = {'print_info': 'off',
                             'num_cores': num_cores,
                             'convection_scheme': 2,
-                            'gamma_dot_filtering': 6,
+                            'gamma_dot_filtering': 7,
                             'velocity_field_generator': 'GustVelocityField',
                             'velocity_field_input': {'u_inf': int(not free_flight) * u_inf,
                                                      'u_inf_direction': [1., 0, 0],

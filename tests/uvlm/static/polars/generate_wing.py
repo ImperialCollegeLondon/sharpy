@@ -1,5 +1,5 @@
 import numpy as np
-import cases.templates.flying_wings as wings
+import sharpy.cases.templates.flying_wings as wings
 import sharpy.utils.algebra as algebra
 import sharpy.sharpy_main
 
