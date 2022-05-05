@@ -5,7 +5,7 @@ Richards, P. W., Yao, Y., Herd, R. A., Hodges, D. H., & Mardanpour, P. (2016). E
 Properties on Body-Freedom Flutter for Flying Wings. Journal of Aircraft. https://doi.org/10.2514/1.C033435
 """
 import numpy as np
-from cases.hangar.horten_wing import HortenWing
+from sharpy.cases.hangar.horten_wing import HortenWing
 import sharpy.utils.algebra as algebra
 
 

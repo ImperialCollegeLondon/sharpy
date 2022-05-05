@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import unittest
-import cases.templates.flying_wings as wings
+import sharpy.cases.templates.flying_wings as wings
 import sharpy.sharpy_main
 import pickle
 

@@ -12,17 +12,12 @@ class TestCoupledDynamic(unittest.TestCase):
     - Gust response of the hale aircraft
     """
 
-
-
     @classmethod
     def setUpClass(cls):
         # run all the cases generators
         case = 'hale'
         mod = importlib.import_module('tests.coupled.dynamic.' + case + '.generate_' + case)
         pass
-
-
-
 
     def test_hale_dynamic(self):
         """
@@ -44,17 +39,16 @@ class TestCoupledDynamic(unittest.TestCase):
         # compare results with reference values 
         ref_Fz = 50.4986064826483
         ref_My = -1833.91402522644
-        file = os.path.join(output_folder, case_name, 'beam/beam_loads_%i.csv' %(n_tstep))
-        beam_loads_ts = np.loadtxt(file, delimiter = ',')
+        file = os.path.join(output_folder, case_name, 'beam/beam_loads_%i.csv' % (n_tstep))
+        beam_loads_ts = np.loadtxt(file, delimiter=',')
         np.testing.assert_almost_equal(float(beam_loads_ts[0, 6]), ref_Fz,
-                                        decimal=3,
-                                        err_msg='Vertical load on wing root not within 3 decimal points of reference.',
-                                        verbose=True)
+                                       decimal=3,
+                                       err_msg='Vertical load on wing root not within 3 decimal points of reference.',
+                                       verbose=True)
         np.testing.assert_almost_equal(float(beam_loads_ts[0, 8]), ref_My,
-                                        decimal=3,
-                                        err_msg='Pitching moment on wing root not within 3 decimal points of reference.',
-                                        verbose=True)
-
+                                       decimal=3,
+                                       err_msg='Pitching moment on wing root not within 3 decimal points of reference.',
+                                       verbose=True)
 
     @classmethod
     def tearDownClass(cls):
@@ -65,11 +59,10 @@ class TestCoupledDynamic(unittest.TestCase):
         list_folders = ['output', '__pycache__']
         for case in list_cases:
             file_path = os.path.join(os.path.abspath(os.path.dirname(os.path.realpath(__file__))),
-                                    case)
+                                     case)
             for folder in list_folders:
                 if os.path.isdir(folder):
                     shutil.rmtree(folder)
             for extension in list_file_extensions:
                 os.remove(os.path.join(file_path, case + extension))
         pass
-
