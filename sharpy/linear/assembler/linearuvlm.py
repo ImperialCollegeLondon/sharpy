@@ -67,6 +67,12 @@ class LinearUVLM(ss_interface.BaseElement):
     .. math:: \dot{\mathbf{\Gamma}}^{n+1} = \frac{3\mathbf{\Gamma}^{n+1}-4\mathbf{\Gamma}^n + \mathbf{\Gamma}^{n-1}}
         {2\Delta t}
 
+    Note:
+        Control surface deflections are implemented using :class:`~sharpy.linear.assembler.lincontrolsurfacedeflector.LinControlSurfaceDeflector`
+        and the sign convention differs from the nonlinear solver. In the linear solver, the control
+        surface deflects according to the local :math:`x_B` vector. See the control surface deflection class for more
+        details.
+
     References:
         [1] Franklin, GF and Powell, JD. Digital Control of Dynamic Systems, Addison-Wesley Publishing Company, 1980
 
