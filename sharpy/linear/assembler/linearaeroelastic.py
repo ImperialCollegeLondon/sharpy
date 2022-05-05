@@ -54,6 +54,10 @@ class LinearAeroelastic(ss_interface.BaseElement):
     settings_default['use_euler'] = True
     settings_description['use_euler'] = 'Parametrise orientations in terms of Euler angles'
 
+    settings_types['mach_number'] = 'float'
+    settings_default['mach_number'] = 0.
+    settings_description['mach_number'] = 'Scale results with Mach number'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -86,6 +90,9 @@ class LinearAeroelastic(ss_interface.BaseElement):
         self.Crs = None
         self.Crr = None
 
+        self.M_inf = None
+        self.beta_inf = None
+        
     def initialise(self, data):
 
         try:
@@ -152,6 +159,12 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
         self.get_gebm2uvlm_gains(data)
 
+        self.M_inf = self.settings['mach_number']
+        if self.M_inf == 0.:
+            self.beta_inf = 1.
+        else:
+            self.beta_inf = np.sqrt(1. - self.M_inf**2)
+            
     def assemble(self):
         r"""
         Assembly of the linearised aeroelastic system.
@@ -183,7 +196,9 @@ class LinearAeroelastic(ss_interface.BaseElement):
         """
         uvlm = self.uvlm
         beam = self.beam
-
+        if self.beta_inf != 1.: 
+            #uvlm.ss.A /= (self.beta_inf)
+            uvlm.ss.C /= self.beta_inf
         # Linearisation of the aerodynamic forces introduces stiffenning and damping terms into the beam matrices
         flex_nodes = self.beam.sys.num_dof_flex
 
