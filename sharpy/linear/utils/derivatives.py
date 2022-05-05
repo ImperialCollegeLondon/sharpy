@@ -71,12 +71,7 @@ class Derivatives:
                 cls.modal = False
         cls.steady_forces = steady_forces
 
-
-        H0 = state_space.freqresp(np.array([1e-5]))[:, :, 0]
-        # A, B, C, D = state_space.get_mats()
-        # H0 = C.dot(np.linalg.inv(np.eye(state_space.states) - A).dot(B)) + D
-        # H0 = C.dot(-np.linalg.inv(A).dot(B)) + D
-        # np.savetxt('./nodal_aeroelastic_static_manual.txt', H0.real)
+        H0 = state_space.freqresp(np.array([1e-5]))[:, :, 0].real
         if cls.modal:
             vel_inputs_variables = state_space.input_variables.get_variable_from_name('q_dot')
             output_indices = state_space.output_variables.get_variable_from_name('Q').rows_loc[:6]
@@ -382,9 +377,6 @@ class DerivativeSet:
         f0a = self.steady_forces[:3]
         m0a = self.steady_forces[-3:]
 
-        print(f0a)
-        print(m0a)
-
         euler0 = algebra.quat2euler(self.quat)
         cga = self.cga
 
@@ -448,25 +440,3 @@ class DerivativeSet:
         self.matrix[:3, :] /= self.coefficients['force']
         self.matrix[np.ix_([3, 5]), :] /= self.coefficients['moment_lat']
         self.matrix[4, :] /= self.coefficients['moment_lon']
-
-
-if __name__ == '__main__':
-    import pickle
-    with open('/home/ng213/2TB/KK_AirbusHALE/02_Derivatives/output/hale_static.pkl', 'rb') as f:
-        data = pickle.load(f)
-    steady_forces = data.linear.linear_system.linearisation_vectors['forces_aero_beam_dof'][:6]
-    state_space = data.linear.linear_system.uvlm.ss
-    quat = data.linear.tsstruct0.quat
-    phi = data.linear.linear_system.linearisation_vectors['mode_shapes']
-
-    coefficients = {'force': 1960., 'moment_lon': 1960., 'moment_lat': 62720.}
-    import pdb; pdb.set_trace()
-
-    DerivativeSet.initialise_derivatives(state_space, steady_forces, quat, np.array([-10., 0, 0]), phi)
-
-    trial = DerivativeSet('body')
-    trial.coefficients = coefficients
-    trial.angle_derivatives()
-    trial.print(derivative_filename='ders_trial.txt')
-    breakpoint()
-
