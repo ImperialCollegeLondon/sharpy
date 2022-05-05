@@ -801,7 +801,8 @@ class Model:
                         try:
                             dic_aero[k] = model[ci].sharpy.aero[k]
                         except KeyError:
-                            print('No variable %s defined in component %s'%(k,self.components[ci]))
+                            pass
+                            #print('No variable %s defined in component %s'%(k,self.components[ci]))
                     dic_aero['aero_node'] = model[ci].sharpy.aero['aero_node']
                     dic_aero['surface_distribution'] = model[ci].sharpy.aero['surface_distribution']
                     if np.max(model[ci].sharpy.aero['surface_distribution'])<0:
@@ -809,14 +810,12 @@ class Model:
                     else:
                         dic_aero['surface_m'] = model[ci].sharpy.aero['surface_m']
                     dic_aero['m_distribution'] = model[ci].sharpy.aero['m_distribution']
-
                     dic_aero['airfoils'] = model[ci].sharpy.aero['airfoils']
                     dic_aero['airfoil_distribution'] = model[ci].sharpy.aero['airfoil_distribution']
                     try:
                         dic_aero['polars'] = model[ci].sharpy.aero['polars']
                     except KeyError:
                         pass
-                    
             else: # rest of components
                 upstream_component = settings[self.components[ci]]['upstream_component']
                 node_in_upstream = settings[self.components[ci]]['node_in_upstream']
@@ -946,7 +945,8 @@ class Model:
                             dic_aero[k] = np.concatenate((dic_aero[k],
                                                               model[ci].sharpy.aero[k]),axis=0)
                         except KeyError:
-                            print('No variable %s defined in component %s'%(k,self.components[ci]))
+                            pass
+                            #print('No variable %s defined in component %s'%(k,self.components[ci]))
 
                     if 'chained_component' in settings[self.components[ci]] \
                     and settings[self.components[ci]]['chained_component']:
@@ -1015,10 +1015,11 @@ class Model:
                     self.components_dict[k01][k1][k2] = i
             compX = []
             for ci in self.components:
-                if 'symmetric' in self.components_dict[ci]: # Symmetric component with respect to ci2
-
+                # Symmetric component with respect to ci2
+                if 'symmetric' in self.components_dict[ci]: 
                     ci2 = self.components_dict[ci]['symmetric']['component']
                     components_dictx = copy.deepcopy(self.components_dict[ci2])
+                    #########
                     if 'geometry' not in self.components_dict[ci].keys():
                         components_dictx['fem']['coordinates'][:,1] = \
                             -self.components_dict[ci2]['fem']['coordinates'][:,1]
@@ -1036,11 +1037,32 @@ class Model:
                     if 'geometry' in components_dictx.keys() and \
                          'direction' in components_dictx['geometry'].keys() and \
                          components_dictx['geometry']['direction'] is not None:
-                        components_dictx['geometry']['direction'][1] = -components_dictx['geometry']['direction'][1]
-                    try:    
-                        components_dictx['fem']['frame_of_reference_delta'] = -components_dictx['fem']['frame_of_reference_delta']
+                        components_dictx['geometry']['direction'][1] = \
+                            -components_dictx['geometry']['direction'][1]
+                    try:
+                        components_dictx['fem']['frame_of_reference_delta'] = \
+                            -components_dictx['fem']['frame_of_reference_delta']
                     except TypeError:
-                        components_dictx['fem']['frame_of_reference_delta'] = -np.array(components_dictx['fem']['frame_of_reference_delta'])
+                        components_dictx['fem']['frame_of_reference_delta'] = \
+                            -np.array(components_dictx['fem']['frame_of_reference_delta'])
+
+                    # mirror y-axis
+                    R_lr = np.array([[1,  0,  0],
+                                      [0, -1,  0],
+                                      [0,  0,  1]])
+                    R_lr6 = np.block([[R_lr, np.zeros((3, 3))],
+                                      [np.zeros((3, 3)), R_lr]])
+                    
+                    for s_i in range(len(components_dictx['fem']['stiffness_db'])):
+                            
+                        components_dictx['fem']['stiffness_db'][s_i] = np.dot(R_lr6,
+                                components_dictx['fem']['stiffness_db'][s_i].dot(R_lr6))
+                        
+                    for s_i in range(len(components_dictx['fem']['mass_db'])):
+                            
+                        components_dictx['fem']['mass_db'][s_i] = np.dot(R_lr6,
+                                components_dictx['fem']['mass_db'][s_i].dot(R_lr6))
+
                     if 'aero' in components_dictx.keys() and \
                     'point_platform' in components_dictx['aero'].keys():    
                         components_dictx['aero']['point_platform']['leading_edge1'][1] = \
@@ -1055,7 +1077,8 @@ class Model:
                             components_dictx['aero']['beam_origin'][1] = -components_dictx['aero']['beam_origin'][1]
                     compX.append(Components(ci, in_put=self.m_input, out_put=self.m_output, settings=components_dictx))
                 else:
-                    compX.append(Components(ci, in_put=self.m_input, out_put=self.m_output, settings=self.components_dict[ci]))
+                    compX.append(Components(ci, in_put=self.m_input, out_put=self.m_output,
+                                            settings=self.components_dict[ci]))
             self.models.append(compX)
         # elif self.num_models ==1:
         #     compX = []    
@@ -1136,7 +1159,7 @@ class Simulation:
                       'route': self.case_route,
                       'flow': flow,
                       'write_screen': 'on',
-                      'write_log': 'on',
+                      'write_log': 'off',
                       'log_folder': self.case_route,
                       'log_file': self.case_name + '.log',
                       'save_settings': 'on'}

@@ -8,6 +8,7 @@ class Static(Basic):
     #global predefined_flows
     predefined_flows = dict()
     predefined_flows['101'] = ('BeamLoader','NonLinearStatic')
+    predefined_flows['111'] = ('BeamLoader', 'AerogridLoader', 'StaticUvlm')
     predefined_flows['112'] = ('BeamLoader', 'AerogridLoader', 'StaticCoupled')
     predefined_flows['144'] = ('BeamLoader', 'AerogridLoader', 'StaticTrim')
     
@@ -45,6 +46,51 @@ class Static(Basic):
                                              delta_curved=s_delta_curved,
                                              num_load_steps=s_load_steps,
                                              relaxation_factor=s_relaxation)
+        if primary:
+            self.modify_settings(self.flow, **kwargs)
+            return self.flow, self.settings_new
+        
+    def sol_111(self,
+                u_inf,
+                rho,
+                dt,
+                rotationA=[0., 0., 0.],
+                panels_wake=1,
+                horseshoe=False,
+                primary=True,
+                **kwargs):
+
+        """ Rigid aero equilibrium"""
+
+        if horseshoe:
+            panels_wake = 1
+        if primary:
+            predefined_flow = list(self.predefined_flows['111'])
+            self.set_constants(**kwargs)            
+            self.set_flow(predefined_flow, **kwargs)
+            self.set_loaders(panels_wake,
+                             u_inf,
+                             dt,
+                             rotationA,
+                             unsteady=False,                            
+                             **kwargs)
+            self.set_plot(u_inf,
+                          dt,
+                          **kwargs)
+
+        self.settings_new['StaticUvlm'] = self.get_solver_sett('StaticUvlm',
+                                                               rho=rho,
+                                                               horseshoe=horseshoe,
+                                                               num_cores=self.constants['num_cores'],
+                                                               n_rollup=int(1.2*panels_wake),
+                                                               rollup_dt=dt,
+                                                               velocity_field_generator= \
+                                                               'SteadyVelocityField',
+                                                               velocity_field_input= \
+                                                               {'u_inf': u_inf,              
+                                                                'u_inf_direction':\
+                                                                self.constants['u_inf_direction']})
+
         if primary:
             self.modify_settings(self.flow, **kwargs)
             return self.flow, self.settings_new
