@@ -3,6 +3,7 @@ import sharpy.utils.settings as settings
 import configobj
 import os
 import sharpy.utils.cout_utils as cout
+import warnings
 
 
 @solver
@@ -109,7 +110,9 @@ class SaveParametricCase(BaseSolver):
         sim_info['case'] = self.data.settings['SHARPy']['case']
 
         if 'PickleData' not in self.data.settings['SHARPy']['flow'] and self.settings['save_case']:
-            DeprecationWarning('Saving a pickle is not recommended - try saving required attributes individually')
+            warnings.warn('Post-proc: SaveParametricCase: Saving a pickle is not recommended - try saving required '
+                          'attributes individually',
+                          DeprecationWarning)
             pickle_solver = initialise_solver('PickleData')
             pickle_solver.initialise(self.data)
             self.data = pickle_solver.run()
