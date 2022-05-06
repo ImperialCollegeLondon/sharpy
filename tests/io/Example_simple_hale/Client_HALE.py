@@ -38,6 +38,7 @@ out_sock.settimeout(300)
 
 #initial values
 cs_deflection = [-2.08 * np.pi / 180, 0]
+thrust = 6.16
 dt = 0.025
 n_tstep = 0 #Counter for time
 
@@ -64,6 +65,7 @@ while True:
     # send control input to sharpy
     ctrl_value = struct.pack('<5sif', b'RREF0', 0, cs_deflection[0])
     ctrl_value += struct.pack('if', 1, cs_deflection[1])
+    ctrl_value += struct.pack('if', 2, thrust)
     logger.info('Sending control input of size {} bytes'.format(len(ctrl_value)))
     in_sock.sendto(ctrl_value, sharpy_incoming)
     logger.info('Sent control input to {}'.format(sharpy_incoming))
