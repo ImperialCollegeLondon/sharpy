@@ -1,5 +1,5 @@
 import sharpy.utils.algebra as algebra
-from cases.hangar.richards_wing import Baseline
+from sharpy.cases.hangar.richards_wing import Baseline
 import sharpy.sharpy_main
 import numpy as np
 import configobj
