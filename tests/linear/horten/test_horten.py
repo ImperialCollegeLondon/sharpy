@@ -7,6 +7,8 @@ import unittest
 import os
 import shutil
 
+route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+
 
 def run_rom_convergence(case_name, case_route='./cases/', output_folder='./output/', **kwargs):
     M = kwargs.get('M', 4)
@@ -315,7 +317,6 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
 
 class TestHortenWing(unittest.TestCase):
 
-    route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
     def test_horten(self):
 
@@ -327,8 +328,8 @@ class TestHortenWing(unittest.TestCase):
 
         case_name = 'horten_'
 
-        case_route = self.route_test_dir + '/cases/'
-        output_route = self.route_test_dir + '/output/'
+        case_route = route_test_dir + '/cases/'
+        output_route = route_test_dir + '/output/'
 
         data = run_rom_convergence(case_name=case_name, case_route=case_route,
                                    output_folder=output_route,
@@ -349,7 +350,8 @@ class TestHortenWing(unittest.TestCase):
         folders = ['output/', 'cases/']
 
         for folder in folders:
-            shutil.rmtree(self.route_test_dir + '/' + folder)
+            if os.path.isdir(route_test_dir + '/' + folder):
+                shutil.rmtree(route_test_dir + '/' + folder)
 
 
 if __name__ == '__main__':
