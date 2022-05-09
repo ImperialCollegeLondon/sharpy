@@ -3,6 +3,7 @@ import numpy as np
 import sharpy.linear.src.libss as libss
 import scipy.signal as scsig
 import sharpy.utils.settings as settings
+import sharpy.utils.cout_utils as cout
 
 dict_of_linear_gusts = {}
 
@@ -35,6 +36,8 @@ class LinearGust:
     settings_types = {}
     settings_default = {}
     settings_description = {}
+
+    print_info = True  # for debugging
 
     def __init__(self):
         self.aero = None  #: aerogrid
@@ -249,14 +252,29 @@ class LeadingEdge(LinearGust):
             Kzeta_start = 3 * sum(self.KKzeta[:i_surf])  # number of coordinates up to current surface
             shape_zeta = (3, M_surf + 1, N_surf + 1)
 
+            if self.print_info:
+                cout.cout_wrap(f'Aero surface {i_surf}')
+                cout.cout_wrap(f'Gust monitoring station domain:\n{x_domain}', 1)
+
             for i_node_span in range(N_surf + 1):
                 for i_node_chord in range(M_surf + 1):
                     i_vertex = [Kzeta_start + np.ravel_multi_index((i_axis, i_node_chord, i_node_span),
                                                                    shape_zeta) for i_axis in range(3)]
-                    x_vertex = self.tsaero0.zeta[i_surf][0, i_node_chord, i_node_span]
+                    zeta = self.tsaero0.zeta[i_surf][:, i_node_chord, i_node_span]
+                    x_vertex = zeta.dot(self.u_ext_direction)
                     interpolation_weights, column_indices = linear_interpolation_weights(x_vertex, x_domain)
                     c_i[i_vertex, column_indices[0]] = np.array([0, 0, interpolation_weights[0]])
                     c_i[i_vertex, column_indices[1]] = np.array([0, 0, interpolation_weights[1]])
+
+                    if self.print_info:
+                        cout.cout_wrap(f'Vertex info: i_n = {i_node_span}\ti_m = {i_node_chord}')
+                        cout.cout_wrap(f'\tCoordinate: {zeta}', 1)
+                        cout.cout_wrap(f'\tProjected coordinate: {x_vertex}', 1)
+                        cout.cout_wrap(f'\tInterpolation weights: {interpolation_weights}', 2)
+                        cout.cout_wrap(f'\tC matrix column indices: {column_indices}', 2)
+                        cout.cout_wrap(f'\ti_vertex: {i_vertex}', 2)
+
+
 
         d_i = np.zeros((c_i.shape[0], b_i.shape[1]))
 

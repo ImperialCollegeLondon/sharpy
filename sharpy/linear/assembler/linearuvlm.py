@@ -404,7 +404,8 @@ class LinearUVLM(ss_interface.BaseElement):
         y_n = self.C_to_vertex_forces.dot(x_n) + self.D_to_vertex_forces.dot(u_aero)
 
         if self.sys.remove_predictor:
-            x_n += self.B_to_vertex_forces.dot(u_aero)
+            # x_n += self.B_to_vertex_forces.dot(u_aero)
+            pass
 
         x_n = x_n[gust_vars_size:]
         gamma_vec, gamma_star_vec, gamma_dot_vec = self.sys.unpack_state(x_n)

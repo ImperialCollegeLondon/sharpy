@@ -77,7 +77,7 @@ class TestGolandControlSurface(unittest.TestCase):
         ws.config['SHARPy'] = {
             'flow': flow,
             'case': ws.case_name, 'route': ws.route,
-            'write_screen': 'off', 'write_log': 'on',
+            'write_screen': 'on', 'write_log': 'on',
             'log_folder': self.route_test_dir + '/output/' + ws.case_name + '/',
             'log_file': ws.case_name + '.log'}
 
@@ -271,7 +271,8 @@ class TestGolandControlSurface(unittest.TestCase):
         import shutil
         folders = ['cases', 'figures', 'output']
         for folder in folders:
-            shutil.rmtree(self.route_test_dir + '/' + folder)
+            if os.path.isdir(self.route_test_dir + '/' + folder):
+                shutil.rmtree(self.route_test_dir + '/' + folder)
 
 
 class TestGusts(unittest.TestCase):
