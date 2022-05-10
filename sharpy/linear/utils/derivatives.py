@@ -5,21 +5,20 @@ from sharpy.utils import algebra as algebra, cout_utils as cout
 
 
 class Derivatives:
-
+    """
+    Class containing the derivatives set for a given state-space system (i.e. aeroelastic or aerodynamic)
+    """
     def __init__(self, reference_dimensions, static_state, target_system=None):
 
-        self.target_system = target_system
-        self.transfer_function = None
+        self.target_system = target_system  # type: str # name of target system (aerodynamic/aeroelastic)
+        self.transfer_function = None  # type: np.array # matrix of steady-state TF for target system
 
-        self.static_state = static_state
-        self.reference_dimensions = reference_dimensions
-
-        self.matrix = None
+        self.static_state = static_state  # type: tuple # [fx, fy, fz] at ref state
+        self.reference_dimensions = reference_dimensions  # type: dict # name: ref_dimension_value dictionary
 
         self.separator = '\n' + 80 * '#' + '\n'
 
-        self.angles = None
-        self.dict_of_derivatives = {} # Each of the derivative sets DerivativeSet
+        self.dict_of_derivatives = {}  # type: dict # {name:DerivativeSet} Each of the derivative sets DerivativeSet
 
         s_ref = self.reference_dimensions['S_ref']
         b_ref = self.reference_dimensions['b_ref']
@@ -50,12 +49,13 @@ class Derivatives:
             state_space (sharpy.linear.src.libss.StateSpace): State-space object for the target system
             steady_forces (np.array): Array of steady forces (at the linearisation) expressed in the beam degrees of
               freedom and with size equal to the number of structural degrees of freedom
-            quat (np.array): Quaternion at the linearisation
+            quat (np.array): Quaternion at the linearisation reference state
             v0 (np.array): Free stream velocity vector at the linearisation condition
             phi (np.array (optional)): Mode shape matrix for modal systems
+            tpa (np.array (optional)): Transformation matrix onto principal axes
 
         """
-        cls = DerivativeSet
+        cls = DerivativeSet  # explain what is the DerivativeSet class
         if cls.quat is None:
             cls.quat = quat
             cls.cga = algebra.quat2rotation(cls.quat)
@@ -188,7 +188,13 @@ class Derivatives:
 
 
 class DerivativeSet:
+    """
+    Class containing the stability derivative set for each of the input/output combinations. A derivative set may be
+    force/angle or force/control_surface, for example.
 
+    The class attributes contain the parameters common across all derivative sets. The instance attributes those
+    pertaining to the specific set.
+    """
     steady_forces = None
     coefficients = None
     quat = None
@@ -206,15 +212,23 @@ class DerivativeSet:
 
     def __init__(self, frame_of_reference, derivative_calculation=None, name=None,
                  transfer_function=None):
+        """
 
-        self.transfer_function = transfer_function
-        self.matrix = None
-        self.labels_in = []
-        self.labels_out = []
-        self.frame_of_reference = frame_of_reference
+        Args:
+            frame_of_reference (str): Name of the frame of reference (stability or body axes)
+            derivative_calculation (str): Name of the method to compute derivatives
+            name (str): Name of the derivative set
+            transfer_function (np.array): steady state transfer function for the desired input output channels
+        """
 
-        self.table = None
-        self.name = name
+        self.transfer_function = transfer_function  # type: np.array # steady-state TF for the specific out/in
+        self.matrix = None  # type: np.array # matrix of stability derivatives
+        self.labels_in = []  # type: list(str) # strings describing the input channels
+        self.labels_out = []  # type list(str) # strings describing the output channels
+        self.frame_of_reference = frame_of_reference  # type: str # name of the FoR (stability or body axes)
+
+        self.table = None  # type: cout.TablePrinter
+        self.name = name  # type: str # name of the set
 
         # TODO: remove in clean up and make derivative_calculation a position argument
         if derivative_calculation is not None:
@@ -238,70 +252,6 @@ class DerivativeSet:
     def save(self, derivative_name, output_name):
         with h5py.File(output_name + '.stability.h5', 'w') as f:
             f.create_dataset(derivative_name, data=self.matrix)
-
-    # @classmethod
-    # def initialise_derivatives(cls, state_space, steady_forces, quat, v0, phi=None):
-    #     """
-    #     Initialises the required class attributes for all derivative calculations/
-    #
-    #     Args:
-    #         state_space (sharpy.linear.src.libss.StateSpace): State-space object for the target system
-    #         steady_forces (np.array): Array of steady forces (at the linearisation) expressed in the beam degrees of
-    #           freedom and with size equal to the number of structural degrees of freedom
-    #         quat (np.array): Quaternion at the linearisation
-    #         v0 (np.array): Free stream velocity vector at the linearisation condition
-    #         phi (np.array (optional)): Mode shape matrix for modal systems
-    #
-    #     """
-    #     cls.quat = quat
-    #     cls.cga = algebra.quat2rotation(cls.quat)
-    #     cls.v0 = v0
-    #
-    #     if phi is not None:
-    #         cls.modal = True
-    #         cls.phi = phi[-9:-3, :6]
-    #         cls.inv_phi_forces = np.linalg.inv(phi[-9:-3, :6].T)
-    #         cls.inv_phi_vel = np.linalg.inv(phi[-9:-3, :6])
-    #     else:
-    #         cls.modal = False
-    #     cls.steady_forces = steady_forces
-    #
-    #     cls.transfer_function = cls.calculate_transfer_function(state_space)
-    #
-    # @classmethod
-    # def calculate_transfer_function(cls, ss):
-    #     H0 = ss.freqresp(np.array([1e-3]))[:, :, 0]
-    #     # A, B, C, D = ss.get_mats()
-    #     # H0 = C.dot(np.linalg.inv(np.eye(ss.states) - A).dot(B)) + D
-    #     # np.savetxt('./nodal_aeroelastic_static_manual.txt', H0.real)
-    #     if cls.modal:
-    #         vel_inputs_variables = ss.input_variables.get_variable_from_name('q_dot')
-    #         output_indices = ss.output_variables.get_variable_from_name('Q').rows_loc[:6]
-    #         cls.steady_forces = cls.inv_phi_forces.dot(cls.steady_forces[output_indices])
-    #     else:
-    #         vel_inputs_variables = ss.input_variables.get_variable_from_name('beta')
-    #         output_indices = ss.output_variables.get_variable_from_name('forces_n').rows_loc[-9:-3]
-    #         cls.steady_forces = cls.steady_forces[output_indices]
-    #     rbm_indices = vel_inputs_variables.cols_loc[:9]
-    #
-    #     # look for control surfaces
-    #     try:
-    #         cs_input_variables = ss.input_variables.get_variable_from_name('control_surface_deflection')
-    #         dot_cs_input_variables = ss.input_variables.get_variable_from_name('dot_control_surface_deflection')
-    #     except ValueError:
-    #         cs_indices = np.array([], dtype=int)
-    #         dot_cs_indices = np.array([], dtype=int)
-    #         cls.n_control_surfaces = 0
-    #     else:
-    #         cs_indices = cs_input_variables.cols_loc
-    #         dot_cs_indices = dot_cs_input_variables.cols_loc
-    #         cls.n_control_surfaces = cs_input_variables.size
-    #     finally:
-    #         input_indices = np.concatenate((rbm_indices, cs_indices, dot_cs_indices))
-    #
-    #     H0 = H0[np.ix_(output_indices, input_indices)].real
-    #
-    #     return H0
 
     def angle_derivatives(self):
         r"""
@@ -329,8 +279,6 @@ class DerivativeSet:
         The term :math:`\frac{\partial F^A}{\partial v^A}` is obtained directly from the steady state transfer
         function of the linear UVLM expressed in the beam degrees of freedoms.
 
-        Returns:
-            sharpy.linear.utils.derivatives.DerivativeSet: containing the derivatives.
         """
         self.labels_in = ['phi', 'alpha', 'beta']
         self.labels_out = ['CD', 'CY', 'CL', 'Cl', 'Cm', 'Cn']

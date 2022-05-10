@@ -2,10 +2,8 @@ import sharpy.utils.solver_interface as solver_interface
 import os
 import numpy as np
 import sharpy.utils.cout_utils as cout
-import sharpy.utils.algebra as algebra
 import sharpy.utils.settings as settings
 from sharpy.linear.utils.derivatives import Derivatives, DerivativeSet
-import sharpy.linear.utils.derivatives as derivatives_utils
 
 
 @solver_interface.solver
@@ -57,6 +55,8 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         self.ppal_axes = None
         self.n_control_surfaces = None
 
+        self.coefficients = dict  # type: dict # name: scaling coefficient
+
     def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
 
@@ -80,7 +80,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         rho = self.data.linear.tsaero0.rho
         self.ppal_axes = self.data.settings['Modal']['rigid_modes_ppal_axes']
 
-        # need to decide whether coefficients stays here or goes just in Derivatives class
+        # need to decide whether coefficients stay here or goes just in Derivatives class
         self.coefficients = {'force': 0.5 * rho * u_inf ** 2 * s_ref,
                              'moment_lon': 0.5 * rho * u_inf ** 2 * s_ref * c_ref,
                              'moment_lat': 0.5 * rho * u_inf ** 2 * s_ref * b_ref,
@@ -93,7 +93,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         reference_dimensions['rho'] = rho
         reference_dimensions['quat'] = self.data.linear.tsstruct0.quat
 
-        self.data.linear.derivatives = dict()
+        self.data.linear.derivatives = dict()  # {str:Derivatives()} (sharpy.linear.utils.derivatives.Derivatives)
         self.data.linear.derivatives['aerodynamic'] = Derivatives(reference_dimensions,
                                                                   static_state=self.steady_aero_forces(),
                                                                   target_system='aerodynamic')
@@ -101,13 +101,12 @@ class StabilityDerivatives(solver_interface.BaseSolver):
                                                                   static_state=self.steady_aero_forces(),
                                                                   target_system='aeroelastic')
 
-
     def run(self, online=False):
 
         # TODO: consider running all required solvers inside this one to keep the correct settings
-        # i.e: run Modal, Linear Ass
+        # i.e: run Modal, Linear Assembly
 
-        derivatives = self.data.linear.derivatives
+        derivatives = self.data.linear.derivatives  # {str:Derivatives()} (sharpy.linear.utils.derivatives.Derivatives)
         if self.data.linear.linear_system.beam.sys.modal:
             phi = self.data.linear.linear_system.linearisation_vectors['mode_shapes'].real
         else:
@@ -128,34 +127,36 @@ class StabilityDerivatives(solver_interface.BaseSolver):
 
         for target_system in ['aerodynamic', 'aeroelastic']:
             state_space = self.get_state_space(target_system)
-            current_derivative = derivatives[target_system]
+            target_system_derivatives = derivatives[target_system]
 
-            current_derivative.initialise_derivatives(state_space,
-                                                      steady_forces,
-                                                      quat,
-                                                      v0,
-                                                      phi,
-                                                      self.data.linear.tsstruct0.modal['cg'],
-                                                      tpa=tpa)
-            current_derivative.dict_of_derivatives['force_angle_velocity'] = current_derivative.new_derivative(
+            target_system_derivatives.initialise_derivatives(state_space,
+                                                             steady_forces,
+                                                             quat,
+                                                             v0,
+                                                             phi,
+                                                             self.data.linear.tsstruct0.modal['cg'],
+                                                             tpa=tpa)
+            target_system_derivatives.dict_of_derivatives[
+                'force_angle_velocity'] = target_system_derivatives.new_derivative(
                 'stability',
                 'angle_derivatives',
                 'Force/Angle via velocity')
 
+            # useful to double check the effect of the ``track_body`` == 'on' setting
             # current_derivative.dict_of_derivatives['force_angle_angle'] = current_derivative.new_derivative(
             #     'stability',
             #     'angle_derivatives_tb',
             #     'Force/Angle via Track Body')
 
-            current_derivative.dict_of_derivatives['force_velocity'] = current_derivative.new_derivative(
+            target_system_derivatives.dict_of_derivatives['force_velocity'] = target_system_derivatives.new_derivative(
                 'body',
                 'body_derivatives')
-            
-            current_derivative.dict_of_derivatives['force_cs'] = current_derivative.new_derivative(
+
+            target_system_derivatives.dict_of_derivatives['force_cs'] = target_system_derivatives.new_derivative(
                 'body',
                 'control_surface_derivatives')
-            current_derivative.save(self.folder)
-            current_derivative.savetxt(self.folder)
+            target_system_derivatives.save(self.folder)
+            target_system_derivatives.savetxt(self.folder)
 
         return self.data
 
@@ -201,393 +202,6 @@ class StabilityDerivatives(solver_interface.BaseSolver):
 
         return ss
 
-    def uvlm_steady_state_transfer_function(self):
-        """
-        Stability derivatives calculated using the transfer function of the UVLM projected onto the structural
-        degrees of freedom at zero frequency (steady state).
-
-        Returns:
-            np.array: matrix containing the steady state values of the transfer function between the force output
-              (columns) and the velocity / control surface inputs (rows).
-        """
-        if self.settings['target_system'] == 'aerodynamic':
-            ss = self.data.linear.linear_system.uvlm.ss
-        elif self.settings['target_system'] == 'aeroelastic':
-            ss = self.data.linear.ss
-        else:
-            raise NameError('Unknown target system {:s}'.format(self.settings['target_system']))
-        modal = self.data.linear.linear_system.beam.sys.modal
-        use_euler = self.data.linear.linear_system.beam.sys.use_euler
-
-        nout = 6
-        if use_euler:
-            rig_dof = 9
-        else:
-            rig_dof = 10
-
-        A, B, C, D = ss.get_mats()
-        H0 = ss.freqresp(np.array([1e-5]))[:, :, 0]
-        # if type(A) == libsp.csc_matrix:
-        #     H0 = C.dot(scsp.linalg.inv(scsp.eye(ss.states, format='csc') - A).dot(B)) + D
-        # else:
-        #     H0 = C.dot(np.linalg.inv(np.eye(ss.states) - A).dot(B)) + D
-
-        if modal:
-            vel_inputs_variables = ss.input_variables.get_variable_from_name('q_dot')
-            rbm_indices = vel_inputs_variables.cols_loc[:9]
-
-            # look for control surfaces
-            try:
-                cs_input_variables = ss.input_variables.get_variable_from_name('control_surface_deflection')
-                dot_cs_input_variables = ss.input_variables.get_variable_from_name('dot_control_surface_deflection')
-            except ValueError:
-                cs_indices = np.array([], dtype=int)
-                dot_cs_indices = np.array([], dtype=int)
-            else:
-                cs_indices = cs_input_variables.cols_loc
-                dot_cs_indices = dot_cs_input_variables.cols_loc
-                self.n_control_surfaces = cs_input_variables.size
-            finally:
-                input_indices = np.concatenate((rbm_indices, cs_indices, dot_cs_indices))
-
-            output_indices = ss.output_variables.get_variable_from_name('Q').rows_loc[:6]
-
-            H0 = H0[np.ix_(output_indices, input_indices)].real
-
-            return H0
-
-    def angle_derivatives(self, H0):
-        r"""
-        Stability derivatives against aerodynamic angles (angle of attack and sideslip) expressed in stability axes, i.e
-        forces are lift, drag...
-
-        Linearised forces in stability axes are expressed as
-
-        .. math::
-            F^S = F_0^S + \frac{\partial}{\partial \alpha}\left(C^{GA}(\alpha)F_0^A\right)\delta\alpha + C_0^{GA}\delta F^A
-
-        Therefore, the stability derivative becomes
-
-        .. math:: \frac{\partial\F^S}{\partial\alpha} =\frac{\partial}{\partial \alpha}\left(C^{GA}(\alpha)F_0^A\right) +
-           C_0^{GA}\frac{\partial F^A}{\partial\alpha}
-
-        where
-
-        .. math:: \frac{\partial F^A}{\partial\alpha} = \frac{\partial F^A}{\partial v^A}\frac{\partial v^A}{\partial\alpha}
-
-        and
-
-        .. math:: \frac{\partial v^A}{\partial\alpha} = C^{AG}\frac{\partial}{\partial\alpha}\left(C(0)V_0^G\right).
-
-        The term :math:`\frac{\partial F^A}{\partial v^A}` is obtained directly from the steady state transfer
-        function of the linear UVLM expressed in the beam degrees of freedoms.
-
-        Args:
-            H0 (np.ndarray): Steady state gain transfer function of the linear UVLM expressed in the beam rigid
-            degrees of freedom
-
-        Returns:
-            sharpy.linear.utils.derivatives.DerivativeSet: containing the derivatives.
-        """
-        derivative_set = DerivativeSet('stability')
-        derivative_set.labels_in = ['phi', 'alpha', 'beta']
-        derivative_set.labels_out = ['CD', 'CY', 'CL', 'Cl', 'Cm', 'Cn']
-        derivative_set.matrix = np.zeros((6, 3))
-
-        modal = self.data.linear.linear_system.beam.sys.modal
-        phi = self.data.linear.linear_system.linearisation_vectors['mode_shapes'].real
-
-        # Get free stream velocity direction
-        v0 = self.get_freestream_velocity()
-
-        # Steady Forces
-        # in beam dof
-        f0a = self.data.linear.linear_system.linearisation_vectors['forces_aero_beam_dof'][:3].copy().real
-        m0a = self.data.linear.linear_system.linearisation_vectors['forces_aero_beam_dof'][3:6].copy().real
-
-        print(f0a)
-        print(m0a)
-
-        if self.ppal_axes:
-            cap = self.data.linear.tsstruct0.modal['t_pa']  # rotates A onto P, thus projects Vp to Va
-            rap = self.data.linear.tsstruct0.modal['r_pa']
-            # f0a = cap.dot(f0a)/
-            # m0a = cap.dot(m0a)
-            # mod_forces = rap.dot(np.concatenate((f0a, m0a)))
-            # f0a = mod_forces[:3]
-            # m0a = mod_forces[3:]
-
-        print('After PA')
-        print(f0a)
-        print(m0a)
-
-        if modal:
-            forces_vec = np.concatenate((f0a, m0a))  # modal forces Q
-            phirr = phi[-9:-3, :6]
-            inv_phirr = np.linalg.inv(phirr.T)
-            dim_forces = inv_phirr.dot(forces_vec)
-            f0a = dim_forces[:3]
-            m0a = dim_forces[-3:]
-            phi_vel = phi[-9:-6, :3]
-            inv_phi_vel = np.linalg.inv(phi_vel)
-
-        print('After Modal')
-        print(f0a)
-        print(m0a)
-        # breakpoint()
-
-        euler0 = self.data.linear.tsstruct0.euler_angles()
-        cga = self.data.linear.tsstruct0.cga()
-
-        # first term in the stability derivative expression
-        stab_der_trans = algebra.der_Ceuler_by_v(euler0, f0a)
-        # second term in the stability derivative expression
-        stab_der_trans2 = cga.dot(H0[:3, :3].real.dot(cga.T.dot(algebra.der_Peuler_by_v(euler0 * 0, v0))))
-
-        stab_der_mom = algebra.der_Ceuler_by_v(euler0, m0a)
-        stab_der_mom2 = cga.dot(H0[3:6, :3].real.dot(cga.T.dot(algebra.der_Peuler_by_v(euler0 * 0, v0))))
-
-        if modal:
-            if self.ppal_axes:
-                delta_nodal_vel = inv_phi_vel.dot(cga.T.dot(algebra.der_Peuler_by_v(euler0 * 0, v0)))
-                delta_nodal_forces = inv_phirr.dot(H0[:6, :3].real.dot(delta_nodal_vel))  # this is in A
-
-                stab_der_trans2 = cga.dot(delta_nodal_forces[:3, :])
-                stab_der_mom2 = cga.dot(delta_nodal_forces[3:, :])
-            else:
-                delta_nodal_vel = inv_phi_vel.dot(cga.T.dot(algebra.der_Peuler_by_v(euler0 * 0, v0)))
-                delta_nodal_forces = inv_phirr.dot(H0[:6, :3].real.dot(delta_nodal_vel))
-
-                stab_der_trans2 = cga.dot(delta_nodal_forces[:3, :])
-                stab_der_mom2 = cga.dot(delta_nodal_forces[3:, :])
-
-        derivative_set.matrix[:3, :] = (stab_der_trans + stab_der_trans2) / self.coefficients['force']
-        derivative_set.matrix[3:6, :] = (stab_der_mom + stab_der_mom2)
-        derivative_set.matrix[np.ix_([3, 5]), :] /= self.coefficients['moment_lat']
-        derivative_set.matrix[4, :] /= self.coefficients['moment_lon']
-
-        ########################################
-
-        # for debugging and checking purposes at the moment
-        # derivative_set.print()
-        derivative_set.name = 'Force derivatives to angles - velocity perturbation'
-        derivative_set.save('force_angle', self.settings['folder'] + '/force_angle')
-
-        angle_derivative_set = DerivativeSet('stability')
-        angle_derivative_set.name = 'Force derivatives to angles - body perturbation'
-        angle_derivative_set.labels_in = ['phi', 'alpha', 'beta']
-        angle_derivative_set.labels_out = ['CD', 'CY', 'CL', 'Cl', 'Cm', 'Cn']
-        # These are onto the original stability axes at the linearisation
-        # The above take the stability axes to rotate with the perturbation!!
-        angles = stab_der_trans / self.coefficients['force']
-        delta_nodal_forces_a = inv_phirr.dot(H0[:6, 6:9])
-        # angles += cga.dot(inv_phi_vel.dot(H0[:3, 6:9])) / self.coefficients['force']
-        angles += cga.dot(delta_nodal_forces_a[:3, :]) / self.coefficients['force']
-        mom_angles = stab_der_mom
-        # mom_angles += cga.dot(inv_phirr.dot(H0[:6, 6:9])[3:])
-        mom_angles += cga.dot(delta_nodal_forces_a[3:, :])
-        mom_angles[np.ix_([0, 2]), :] /= self.coefficients['moment_lat']
-        mom_angles[1, :] /= self.coefficients['moment_lon']
-        angle_derivative_set.matrix = np.vstack((angles, mom_angles))
-
-        ############
-        cout.cout_wrap('Body axes')
-        angle_derivative_body = DerivativeSet('body')
-        angle_derivative_set.name = 'Force derivatives to angles - body perturbation'
-        angle_derivative_body.labels_in = ['phi', 'alpha', 'beta']
-        angle_derivative_body.labels_out = ['C_XA', 'C_YA', 'C_ZA', 'C_LA', 'C_MA', 'C_NA']
-        # These are onto the original stability axes at the linearisation
-        # The above take the stability axes to rotate with the perturbation!!
-        # angles = H0[:3, 6:9] / phi[-9, 0] / self.coefficients['force']
-        angles = inv_phirr.dot(H0[:6, 6:9])[:3, :] / self.coefficients['force']
-        mom_angles = inv_phirr.dot(H0[:6, 6:9])[3:, :]
-        mom_angles[np.ix_([0, 2]), :] /= self.coefficients['moment_lat']
-        mom_angles[1, :] /= self.coefficients['moment_lon']
-        angle_derivative_body.matrix = np.vstack((angles, mom_angles))
-        # angle_derivative_body.print()
-
-        return derivative_set, angle_derivative_set, angle_derivative_body
-
-    def body_derivatives(self, H0):
-        derivative_set = DerivativeSet('body')
-        derivative_set.name = 'Force derivatives to rigid body velocities - Body derivatives'
-        derivative_set.labels_in = ['uA', 'vA', 'wA', 'pA', 'qA', 'rA']
-        derivative_set.labels_out = ['C_XA', 'C_YA', 'C_ZA', 'C_LA', 'C_MA', 'C_NA']
-        derivative_set.matrix = np.zeros((6, 6))
-
-        modal = self.data.linear.linear_system.beam.sys.modal
-
-        body_derivatives = H0[:6, :6]
-
-        if modal:
-            phi = self.data.linear.linear_system.linearisation_vectors['mode_shapes'].real
-            phirr = phi[-9:-3, :6]
-            inv_phirr = np.linalg.inv(phirr.T)
-
-            body_derivatives = inv_phirr.dot(body_derivatives).dot(np.linalg.inv(phirr))
-
-        derivative_set.matrix = body_derivatives
-        derivative_set.matrix[:3, :] /= self.coefficients['force']
-        derivative_set.matrix[np.ix_([3, 5]), :] /= self.coefficients['moment_lat']
-        derivative_set.matrix[4, :] /= self.coefficients['moment_lon']
-        # derivative_set.print()
-
-        return derivative_set
-
-    def control_surface_derivatives(self, H0):
-        derivative_set = DerivativeSet('body')
-        derivative_set.name = 'Force derivatives wrt control surface inputs - Body axes'
-        derivative_set.labels_out = ['C_XA', 'C_YA', 'C_ZA', 'C_LA', 'C_MA', 'C_NA']
-        n_control_surfaces = self.n_control_surfaces
-        if n_control_surfaces == 0:
-            return None
-        labels_in_deflection = []
-        labels_in_rate = []
-        for i in range(n_control_surfaces):
-            labels_in_deflection.append('delta_{:g}'.format(i))
-            labels_in_rate.append('dot(delta)_{:g}'.format(i))
-        derivative_set.labels_in = labels_in_deflection + labels_in_rate
-
-        body_derivatives = H0[:6, 9:]
-        assert body_derivatives.shape == (6, 2 * self.n_control_surfaces), 'Incorrect TF shape'
-        modal = self.data.linear.linear_system.beam.sys.modal
-
-        if modal:
-            phi = self.data.linear.linear_system.linearisation_vectors['mode_shapes'].real
-            phirr = phi[-9:-3, :6]
-            inv_phirr = np.linalg.inv(phirr.T)
-
-            body_derivatives = inv_phirr.dot(body_derivatives)
-
-        derivative_set.matrix = body_derivatives
-        derivative_set.matrix[:3, :] /= self.coefficients['force']
-        derivative_set.matrix[np.ix_([3, 5]), :] /= self.coefficients['moment_lat']
-        derivative_set.matrix[4, :] /= self.coefficients['moment_lon']
-        # derivative_set.print()
-
-        return derivative_set
-
-        # # Get rigid body + control surface inputs
-        # try:
-        #     n_ctrl_sfc = self.data.linear.linear_system.uvlm.control_surface.n_control_surfaces
-        # except AttributeError:
-        #     n_ctrl_sfc = 0
-        #
-        # self.inputs = rig_dof + n_ctrl_sfc
-        #
-        # in_matrix = np.zeros((ssuvlm.inputs, self.inputs))
-        # out_matrix = np.zeros((nout, ssuvlm.outputs))
-        #
-        # if modal:
-        #     # Modal scaling
-        #     raise NotImplementedError('Not yet implemented in modal space')
-        # else:
-        #     in_matrix[-self.inputs:, :] = np.eye(self.inputs)
-        #     out_matrix[:, -rig_dof:-rig_dof+6] = np.eye(nout)
-        #
-        # ssuvlm.addGain(in_matrix, where='in')
-        # ssuvlm.addGain(out_matrix, where='out')
-        #
-        # A, B, C, D = ssuvlm.get_mats()
-        # if type(A) == libsp.csc_matrix:
-        #     Y_freq = C.dot(scsp.linalg.inv(scsp.eye(ssuvlm.states, format='csc') - A).dot(B)) + D
-        # else:
-        #     Y_freq = C.dot(np.linalg.inv(np.eye(ssuvlm.states) - A).dot(B)) + D
-        # Yf = ssuvlm.freqresp(np.array([0]))
-        #
-        # return Y_freq
-
-    def a_derivatives(self, Y_freq):
-
-        Cng = np.array([[-1, 0, 0], [0, 1, 0], [0, 0, -1]])  # Project SEU on NED - TODO implementation
-        u_inf = self.settings['u_inf'].value
-        s_ref = self.settings['S_ref'].value
-        b_ref = self.settings['b_ref'].value
-        c_ref = self.settings['c_ref'].value
-        rho = self.data.linear.tsaero0.rho
-
-        # Inertial frame
-        try:
-            euler = self.data.linear.tsstruct0.euler
-            Pga = algebra.euler2rot(euler)
-            rig_dof = 9
-        except AttributeError:
-            quat = self.data.linear.tsstruct0.quat
-            Pga = algebra.quat2rotation(quat)
-            rig_dof = 10
-
-        derivatives_g = np.zeros((6, Y_freq.shape[1] + 2))
-        coefficients = {'force': 0.5*rho*u_inf**2*s_ref,
-                        'moment_lon': 0.5*rho*u_inf**2*s_ref*c_ref,
-                        'moment_lat': 0.5*rho*u_inf**2*s_ref*b_ref,
-                        'force_angular_vel': 0.5*rho*u_inf**2*s_ref*c_ref/u_inf,
-                        'moment_lon_angular_vel': 0.5*rho*u_inf**2*s_ref*c_ref*c_ref/u_inf} # missing rates
-
-        for in_channel in range(Y_freq.shape[1]):
-            derivatives_g[:3, in_channel] = Pga.dot(Y_freq[:3, in_channel])
-            derivatives_g[3:, in_channel] = Pga.dot(Y_freq[3:, in_channel])
-
-        derivatives_g[:3, :3] /= coefficients['force']
-        derivatives_g[:3, 3:6] /= coefficients['force_angular_vel']
-        derivatives_g[4, :3] /= coefficients['moment_lon']
-        derivatives_g[4, 3:6] /= coefficients['moment_lon_angular_vel']
-        derivatives_g[[3, 5], :] /= coefficients['moment_lat']
-
-        derivatives_g[:, -2] = derivatives_g[:, 2] * u_inf  # ders wrt alpha
-        derivatives_g[:, -1] = derivatives_g[:, 1] * u_inf  # ders wrt beta
-
-        der_matrix = np.zeros((6, self.inputs - (rig_dof - 6)))
-        der_col = 0
-        for i in list(range(6))+list(range(rig_dof, self.inputs)):
-            der_matrix[:3, der_col] = Y_freq[:3, i]
-            der_matrix[3:6, der_col] = Y_freq[3:6, i]
-            der_col += 1
-
-        labels_force = {0: 'X',
-                        1: 'Y',
-                        2: 'Z',
-                        3: 'L',
-                        4: 'M',
-                        5: 'N'}
-
-        labels_velocity = {0: 'u',
-                           1: 'v',
-                           2: 'w',
-                           3: 'p',
-                           4: 'q',
-                           5: 'r',
-                           6: 'flap1',
-                           7: 'flap2',
-                           8: 'flap3'}
-
-        table = cout.TablePrinter(n_fields=7, field_length=12, field_types=['s', 'f', 'f', 'f', 'f', 'f', 'f'])
-        table.print_header(['der'] + list(labels_force.values()))
-        for i in range(der_matrix.shape[1]):
-            table.print_line([labels_velocity[i]] + list(der_matrix[:, i]))
-
-        table_coeff = cout.TablePrinter(n_fields=7, field_length=12, field_types=['s']+6*['f'])
-        labels_out = {0: 'C_D',
-                      1: 'C_Y',
-                      2: 'C_L',
-                      3: 'C_l',
-                      4: 'C_m',
-                      5: 'C_n'}
-        labels_der = {0: 'u',
-                           1: 'v',
-                           2: 'w',
-                           3: 'p',
-                           4: 'q',
-                           5: 'r',
-                      6: 'alpha',
-                      7: 'beta'}
-        table_coeff.print_header(['der'] + list(labels_out.values()))
-        for i in range(6):
-            table_coeff.print_line([labels_der[i]] + list(derivatives_g[:, i]))
-        table_coeff.print_line([labels_der[6]] + list(derivatives_g[:, -2]))
-        table_coeff.print_line([labels_der[7]] + list(derivatives_g[:, -1]))
-
-        return der_matrix, derivatives_g
-
     def steady_aero_forces(self):
         fx = np.sum(self.data.aero.timestep_info[0].inertial_steady_forces[:, 0], 0) + \
              np.sum(self.data.aero.timestep_info[0].inertial_unsteady_forces[:, 0], 0)
@@ -599,14 +213,3 @@ class StabilityDerivatives(solver_interface.BaseSolver):
              np.sum(self.data.aero.timestep_info[0].inertial_unsteady_forces[:, 2], 0)
 
         return fx, fy, fz
-
-    def static_state(self):
-        fx, fy, fz = self.steady_aero_forces()
-        force_coeff = 0.5 * self.data.linear.tsaero0.rho * self.settings['u_inf'].value ** 2 * self.settings['S_ref'].value
-        Cfx = fx / force_coeff
-        Cfy = fy / force_coeff
-        Cfz = fz / force_coeff
-
-        return Cfx, Cfy, Cfz
-
-
