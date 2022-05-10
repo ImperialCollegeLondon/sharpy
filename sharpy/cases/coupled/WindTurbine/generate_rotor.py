@@ -2,8 +2,9 @@ import numpy as np
 import os
 
 import sharpy.utils.generate_cases as gc
-import cases.templates.template_wt as template_wt
+import sharpy.cases.templates.template_wt as template_wt
 from sharpy.utils.constants import deg2rad
+import sharpy.utils.sharpydir as sharpydir
 
 ######################################################################
 ###########################  PARAMETERS  #############################
@@ -46,8 +47,7 @@ geom_params = {'chord_panels':chord_panels,
             'tol_remove_points': 1e-8,
             'n_points_camber': 100,
             'm_distribution': 'uniform'}
-
-excel_description = {'excel_file_name': route + '../../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v02.xlsx',
+excel_description = {'excel_file_name': os.path.abspath(sharpydir.SharpyDir + '/docs/source/content/example_notebooks/source/type02_db_NREL5MW_v02.xlsx'),
                     'excel_sheet_parameters': 'parameters',
                     'excel_sheet_structural_blade': 'structural_blade',
                     'excel_sheet_discretization_blade': 'discretization_blade',

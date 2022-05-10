@@ -30,7 +30,7 @@ lambda_control_surface = 0.5
 
 alpha_rad = alpha*np.pi/180
 
-roll_file = 'roll.csv'
+roll_file = route + 'roll.csv'
 
 gains = -np.array([45, 50.0, 1.5])
 
