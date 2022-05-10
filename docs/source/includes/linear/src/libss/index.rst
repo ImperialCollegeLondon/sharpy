@@ -61,6 +61,7 @@ to do:
 	./SSconv
 	./SSderivative
 	./SSintegr
+	./StateSpace
 	./addGain
 	./adjust_phase
 	./build_SS_poly
@@ -76,10 +77,10 @@ to do:
 	./parallel
 	./project
 	./random_ss
+	./retain_inout_channels
 	./scale_SS
 	./series
 	./simulate
-	./StateSpace
 	./ss_block
 	./ss_to_scipy
 	./sum_ss
