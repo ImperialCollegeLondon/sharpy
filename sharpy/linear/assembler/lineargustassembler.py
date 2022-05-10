@@ -212,7 +212,7 @@ class LinearGust:
         """
         x_min, x_max = self.get_x_max()  # G frame, min and max of panels x coordinates
 
-        N = int(np.ceil((x_max - x_min) / self.dt))
+        N = int(np.ceil((x_max - x_min) / self.dt / self.u_inf))
         x_domain = np.linspace(x_min, x_max, N)
 
         return x_domain, N
@@ -356,6 +356,38 @@ class MultiLeadingEdge(LinearGust):
         gustss = self.assemble_gust_statespace(gust_a, gust_b, gust_c, gust_d)
         return gustss
 
+
+def get_freestream_velocity(data):
+    try:
+        u_inf = data.settings['StaticUvlm']['aero_solver_settings']['u_inf']
+        u_inf_direction = data.settings['StaticCoupled']['aero_solver_settings']['u_inf_direction']
+    except KeyError:
+        try:
+            u_inf = data.settings['StaticCoupled']['aero_solver_settings']['velocity_field_input']['u_inf']
+            u_inf_direction = data.settings['StaticCoupled']['aero_solver_settings']['velocity_field_input']['u_inf_direction']
+        except KeyError:
+            cout.cout_wrap('Unable to find free stream velocity settings in StaticUvlm or StaticCoupled,'
+                           'please ensure these settings are provided in the config .sharpy file. If'
+                           'you are running a restart simulation make sure they are included too, regardless'
+                           'of these solvers being present in the SHARPy flow', 4)
+            raise KeyError
+
+    try:
+        v0 = u_inf * u_inf_direction
+    except TypeError:
+        # For restart solutions, where the settings may have not been processed and thus may
+        # exist but in string format
+        try:
+            u_inf_direction = np.array(u_inf_direction, dtype=float)
+        except ValueError:
+            if u_inf_direction.find(',') < 0:
+                u_inf_direction = np.fromstring(u_inf_direction.strip('[]'), sep=' ', dtype=float)
+            else:
+                u_inf_direction = np.fromstring(u_inf_direction.strip('[]'), sep=',', dtype=float)
+        finally:
+            v0 = np.array(u_inf_direction, dtype=float) * float(u_inf)
+
+    return v0
 
 def linear_interpolation_weights(x_vertex, x_domain):
 

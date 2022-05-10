@@ -14,7 +14,7 @@ class TestGolandControlSurface(unittest.TestCase):
 
     def run_sharpy(self, flow, **kwargs):
         # Problem Set up
-        u_inf = 1.
+        u_inf = 2.
         alpha_deg = 0.
         rho = 1.02
         num_modes = 4
@@ -77,7 +77,7 @@ class TestGolandControlSurface(unittest.TestCase):
         ws.config['SHARPy'] = {
             'flow': flow,
             'case': ws.case_name, 'route': ws.route,
-            'write_screen': 'on', 'write_log': 'on',
+            'write_screen': 'off', 'write_log': 'on',
             'log_folder': self.route_test_dir + '/output/' + ws.case_name + '/',
             'log_file': ws.case_name + '.log'}
 
