@@ -341,7 +341,7 @@ for case in cases:
         if os.path.isfile(flightcon_file_name):
             os.remove(flightcon_file_name)
 
-    def read_beam_data(filename='inputs/beam_properties.xlsx'):
+    def read_beam_data(filename=route + '/inputs/beam_properties.xlsx'):
         """
         Function reading the xlsx file with beam properties, including
         stiffness and distributed mass.
@@ -395,7 +395,7 @@ for case in cases:
 
         return mass_data, stiff_data
 
-    def read_lumped_mass_data(filename='inputs/lumped_mass.xlsx'):
+    def read_lumped_mass_data(filename=route + '/inputs/lumped_mass.xlsx'):
         import pandas as pd
         xl = pd.ExcelFile(filename)
         sheets = {sheet_name: xl.parse(sheet_name, header=0, skiprows=(0, 2)) for sheet_name in xl.sheet_names}
@@ -1133,7 +1133,7 @@ for case in cases:
             lumped_mass_position_handle = h5file.create_dataset(
                 'lumped_mass_position', data=lumped_mass_position)
 
-    def read_aero_data(filename='inputs/aero_properties.xlsx'):
+    def read_aero_data(filename=route + '/inputs/aero_properties.xlsx'):
         import pandas as pd
 
         xl = pd.ExcelFile(filename)
@@ -1579,7 +1579,7 @@ for case in cases:
         with h5.File(route + '/' + case_name + '.aero.h5', 'a') as h5file:
             airfoils_group = h5file.create_group('airfoils')
             # add one airfoil
-            emx07_main = airfoils_group.create_dataset('0', data=load_airfoil('inputs/EMX-07_camber.txt'))
+            emx07_main = airfoils_group.create_dataset('0', data=load_airfoil(route + '/inputs/EMX-07_camber.txt'))
             flat_tail = airfoils_group.create_dataset('1', data=np.column_stack(
                 generate_naca_camber(P=0, M=0)))
 
