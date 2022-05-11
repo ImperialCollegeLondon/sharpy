@@ -12,7 +12,9 @@ import sharpy.linear.src.libss as libss
 import sharpy.utils.algebra as algebra
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
+import sharpy.structure.utils.modalutils as modalutils
 import warnings
+from sharpy.linear.utils.ss_interface import LinearVector, StateVariable, OutputVariable, InputVariable
 
 
 class FlexDynamic():
@@ -139,6 +141,7 @@ class FlexDynamic():
         self.discr_method = self.settings['discr_method']
         self.newmark_damp = self.settings['newmark_damp']
         self.use_euler = self.settings['use_euler']
+        self.use_principal_axes = self.settings.get('rigid_modes_ppal_axes', False)  # this setting is inherited from the setting in Modal solver
 
         ### set state-space variables
         self.SScont = None
@@ -156,10 +159,6 @@ class FlexDynamic():
         if self.use_euler:
             self.euler_propagation_equations(tsinfo)
 
-        self.update_modal()
-
-        self.U = self.sort_repeated_evecs(self.U, self.eigs)
-
         if self.Mstr.shape[0] == 6*(self.tsstruct0.num_node - 1):
             self.clamped = True
             self.num_dof_rig = 0
@@ -170,6 +169,9 @@ class FlexDynamic():
             self.num_dof_rig = 9
         else:
             self.num_dof_rig = 10
+
+        if self.modal:
+            self.update_modal()
 
         self.num_dof_flex = np.sum(structure.vdof >= 0)*6
 
@@ -901,21 +903,11 @@ class FlexDynamic():
         assert self.inout_coords in ['modes', 'nodes'], \
             'inout_coords=%s not implemented!' % self.inout_coords
 
-        # cond_mass_matrix = np.linalg.cond(self.Mstr)
-        # if np.log10(cond_mass_matrix) >= 10.:
-        #     warnings.warn('Mass matrix is poorly conditioned (Cond = 10^%f). Inverse may not be correct.'
-        #                   % np.log10(cond_mass_matrix), 3)
-        # else:
-        #     cout.cout_wrap('Mass matrix condition = %e' % cond_mass_matrix)
-
         dlti = self.dlti
         modal = self.modal
         num_dof = self.num_dof
         if Nmodes is None or Nmodes >= self.num_modes:
             Nmodes = self.num_modes
-        # else:
-        #     # Modal truncation
-        #     self.update_truncated_modes(Nmodes)
 
         if dlti:  # ---------------------------------- assemble discrete time
 
@@ -939,31 +931,51 @@ class FlexDynamic():
                         else:
                             Ccut = np.dot(Phi.T, np.dot(self.Cstr, Phi))
 
-                        # Ass, Bss, Css, Dss = newmark_ss(
-                        #     np.eye(Nmodes),
-                        #     Ccut,
-                        #     np.diag(self.freq_natural[:Nmodes] ** 2),
-                        #     self.dt,
-                        #     self.newmark_damp)
                         Ass, Bss, Css, Dss = newmark_ss(
-                            # Phi.T.dot(self.Mstr.dot(Phi)),
                             np.linalg.inv(np.dot(self.U[:, :Nmodes].T, np.dot(self.Mstr, self.U[:, :Nmodes]))),
-                            # np.eye(Nmodes),
                             Ccut,
                             np.dot(self.U[:, :Nmodes].T, np.dot(self.Kstr, self.U[:, :Nmodes])),
-                            # Phi.T.dot(self.Kstr.dot(Phi)),
-                            # np.diag(self.freq_natural[:Nmodes]**2),
                             self.dt,
                             self.newmark_damp)
-                        self.Kin = Phi.T
-                        self.Kout = sc.linalg.block_diag(*[Phi, Phi])
+
+                        self.Kin = libss.Gain(Phi.T)
+                        self.Kin.input_variables = LinearVector([InputVariable('forces_n',
+                                                                             size=self.Mstr.shape[0],
+                                                                             index=0)])
+                        self.Kin.output_variables = LinearVector([OutputVariable('Q',
+                                                                               size=Nmodes,
+                                                                               index=0)])
+
+                        self.Kout = libss.Gain(sc.linalg.block_diag(*[Phi, Phi]))
+                        self.Kout.input_variables = LinearVector([InputVariable('q', size=Nmodes, index=0),
+                                                                  InputVariable('q_dot', size=Nmodes, index=1)])
+                        output_variables = LinearVector([OutputVariable('eta', size=self.num_dof_flex, index=0),
+                                                         OutputVariable('eta_dot', size=self.num_dof_flex, index=1)])
+                        if not self.clamped:
+                            output_variables.add('beta_bar', size=self.num_dof_rig, index=0.5)
+                            output_variables.append('beta', size=self.num_dof_rig)
+
+                        self.Kout.output_variables = output_variables
+
                     else:
                         raise NameError(
                             'Newmark-beta discretisation not available ' \
                             'for projection on damped eigenvectors')
 
                     # build state-space model
-                    self.SSdisc = libss.ss(Ass, Bss, Css, Dss, dt=self.dt)
+                    self.SSdisc = libss.StateSpace(Ass, Bss, Css, Dss, dt=self.dt)
+                    input_variables = LinearVector([InputVariable('Q', size=Nmodes, index=0)])
+
+                    output_variables = LinearVector([OutputVariable('q', size=Nmodes, index=0),
+                                                     OutputVariable('q_dot', size=Nmodes, index=1)])
+
+                    state_variables = output_variables.transform(output_variables,
+                                                                 to_type=StateVariable)
+
+                    self.SSdisc.input_variables = input_variables
+                    self.SSdisc.output_variables = output_variables
+                    self.SSdisc.state_variables = state_variables
+
                     if self.inout_coords == 'nodes':
                         self.SSdisc = libss.addGain(self.SSdisc, self.Kin, 'in')
                         self.SSdisc = libss.addGain(self.SSdisc, self.Kout, 'out')
@@ -978,8 +990,21 @@ class FlexDynamic():
                         self.dt, self.newmark_damp)
                     self.Kin = None
                     self.Kout = None
-                    self.SSdisc = libss.ss(Ass, Bss, Css, Dss, dt=self.dt)
+                    self.SSdisc = libss.StateSpace(Ass, Bss, Css, Dss, dt=self.dt)
 
+                    input_variables = LinearVector([InputVariable('forces_n',
+                                                                           size=self.Mstr.shape[0],
+                                                                           index=0)])
+
+                    output_variables = LinearVector([OutputVariable('eta', size=self.num_dof_flex, index=0),
+                                                     OutputVariable('eta_dot', size=self.num_dof_flex, index=1)])
+                    if not self.clamped:
+                        output_variables.add('beta_bar', size=self.num_dof_rig, index=0.5)
+                        output_variables.append('beta', size=self.num_dof_rig)
+
+                    self.SSdisc.output_variables = output_variables
+                    self.SSdisc.input_variables = input_variables
+                    self.SSdisc.state_variables = LinearVector.transform(output_variables, to_type=StateVariable)
             else:
                 raise NameError(
                     'Discretisation method %s not available' % self.discr_method)
@@ -1003,8 +1028,24 @@ class FlexDynamic():
                     Bss = np.zeros((2 * Nmodes, Nmodes))
                     Dss = np.zeros((2 * Nmodes, Nmodes))
                     Bss[Nmodes + iivec, iivec] = 1.
-                    self.Kin = Phi.T
-                    self.Kout = sc.linalg.block_diag(*(Phi, Phi))
+                    self.Kin = libss.Gain(Phi.T)
+                    self.Kin.input_variables = LinearVector([InputVariable('forces_n',
+                                                                           size=self.Mstr.shape[0],
+                                                                           index=0)])
+                    self.Kin.output_variables = LinearVector([OutputVariable('Q',
+                                                                             size=Nmodes,
+                                                                             index=0)])
+                    self.Kout = libss.Gain(sc.linalg.block_diag(*[Phi, Phi]))
+                    self.Kout.input_variables = LinearVector([InputVariable('q', size=Nmodes, index=0),
+                                                              InputVariable('q_dot', size=Nmodes, index=1)])
+
+                    output_variables = LinearVector([OutputVariable('eta', size=self.num_dof_flex, index=0),
+                                                     OutputVariable('eta_dot', size=self.num_dof_flex, index=1)])
+                    if not self.clamped:
+                        output_variables.add('beta_bar', size=self.num_dof_rig, index=0.5)
+                        output_variables.append('beta', size=self.num_dof_rig)
+
+                    self.Kout.output_variables = output_variables
                 else:  # damped mode shapes
                     # The algorithm assumes that for each couple of complex conj
                     # eigenvalues, only one eigenvalue (and the eigenvectors
@@ -1024,7 +1065,18 @@ class FlexDynamic():
                     self.Kout = np.block([2. * U.real, (-2.) * U.imag])
 
                 # build state-space model
-                self.SScont = libss.ss(Ass, Bss, Css, Dss)
+                self.SScont = libss.StateSpace(Ass, Bss, Css, Dss)
+                input_variables = LinearVector([InputVariable('Q', size=Nmodes, index=0)])
+
+                output_variables = LinearVector([OutputVariable('q', size=Nmodes, index=0),
+                                                 OutputVariable('q_dot', size=Nmodes, index=1)])
+
+                state_variables = output_variables.transform(output_variables,
+                                                             to_type=StateVariable)
+
+                self.SScont.input_variables = input_variables
+                self.SScont.output_variables = output_variables
+                self.SScont.state_variables = state_variables
                 if self.inout_coords == 'nodes':
                     self.SScont = libss.addGain(self.SScont, self.Kin, 'in')
                     self.SScont = libss.addGain(self.SScont, self.Kout, 'out')
@@ -1046,7 +1098,22 @@ class FlexDynamic():
                 Bss[num_dof:, :] = -Minv_neg
                 self.Kin = None
                 self.Kout = None
-                self.SScont = libss.ss(Ass, Bss, Css, Dss)
+                self.SScont = libss.StateSpace(Ass, Bss, Css, Dss)
+
+                input_variables = LinearVector([InputVariable('forces_n',
+                                                              size=self.Mstr.shape[0],
+                                                              index=0)])
+
+                output_variables = LinearVector([OutputVariable('eta', size=self.num_dof_flex, index=0),
+                                                 OutputVariable('eta_dot', size=self.num_dof_flex, index=1)])
+                if not self.clamped:
+                    output_variables.add('beta_bar', size=self.num_dof_rig, index=0.5)
+                    output_variables.append('beta', size=self.num_dof_rig)
+
+                self.SScont.output_variables = output_variables
+                self.SScont.input_variables = input_variables
+                self.SScont.state_variables = LinearVector.transform(output_variables, to_type=StateVariable)
+
 
     def freqresp(self, wv=None, bode=True):
         """
@@ -1161,12 +1228,24 @@ class FlexDynamic():
 
             phi = eigenvectors[:, order]
 
+            phi = modalutils.mode_sign_convention(self.structure.boundary_conditions,
+                                                  phi,
+                                                  not self.clamped,
+                                                  self.use_euler)
+
+            if not self.clamped and self.use_principal_axes:
+                phi = modalutils.free_modes_principal_axes(phi, self.Mstr, use_euler=self.use_euler)
+
             # Scale modes to have an identity mass matrix
-            dfact = np.diag(np.dot(phi.T, np.dot(self.Mstr, phi)))
-            self.U = (1./np.sqrt(dfact))*phi
+            phi = modalutils.scale_mass_normalised_modes(phi, self.Mstr)
+
+            self.U = phi
 
             # Update
             self.eigs = eigenvalues[order]
+            if not self.use_principal_axes:
+                # in the case of use_principal_axes modes are already ordered
+                self.U = self.sort_repeated_evecs(self.U, self.eigs)
 
             # To do: update SHARPy's timestep info modal results
         else:
@@ -1226,11 +1305,14 @@ class FlexDynamic():
         # if time_ref != 1.0 and time_ref is not None:
         if self.num_rig_dof != 0:
             warnings.warn('Time normalisation not yet implemented with rigid body motion.')
-        self.scaled_reference_matrices['dt'] = self.dt
-        self.dt /= time_ref
+
+        if self.dlti:
+            self.scaled_reference_matrices['dt'] = self.dt
+            self.dt /= time_ref
         if self.settings['print_info']:
             cout.cout_wrap('Scaling beam according to reduced time...', 0)
-            cout.cout_wrap('\tSetting the beam time step to (%.4f)' % self.dt, 1)
+            if self.dlti:
+                cout.cout_wrap('\tSetting the beam time step to (%.4f)' % self.dt, 1)
 
         self.scaled_reference_matrices['C'] = self.Cstr.copy()
         self.scaled_reference_matrices['K'] = self.Kstr.copy()
@@ -1262,13 +1344,13 @@ class FlexDynamic():
             self.dt = dt
         else:
             assert self.dt is not None, \
-                'Provide time-step for convertion to discrete-time'
+                'Provide time-step for conversion to discrete-time'
 
         SScont = self.SScont
         tpl = scsig.cont2discrete(
             (SScont.A, SScont.B, SScont.C, SScont.D),
             dt=self.dt, method=self.discr_method)
-        self.SSdisc = libss.ss(*tpl[:-1], dt=tpl[-1])
+        self.SSdisc = libss.StateSpace(*tpl[:-1], dt=tpl[-1])
         self.dlti = True
 
 
@@ -1401,7 +1483,7 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
     MinvK = np.dot(Minv, K)
     MinvC = np.dot(Minv, C)
 
-    # build ss
+    # build StateSpace
     Ass0 = np.block([[Imat - a0 * MinvK, dt * Imat - a0 * MinvC],
                      [-b0 * MinvK, Imat - b0 * MinvC]])
     Ass1 = np.block([[Imat + a1 * MinvK, a1 * MinvC],

@@ -29,15 +29,18 @@ Note:
 	./der_Teuler_by_w
 	./der_Teuler_by_w_NED
 	./der_quat_wrt_crv
+	./der_skewp_skewp_v
 	./deuler_dt
 	./deuler_dt_NED
 	./euler2quat
 	./euler2rot
+	./get_transformation_matrix
 	./get_triad
 	./mat2quat
 	./multiply_matrices
 	./norm3d
 	./normsq3d
+	./panel_area
 	./quadskew
 	./quat2euler
 	./quat2rotation

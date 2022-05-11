@@ -18,4 +18,3 @@ To use this library: import sharpy.utils.multibody as mb
 	./split_multibody
 	./state2disp_and_accel
 	./update_mb_dB_before_merge
-	./update_mb_db_before_split

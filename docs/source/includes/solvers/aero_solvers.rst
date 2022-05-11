@@ -5,7 +5,6 @@ Aero Solvers
     ./aero/DynamicUVLM
     ./aero/NoAero
     ./aero/PrescribedUvlm
-    ./aero/SHWUvlm
     ./aero/StaticUvlm
     ./aero/StepLinearUVLM
     ./aero/StepUvlm

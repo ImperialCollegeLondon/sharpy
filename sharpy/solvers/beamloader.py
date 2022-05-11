@@ -49,11 +49,16 @@ class BeamLoader(BaseSolver):
 
     settings_types['unsteady'] = 'bool'
     settings_default['unsteady'] = True
-    settings_description['unsteady'] = 'If ``True`` it will be a dynamic problem. The default is usually good for all simulations'
+    settings_description['unsteady'] = 'If ``True`` it will be a dynamic problem and the solver will look for the' \
+                                       ' ``.dyn.h5`` file that contains the time varying input to the problem.'
 
     settings_types['orientation'] = 'list(float)'
     settings_default['orientation'] = [1., 0, 0, 0]
     settings_description['orientation'] = 'Initial attitude of the structure given as the quaternion that parametrises the rotation from G to A frames of reference.'
+
+    settings_types['for_pos'] = 'list(float)'
+    settings_default['for_pos'] = [0., 0, 0]
+    settings_description['for_pos'] = 'Initial position of the A FoR.'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
@@ -133,8 +138,8 @@ class BeamLoader(BaseSolver):
         self.data.structure.dyn_dict = self.dyn_data_dict
 
         # Change the beam description to the local FoR for multibody
-        if (self.data.structure.num_bodies > 1):
-            self.data.structure.ini_info.whole_structure_to_local_AFoR(self.data.structure)
-            self.data.structure.timestep_info[0].whole_structure_to_local_AFoR(self.data.structure)
+        # if (self.data.structure.num_bodies > 1):
+        #     self.data.structure.ini_info.whole_structure_to_local_AFoR(self.data.structure)
+        #     self.data.structure.timestep_info[0].whole_structure_to_local_AFoR(self.data.structure)
 
         return self.data

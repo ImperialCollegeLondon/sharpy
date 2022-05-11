@@ -43,7 +43,7 @@ compile the libraries with custom flags, build it from source (recommended).
 
 SHARPy can be built from source so that you can get the latest release or (stable) development build.
 
-SHARPy depends on two external libraries, [xbeam](http://github.com/imperialcollegelondon/xbeam) and 
+SHARPy depends on two external libraries, [xbeam](http://github.com/imperialcollegelondon/xbeam) and
 [UVLM](http://github.com/imperialcollegelondon/UVLM). These are included as submodules to SHARPy and therefore
 once you initialise SHARPy you will also automatically clone the relevant versions of each library.
 
@@ -53,11 +53,11 @@ once you initialise SHARPy you will also automatically clone the relevant versio
     ```bash
     git clone --recursive http://github.com/ImperialCollegeLondon/sharpy
     ```
-    The `--recursive` flag will also initialise and update the submodules SHARPy depends on, 
+    The `--recursive` flag will also initialise and update the submodules SHARPy depends on,
     [xbeam](http://github.com/imperialcollegelondon/xbeam) and [UVLM](http://github.com/imperialcollegelondon/UVLM).
-    
+
 2. We will now set up the SHARPy environment that will install other required distributions.
-    
+
 ### Setting up the Python Environment
 
 SHARPy uses the Anaconda package manager to provide the necessary Python packages.
@@ -78,7 +78,7 @@ file if you are installing SHARPy on Mac OS X
     conda env create -f environment_linux.yml
     cd ../..
     ```
-    We also provide a light-weight environment with the minimum required dependencies. If you'd like to use it, 
+    We also provide a light-weight environment with the minimum required dependencies. If you'd like to use it,
     create the conda environment using `environment_minimal.yml`.
 
 4. Activate the `sharpy_env` conda environment
@@ -87,10 +87,10 @@ file if you are installing SHARPy on Mac OS X
     ```
     you need to do this before you compile the `xbeam` and `uvlm` libraries, as
     some dependencies are included in the conda environment.
-    
+
     If you would like to use the minimal environment you can run `conda activate sharpy_minimal`.
-    
-    
+
+
 ### Quick install
 The quick install is geared towards getting the release build of SHARPy running as quickly and simply as possible. If
 you would like to install a develop build or modify the compilation settings of the libraries skip to the next section.
@@ -98,7 +98,7 @@ you would like to install a develop build or modify the compilation settings of 
     ```bash
     cd sharpy
     ```
-    
+
 1. Ensure that the SHARPy environment is active in the session. Your terminal prompt line should begin with
     ```bash
     (sharpy_env) [usr@host] $
@@ -108,51 +108,67 @@ you would like to install a develop build or modify the compilation settings of 
     ```bash
     conda activate sharpy_env
     ```
-    
+
 1. Create a directory `build` that will be used during CMake's building process and `cd` into it:
     ```bash
     mkdir build
     cd build
     ```
 
-2. Prepare UVLM and xbeam for compilation using `gfortran` and `g++` in their release builds running. If you'd like to 
+2. Prepare UVLM and xbeam for compilation using `gfortran` and `g++` in their release builds running. If you'd like to
 change compilers see the Custom Installation.
     ```bash
     cmake ..
     ```
-    
+
 3. Compile the libraries
     ```bash
     make install -j 4
     ```
     where the number after the `-j` flag will specify how many cores to use during installation.
-    
-4. Finally, load the SHARPy variables
+
+4. Finally, leave the build directory and install SHARPy
     ```bash
-    source bin/sharpy_vars.sh
+    cd ..
+    pip install .
     ```
-    
+
 __You are ready to run SHARPy__. Continue reading the [Running SHARPy](#running-sharpy) section.
 
 ### Custom installation
 
 These steps will show you how to compile the xbeam and UVLM libraries such that you can modify the compilation settings
-to your taste. 
+to your taste.
 
-1. Ensure that the SHARPy environment is loaded in your session
+1. If you want to use SHARPy's latest release, skip this step. If you would like to use the latest development work,
+you will need to checkout the `develop` branch. For more info on how we structure our development and what branches
+are used for what kind of features have a look at the [Contributing](contributing.html) page.
+    ```bash
+    git checkout develop
+    git submodule update --recursive
+    ```
+    This command will check out the `develop` branch and set it to track the remote origin. It will also set the submodules (xbeam and UVLM) to the right commit.
+
+2. Create the conda environment that SHARPy will use. Change `environment_linux.yml` to read `environment_macos.yml`
+file if you are installing SHARPy on Mac OS X
+    ```bash
+    cd sharpy/utils
+    conda env create -f environment_linux.yml
+    cd ../..
+    ```
+
+3. Activate the `sharpy_env` conda environment
     ```bash
     conda activate sharpy_env
     ```
-    
-1. If you want to use SHARPy's latest release, skip this step. If you would like to use the latest development work, 
-you will need to checkout the `develop` branch. For more info on how we structure our development and what branches 
-are used for what kind of features have a look at the [Contributing](contributing.html) page. 
-    ```bash
-    git checkout -b develop --track origin/develop
-    ```
-    This command will check out the `develop` branch and set it to track the remote origin.
 
-1. Run CMake with custom flags:
+4. Create a directory `build` that will be used during CMake's building process and `cd` into it:
+    ```bash
+    mkdir build
+    cd build
+    ```
+
+5. Run CMake with custom flags:
     1. Choose your compilers for Fortran `FC` and C++ `CXX`, for instance
         ```bash
         FC=gfortran CXX=g++ cmake ..
@@ -161,16 +177,29 @@ are used for what kind of features have a look at the [Contributing](contributin
         ```bash
         FC=ifort CXX=icpc cmake ..
         ```
-    2. To build the libraries in debug mode:
+    2. Alternatively, you can build the libraries in debug mode with the following flag for cmake:
         ```bash
-        cmake -DCMAKE_BUILD_TYPE=Debug ..
+        -DCMAKE_BUILD_TYPE=Debug
         ```
-        
-1. Compile the libraries and parallelise as you prefer
+
+6. Compile the libraries and parallelise as you prefer
     ```bash
     make install -j 4
     ```
-1. This concludes the installation! Continue reading the [Running SHARPy](#running-sharpy) section.
+
+7. Finally, leave the build directory and install SHARPy
+    ```bash
+    cd ..
+    pip install .
+    ```
+    If you want to install it in development mode (the source files will stay
+    where the are so you can modify them), you can make an editable install:
+    ```
+    pip install -e .
+    ```
+    You can obtain further information on editable installs [here](https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs)
+
+8. This concludes the installation! Continue reading the [Running SHARPy](#running-sharpy) section.
 
 ## Using SHARPy from a Docker container
 
@@ -208,7 +237,7 @@ SHARPy is located in /sharpy_dir/ and the
 environment is already set up!
 Copyright Imperial College London. Released under BSD 3-Clause license.
 =======================================================================
-SHARPy> 
+SHARPy>
 ```
 You are now good to go.
 
@@ -237,17 +266,11 @@ above replacing the `stable` tag for `experimental`.
 
 ## Running SHARPy
 
-In order to run SHARPy, you need to load the conda environment and load the SHARPy variables (so your computer knows
-where SHARPy is). Therefore, __before you run any SHARPy case__:
+In order to run SHARPy, you need to load the conda environment. Therefore, __before you run any SHARPy case__:
 
 1. Activate the SHARPy conda environment
     ```bash
     conda activate sharpy_env
-    ```
-
-2. Load the SHARPy variables
-    ```bash
-    source sharpy/bin/sharpy_vars.sh
     ```
 
 You are now ready to run SHARPy cases from the terminal.
@@ -256,12 +279,12 @@ You are now ready to run SHARPy cases from the terminal.
 
 SHARPy uses unittests to verify the integrity of the code.
 
-These tests can be run from the `./sharpy` directory. 
+These tests can be run from the `./sharpy` directory.
 ```bash
 python -m unittest
 ```
 The tests will run and you should see a success message. If you don't... check the following options:
-* Check you are running the latest version. Running the following from the root directory should update to the 
+* Check you are running the latest version. Running the following from the root directory should update to the
 latest release version:
     - `git pull`
     - `git submodule update --init --recursive`
@@ -288,8 +311,8 @@ This script creates the output files that will then be used by SHARPy, namely:
     * The dynamic forces file `.dyn.h5` (when required).
     * The linear input files `.lininput.h5` (when required).
     * The ROM settings file `.rom.h5` (when required).
-    
-    See the [chapter](./casefiles.html) on the case files for a detailed description on the contents of each one.    
+
+    See the [chapter](./casefiles.html) on the case files for a detailed description on the contents of each one.
     Data is exchanged in binary format by means of `.h5` files that make the transmission efficient between the different
     languages of the required libraries. To view these `.h5` files, a viewer like [HDF5](https://portal.hdfgroup.org/display/support) is recommended.
 
@@ -323,8 +346,8 @@ loaded in Paraview. These are the `.vtu` format files that can be used with [Par
 
 ### Running (and modifiying) a test case
 
-1.  This command generates the required files for running a static, clamped beam case that is used as part of code 
-verification: 
+1.  This command generates the required files for running a static, clamped beam case that is used as part of code
+verification:
     ```sh
     cd ../sharpy
     python ./tests/xbeam/geradin/generate_geradin.py
@@ -351,40 +374,40 @@ is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compres
 
 6. Results (part 1)
 
-    Since this is a test case, there is no output directly to screen. 
-    
+    Since this is a test case, there is no output directly to screen.
+
     We will therefore change this setting first.
     In the `generate_geradin.py` file, look for the `SHARPy` setting `write_screen` and set it to `on`. This will
     output the progress of the execution to the terminal.
-    
+
     We would also like to create a Paraview file to view the beam deformation. Append the post-processor `BeamPlot` to
-    the end of the `SHARPy` setting `flow`, which is a list. This will run the post-processor and plot the beam in Paraview format with the settings specified in 
+    the end of the `SHARPy` setting `flow`, which is a list. This will run the post-processor and plot the beam in Paraview format with the settings specified in
     the `generate_geradin.py` file under `config['BeamPlot]`.
-    
+
 7. Run (part 2)
 
     Now that we have made these modifications, run again the generation script:
     ```sh
     python ./tests/xbeam/geradin/generate_geradin.py
     ```
-    
+
     Check the solver file `geradin.sharpy` and look for the settings we just changed. Make sure they read what we wanted.
 
-    
+
     You are now ready to run the case again:
     ```bash
     # Make sure that the sharpy_env conda environment is active
     sharpy <path to solver file>
     ```
-    
+
 8. Post-processing
 
-    After a successful execution, you should a long display of information in the terminal as the case is being 
+    After a successful execution, you should a long display of information in the terminal as the case is being
     executed.
-    
+
     The deformed beam will have been written in a `.vtu` file and will be located in the `output/` folder (or where
     you specified in the settings) which you can open using Paraview.
-    
+
     In the `output` directory you will also note a folder named `WriteVariablesTime` which outputs certain variables
     as a function of time to a `.dat` file. In this case, the beam tip position deflection and rotation is written.
     Check the values of those files and look for the following result:

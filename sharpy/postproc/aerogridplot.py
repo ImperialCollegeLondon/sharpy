@@ -25,24 +25,25 @@ class AerogridPlot(BaseSolver):
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Output folder'
-
     settings_types['include_rbm'] = 'bool'
     settings_default['include_rbm'] = True
+    settings_description['include_rbm'] = 'Include rigid body motions'
 
     settings_types['include_forward_motion'] = 'bool'
     settings_default['include_forward_motion'] = False
+    settings_description['include_forward_motion'] = 'Include forward motion'
 
     settings_types['include_applied_forces'] = 'bool'
     settings_default['include_applied_forces'] = True
+    settings_description['include_applied_forces'] = 'Include applied aerodynamic forces at the vertices'
 
     settings_types['include_unsteady_applied_forces'] = 'bool'
     settings_default['include_unsteady_applied_forces'] = False
+    settings_description['include_unsteady_applied_forces'] = 'Include unsteady aerodynamic forces at the vertices'
 
     settings_types['minus_m_star'] = 'int'
     settings_default['minus_m_star'] = 0
+    settings_description['minus_m_star'] = 'Subtract a number of wake panels that will not be plotted'
 
     settings_types['name_prefix'] = 'str'
     settings_default['name_prefix'] = ''
@@ -50,18 +51,23 @@ class AerogridPlot(BaseSolver):
 
     settings_types['u_inf'] = 'float'
     settings_default['u_inf'] = 0.
+    settings_description['u_inf'] = 'Free stream velocity'
 
     settings_types['dt'] = 'float'
     settings_default['dt'] = 0.
+    settings_description['dt'] = 'Time step increment'
 
     settings_types['include_velocities'] = 'bool'
     settings_default['include_velocities'] = False
+    settings_description['include_velocities'] = 'Include induced velocities at the vertices'
 
     settings_types['include_incidence_angle'] = 'bool'
     settings_default['include_incidence_angle'] = False
+    settings_description['include_incidence_angle'] = 'Include panel incidence angle'
 
     settings_types['num_cores'] = 'int'
     settings_default['num_cores'] = 1
+    settings_description['num_cores'] = 'Number of cores used to compute velocities/angles'
 
     settings_types['vortex_radius'] = 'float'
     settings_default['vortex_radius'] = vortex_radius_def
@@ -74,12 +80,13 @@ class AerogridPlot(BaseSolver):
         self.settings = None
         self.data = None
 
-        self.folder = ''
+        self.folder = None
         self.body_filename = ''
         self.wake_filename = ''
         self.ts_max = 0
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -88,9 +95,7 @@ class AerogridPlot(BaseSolver):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.ts_max = self.data.ts + 1
         # create folder for containing files if necessary
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/aero/'
+        self.folder = data.output_folder + '/aero/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.body_filename = (self.folder +
@@ -101,12 +106,13 @@ class AerogridPlot(BaseSolver):
                               self.settings['name_prefix'] +
                               'wake_' +
                               self.data.settings['SHARPy']['case'])
+        self.caller = caller
 
     def run(self, online=False):
         # TODO: Create a dictionary to plot any variable as in beamplot
         if not online:
             for self.ts in range(self.ts_max):
-                if self.data.aero.timestep_info[self.ts] is not None:
+                if self.data.structure.timestep_info[self.ts] is not None:
                     self.plot_body()
                     self.plot_wake()
             cout.cout_wrap('...Finished', 1)
@@ -166,7 +172,7 @@ class AerogridPlot(BaseSolver):
                     if self.settings['include_rbm']:
                         coords[counter, :] += struct_tstep.for_pos[0:3]
                     if self.settings['include_forward_motion']:
-                        coords[counter, 0] -= self.settings['dt'].value*self.ts*self.settings['u_inf'].value
+                        coords[counter, 0] -= self.settings['dt']*self.ts*self.settings['u_inf']
 
             if self.settings['include_incidence_angle']:
                 incidence_angle = np.zeros_like(panel_gamma)
@@ -217,7 +223,7 @@ class AerogridPlot(BaseSolver):
                                                                               coords,
                                                                               self.settings['vortex_radius'],
                                                                               struct_tstep.for_pos,
-                                                                              self.settings['numcores'])
+                                                                              self.settings['num_cores'])
 
             ug = tvtk.UnstructuredGrid(points=coords)
             ug.set_cells(tvtk.Quad().cell_type, conn)
@@ -279,7 +285,7 @@ class AerogridPlot(BaseSolver):
                     if self.settings['include_rbm']:
                         coords[counter, :] += self.data.structure.timestep_info[self.ts].for_pos[0:3]
                     if self.settings['include_forward_motion']:
-                        coords[counter, 0] -= self.settings['dt'].value*self.ts*self.settings['u_inf'].value
+                        coords[counter, 0] -= self.settings['dt']*self.ts*self.settings['u_inf']
 
             counter = -1
             node_counter = -1

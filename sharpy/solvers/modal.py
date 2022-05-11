@@ -11,6 +11,7 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
 import sharpy.structure.utils.modalutils as modalutils
 
+
 @solver
 class Modal(BaseSolver):
     """
@@ -31,10 +32,6 @@ class Modal(BaseSolver):
     settings_default['print_info'] = True
     settings_description['print_info'] = 'Write status to screen'
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Output folder'
-
     # solution options
     settings_types['rigid_body_modes'] = 'bool'
     settings_default['rigid_body_modes'] = False
@@ -48,10 +45,6 @@ class Modal(BaseSolver):
     settings_default['NumLambda'] = 20  # doubles if use_undamped_modes is False
     settings_description['NumLambda'] = 'Number of modes to retain'
 
-    settings_types['keep_linear_matrices'] = 'bool'  # attach linear M,C,K matrices to output dictionary
-    settings_default['keep_linear_matrices'] = True
-    settings_description['keep_linear_matrices'] = 'Save M, C and K matrices to output dictionary'
-
     # output options
     settings_types['write_modes_vtk'] = 'bool'  # write displacements mode shapes in vtk file
     settings_default['write_modes_vtk'] = True
@@ -61,9 +54,9 @@ class Modal(BaseSolver):
     settings_default['print_matrices'] = False
     settings_description['print_matrices']  = 'Write M, C and K matrices to file'
 
-    settings_types['write_dat'] = 'bool'  # write modes shapes/freq./damp. to dat file
-    settings_default['write_dat'] = True
-    settings_description['write_dat'] = 'Write mode shapes, frequencies and damping to file'
+    settings_types['save_data'] = 'bool'  # write modes shapes/freq./damp. to dat file
+    settings_default['save_data'] = True
+    settings_description['save_data'] = 'Write mode shapes, frequencies and damping to file'
 
     settings_types['continuous_eigenvalues'] = 'bool'
     settings_default['continuous_eigenvalues'] = False
@@ -93,9 +86,14 @@ class Modal(BaseSolver):
     settings_default['use_custom_timestep'] = -1
     settings_description['use_custom_timestep'] = 'If > -1, it will use that time step geometry for calculating the modes'
 
+    settings_types['rigid_modes_ppal_axes'] = 'bool'
+    settings_default['rigid_modes_ppal_axes'] = False
+    settings_description['rigid_modes_ppal_axes'] = 'Modify the ridid body modes such that they are defined wrt ' \
+                                                    'to the CG and aligned with the principal axes of inertia'
+
     settings_types['rigid_modes_cg'] = 'bool'
     settings_default['rigid_modes_cg'] = False
-    settings_description['rigid_modes_cg'] = 'Modify the ridid body modes such that they are defined wrt to the CG'
+    settings_description['rigid_modes_cg'] = 'Not implemente yet'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
@@ -121,11 +119,11 @@ class Modal(BaseSolver):
                                  self.settings_types,
                                  self.settings_default)
 
-        self.rigid_body_motion = self.settings['rigid_body_modes'].value
+        self.rigid_body_motion = self.settings['rigid_body_modes']
 
         self.data.ts = len(self.data.structure.timestep_info) - 1
-        if self.settings['use_custom_timestep'].value > -1:
-            self.data.ts = self.settings['use_custom_timestep'].value
+        if self.settings['use_custom_timestep'] > -1:
+            self.data.ts = self.settings['use_custom_timestep']
 
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(
@@ -133,13 +131,10 @@ class Modal(BaseSolver):
                                             self.data.ts)
 
         # create folder for containing files if necessary
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
-        self.folder = (self.settings['folder'] + '/' +
-                       self.data.settings['SHARPy']['case'] +
-                       '/beam_modal_analysis/')
+        self.folder = data.output_folder + '/beam_modal_analysis/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
+
         self.filename_freq = (self.folder +
                               'tstep' + ("%06d" % self.data.ts) +
                               '_ModalFrequencies.dat')
@@ -248,13 +243,16 @@ class Modal(BaseSolver):
             FullMglobal, FullCglobal, FullKglobal, FullQ = xbeamlib.xbeam3_asbly_dynamic(self.data.structure,
                                           self.data.structure.timestep_info[self.data.ts],
                                           full_matrix_settings)
+
+            cg = modalutils.cg(FullMglobal)
         else:
             xbeamlib.cbeam3_solv_modal(self.data.structure,
                                        self.settings, self.data.ts,
                                        FullMglobal, FullCglobal, FullKglobal)
+            cg = None
 
         # Print matrices
-        if self.settings['print_matrices'].value:
+        if self.settings['print_matrices']:
             np.savetxt(self.folder + "Mglobal.dat", FullMglobal, fmt='%.12f',
                        delimiter='\t', newline='\n')
             np.savetxt(self.folder + "Cglobal.dat", FullCglobal, fmt='%.12f',
@@ -263,7 +261,7 @@ class Modal(BaseSolver):
                        delimiter='\t', newline='\n')
 
         # Check if the damping matrix is zero (issue working)
-        if self.settings['use_undamped_modes'].value:
+        if self.settings['use_undamped_modes']:
             zero_FullCglobal = True
             for i,j in itertools.product(range(num_dof),range(num_dof)):
                 if np.absolute(FullCglobal[i, j]) > np.finfo(float).eps:
@@ -279,11 +277,11 @@ class Modal(BaseSolver):
         #         elif(np.absolute(FullCglobal[i, j] + FullCglobal[j, i]) > np.finfo(float).eps):
         #             skewsymmetric_FullCglobal = False
 
-        NumLambda = min(num_dof, self.settings['NumLambda'].value)
+        NumLambda = min(num_dof, self.settings['NumLambda'])
 
-        if self.settings['use_undamped_modes'].value:
+        if self.settings['use_undamped_modes']:
 
-            # Solve for eigenvalues (with unit eigenvectors)            
+            # Solve for eigenvalues (with unit eigenvectors)
             eigenvalues,eigenvectors=np.linalg.eig(
                                        np.linalg.solve(FullMglobal,FullKglobal))
             eigenvectors_left=None
@@ -314,10 +312,10 @@ class Modal(BaseSolver):
             freq_damped = freq_natural * np.sqrt(1-damping**2)
 
             # Order & downselect complex conj:
-            # this algorithm assumes that complex conj eigenvalues appear consecutively 
+            # this algorithm assumes that complex conj eigenvalues appear consecutively
             # in eigenvalues. For symmetrical systems, this relies  on the fact that:
-            # - complex conj eigenvalues have the same absolute value (to machine 
-            # precision) 
+            # - complex conj eigenvalues have the same absolute value (to machine
+            # precision)
             # - couples of eigenvalues with multiplicity higher than 1, show larger
             # numerical difference
             order = np.argsort(freq_damped)[:2*NumLambda]
@@ -343,9 +341,9 @@ class Modal(BaseSolver):
             freq_damped = freq_damped[include]
             eigenvalues = eigenvalues[include]
             if self.settings['continuous_eigenvalues']:
-                if self.settings['dt'].value == 0.:
+                if self.settings['dt'] == 0.:
                     raise ValueError('Cannot compute the continuous eigenvalues without a dt value')
-                eigenvalues = np.log(eigenvalues)/self.settings['dt'].value
+                eigenvalues = np.log(eigenvalues)/self.settings['dt']
 
             order = order[include]
             damping = damping[order]
@@ -353,10 +351,15 @@ class Modal(BaseSolver):
             eigenvectors_left = eigenvectors_left[:, order].conj()
 
         # Modify rigid body modes for them to be defined wrt the CG
-        if self.settings['rigid_modes_cg']:
-            if not eigenvectors_left:
-                eigenvectors = self.free_free_modes(eigenvectors, FullMglobal)
-
+        eigenvectors = modalutils.mode_sign_convention(self.data.structure.boundary_conditions, eigenvectors,
+                                                       self.rigid_body_motion)
+        if not eigenvectors_left:
+            if self.settings['rigid_modes_ppal_axes']:
+                eigenvectors, t_pa, r_pa = modalutils.free_modes_principal_axes(eigenvectors, FullMglobal,
+                                                                          return_transform=True)
+            else:
+                t_pa = None  # Transformation matrix from the A frame to the P frame (principal axes of inertia)
+                r_pa = None
         # Scaling
         eigenvectors, eigenvectors_left = self.scale_modes_unit_mass_matrix(eigenvectors, FullMglobal, eigenvectors_left)
 
@@ -386,7 +389,7 @@ class Modal(BaseSolver):
                 warnings.warn('Unable to import matplotlib, skipping plot')
 
         # Write dat files
-        if self.settings['write_dat'].value:
+        if self.settings['save_data']:
             if type(eigenvalues) == complex:
                 np.savetxt(self.folder + "eigenvalues.dat", eigenvalues.view(float).reshape(-1, 2), fmt='%.12f',
                            delimiter='\t', newline='\n')
@@ -396,7 +399,7 @@ class Modal(BaseSolver):
             np.savetxt(self.folder + "eigenvectors.dat", eigenvectors[:num_dof].real,
                        fmt='%.12f', delimiter='\t', newline='\n')
 
-            if not self.settings['use_undamped_modes'].value:
+            if not self.settings['use_undamped_modes']:
                 np.savetxt(self.folder + 'frequencies.dat', freq_damped[:NumLambda],
                            fmt='%e', delimiter='\t', newline='\n')
             else:
@@ -407,15 +410,12 @@ class Modal(BaseSolver):
                        fmt='%e', delimiter='\t', newline='\n')
 
         # Write vtk
-        if self.settings['write_modes_vtk'].value:
+        if self.settings['write_modes_vtk']:
             try:
                 self.data.aero
-                aero_model = True
             except AttributeError:
                 warnings.warn('No aerodynamic model found - unable to project the mode onto aerodynamic grid')
-                aero_model = False
-
-            if aero_model:
+            else:
                 modalutils.write_modes_vtk(
                     self.data,
                     eigenvectors[:num_dof],
@@ -423,7 +423,7 @@ class Modal(BaseSolver):
                     self.filename_shapes,
                     self.settings['max_rotation_deg'],
                     self.settings['max_displacement'],
-                    ts=self.settings['use_custom_timestep'].value)
+                    ts=self.settings['use_custom_timestep'])
 
         outdict = dict()
 
@@ -446,13 +446,19 @@ class Modal(BaseSolver):
             outdict['Ccut'] = Ccut
         if Kin_damp is not None:
             outdict['Kin_damp'] = Kin_damp
-        if not self.settings['use_undamped_modes']:    
+        if not self.settings['use_undamped_modes']:
             outdict['eigenvectors_left'] = eigenvectors_left
 
-        if self.settings['keep_linear_matrices'].value:
-            outdict['M'] = FullMglobal
-            outdict['C'] = FullCglobal
-            outdict['K'] = FullKglobal
+        if cg is not None:
+            outdict['cg'] = cg
+
+        outdict['M'] = FullMglobal
+        outdict['C'] = FullCglobal
+        outdict['K'] = FullKglobal
+
+        if t_pa is not None:
+            outdict['t_pa'] = t_pa
+            outdict['r_pa'] = r_pa
         self.data.structure.timestep_info[self.data.ts].modal = outdict
 
         if self.settings['print_info']:
@@ -467,8 +473,7 @@ class Modal(BaseSolver):
     def scale_modes_unit_mass_matrix(self, eigenvectors, FullMglobal, eigenvectors_left=None):
         if self.settings['use_undamped_modes']:
             # mass normalise (diagonalises M and K)
-            dfact = np.diag(np.dot(eigenvectors.T, np.dot(FullMglobal, eigenvectors)))
-            eigenvectors = (1./np.sqrt(dfact))*eigenvectors
+            eigenvectors = modalutils.scale_mass_normalised_modes(eigenvectors, FullMglobal)
         else:
             # unit normalise (diagonalises A)
             if not self.rigid_body_motion:
@@ -481,6 +486,11 @@ class Modal(BaseSolver):
 
     def free_free_modes(self, phi, M):
         r"""
+
+        Warning:
+            This function is deprecated. See :func:`~sharpy.structure.utils.modalutils.free_modes_principal_axes`
+            for a transformation to the CG and with respect to the principal axes of inertia.
+
         Returns the rigid body modes defined with respect to the centre of gravity
 
         The transformation from the modes defined at the FoR A origin, :math:`\boldsymbol{\Phi}`, to the modes defined
@@ -503,7 +513,8 @@ class Modal(BaseSolver):
         #
         # .. math:: \boldsymbol{\Phi}_{ss,CG}|_{ROT} = \boldsymbol{\Phi}_{SS}|_{ROT}
         # + (\mathbf{T}(\boldsymbol{\Psi})^\top)^{-1}\boldsymbol{\Phi}_{RS}|_{ROT}
-
+        warnings.warn('This function is deprecated. See sharpy.structure.utils.modalutils.free_modes_principal_axes',
+                      category=DeprecationWarning)
         if not self.rigid_body_motion:
             warnings.warn('No rigid body modes to transform because the structure is clamped')
             return phi

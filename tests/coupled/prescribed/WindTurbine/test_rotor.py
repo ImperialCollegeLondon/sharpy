@@ -18,7 +18,7 @@ class TestRotor(unittest.TestCase):
 
     def setUp(self):
         import sharpy.utils.generate_cases as gc
-        import cases.templates.template_wt as template_wt
+        import sharpy.cases.templates.template_wt as template_wt
         from sharpy.utils.constants import deg2rad
 
         ######################################################################
@@ -64,7 +64,7 @@ class TestRotor(unittest.TestCase):
                     'n_points_camber': 100,
                     'm_distribution': 'uniform'}
 
-        excel_description = {'excel_file_name': route + '../../../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v01.xlsx',
+        excel_description = {'excel_file_name': route + '../../../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v02.xlsx',
                             'excel_sheet_parameters': 'parameters',
                             'excel_sheet_structural_blade': 'structural_blade',
                             'excel_sheet_discretization_blade': 'discretization_blade',
@@ -93,15 +93,14 @@ class TestRotor(unittest.TestCase):
         SimInfo.solvers['SHARPy']['route'] = route
         SimInfo.solvers['SHARPy']['write_log'] = True
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
-        SimInfo.solvers['SHARPy']['log_folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
+        SimInfo.solvers['SHARPy']['log_folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
         SimInfo.set_variable_all_dicts('dt', dt)
         SimInfo.set_variable_all_dicts('rho', air_density)
 
         SimInfo.solvers['BeamLoader']['unsteady'] = 'on'
 
         SimInfo.solvers['Modal']['write_modes_vtk'] = False
-        SimInfo.solvers['Modal']['write_dat'] = True
-        SimInfo.solvers['Modal']['folder'] = folder + '/output/'
+        SimInfo.solvers['Modal']['save_data'] = True
 
         ######################################################################
         #######################  GENERATE FILES  #############################
@@ -132,15 +131,9 @@ class TestRotor(unittest.TestCase):
     def tearDown(self):
         files_to_delete = [case + '.aero.h5',
                            case + '.fem.h5',
-                           case + '.sharpy',
-                           'log']
-        try:
-            for f in files_to_delete:
-                os.remove(folder +'/' + f)
-        except FileNotFoundError:
-            pass
+                           case + '.sharpy',]
 
-        try:
-            shutil.rmtree(folder + '/output/')
-        except FileNotFoundError:
-            pass
+        for f in files_to_delete:
+            os.remove(folder +'/' + f)
+
+        shutil.rmtree(folder + '/output/')

@@ -39,10 +39,6 @@ class FrequencyResponse(solver_interface.BaseSolver):
     settings_description = dict()
     settings_options = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Output folder.'
-
     settings_types['print_info'] = 'bool'
     settings_default['print_info'] = False
     settings_description['print_info'] = 'Write output to screen.'
@@ -113,8 +109,9 @@ class FrequencyResponse(solver_interface.BaseSolver):
         self.scaled = False
         self.w_to_k = 1
         self.wv = None
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
 
         self.data = data
 
@@ -152,31 +149,30 @@ class FrequencyResponse(solver_interface.BaseSolver):
         else:
             raise NotImplementedError('Unrecognised frequency spacing setting %s' % self.settings['frequency_spacing'])
 
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/frequencyresponse/'
+        self.folder = data.output_folder + '/frequencyresponse/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
+        self.caller = caller
 
-    def run(self, ss=None):
+    def run(self, ss=None, online=False):
         """
         Computes the frequency response of the linear state-space.
 
         Args:
-            ss (sharpy.linear.src.libss.ss (Optional)): State-space object for which to compute the frequency response.
+            ss (sharpy.linear.src.libss.StateSpace (Optional)): State-space object for which to compute the frequency response.
               If not given, the response for the previously assembled systems and specified in ``target_system`` will
               be performed.
-
         """
+        # TODO: This postproc does not have an standard call. Maybe a @staticmethod might help
 
         if ss is None:
             ss_list = [find_target_system(self.data, system_name) for system_name in self.settings['target_system']]
-        elif type(ss) is libss.ss:
+        elif type(ss) is libss.StateSpace:
             ss_list = [ss]
         elif type(ss) is list:
             ss_list = ss
         else:
-            raise TypeError('ss input must be either a libss.ss instance or a list of libss.ss')
+            raise TypeError('StateSpace input must be either a libss.StateSpace instance or a list of libss.StateSpace')
 
         for ith, system in enumerate(ss_list):
             if self.print_info:

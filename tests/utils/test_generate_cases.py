@@ -4,7 +4,7 @@ import os
 import shutil
 
 import sharpy.utils.generate_cases as gc
-import cases.templates.template_wt as template_wt
+import sharpy.cases.templates.template_wt as template_wt
 from sharpy.utils.constants import deg2rad
 
 
@@ -63,7 +63,7 @@ class TestGenerateCases(unittest.TestCase):
                     'n_points_camber': 100,
                     'm_distribution': 'uniform'}
 
-        excel_description = {'excel_file_name': route + '../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v01.xlsx',
+        excel_description = {'excel_file_name': route + '../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v02.xlsx',
                             'excel_sheet_parameters': 'parameters',
                             'excel_sheet_structural_blade': 'structural_blade',
                             'excel_sheet_discretization_blade': 'discretization_blade',
@@ -101,7 +101,7 @@ class TestGenerateCases(unittest.TestCase):
         SimInfo.solvers['SHARPy']['write_screen'] = 'off'
         SimInfo.solvers['SHARPy']['route'] = route
         SimInfo.solvers['SHARPy']['write_log'] = True
-        SimInfo.solvers['SHARPy']['log_folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/'
+        SimInfo.solvers['SHARPy']['log_folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
         SimInfo.set_variable_all_dicts('dt', dt)
         SimInfo.set_variable_all_dicts('rho', air_density)
 
@@ -125,17 +125,21 @@ class TestGenerateCases(unittest.TestCase):
         SimInfo.solvers['StaticCoupledRBM']['structural_solver_settings'] = SimInfo.solvers['RigidDynamicPrescribedStep']
         # SimInfo.solvers['StaticCoupledRBM']['structural_solver'] = 'NonLinearDynamicPrescribedStep'
         # SimInfo.solvers['StaticCoupledRBM']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicPrescribedStep']
-        SimInfo.solvers['StaticCoupledRBM']['aero_solver'] = 'SHWUvlm'
-        SimInfo.solvers['StaticCoupledRBM']['aero_solver_settings'] = SimInfo.solvers['SHWUvlm']
+        SimInfo.solvers['StaticCoupledRBM']['aero_solver'] = 'StaticUvlm'
+        SimInfo.solvers['StaticCoupledRBM']['aero_solver_settings'] = SimInfo.solvers['StaticUvlm']
 
         SimInfo.solvers['StaticCoupledRBM']['tolerance'] = 1e-6
         SimInfo.solvers['StaticCoupledRBM']['n_load_steps'] = 0
         SimInfo.solvers['StaticCoupledRBM']['relaxation_factor'] = 0.
 
-        SimInfo.solvers['SHWUvlm']['convection_scheme'] = 2
-        SimInfo.solvers['SHWUvlm']['rot_vel'] = rotation_velocity
-        SimInfo.solvers['SHWUvlm']['rot_axis'] = np.array([0.,0.,1.])
-        SimInfo.solvers['SHWUvlm']['rot_center'] = np.zeros((3),)
+        SimInfo.solvers['StaticUvlm']['horseshoe'] = False
+        SimInfo.solvers['StaticUvlm']['num_cores'] = 8
+        SimInfo.solvers['StaticUvlm']['n_rollup'] = 0
+        SimInfo.solvers['StaticUvlm']['rollup_dt'] = dt
+        SimInfo.solvers['StaticUvlm']['rollup_aic_refresh'] = 1
+        SimInfo.solvers['StaticUvlm']['rollup_tolerance'] = 1e-8
+        SimInfo.solvers['StaticUvlm']['rbm_vel_g'] = np.array([0., 0., 0.,
+                                                               0., 0., rotation_velocity])
 
         SimInfo.solvers['StepUvlm']['convection_scheme'] = 2
         SimInfo.solvers['StepUvlm']['num_cores'] = 1
@@ -159,9 +163,6 @@ class TestGenerateCases(unittest.TestCase):
         SimInfo.solvers['DynamicCoupled']['dynamic_relaxation'] = False
         SimInfo.solvers['DynamicCoupled']['relaxation_steps'] = 0
 
-        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['BeamPlot']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
-        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['AerogridPlot']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
-        SimInfo.solvers['DynamicCoupled']['postprocessors_settings']['SaveData']['folder'] = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + '/output/'
         SimInfo.define_num_steps(time_steps)
 
         # Define dynamic simulation
@@ -195,7 +196,7 @@ class TestGenerateCases(unittest.TestCase):
                            case + '.dyn.h5',
                            case + '.fem.h5',
                            case + '.sharpy',
-                           'log']
+                           '/output/' + case + '/log']
 
         for f in files_to_delete:
             os.remove(solver_path + f)

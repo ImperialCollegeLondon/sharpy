@@ -11,13 +11,19 @@ class StraightWake(generator_interface.BaseGenerator):
     r"""
     Straight wake shape generator
 
-    ``StraightWake`` class inherited from ``BaseGenerator``
-
-    The object creates a straight wake shedding from the trailing edge based on
+    This generator creates a straight wake shedding from the trailing edge based on
     the time step ``dt``, the incoming velocity magnitude ``u_inf`` and
-    direction ``u_inf_direction``
+    direction ``u_inf_direction``. It is to be used as ``wake_generator`` in
+     :class:`~sharpy.solvers.aerogridloader.AerogridLoader`.
+
+    A wake where panels grow downstream is supported by using the settings ``dx1``, ``ndx1``,
+    ``r`` and ``dxmax`` as described below. Note that the wake will always have ``m_star`` panels, as specified in
+    :class:`~sharpy.solvers.aerogridloader.AerogridLoader`, thus these settings will modify the effective length
+    of the wake. Once the maximum size of panel ``dxmax`` is achieved, all panels are size ``dxmax`` thereinafter
+    until ``m_star`` panels are created.
     """
     generator_id = 'StraightWake'
+    generator_classification = 'wake'
 
     settings_types = dict()
     settings_default = dict()
@@ -99,12 +105,12 @@ class StraightWake(generator_interface.BaseGenerator):
                                      aero_solver.settings_default)
 
             if 'dt' in aero_solver_settings.keys():
-                dt = aero_solver_settings['dt'].value
+                dt = aero_solver_settings['dt']
             elif 'rollup_dt' in aero_solver_settings.keys():
-                dt = aero_solver_settings['rollup_dt'].value
+                dt = aero_solver_settings['rollup_dt']
             else:
                 # print(aero_solver['velocity_field_input']['u_inf'])
-                dt = 1./aero_solver_settings['velocity_field_input']['u_inf'].value
+                dt = 1./aero_solver_settings['velocity_field_input']['u_inf']
             self.in_dict = {'u_inf': aero_solver_settings['velocity_field_input']['u_inf'],
                             'u_inf_direction': aero_solver_settings['velocity_field_input']['u_inf_direction'],
                             'dt': dt}
@@ -125,6 +131,8 @@ class StraightWake(generator_interface.BaseGenerator):
 
         if self.in_dict['dxmax'] == -1:
             self.dxmax = self.dx1
+        else:
+            self.dxmax = self.in_dict['dxmax']
 
     def generate(self, params):
         # Renaming for convenience
@@ -132,22 +140,36 @@ class StraightWake(generator_interface.BaseGenerator):
         zeta_star = params['zeta_star']
         gamma = params['gamma']
         gamma_star = params['gamma_star']
+        dist_to_orig = params['dist_to_orig']
 
         nsurf = len(zeta)
         for isurf in range(nsurf):
             M, N = zeta_star[isurf][0, :, :].shape
             for j in range(N):
                 zeta_star[isurf][:, 0, j] = zeta[isurf][:, -1, j]
-                zeta_star[isurf][:, 1, j] = zeta_star[isurf][:, 0, j] + self.dx1*self.u_inf_direction
-                for i in range(2, self.ndx1 + 1):
-                    zeta_star[isurf][:, i, j] = zeta_star[isurf][:, i-1, j] + self.dx1*self.u_inf_direction
-                for i in range(self.ndx1 + 1, M):
-                    # print(self.dx1, self.r, i, self.ndx1)
-                    deltax = self.dx1*self.r**(i - self.ndx1)
-                    if deltax > self.dxmax:
-                        deltax = self.dxmax
-                    zeta_star[isurf][:, i, j] = zeta_star[isurf][:, i-1, j] + deltax*self.u_inf_direction
+                for i in range(1, M):
+                    deltax = self.get_deltax(i, self.dx1, self.ndx1, self.r, self.dxmax)
+                    zeta_star[isurf][:, i, j] = zeta_star[isurf][:, i - 1, j] + deltax*self.u_inf_direction
             gamma[isurf] *= 0.
             gamma_star[isurf] *= 0.
 
-            # print(zeta_star[isurf][0, :, 0])
+        for isurf in range(nsurf):
+            M, N = zeta_star[isurf][0, :, :].shape
+            dist_to_orig[isurf][0] = 0.
+            for j in range(0, N):
+                for i in range(1, M):
+                    dist_to_orig[isurf][i, j] = (dist_to_orig[isurf][i - 1, j] +
+                                          np.linalg.norm(zeta_star[isurf][:, i, j] -
+                                                         zeta_star[isurf][:, i - 1, j]))
+                dist_to_orig[isurf][:, j] /= dist_to_orig[isurf][-1, j]
+
+
+    @staticmethod
+    def get_deltax(i, dx1, ndx1, r, dxmax):
+        if (i < ndx1 + 1) :
+            deltax = dx1
+        else:
+            deltax = dx1*r**(i - ndx1)
+        deltax = min(deltax, dxmax)
+
+        return deltax

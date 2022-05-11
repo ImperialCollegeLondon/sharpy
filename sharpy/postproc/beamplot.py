@@ -21,10 +21,6 @@ class BeamPlot(BaseSolver):
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Output folder path'
-
     settings_types['include_rbm'] = 'bool'
     settings_default['include_rbm'] = True
     settings_description['include_rbm'] = 'Include frame of reference rigid body motion'
@@ -59,8 +55,10 @@ class BeamPlot(BaseSolver):
 
         self.folder = ''
         self.filename = ''
+        self.filename_for = ''
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -68,9 +66,7 @@ class BeamPlot(BaseSolver):
             self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
         # create folder for containing files if necessary
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/beam/'
+        self.folder = data.output_folder + '/beam/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.filename = (self.folder +
@@ -78,9 +74,10 @@ class BeamPlot(BaseSolver):
                          'beam_' +
                          self.data.settings['SHARPy']['case'])
         self.filename_for = (self.folder +
-                         self.settings['name_prefix'] +
-                         'for_' +
-                         self.data.settings['SHARPy']['case'])
+                             self.settings['name_prefix'] +
+                             'for_' +
+                             self.data.settings['SHARPy']['case'])
+        self.caller = caller
 
     def run(self, online=False):
         self.plot(online)
@@ -135,11 +132,7 @@ class BeamPlot(BaseSolver):
         forces_constraints_nodes = np.zeros((num_nodes, 3))
         moments_constraints_nodes = np.zeros((num_nodes, 3))
 
-        if self.data.structure.timestep_info[it].in_global_AFoR:
-            tstep = self.data.structure.timestep_info[it]
-        else:
-            tstep = self.data.structure.timestep_info[it].copy()
-            tstep.whole_structure_to_global_AFoR(self.data.structure)
+        tstep = self.data.structure.timestep_info[it]
 
         # aero2inertial rotation
         aero2inertial = tstep.cga()
@@ -194,10 +187,13 @@ class BeamPlot(BaseSolver):
         postproc_node_vector = []
         postproc_node_6vector = []
         for k, v in tstep.postproc_node.items():
-            _, cols = v.shape
+            try:
+                _, cols = v.shape
+            except ValueError:
+                # for np.arrays with shape (x,)
+                cols = 1
             if cols == 1:
-                raise NotImplementedError('scalar node types not supported in beamplot (Easy to implement)')
-                # postproc_cell_scalar.append(k)
+                postproc_node_scalar.append(k)
             elif cols == 3:
                 postproc_node_vector.append(k)
             elif cols == 6:
@@ -234,11 +230,11 @@ class BeamPlot(BaseSolver):
                                                   tstep.steady_applied_forces[i_node, 3:6]+
                                                   tstep.unsteady_applied_forces[i_node, 3:6]))
             forces_constraints_nodes[i_node, :] = np.dot(aero2inertial,
-                                           np.dot(cab,
-                                                  tstep.forces_constraints_nodes[i_node, 0:3]))
+                                                         np.dot(cab,
+                                                                tstep.forces_constraints_nodes[i_node, 0:3]))
             moments_constraints_nodes[i_node, :] = np.dot(aero2inertial,
-                                           np.dot(cab,
-                                                  tstep.forces_constraints_nodes[i_node, 3:6]))
+                                                          np.dot(cab,
+                                                                 tstep.forces_constraints_nodes[i_node, 3:6]))
 
             if with_gravity:
                 gravity_forces_g[i_node, 0:3] = np.dot(aero2inertial,
@@ -316,6 +312,11 @@ class BeamPlot(BaseSolver):
                     point_vector_counter += 1
                     ug.point_data.add_array(tstep.postproc_node[k][:, 3*i:3*(i+1)])
                     ug.point_data.get_array(point_vector_counter).name = k + '_' + str(i) + '_point'
+
+            for k in postproc_node_scalar:
+                point_vector_counter += 1
+                ug.point_data.add_array(tstep.postproc_node[k])
+                ug.point_data.get_array(point_vector_counter).name = k
 
         write_data(ug, it_filename)
 

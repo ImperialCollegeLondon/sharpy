@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import unittest
-import cases.templates.flying_wings as wings
+import sharpy.cases.templates.flying_wings as wings
 import sharpy.sharpy_main
 
 
@@ -81,10 +81,11 @@ class TestGolandFlutter(unittest.TestCase):
                  'LinearAssembler',
                  'FrequencyResponse',
                  'AsymptoticStability',
+                 'SaveData',
                  ],
             'case': ws.case_name, 'route': ws.route,
             'write_screen': 'off', 'write_log': 'on',
-            'log_folder': self.route_test_dir + '/output/' + ws.case_name + '/',
+            'log_folder': self.route_test_dir + '/output/',
             'log_file': ws.case_name + '.log'}
 
         ws.config['BeamLoader'] = {
@@ -95,10 +96,10 @@ class TestGolandFlutter(unittest.TestCase):
             'unsteady': 'off',
             'aligned_grid': 'on',
             'mstar': ws.Mstar_fact * ws.M,
-            'freestream_dir': ws.u_inf_direction,                                                                                                       
-            'wake_shape_generator': 'StraightWake',                                                                                                  
-            'wake_shape_generator_input': {'u_inf': ws.u_inf,                                                                                           
-                                           'u_inf_direction': ws.u_inf_direction,                                                                
+            'freestream_dir': ws.u_inf_direction,
+            'wake_shape_generator': 'StraightWake',
+            'wake_shape_generator_input': {'u_inf': ws.u_inf,
+                                           'u_inf_direction': ws.u_inf_direction,
                                            'dt': ws.dt}}
 
         ws.config['StaticUvlm'] = {
@@ -144,32 +145,22 @@ class TestGolandFlutter(unittest.TestCase):
                                            'gravity_on': 'on',
                                            'gravity': 9.81}}
 
-        ws.config['AerogridPlot'] = {'folder': self.route_test_dir + '/output/',
-                                     'include_rbm': 'off',
+        ws.config['AerogridPlot'] = {'include_rbm': 'off',
                                      'include_applied_forces': 'on',
                                      'minus_m_star': 0}
 
-        ws.config['AeroForcesCalculator'] = {'folder': self.route_test_dir + '/output/forces',
-                                             'write_text_file': 'on',
+        ws.config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                              'text_file_name': ws.case_name + '_aeroforces.csv',
                                              'screen_output': 'on',
                                              'unsteady': 'off'}
 
-        ws.config['BeamPlot'] = {'folder': self.route_test_dir + '/output/',
-                                 'include_rbm': 'off',
+        ws.config['BeamPlot'] = {'include_rbm': 'off',
                                  'include_applied_forces': 'on'}
 
-        ws.config['BeamCsvOutput'] = {'folder': self.route_test_dir + '/output/',
-                                      'output_pos': 'on',
-                                      'output_psi': 'on',
-                                      'screen_output': 'on'}
-
-        ws.config['Modal'] = {'folder': self.route_test_dir + '/output/',
-                              'NumLambda': 20,
+        ws.config['Modal'] = {'NumLambda': 20,
                               'rigid_body_modes': 'off',
                               'print_matrices': 'on',
-                              'keep_linear_matrices': 'on',
-                              'write_dat': 'off',
+                              'save_data': 'off',
                               'rigid_modes_cg': 'off',
                               'continuous_eigenvalues': 'off',
                               'dt': 0,
@@ -205,11 +196,9 @@ class TestGolandFlutter(unittest.TestCase):
                                                               'remove_inputs': ['u_gust'],
                                                               'rom_method': ['Krylov'],
                                                               'rom_method_settings': {'Krylov': rom_settings}},
-                                            'rigid_body_motion': 'off'}}
+                                        }}
 
         ws.config['AsymptoticStability'] = {'print_info': True,
-                                            'folder': self.route_test_dir + '/output/',
-                                            'target_system': ['aeroelastic', 'aerodynamic', 'structural'],
                                             'velocity_analysis': [160, 180, 20]}
 
         ws.config['LinDynamicSim'] = {'dt': ws.dt,
@@ -218,22 +207,23 @@ class TestGolandFlutter(unittest.TestCase):
                                       'postprocessors': ['BeamPlot', 'AerogridPlot'],
                                       'postprocessors_settings': {'AerogridPlot': {
                                           'u_inf': ws.u_inf,
-                                          'folder': self.route_test_dir + '/output/',
                                           'include_rbm': 'on',
                                           'include_applied_forces': 'on',
                                           'minus_m_star': 0},
-                                          'BeamPlot': {'folder': ws.route + '/output/',
-                                                       'include_rbm': 'on',
+                                          'BeamPlot': {'include_rbm': 'on',
                                                        'include_applied_forces': 'on'}}}
 
         ws.config['FrequencyResponse'] = {'quick_plot': 'off',
-                                          'folder': self.route_test_dir + '/output/',
                                           'frequency_unit': 'k',
                                           'frequency_bounds': [0.0001, 1.0],
                                           'num_freqs': 100,
                                           'frequency_spacing': 'log',
                                           'target_system': ['aeroelastic'],
                                           }
+
+        ws.config['SaveData'] = {'save_aero': 'off',
+                                 'save_struct': 'off',
+                                 'save_rom': 'on'}
 
         ws.config.write()
 

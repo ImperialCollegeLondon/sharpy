@@ -105,6 +105,14 @@ class StepLinearUVLM(BaseSolver):
     settings_default['vortex_radius'] = vortex_radius_def
     settings_description['vortex_radius'] = 'Distance between points below which induction is not computed'
 
+    settings_types['vortex_radius_wake_ind'] = 'float'
+    settings_default['vortex_radius_wake_ind'] = vortex_radius_def
+    settings_description['vortex_radius_wake_ind'] = 'Distance between points below which induction is not computed in the wake convection'
+
+    settings_types['cfl1'] = 'bool'
+    settings_default['cfl1'] = True
+    settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
+    
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -167,6 +175,11 @@ class StepLinearUVLM(BaseSolver):
         settings.to_custom_types(self.settings['ScalingDict'], self.scaling_settings_types,
                                  self.scaling_settings_default, no_ctype=True)
 
+        # Initialise velocity generator
+        velocity_generator_type = gen_interface.generator_from_string(self.settings['velocity_field_generator'])
+        self.velocity_generator = velocity_generator_type()
+        self.velocity_generator.initialise(self.settings['velocity_field_input'])
+
         # Check whether linear UVLM has been initialised
         try:
             self.data.aero.linear
@@ -210,11 +223,11 @@ class StepLinearUVLM(BaseSolver):
             # Generate instance of linuvlm.Dynamic()
             lin_uvlm_system = linuvlm.DynamicBlock(aero_tstep,
                                                    dynamic_settings=self.settings,
-                                              # dt=self.settings['dt'].value,
-                                              # integr_order=self.settings['integr_order'].value,
+                                              # dt=self.settings['dt'],
+                                              # integr_order=self.settings['integr_order'],
                                               # ScalingDict=self.settings['ScalingDict'],
-                                              # RemovePredictor=self.settings['remove_predictor'].value,
-                                              # UseSparse=self.settings['use_sparse'].value,
+                                              # RemovePredictor=self.settings['remove_predictor'],
+                                              # UseSparse=self.settings['use_sparse'],
                                               for_vel=self.for_vel0)
 
             # add rotational speed
@@ -234,7 +247,13 @@ class StepLinearUVLM(BaseSolver):
                                   for ss in range(aero_tstep.n_surf)])
 
             # Assemble the state space system
-            lin_uvlm_system.assemble_ss()
+            wake_prop_settings = {'dt': self.settings['dt'],
+                                  'ts': self.data.ts,
+                                  't': self.data.ts*self.settings['dt'],
+                                  'for_pos':self.data.structure.timestep_info[-1].for_pos,
+                                  'cfl1': self.settings['cfl1'],
+                                  'vel_gen': self.velocity_generator}
+            lin_uvlm_system.assemble_ss(wake_prop_settings=wake_prop_settings)
             self.data.aero.linear['System'] = lin_uvlm_system
             self.data.aero.linear['SS'] = lin_uvlm_system.SS
             self.data.aero.linear['x_0'] = x_0
@@ -248,11 +267,6 @@ class StepLinearUVLM(BaseSolver):
             # aero_tstep.linear.x = x_0
             # aero_tstep.linear.u = u_0
             # aero_tstep.linear.y = f_0
-
-        # Initialise velocity generator
-        velocity_generator_type = gen_interface.generator_from_string(self.settings['velocity_field_generator'])
-        self.velocity_generator = velocity_generator_type()
-        self.velocity_generator.initialise(self.settings['velocity_field_input'])
 
     def run(self,
             aero_tstep,

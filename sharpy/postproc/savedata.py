@@ -1,14 +1,13 @@
 import os
 import h5py
+import copy
 import sharpy
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.h5utils as h5utils
+from sharpy.presharpy.presharpy import PreSharpy
 
-
-# Define basic numerical types
-# BasicNumTypes=(float,float32,float64,int,int32,int64,complex)
 
 @solver
 class SaveData(BaseSolver):
@@ -37,10 +36,6 @@ class SaveData(BaseSolver):
     settings_description = dict()
     settings_options = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Folder to save data'
-
     settings_types['save_aero'] = 'bool'
     settings_default['save_aero'] = True
     settings_description['save_aero'] = 'Save aerodynamic classes.'
@@ -57,6 +52,14 @@ class SaveData(BaseSolver):
     settings_default['save_linear_uvlm'] = False
     settings_description['save_linear_uvlm'] = 'Save linear UVLM state space system. Use with caution when dealing with ' \
                                                'large systems.'
+
+    settings_types['save_wake'] = 'bool'
+    settings_default['save_wake'] = True
+    settings_description['save_wake'] = 'Save aero wake classes.'
+
+    settings_types['save_rom'] = 'bool'
+    settings_default['save_rom'] = False
+    settings_description['save_rom'] = 'Saves the ROM matrices and the reduced order model'
 
     settings_types['skip_attr'] = 'list(str)'
     settings_default['skip_attr'] = ['fortran',
@@ -92,54 +95,56 @@ class SaveData(BaseSolver):
                                        settings_options=settings_options)
 
     def __init__(self):
-        import sharpy
 
         self.settings = None
         self.data = None
 
         self.folder = ''
         self.filename = ''
+        self.filename_linear = ''
         self.ts_max = 0
+        self.caller = None
 
         ### specify which classes are saved as hdf5 group
         # see initialise and add_as_grp
-        self.ClassesToSave = (sharpy.presharpy.presharpy.PreSharpy,)
+        self.ClassesToSave = (PreSharpy,)
 
-    def initialise(self, data, custom_settings=None):
-
-        # Add these anyway - therefore if you add your own skip_attr you don't have to retype all of these
-        self.settings_default['skip_attr'].append(['fortran',
-                                                   'airfoils',
-                                                   'airfoil_db',
-                                                   'settings_types',
-                                                   'ct_dynamic_forces_list',
-                                                   'ct_forces_list',
-                                                   'ct_gamma_dot_list',
-                                                   'ct_gamma_list',
-                                                   'ct_gamma_star_list',
-                                                   'ct_normals_list',
-                                                   'ct_u_ext_list',
-                                                   'ct_u_ext_star_list',
-                                                   'ct_zeta_dot_list',
-                                                   'ct_zeta_list',
-                                                   'ct_zeta_star_list',
-                                                   'dynamic_input'])
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
+
         settings.to_custom_types(self.settings,
                                  self.settings_types, self.settings_default, options=self.settings_options)
+
+        # Add these anyway - therefore if you add your own skip_attr you don't have to retype all of these
+        self.settings['skip_attr'].extend(['fortran',
+                                            'airfoils',
+                                            'airfoil_db',
+                                            'settings_types',
+                                            'ct_dynamic_forces_list',
+                                            'ct_forces_list',
+                                            'ct_gamma_dot_list',
+                                            'ct_gamma_list',
+                                            'ct_gamma_star_list',
+                                            'ct_normals_list',
+                                            'ct_u_ext_list',
+                                            'ct_u_ext_star_list',
+                                            'ct_zeta_dot_list',
+                                            'ct_zeta_list',
+                                            'ct_zeta_star_list',
+                                            'dynamic_input'])
+
         self.ts_max = self.data.ts + 1
 
         # create folder for containing files if necessary
-        if not os.path.exists(self.settings['folder']):
-            os.makedirs(self.settings['folder'])
-        self.folder = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/'
+        self.folder = data.output_folder + '/savedata/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.filename = self.folder + self.data.settings['SHARPy']['case'] + '.data.h5'
+        self.filename_linear = self.folder + self.data.settings['SHARPy']['case'] + '.linss.h5'
 
         if os.path.isfile(self.filename):
             os.remove(self.filename)
@@ -160,6 +165,12 @@ class SaveData(BaseSolver):
             if self.settings['save_aero']:
                 self.ClassesToSave += (sharpy.aero.models.aerogrid.Aerogrid,
                                        sharpy.utils.datastructures.AeroTimeStepInfo,)
+                if not self.settings['save_wake']:
+                    self.settings['skip_attr'].append('zeta_star')
+                    self.settings['skip_attr'].append('u_ext_star')
+                    self.settings['skip_attr'].append('gamma_star')
+                    self.settings['skip_attr'].append('dist_to_orig')
+                    self.settings['skip_attr'].append('wake_conv_vel')
 
             if self.settings['save_struct']:
                 self.ClassesToSave += (
@@ -171,11 +182,12 @@ class SaveData(BaseSolver):
                                        sharpy.linear.assembler.linearaeroelastic.LinearAeroelastic,
                                        sharpy.linear.assembler.linearbeam.LinearBeam,
                                        sharpy.linear.assembler.linearuvlm.LinearUVLM,
-                                       sharpy.linear.src.libss.ss,
+                                       sharpy.linear.src.libss.ss_block,
                                        sharpy.linear.src.lingebm.FlexDynamic,)
 
             if self.settings['save_linear_uvlm']:
-                self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss)
+                self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss_block)
+        self.caller = caller
 
     def run(self, online=False):
 
@@ -188,35 +200,28 @@ class SaveData(BaseSolver):
             hdfile = h5py.File(self.filename, 'a')
 
             if (online and file_exists):
-                if self.settings['save_aero']:
-                    h5utils.add_as_grp(self.data.aero.timestep_info[self.data.ts],
-                                       hdfile['data']['aero']['timestep_info'],
-                                       grpname=("%05d" % self.data.ts),
-                                       ClassesToSave=(sharpy.utils.datastructures.AeroTimeStepInfo,),
-                                       SkipAttr=self.settings['skip_attr'],
-                                       compress_float=self.settings['compress_float'])
-                if self.settings['save_struct']:
-                    if self.data.structure.timestep_info[self.data.ts].in_global_AFoR:
-                        tstep = self.data.structure.timestep_info[self.data.ts]
-                    else:
-                        tstep = self.data.structure.timestep_info[self.data.ts].copy()
-                        tstep.whole_structure_to_global_AFoR(self.data.structure)
-
-                    h5utils.add_as_grp(tstep,
-                                       hdfile['data']['structure']['timestep_info'],
-                                       grpname=("%05d" % self.data.ts),
-                                       ClassesToSave=(sharpy.utils.datastructures.StructTimeStepInfo,),
-                                       SkipAttr=self.settings['skip_attr'],
-                                       compress_float=self.settings['compress_float'])
+                self.save_timestep(self.data, self.settings, self.data.ts, hdfile)
             else:
+                skip_attr_init = copy.deepcopy(self.settings['skip_attr'])
+                skip_attr_init.append('timestep_info')
+
+                h5utils.add_as_grp(self.data, hdfile, grpname='data',
+                                   ClassesToSave=self.ClassesToSave, SkipAttr=skip_attr_init,
+                                   compress_float=self.settings['compress_float'])
+
+                if self.settings['save_struct']:
+                    h5utils.add_as_grp(list(),
+                               hdfile['data']['structure'],
+                               grpname='timestep_info')
+                if self.settings['save_aero']:
+                    h5utils.add_as_grp(list(),
+                               hdfile['data']['aero'],
+                               grpname='timestep_info')
+
                 for it in range(len(self.data.structure.timestep_info)):
                     tstep_p = self.data.structure.timestep_info[it]
                     if tstep_p is not None:
-                        if not tstep_p.in_global_AFoR:
-                            tstep_p.whole_structure_to_global_AFoR(self.data.structure)
-                h5utils.add_as_grp(self.data, hdfile, grpname='data',
-                                   ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
-                                   compress_float=self.settings['compress_float'])
+                        self.save_timestep(self.data, self.settings, it, hdfile)
 
             hdfile.close()
 
@@ -230,6 +235,23 @@ class SaveData(BaseSolver):
                                    ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
                                    compress_float=self.settings['compress_float'])
                 linhdffile.close()
+
+            if self.settings['save_linear']:
+                with h5py.File(self.filename_linear, 'a') as linfile:
+                    h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linfile,
+                                       grpname='linearisation_vectors',
+                                       ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                       compress_float=self.settings['compress_float'])
+                    h5utils.add_as_grp(self.data.linear.ss, linfile, grpname='ss',
+                                       ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                       compress_float=self.settings['compress_float'])
+
+            if self.settings['save_rom']:
+                try:
+                    for k, rom in self.data.linear.linear_system.uvlm.rom.items():
+                        rom.save(self.filename.replace('.data.h5', '_{:s}.rom.h5'.format(k.lower())))
+                except AttributeError:
+                    cout.cout_wrap('Could not locate a reduced order model to save')
 
         elif self.settings['format'] == 'mat':
             from scipy.io import savemat
@@ -245,28 +267,44 @@ class SaveData(BaseSolver):
                             'D': D}
                 for k, v in linearisation_vectors.items():
                     savedict[k] = v
-                try:
-                    dt = self.data.linear.ss.dt
+                dt = self.data.linear.ss.dt
+                if dt is not None:
                     savedict['dt'] = dt
-                except AttributeError:
-                    pass
                 savemat(matfilename, savedict)
 
             if self.settings['save_linear_uvlm']:
                 matfilename = self.filename.replace('.data.h5', '.uvlmss.mat')
                 linearisation_vectors = self.data.linear.linear_system.uvlm.linearisation_vectors
                 A, B, C, D = self.data.linear.linear_system.uvlm.ss.get_mats()
+
                 savedict = {'A': A,
                             'B': B,
                             'C': C,
                             'D': D}
                 for k, v in linearisation_vectors.items():
                     savedict[k] = v
-                try:
-                    dt = self.data.linear.ss.dt
+                dt = self.data.linear.linear_system.uvlm.ss.dt
+                if dt is not None:
                     savedict['dt'] = dt
-                except AttributeError:
-                    pass
                 savemat(matfilename, savedict)
 
         return self.data
+
+    @staticmethod
+    def save_timestep(data, settings, ts, hdfile):
+        if settings['save_aero']:
+            h5utils.add_as_grp(data.aero.timestep_info[ts],
+                               hdfile['data']['aero']['timestep_info'],
+                               grpname=("%05d" % ts),
+                               ClassesToSave=(sharpy.utils.datastructures.AeroTimeStepInfo,),
+                               SkipAttr=settings['skip_attr'],
+                               compress_float=settings['compress_float'])
+        if settings['save_struct']:
+            tstep = data.structure.timestep_info[ts]
+
+            h5utils.add_as_grp(tstep,
+                               hdfile['data']['structure']['timestep_info'],
+                               grpname=("%05d" % ts),
+                               ClassesToSave=(sharpy.utils.datastructures.StructTimeStepInfo,),
+                               SkipAttr=settings['skip_attr'],
+                               compress_float=settings['compress_float'])

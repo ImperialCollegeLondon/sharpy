@@ -33,7 +33,7 @@ def cast(k, v, pytype, ctype, default):
     return val
 
 
-def to_custom_types(dictionary, types, default, options=dict(), no_ctype=False):
+def to_custom_types(dictionary, types, default, options=dict(), no_ctype=True):
     for k, v in types.items():
         if v == 'int':
             if no_ctype:
@@ -171,7 +171,7 @@ def to_custom_types(dictionary, types, default, options=dict(), no_ctype=False):
                 continue
             if isinstance(dictionary[k], list):
                 for i in range(len(dictionary[k])):
-                    dictionary[k][i] = float(dictionary[k][i])
+                    dictionary[k][i] = complex(dictionary[k][i])
                 dictionary[k] = np.array(dictionary[k])
                 continue
             # dictionary[k] = dictionary[k].split(',')
@@ -185,7 +185,7 @@ def to_custom_types(dictionary, types, default, options=dict(), no_ctype=False):
         elif v == 'dict':
             try:
                 if not isinstance(dictionary[k], dict):
-                    raise TypeError
+                    raise TypeError('Setting for {:s} is not a dictionary'.format(k))
             except KeyError:
                 if default[k] is None:
                     raise exceptions.NoDefaultValueException(k)
@@ -196,9 +196,16 @@ def to_custom_types(dictionary, types, default, options=dict(), no_ctype=False):
 
     check_settings_in_options(dictionary, types, options)
 
+    unrecognised_settings = []
     for k in dictionary.keys():
         if k not in list(types.keys()):
-            cout.cout_wrap('Warning - Unrecognised setting: %s. Please check input file and/or documentation.' % k, 3)
+            unrecognised_settings.append(exceptions.NotRecognisedSetting(k))
+
+    for setting in unrecognised_settings:
+        cout.cout_wrap(repr(setting), 4)
+
+    if unrecognised_settings:
+        raise Exception(unrecognised_settings)
 
 
 def check_settings_in_options(settings, settings_types, settings_options):

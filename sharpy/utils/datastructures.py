@@ -51,8 +51,6 @@ class AeroTimeStepInfo(object):
           ``[n_surf][3 x streamwise nodes x spanwise nodes]``
         gamma_dot (list(np.ndarray)): Time derivative of ``gamma``
 
-        inertial_total_forces (list(np.ndarray)): Total aerodynamic forces in ``G`` FoR ``[n_surf x 6]``
-        body_total_forces (list(np.ndarray)): Total aerodynamic forces in ``A`` FoR ``[n_surf x 6]``
         inertial_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``G`` FoR ``[n_surf x 6]``
         body_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``A`` FoR ``[n_surf x 6]``
         inertial_unsteady_forces (list(np.ndarray)): Total aerodynamic unsteady forces in ``G`` FoR ``[n_surf x 6]``
@@ -158,9 +156,14 @@ class AeroTimeStepInfo(object):
                                             dimensions[i_surf, 1]),
                                            dtype=ct.c_double))
 
-        # total forces
-        self.inertial_total_forces = np.zeros((self.n_surf, 6))
-        self.body_total_forces = np.zeros((self.n_surf, 6))
+        # Distance from the trailing edge of the wake vertices
+        self.dist_to_orig = []
+        for i_surf in range(self.n_surf):
+            self.dist_to_orig.append(np.zeros((dimensions_star[i_surf, 0] + 1,
+                                               dimensions_star[i_surf, 1] + 1),
+                                               dtype=ct.c_double))
+
+        # total forces - written by AeroForcesCalculator
         self.inertial_steady_forces = np.zeros((self.n_surf, 6))
         self.body_steady_forces = np.zeros((self.n_surf, 6))
         self.inertial_unsteady_forces = np.zeros((self.n_surf, 6))
@@ -219,14 +222,15 @@ class AeroTimeStepInfo(object):
         for i_surf in range(copied.n_surf):
             copied.gamma_star[i_surf] = self.gamma_star[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
 
+        for i_surf in range(copied.n_surf):
+            copied.dist_to_orig[i_surf] = self.dist_to_orig[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
         # total forces
-        copied.inertial_total_forces = self.inertial_total_forces.astype(dtype=ct.c_double, copy=True, order='C')
-        copied.body_total_forces = self.body_total_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.inertial_steady_forces = self.inertial_steady_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.body_steady_forces = self.body_steady_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.inertial_unsteady_forces = self.inertial_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.body_unsteady_forces = self.body_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
-
+        
         copied.postproc_cell = copy.deepcopy(self.postproc_cell)
         copied.postproc_node = copy.deepcopy(self.postproc_node)
 
@@ -297,6 +301,10 @@ class AeroTimeStepInfo(object):
             for i_dim in range(NDIM*2):
                 self.ct_dynamic_forces_list.append(self.dynamic_forces[i_surf][i_dim, :, :].reshape(-1))
 
+        self.ct_dist_to_orig_list = []
+        for i_surf in range(self.n_surf):
+            self.ct_dist_to_orig_list.append(self.dist_to_orig[i_surf][:, :].reshape(-1))
+
         try:
             self.postproc_cell['incidence_angle']
         except KeyError:
@@ -335,6 +343,9 @@ class AeroTimeStepInfo(object):
                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_forces_list]))
         self.ct_p_dynamic_forces = ((ct.POINTER(ct.c_double)*len(self.ct_dynamic_forces_list))
                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_dynamic_forces_list]))
+        self.ct_p_dist_to_orig = ((ct.POINTER(ct.c_double)*len(self.ct_dist_to_orig_list))
+                           (* [np.ctypeslib.as_ctypes(array) for array in self.ct_dist_to_orig_list]))
+
         if with_incidence_angle:
             self.postproc_cell['incidence_angle_ct_pointer'] = ((ct.POINTER(ct.c_double)*len(self.ct_incidence_list))
                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_incidence_list]))
@@ -405,6 +416,11 @@ class AeroTimeStepInfo(object):
 
         try:
             del self.ct_p_dynamic_forces
+        except AttributeError:
+            pass
+
+        try:
+            del self.ct_p_dist_to_orig
         except AttributeError:
             pass
 
@@ -481,12 +497,11 @@ class StructTimeStepInfo(object):
         for_vel (np.ndarray): ``A`` frame of reference velocity. Expressed in A FoR
         for_acc (np.ndarray): ``A`` frame of reference acceleration. Expressed in A FoR
 
-        gravity_vector_inertial (np.ndarray): Unit vector parallel to the direction of gravity expressed in the ``G``
-          FoR
-        gravity_vector_body (np.ndarray): Unit vector parallel to the direction of gravity expressed in the ``A`` FoR
         steady_applied_forces (np.ndarray): Forces applied to the structure not associated to time derivatives
           ``[num_nodes x 6]``. Expressed in B FoR
         unsteady_applied_forces (np.ndarray): Forces applied to the structure associated to time derivatives
+          ``[num_node x 6]``. Expressed in B FoR
+        runtime_generated_forces (np.ndarray): Forces generated at runtime through runtime generators
           ``[num_node x 6]``. Expressed in B FoR
         gravity_forces (np.ndarray): Gravity forces at nodes ``[num_node x 6]``. Expressed in A FoR
 
@@ -533,11 +548,9 @@ class StructTimeStepInfo(object):
         self.for_vel = np.zeros((6,), dtype=ct.c_double, order='F')
         self.for_acc = np.zeros((6,), dtype=ct.c_double, order='F')
 
-        self.gravity_vector_inertial = np.array([0.0, 0.0, 1.0], dtype=ct.c_double, order='F')
-        self.gravity_vector_body = np.array([0.0, 0.0, 1.0], dtype=ct.c_double, order='F')
-
         self.steady_applied_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.unsteady_applied_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
+        self.runtime_generated_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.gravity_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.total_gravity_forces = np.zeros((6,), dtype=ct.c_double, order='F')
         self.total_forces = np.zeros((6,), dtype=ct.c_double, order='F')
@@ -590,11 +603,9 @@ class StructTimeStepInfo(object):
         copied.for_vel = self.for_vel.astype(dtype=ct.c_double, order='F', copy=True)
         copied.for_acc = self.for_acc.astype(dtype=ct.c_double, order='F', copy=True)
 
-        copied.gravity_vector_inertial = self.gravity_vector_inertial.astype(dtype=ct.c_double, order='F', copy=True)
-        copied.gravity_vector_body = self.gravity_vector_body.astype(dtype=ct.c_double, order='F', copy=True)
-
         copied.steady_applied_forces = self.steady_applied_forces.astype(dtype=ct.c_double, order='F', copy=True)
         copied.unsteady_applied_forces = self.unsteady_applied_forces.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.runtime_generated_forces = self.runtime_generated_forces.astype(dtype=ct.c_double, order='F', copy=True)
         copied.gravity_forces = self.gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
         copied.total_gravity_forces = self.total_gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
         copied.total_forces = self.total_forces.astype(dtype=ct.c_double, order='F', copy=True)
@@ -693,11 +704,9 @@ class StructTimeStepInfo(object):
         ibody_StructTimeStepInfo.psi_dot = self.psi_dot[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.psi_ddot = self.psi_ddot[ibody_elems,:,:].astype(dtype=ct.c_double, order='F', copy=True)
 
-        ibody_StructTimeStepInfo.gravity_vector_inertial = self.gravity_vector_inertial.astype(dtype=ct.c_double, order='F', copy=True)
-        ibody_StructTimeStepInfo.gravity_vector_body = self.gravity_vector_body.astype(dtype=ct.c_double, order='F', copy=True)
-
         ibody_StructTimeStepInfo.steady_applied_forces = self.steady_applied_forces[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.unsteady_applied_forces = self.unsteady_applied_forces[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.runtime_generated_forces = self.runtime_generated_forces[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.gravity_forces = self.gravity_forces[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.total_gravity_forces = self.total_gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
 
@@ -836,6 +845,10 @@ class StructTimeStepInfo(object):
             self.pos[ibody_nodes,:] = MB_tstep[ibody].pos.astype(dtype=ct.c_double, order='F', copy=True)
             self.psi[ibody_elems,:,:] = MB_tstep[ibody].psi.astype(dtype=ct.c_double, order='F', copy=True)
             self.gravity_forces[ibody_nodes,:] = MB_tstep[ibody].gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
+
+            self.pos_dot[ibody_nodes,:] = MB_tstep[ibody].pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
+            self.psi_dot[ibody_elems,:,:] = MB_tstep[ibody].psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
+
             # TODO: Do I need a change in FoR for the following variables? Maybe for the FoR ones.
             # tstep.forces_constraints_nodes[ibody_nodes,:] = MB_tstep[ibody].forces_constraints_nodes.astype(dtype=ct.c_double, order='F', copy=True)
             # tstep.forces_constraints_FoR[ibody, :] = MB_tstep[ibody].forces_constraints_FoR[ibody, :].astype(dtype=ct.c_double, order='F', copy=True)
@@ -876,6 +889,9 @@ class StructTimeStepInfo(object):
             self.psi[ibody_elems,:,:] = MB_tstep[ibody].psi.astype(dtype=ct.c_double, order='F', copy=True)
             self.gravity_forces[ibody_nodes,:] = MB_tstep[ibody].gravity_forces.astype(dtype=ct.c_double, order='F',
                                                                                        copy=True)
+            
+            self.pos_dot[ibody_nodes,:] = MB_tstep[ibody].pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
+            self.psi_dot[ibody_elems,:,:] = MB_tstep[ibody].psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
 
 
 class LinearTimeStepInfo(object):
@@ -904,7 +920,7 @@ class Linear(object):
     as class attributes the following classes that describe the linearised problem.
 
     Attributes:
-        ss (sharpy.linear.src.libss.ss): State-space system
+        ss (sharpy.linear.src.libss.StateSpace): State-space system
         linear_system (sharpy.linear.utils.ss_interface.BaseElement): Assemble system properties
         tsaero0 (sharpy.utils.datastructures.AeroTimeStepInfo): Linearisation aerodynamic timestep
         tsstruct0 (sharpy.utils.datastructures.StructTimeStepInfo): Linearisation structural timestep

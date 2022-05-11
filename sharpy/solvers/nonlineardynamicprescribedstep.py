@@ -10,6 +10,7 @@ from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
+import sharpy.utils.algebra as algebra
 
 _BaseStructural = solver_from_string('_BaseStructural')
 
@@ -49,12 +50,14 @@ class NonLinearDynamicPrescribedStep(_BaseStructural):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # load info from dyn dictionary
-        self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'].value)
+        self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'])
 
 
     def run(self, structural_step=None, dt=None):
         if dt is None:
-            dt = self.settings['dt'].value
+            dt = self.settings['dt']
+        if structural_step is None:
+            structural_step = self.data.structure.timestep_info[-1]
 
         if self.data.ts > 0:
             try:
@@ -94,10 +97,10 @@ class NonLinearDynamicPrescribedStep(_BaseStructural):
         applied_forces_copy = applied_forces.copy()
         gravity_forces_copy = step.gravity_forces.copy()
         for i_node in range(self.data.structure.num_node):
-            applied_forces_copy[i_node, 3:6] += np.cross(step.pos[i_node, :],
-                                                         applied_forces_copy[i_node, 0:3])
-            gravity_forces_copy[i_node, 3:6] += np.cross(step.pos[i_node, :],
-                                                         gravity_forces_copy[i_node, 0:3])
+            applied_forces_copy[i_node, 3:6] += algebra.cross3(step.pos[i_node, :],
+                                                               applied_forces_copy[i_node, 0:3])
+            gravity_forces_copy[i_node, 3:6] += algebra.cross3(step.pos[i_node, :],
+                                                               gravity_forces_copy[i_node, 0:3])
 
         totals = np.sum(applied_forces_copy + gravity_forces_copy, axis=0)
         step.total_forces = np.sum(applied_forces_copy, axis=0)

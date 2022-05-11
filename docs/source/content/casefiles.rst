@@ -256,11 +256,11 @@ Item by item:
 
     Same here, just a rotation around :math:`z`.
 
-* ``airfoil_distribution_input [num_elem, num_node_elem]``: Airfoil distribution.
+* ``airfoil_distribution [num_elem, num_node_elem]``: Airfoil distribution.
 
     Contains the indices of the airfoils that you put previously in ``airfoils``.
 
-*  ``surface_distribution_input [num_elem]``: Surface integer array.
+*  ``surface_distribution [num_elem]``: Surface integer array.
 
     It contains the index of the surface the element belongs
     to. Surfaces need to be continuous, so please note that if your beam numbering is not continuous, you need to make
@@ -274,7 +274,7 @@ Item by item:
 
     Is a string with the chordwise panel distribution. In almost all cases, leave it at ``uniform``.
 
-*  ``aero_node_input [num_node]``: Aerodynamic node definition.
+*  ``aero_node [num_node]``: Aerodynamic node definition.
 
     Is a boolean (``True`` or ``False``) array that indicates if that node has a lifting
     surface attached to it.
@@ -314,3 +314,38 @@ Item by item:
     in the **local, body-attached** ``B`` frame, the factors and constant terms for: ``fy, fz, mx``.
     For more information on how these factors are included in the mapping terms
     see :func:`sharpy.aero.utils.mapping.aero2struct_force_mapping`.
+
+* ``polars`` Group (optional): Use airfoil polars to correct aerodynamic forces.
+
+    This is an optional group to add if correcting the aerodynamic forces using airfoil polars is desired. A polar
+    should be included for each airfoil defined. Each entry consists of a 4-column table. The first column corresponds
+    to the angle of attack (in radians) and then the ``C_L``, ``C_D`` and ``C_M``. 
+
+
+Time-varying force input file (``.dyn.h5``)
+-------------------------------------------
+
+The ``.dyn.h5`` file is an *optional* input file that may contain force and acceleration inputs that vary with time.
+This is intended for use in dynamic problems. For SHARPy to look for and use this file the setting ``unsteady`` in the
+:class:`~sharpy.solvers.beamloader.BeamLoader` must be turned to ``on``.
+
+Appropriate data entries in the ``.dyn.h5`` include:
+
+* ``dynamic_forces [num_t_steps, num_node, 6]``: Dynamic forces in body attached ``B`` frame.
+
+    Forces given at each time step, for each node and then for the 6 degrees of freedom (``fx, fy, fz, mx, my, mz``) in
+    a body-attached (local) frame of reference ``B``.
+
+* ``for_pos [num_t_steps, 6]``: Body frame of reference (A FoR) position.
+
+    Position of the reference frame A in time.
+
+* ``for_vel [num_t_steps, 6]``: Body frame of reference (A FoR) velocity.
+
+    Velocity of the reference frame A in time.
+
+* ``for_acc [num_t_steps, 6]``: Body frame of reference (A FoR) acceleration.
+
+    Acceleration of the reference frame A in time.
+    
+    If a case is restarted from a pickle file, the .dyn.h5 file should include the dynamic information for the previous simulation (that will be discarded) and the information for the new simulation. 

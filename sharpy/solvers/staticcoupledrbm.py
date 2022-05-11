@@ -8,7 +8,7 @@ import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
-import sharpy.utils.correct_forces as cf
+import sharpy.utils.generator_interface as gen_utils
 
 
 @solver
@@ -63,8 +63,13 @@ class StaticCoupledRBM(BaseSolver):
 
     settings_types['correct_forces_method'] = 'str'
     settings_default['correct_forces_method'] = ''
-    settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. Check :py:mod:`sharpy.utils.correct_forces`'
-    settings_options['correct_forces_method'] = ['efficiency', 'polars']
+    settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. ' \
+                                                    'See :py:mod:`sharpy.generators.polaraeroforces`'
+    settings_options['correct_forces_method'] = ['EfficiencyCorrection', 'PolarCorrection']
+
+    settings_types['correct_forces_settings'] = 'dict'
+    settings_default['correct_forces_settings'] = {}
+    settings_description['correct_forces_settings'] = 'Settings for corrected forces evaluation'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
@@ -79,7 +84,7 @@ class StaticCoupledRBM(BaseSolver):
         self.previous_force = None
 
         self.correct_forces = False
-        self.correct_forces_function = None
+        self.correct_forces_generator = None
 
     def initialise(self, data, input_dict=None):
         self.data = data
@@ -104,7 +109,12 @@ class StaticCoupledRBM(BaseSolver):
         # Define the function to correct aerodynamic forces
         if self.settings['correct_forces_method'] is not '':
             self.correct_forces = True
-            self.correct_forces_function = cf.dict_of_corrections[self.settings['correct_forces_method']]
+            self.correct_forces_generator = gen_utils.generator_from_string(self.settings['correct_forces_method'])()
+            self.correct_forces_generator.initialise(in_dict=self.settings['correct_forces_settings'],
+                                                     aero=self.data.aero,
+                                                     structure=self.data.structure,
+                                                     rho=self.settings['aero_solver_settings']['rho'],
+                                                     vortex_radius=self.settings['aero_solver_settings']['vortex_radius'])
 
     def increase_ts(self):
         self.data.ts += 1
@@ -130,13 +140,13 @@ class StaticCoupledRBM(BaseSolver):
          # print("ts", self.data.ts)
         self.data.structure.timestep_info[-1].for_vel = self.data.structure.dynamic_input[0]['for_vel']
 
-        for i_step in range(self.settings['n_load_steps'].value + 1):
-            if (i_step == self.settings['n_load_steps'].value and
-                    self.settings['n_load_steps'].value > 0):
+        for i_step in range(self.settings['n_load_steps'] + 1):
+            if (i_step == self.settings['n_load_steps'] and
+                    self.settings['n_load_steps'] > 0):
                 break
             # load step coefficient
-            if not self.settings['n_load_steps'].value == 0:
-                load_step_multiplier = (i_step + 1.0)/self.settings['n_load_steps'].value
+            if not self.settings['n_load_steps'] == 0:
+                load_step_multiplier = (i_step + 1.0)/self.settings['n_load_steps']
             else:
                 load_step_multiplier = 1.0
 
@@ -144,8 +154,8 @@ class StaticCoupledRBM(BaseSolver):
             if i_step > 0:
                 self.increase_ts()
 
-            for i_iter in range(self.settings['max_iter'].value):
-                if self.settings['print_info'].value:
+            for i_iter in range(self.settings['max_iter']):
+                if self.settings['print_info']:
                     cout.cout_wrap('i_step: %u, i_iter: %u' % (i_step, i_iter))
 
                 # run aero
@@ -164,24 +174,26 @@ class StaticCoupledRBM(BaseSolver):
                     self.data.aero.aero_dict)
 
                 if self.correct_forces:
-                    struct_forces = self.correct_forces_function(self.data,
-                                            self.data.aero.timestep_info[self.data.ts],
-                                            self.data.structure.timestep_info[self.data.ts],
-                                            struct_forces)
+                    struct_forces = \
+                        self.correct_forces_generator.generate(aero_kstep=self.data.aero.timestep_info[self.data.ts],
+                                                               structural_kstep=self.data.structure.timestep_info[self.data.ts],
+                                                               struct_forces=struct_forces)
 
-                if not self.settings['relaxation_factor'].value == 0.:
+                self.data.aero.timestep_info[self.data.ts].postproc_node['aero_steady_forces'] = struct_forces
+
+                if not self.settings['relaxation_factor'] == 0.:
                     if i_iter == 0:
                         self.previous_force = struct_forces.copy()
 
                     temp = struct_forces.copy()
-                    struct_forces = ((1.0 - self.settings['relaxation_factor'].value)*struct_forces +
-                                     self.settings['relaxation_factor'].value*self.previous_force)
+                    struct_forces = ((1.0 - self.settings['relaxation_factor'])*struct_forces +
+                                     self.settings['relaxation_factor']*self.previous_force)
                     self.previous_force = temp
 
                 # copy force in beam
                 with_gravity_setting = True
                 try:
-                    old_g = self.structural_solver.settings['gravity'].value
+                    old_g = self.structural_solver.settings['gravity']
                     self.structural_solver.settings['gravity'] = old_g*load_step_multiplier
                 except KeyError:
                     with_gravity_setting = False
@@ -213,9 +225,13 @@ class StaticCoupledRBM(BaseSolver):
         return self.data
 
     def convergence(self, i_iter):
-        if i_iter == self.settings['max_iter'].value - 1:
+        if i_iter == self.settings['max_iter'] - 1:
             cout.cout_wrap('StaticCoupled did not converge!', 0)
             # quit(-1)
+
+        # Avoid rerunning UVLM if the structural solver is rigid
+        if "rigid" in self.settings['structural_solver'].lower():
+            return True
 
         if i_iter == 0:
             self.initial_pos = self.data.structure.timestep_info[self.data.ts].pos.copy()
@@ -240,14 +256,14 @@ class StaticCoupledRBM(BaseSolver):
         self.prev_pos = self.data.structure.timestep_info[self.data.ts].pos.copy()
         self.prev_psi = self.data.structure.timestep_info[self.data.ts].psi.copy()
 
-        if self.settings['print_info'].value:
+        if self.settings['print_info']:
             cout.cout_wrap('Pos res     = %8e. Psi res     = %8e.' % (res_pos, res_psi), 2)
             cout.cout_wrap('Pos_dot res = %8e. Psi_dot res = %8e.' % (res_pos_dot, res_psi_dot), 2)
 
-        if res_pos < self.settings['tolerance'].value:
-            if res_psi < self.settings['tolerance'].value:
-                if res_pos_dot < self.settings['tolerance'].value:
-                    if res_psi_dot < self.settings['tolerance'].value:
+        if res_pos < self.settings['tolerance']:
+            if res_psi < self.settings['tolerance']:
+                if res_pos_dot < self.settings['tolerance']:
+                    if res_psi_dot < self.settings['tolerance']:
                         return True
 
         return False
@@ -264,7 +280,7 @@ class StaticCoupledRBM(BaseSolver):
         #     cout.cout_wrap('Res = %8e' % (np.abs(self.current_residual - self.previous_residual)/self.previous_residual), 2)
         #
         # if return_value is None:
-        #     if np.abs(self.current_residual - self.previous_residual)/self.initial_residual < self.settings['tolerance'].value:
+        #     if np.abs(self.current_residual - self.previous_residual)/self.initial_residual < self.settings['tolerance']:
         #         return_value = True
         #     else:
         #         self.previous_residual = self.current_residual

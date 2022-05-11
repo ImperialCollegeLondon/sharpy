@@ -50,6 +50,10 @@ class _BaseStructural(BaseSolver):
     settings_default['gravity'] = 9.81
     settings_description['gravity'] = 'Gravitational acceleration'
 
+    settings_types['gravity_dir'] = 'list(float)'
+    settings_default['gravity_dir'] = [0., 0., 1.]
+    settings_description['gravity_dir'] = 'Direction in G where gravity applies'
+
     settings_types['relaxation_factor'] = 'float'
     settings_default['relaxation_factor'] = 0.3
 

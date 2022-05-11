@@ -99,7 +99,7 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
 
     """
     generator_id = 'TurbVelocityFieldBts'
-    generator_classification = 'TurbVelocityFieldBts'
+    generator_classification = 'velocity-field'
 
     settings_types = dict()
     settings_default = dict()
@@ -115,7 +115,7 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
 
     settings_types['new_orientation'] = 'str'
     settings_default['new_orientation'] = 'xyz'
-    settings_description['new_orientation'] = 'New order of the axes'
+    settings_description['new_orientation'] = 'New orientation of the axes'
 
     settings_types['u_fed'] = 'list(float)'
     settings_default['u_fed'] = np.zeros((3,))
@@ -128,6 +128,22 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
     settings_types['case_with_tower'] = 'bool'
     settings_default['case_with_tower'] = False
     settings_description['case_with_tower'] = 'Does the SHARPy case will include the tower in the simulation?'
+
+    settings_types['interpolate_wake'] = 'bool'
+    settings_default['interpolate_wake'] = True
+    settings_description['interpolate_wake'] = 'If False, u_out will be assigned to all the points in the wake'
+
+    settings_types['num_cores'] = 'int'
+    settings_default['num_cores'] = 1
+    settings_description['num_cores'] = 'Number of cores to be used in parallel computation'
+
+    settings_types['extra_offset'] = 'float'
+    settings_default['extra_offset'] = 0.
+    settings_description['extra_offset'] = 'Distance [m] to displace the turbulence box'
+
+    settings_types['use_3_4_interpolation'] = 'bool'
+    settings_default['use_3_4_interpolation'] = False
+    settings_description['use_3_4_interpolation'] = 'Use the farfield velocity at 3/4 chord for all the points along the chord'
 
     setting_table = settings.SettingsTable()
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description)
@@ -142,9 +158,13 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
 
         self.vel = None
 
+        self.dist_to_recirculate = None
+        self.gird_size_vec = None
+        self.grid_size_ufed_dir = None
+
     def initialise(self, in_dict):
         self.in_dict = in_dict
-        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default, no_ctype=True)
         self.settings = self.in_dict
 
         self.x_grid, self.y_grid, self.z_grid, self.vel = self.read_turbsim_bts(self.settings['turbulent_field'], self.settings['case_with_tower'])
@@ -158,6 +178,13 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
             cout.cout_wrap(' x = [' + str(self.bbox[0, 0]) + ', ' + str(self.bbox[0, 1]) + ']', 1)
             cout.cout_wrap(' y = [' + str(self.bbox[1, 0]) + ', ' + str(self.bbox[1, 1]) + ']', 1)
             cout.cout_wrap(' z = [' + str(self.bbox[2, 0]) + ', ' + str(self.bbox[2, 1]) + ']', 1)
+
+        self.dist_to_recirculate = 0.
+        self.grid_size_vec = np.array([np.max(self.x_grid) - np.min(self.x_grid),
+                                                   np.max(self.y_grid) - np.min(self.y_grid),
+                                                   np.max(self.z_grid) - np.min(self.z_grid)])
+        self.grid_size_ufed_dir = np.dot(self.grid_size_vec,
+                                         self.settings['u_fed']/np.linalg.norm(self.settings['u_fed']))
 
         # self.init_interpolator(x_grid, y_grid, z_grid, vel)
 
@@ -175,12 +202,57 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
         for_pos = params['for_pos']
         t = params['t']
 
-        # Through "offstet" zeta can be modified to simulate the turbulence being fed to the solid
-        # Usual method for wind turbines
-        self.interpolate_zeta(zeta,
-                              for_pos,
-                              uext,
-                              offset = -self.settings['u_fed']*t)
+        try:
+            is_wake = params['is_wake']
+        except KeyError:
+            is_wake = False
+
+        if is_wake and not self.settings['interpolate_wake']:
+            # The generator has received a wake and it will not be interpolated
+            for isurf in range(len(uext)):
+                _, n_m, n_n = uext[isurf].shape
+                for i_m in range(n_m):
+                    for i_n in range(n_n):
+                        uext[isurf][:, i_m, i_n] = self.settings['u_out']
+
+        else:
+            offset_mod = np.linalg.norm(self.settings['u_fed'])*t + self.settings['extra_offset']
+            while ((offset_mod - self.dist_to_recirculate) > self.grid_size_ufed_dir):
+                cout.cout_wrap("Recirculate inflow", 2)
+                self.dist_to_recirculate += self.grid_size_ufed_dir
+            # Through "offstet" zeta can be modified to simulate the turbulence being fed to the solid
+            # Usual method for wind turbines
+            offset = (-1.*offset_mod + self.dist_to_recirculate)*self.settings['u_fed']/np.linalg.norm(self.settings['u_fed'])
+            if ((not is_wake) and (self.settings['use_3_4_interpolation'])):
+                nsurf = len(zeta)
+                zeta_3_4_chord = [None]*nsurf
+                uext_3_4_chord = [None]*nsurf
+                for isurf in range(nsurf):
+                    N = zeta[isurf].shape[2]
+                    zeta_3_4_chord[isurf] = np.zeros((3, 1, N))
+                    uext_3_4_chord[isurf] = np.zeros((3, 1, N))
+                    # Compute the 3/4 chord position
+                    for i_n in range(N):
+                        zeta_3_4_chord[isurf][:, 0, i_n] = (zeta[isurf][:, 0, i_n] + 3.*zeta[isurf][:, -1, i_n])/4.
+
+                # Interpolate at the 3/4 chord point
+                self.interpolate_zeta(zeta_3_4_chord,
+                                      for_pos,
+                                      uext_3_4_chord,
+                                      offset = offset)
+
+                # Assign the values to all chord points
+                for isurf in range(nsurf):
+                    _, M, N = zeta[isurf].shape
+                    for i_n in range(N):
+                        for i_m in range(M):
+                            uext[isurf][:, i_m, i_n] = uext_3_4_chord[isurf][:, 0, i_n]
+
+            else:
+                self.interpolate_zeta(zeta,
+                                      for_pos,
+                                      uext,
+                                      offset = offset)
 
     def interpolate_zeta(self, zeta, for_pos, u_ext, interpolator=None, offset=np.zeros((3))):
         # if interpolator is None:
@@ -198,13 +270,18 @@ class TurbVelocityFieldBts(generator_interface.BaseGenerator):
                     ipoint += 1
 
             # Interpolate
-            list_uext = interp_rectgrid_vectorfield(points_list, (self.x_grid, self.y_grid, self.z_grid), self.vel, self.settings['u_out'], regularGrid=True, num_cores=1)
+            list_uext = interp_rectgrid_vectorfield(points_list,
+                                                 (self.x_grid, self.y_grid, self.z_grid),
+                                                 self.vel,
+                                                 self.settings['u_out'],
+                                                 regularGrid=True,
+                                                 num_cores=self.settings['num_cores'])
 
             # Reorder the values
             ipoint = 0
             for i_m in range(n_m):
                 for i_n in range(n_n):
-                    u_ext[isurf][:, i_m, i_n] = list_uext[ipoint, :]
+                    u_ext[isurf][:, i_m, i_n] = list_uext[ipoint]
                     ipoint += 1
 
     @staticmethod

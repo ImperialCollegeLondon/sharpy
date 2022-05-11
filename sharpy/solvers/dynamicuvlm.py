@@ -100,7 +100,7 @@ class DynamicUVLM(BaseSolver):
 
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.dt = self.settings['dt']
-        self.print_info = self.settings['print_info'].value
+        self.print_info = self.settings['print_info']
 
         self.aero_solver = solver_interface.initialise_solver(self.settings['aero_solver'])
         self.aero_solver.initialise(self.data, self.settings['aero_solver_settings'])
@@ -113,7 +113,7 @@ class DynamicUVLM(BaseSolver):
         for postproc in self.settings['postprocessors']:
             self.postprocessors[postproc] = solver_interface.initialise_solver(postproc)
             self.postprocessors[postproc].initialise(
-                self.data, self.settings['postprocessors_settings'][postproc])
+                self.data, self.settings['postprocessors_settings'][postproc], caller=self)
 
         if self.print_info:
             self.residual_table = cout.TablePrinter(2, 14, ['g', 'f'])
@@ -125,7 +125,7 @@ class DynamicUVLM(BaseSolver):
         struct_ini_step = self.data.structure.timestep_info[-1]
 
         for self.data.ts in range(len(self.data.aero.timestep_info),
-                                  len(self.data.aero.timestep_info) + self.settings['n_time_steps'].value):
+                                  len(self.data.aero.timestep_info) + self.settings['n_time_steps']):
 
             aero_tstep = self.data.aero.timestep_info[-1]
             self.aero_solver.update_custom_grid(struct_ini_step, aero_tstep)
@@ -153,7 +153,7 @@ class DynamicUVLM(BaseSolver):
 
             if self.print_info:
                 self.residual_table.print_line([self.data.ts,
-                                                self.data.ts * self.dt.value])
+                                                self.data.ts * self.dt])
 
             if self.with_postprocessors:
                 for postproc in self.postprocessors:

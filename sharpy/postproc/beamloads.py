@@ -1,4 +1,6 @@
+import os
 import numpy as np
+import os
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.structure.utils.xbeamlib as xbeamlib
@@ -25,10 +27,6 @@ class BeamLoads(BaseSolver):
     settings_default['output_file_name'] = 'beam_loads'
     settings_description['output_file_name'] = 'Output file name'
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Output folder path'
-
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -37,16 +35,21 @@ class BeamLoads(BaseSolver):
         self.settings = None
         self.data = None
 
-        self.folder = ''
-        self.filename = ''
+        self.folder = None
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        self.caller = caller
+
+        self.folder = data.output_folder + '/beam/'
+        if not os.path.isdir(self.folder):
+            os.makedirs(self.folder)
 
     def run(self, online=False):
         self.calculate_loads(online)
@@ -69,8 +72,7 @@ class BeamLoads(BaseSolver):
             data[:, 4:10] = self.data.structure.timestep_info[it].postproc_cell['loads'][:, :]
             header += 'Fx, Fy, Fz, Mx, My, Mz'
 
-            filename = self.settings['folder'] + '/'
-            filename += self.data.case_name + '/' + 'beam/'
+            filename = self.folder
             filename += self.settings['output_file_name'] + '_' + '{0}'.format(it)
             filename += '.csv'
             np.savetxt(filename, data, delimiter=',', header=header)
@@ -89,8 +91,7 @@ class BeamLoads(BaseSolver):
                 data[:, 4:10] = self.data.structure.timestep_info[it].postproc_cell['loads'][:, :]
                 header += 'Fx, Fy, Fz, Mx, My, Mz'
 
-                filename = self.settings['folder'] + '/'
-                filename += self.data.case_name + '/' + 'beam/'
+                filename = self.folder
                 filename += self.settings['output_file_name'] + '_' + '{0}'.format(it)
                 filename += '.csv'
                 np.savetxt(filename, data, delimiter=',', header=header)
@@ -98,15 +99,11 @@ class BeamLoads(BaseSolver):
     def calculate_loads(self, online):
         if online:
             it = -1
-            (self.data.structure.timestep_info[it].postproc_cell['strain'],
-             self.data.structure.timestep_info[it].postproc_cell['loads']) = xbeamlib.cbeam3_loads(self.data.structure,
-                                                                                                   it)
+            timestep_add_loads(self.data.structure, self.data.structure.timestep_info[it])
             self.calculate_coords_a(self.data.structure.timestep_info[it])
         else:
             for it in range(len(self.data.structure.timestep_info)):
-                (self.data.structure.timestep_info[it].postproc_cell['strain'],
-                 self.data.structure.timestep_info[it].postproc_cell['loads']) = xbeamlib.cbeam3_loads(self.data.structure,
-                                                                                                       it)
+                timestep_add_loads(self.data.structure, self.data.structure.timestep_info[it])
                 self.calculate_coords_a(self.data.structure.timestep_info[it])
 
     def calculate_coords_a(self, timestep_info):
@@ -114,6 +111,11 @@ class BeamLoads(BaseSolver):
         for ielem in range(timestep_info.num_elem):
             iglobal_node = self.data.structure.connectivities[ielem, 2]
             timestep_info.postproc_cell['coords_a'][ielem, :] = timestep_info.pos[iglobal_node, :]
+
+
+def timestep_add_loads(structure, timestep):
+    timestep.postproc_cell['strain'], timestep.postproc_cell['loads'] = \
+        xbeamlib.cbeam3_loads(structure, timestep)
 
     # def calculate_loads(self):
     #     # initial (ini) loads

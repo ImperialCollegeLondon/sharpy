@@ -31,7 +31,7 @@ class TestKrylov(unittest.TestCase):
 
         A = A.todense()
 
-        self.ss = libss.ss(A, B, C, D)
+        self.ss = libss.StateSpace(A, B, C, D)
 
         self.rom = krylov.Krylov()
 
@@ -63,6 +63,9 @@ class TestKrylov(unittest.TestCase):
 
         assert np.log10(max_error) < -2, 'Significant mismatch in ROM frequency Response'
 
+        # check saving function
+        self.rom.save(self.test_dir + '/rom_data.h5')
+
     def test_krylov(self):
         algorithm_list = {
             'one_sided_arnoldi':
@@ -82,6 +85,7 @@ class TestKrylov(unittest.TestCase):
     def tearDown(self):
         import shutil
         shutil.rmtree(self.test_dir + '/figs/')
+        os.remove(self.test_dir + '/rom_data.h5')
 
 if __name__ == '__main__':
     unittest.main()

@@ -101,6 +101,38 @@ class StepUvlm(BaseSolver):
     settings_default['vortex_radius'] = vortex_radius_def
     settings_description['vortex_radius'] = 'Distance between points below which induction is not computed'
 
+    settings_types['vortex_radius_wake_ind'] = 'float'
+    settings_default['vortex_radius_wake_ind'] = vortex_radius_def
+    settings_description['vortex_radius_wake_ind'] = 'Distance between points below which induction is not computed in the wake convection'
+
+    settings_types['interp_coords'] = 'int'
+    settings_default['interp_coords'] = 0
+    settings_description['interp_coords'] = 'Coordinates to use for wake description: cartesian(0) or cylindrical_z(1)'
+    settings_options['interp_coords'] = [0, 1]
+
+    settings_types['filter_method'] = 'int'
+    settings_default['filter_method'] = 0
+    settings_description['filter_method'] = 'Method to filter the points: no filter (0) moving average(2)'
+    settings_options['filter_method'] = [0, 2]
+    # filter_method = 1 was dedicated to a splines filter. If it is needed in the future chack dev_alglib branch
+
+    settings_types['interp_method'] = 'int'
+    settings_default['interp_method'] = 0
+    settings_description['interp_method'] = 'Method of interpolation: linear(0), parabolic(1), splines(2), slerp around z(3), slerp around yaw_slerp(4)'
+    settings_options['interp_method'] = [0, 1, 2, 3, 4]
+
+    settings_types['yaw_slerp'] = 'float'
+    settings_default['yaw_slerp'] = 0
+    settings_description['yaw_slerp'] = 'Yaw angle in radians to be used when interp_metod == 4'
+
+    settings_types['centre_rot'] = 'list(float)'
+    settings_default['centre_rot'] = [0., 0., 0.]
+    settings_description['centre_rot'] = 'Coordinates of the centre of rotation to perform slerp interpolation or cylindrical coordinates'
+
+    settings_types['quasi_steady'] = 'bool'
+    settings_default['quasi_steady'] = False
+    settings_description['quasi_steady'] = 'Use quasi-steady approximation in UVLM'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
@@ -125,25 +157,24 @@ class StepUvlm(BaseSolver):
 
         self.data.structure.add_unsteady_information(
             self.data.structure.dyn_dict,
-            self.settings['n_time_steps'].value)
+            self.settings['n_time_steps'])
 
         # Filtering
-        if self.settings['gamma_dot_filtering'].value == 1:
+        if self.settings['gamma_dot_filtering'] == 1:
             cout.cout_wrap(
                 "gamma_dot_filtering cannot be one. Changing it to None", 2)
             self.settings['gamma_dot_filtering'] = None
         if self.settings['gamma_dot_filtering'] is not None:
-            if self.settings['gamma_dot_filtering'].value:
-                if not self.settings['gamma_dot_filtering'].value % 2:
+            if self.settings['gamma_dot_filtering']:
+                if not self.settings['gamma_dot_filtering'] % 2:
                     cout.cout_wrap(
                         "gamma_dot_filtering does not support even numbers." +
                         "Changing " +
-                        str(self.settings['gamma_dot_filtering'].value) +
+                        str(self.settings['gamma_dot_filtering']) +
                         " to " +
-                        str(self.settings['gamma_dot_filtering'].value + 1),
+                        str(self.settings['gamma_dot_filtering'] + 1),
                         2)
-                    self.settings['gamma_dot_filtering'] = (
-                        ct.c_int(self.settings['gamma_dot_filtering'].value + 1))
+                    self.settings['gamma_dot_filtering'] += 1
 
         # init velocity generator
         velocity_generator_type = gen_interface.generator_from_string(
@@ -168,7 +199,7 @@ class StepUvlm(BaseSolver):
         if structure_tstep is None:
             structure_tstep = self.data.structure.timestep_info[-1]
         if dt is None:
-            dt = self.settings['dt'].value
+            dt = self.settings['dt']
         if t is None:
             t = self.data.ts*dt
 
@@ -181,16 +212,19 @@ class StepUvlm(BaseSolver):
                                           't': t,
                                           'ts': self.data.ts,
                                           'dt': dt,
-                                          'for_pos': structure_tstep.for_pos},
+                                          'for_pos': structure_tstep.for_pos,
+                                          'is_wake': False},
                                          aero_tstep.u_ext)
-        if self.settings['convection_scheme'].value > 1 and convect_wake:
+        if ((self.settings['convection_scheme'] > 1 and convect_wake) or
+           (not self.settings['cfl1'])):
             # generate uext_star
             self.velocity_generator.generate({'zeta': aero_tstep.zeta_star,
                                               'override': True,
                                               'ts': self.data.ts,
                                               'dt': dt,
                                               't': t,
-                                              'for_pos': structure_tstep.for_pos},
+                                              'for_pos': structure_tstep.for_pos,
+                                              'is_wake': True},
                                              aero_tstep.u_ext_star)
 
         uvlmlib.uvlm_solver(self.data.ts,
@@ -200,7 +234,7 @@ class StepUvlm(BaseSolver):
                             convect_wake=convect_wake,
                             dt=dt)
 
-        if unsteady_contribution:
+        if unsteady_contribution and not self.settings['quasi_steady']:
             # calculate unsteady (added mass) forces:
             self.data.aero.compute_gamma_dot(dt,
                                              aero_tstep,
@@ -209,11 +243,11 @@ class StepUvlm(BaseSolver):
                 self.filter_gamma_dot(aero_tstep,
                                       self.data.aero.timestep_info,
                                       None)
-            elif self.settings['gamma_dot_filtering'].value > 0:
+            elif self.settings['gamma_dot_filtering'] > 0:
                 self.filter_gamma_dot(
                     aero_tstep,
                     self.data.aero.timestep_info,
-                    self.settings['gamma_dot_filtering'].value)
+                    self.settings['gamma_dot_filtering'])
             uvlmlib.uvlm_calculate_unsteady_forces(aero_tstep,
                                                    structure_tstep,
                                                    self.settings,
@@ -239,7 +273,7 @@ class StepUvlm(BaseSolver):
                                                    aero_tstep,
                                                    self.data.structure,
                                                    self.data.aero.aero_settings,
-                                                   dt=self.settings['dt'].value)
+                                                   dt=self.settings['dt'])
 
     @staticmethod
     def filter_gamma_dot(tstep, history, filter_param):

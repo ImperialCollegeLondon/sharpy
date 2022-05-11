@@ -7,3 +7,4 @@ Force Mapping Utilities
 	:glob:
 
 	./aero2struct_force_mapping
+	./total_forces_moments

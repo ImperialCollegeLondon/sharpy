@@ -36,10 +36,6 @@ class AsymptoticStability(BaseSolver):
     settings_description = dict()
     settings_options = dict()
 
-    settings_types['folder'] = 'str'
-    settings_default['folder'] = './output'
-    settings_description['folder'] = 'Output folder'
-
     settings_types['print_info'] = 'bool'
     settings_default['print_info'] = False
     settings_description['print_info'] = 'Print information and table of eigenvalues'
@@ -54,7 +50,12 @@ class AsymptoticStability(BaseSolver):
 
     settings_types['export_eigenvalues'] = 'bool'
     settings_default['export_eigenvalues'] = False
-    settings_description['export_eigenvalues'] = 'Save eigenvalues and eigenvectors to file. '
+    settings_description['export_eigenvalues'] = 'Save eigenvalues and eigenvectors to file.'
+
+    settings_types['output_file_format'] = 'str'
+    settings_default['output_file_format'] = 'dat'
+    settings_description['output_file_format'] = 'Eigenvalue/eigenvector output file format. HDF5 or text (.dat) files.'
+    settings_options['output_file_format'] = ['h5', 'dat']
 
     settings_types['display_root_locus'] = 'bool'
     settings_default['display_root_locus'] = False
@@ -96,8 +97,9 @@ class AsymptoticStability(BaseSolver):
 
         self.postprocessors = dict()
         self.with_postprocessors = False
+        self.caller = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
 
         if custom_settings is None:
@@ -111,13 +113,19 @@ class AsymptoticStability(BaseSolver):
 
         self.num_evals = self.settings['num_evals']
 
-        stability_folder_path = self.settings['folder'] + '/' + self.data.settings['SHARPy']['case'] + '/stability'
-        if not os.path.exists(stability_folder_path):
-            os.makedirs(stability_folder_path)
-        self.folder = stability_folder_path
+        self.folder = data.output_folder + '/stability/'
+        if not os.path.exists(self.folder):
+            os.makedirs(self.folder)
 
-        if not os.path.exists(stability_folder_path):
-            os.makedirs(stability_folder_path)
+        if self.settings['print_info']:
+            self.print_info = True
+        else:
+            self.print_info = False
+
+        if self.print_info:
+            cout.cout_wrap('Dynamical System Eigenvalues')
+            eigenvalue_description_file = self.folder + '/eigenvaluetable.txt'
+            self.eigenvalue_table = modalutils.EigenvalueTable(filename=eigenvalue_description_file)
 
         try:
             self.frequency_cutoff = self.settings['frequency_cutoff']
@@ -127,37 +135,53 @@ class AsymptoticStability(BaseSolver):
         if self.frequency_cutoff == 0:
             self.frequency_cutoff = np.inf
 
-        if self.settings['print_info']:
-            self.print_info = True
-        else:
-            self.print_info = False
+        # Output dict
+        self.data.linear.stability = dict()
 
-    def run(self, ss=None):
+        self.caller = caller
+
+    def run(self, online=False):
+        """
+        Computes the eigenvalues and eigenvectors
+
+        Returns:
+            eigenvalues (np.ndarray): Eigenvalues sorted and frequency truncated
+            eigenvectors (np.ndarray): Corresponding mode shapes
+
+        """
+
+        if self.settings['reference_velocity'] != 1. and self.data.linear.linear_system.uvlm.scaled:
+            ss_list = [self.data.linear.linear_system.update(self.settings['reference_velocity'])]
+            not_scaled = False
+        else:
+            ss_list = [frequencyutils.find_target_system(self.data, system_name) for system_name in
+                       self.settings['target_system']]
+            not_scaled = True
+        system_name_list = self.settings['target_system']
+
+        self.compute_eigenvalues(ss_list, system_name_list, not_scaled)
+
+    def compute_eigenvalues(self, ss, system_name_list=None, not_scaled=True):  # TODO: include system name list
         """
         Computes the eigenvalues and eigenvectors
 
         """
 
-        if ss is None:
-            if self.settings['reference_velocity'] != 1. and self.data.linear.linear_system.uvlm.scaled:
-                ss_list = [self.data.linear.linear_system.update(self.settings['reference_velocity'])]
-                not_scaled = False
-            else:
-                ss_list = [frequencyutils.find_target_system(self.data, system_name) for system_name in
-                           self.settings['target_system']]
-                not_scaled = True
-            system_name_list = self.settings['target_system']
-        else:
-            not_scaled = True  # If the state space is an external input (i.e. not part of PreSHARPy), assume it is
-            # not scaled
-            if type(ss) is libss.ss:
-                ss_list = [ss]
+        if type(ss) is libss.StateSpace:
+            ss_list = [ss]
+            if system_name_list is None:
                 system_name_list = ['']
-            elif type(ss) is list:
-                ss_list = ss
-                system_name_list = ['system{:g}'.format(sys_number) for sys_number in len(ss_list)]
-            else:
-                raise TypeError('ss input must be either a libss.ss instance or a list of libss.ss')
+        elif type(ss) is list:
+            ss_list = ss
+
+            if system_name_list is None:
+                system_name_list = []
+                for sys, sys_number in enumerate(ss_list):
+                    system_name_list.append(f'system{sys_number:g}')
+                    if type(sys) is not libss.StateSpace:
+                        raise TypeError(f'State-space {sys_number} is not type libss.StateSpace')
+        else:
+            raise TypeError('ss input must be either a libss.StateSpace instance or a list[libss.StateSpace]')
 
         for ith, system in enumerate(ss_list):
             system_name = system_name_list[ith]
@@ -193,16 +217,16 @@ class AsymptoticStability(BaseSolver):
             if self.settings['display_root_locus']:
                 self.display_root_locus(eigenvalues)
 
-            # Under development
-            # if len(self.settings['modes_to_plot']) != 0:
-            #     warn.warn('Plotting modes is under development')
-            #     self.plot_modes()
-
             if len(self.settings['velocity_analysis']) == 3 and system_name == 'aeroelastic':
                 assert self.data.linear.linear_system.uvlm.scaled, \
                     'The UVLM system is unscaled, unable to rescale the structural equations only. Rerun with a ' \
                     'normalised UVLM system.'
                 self.velocity_analysis()
+
+            # Under development
+            if len(self.settings['modes_to_plot']) != 0:
+                warn.warn('Plotting modes is under development')
+                self.plot_modes()
 
         return self.data
 
@@ -279,10 +303,18 @@ class AsymptoticStability(BaseSolver):
         np.savetxt(stability_folder_path + '/{:s}eigenvalues.dat'.format(filename),
                    eigenvalues[:num_evals].view(float).reshape(-1, 2))
 
-        with h5py.File(stability_folder_path + '/{:s}stability.h5'.format(filename), 'w') as f:
-            f.create_dataset('eigenvalues', data=eigenvalues[:num_evals], dtype=complex)
-            f.create_dataset('eigenvectors', data=eigenvectors[:, :num_evals], dtype=complex)
-            f.create_dataset('num_eigenvalues', data=num_evals, dtype=int)
+        if self.settings['output_file_format'] == 'dat':
+            np.savetxt(self.folder + '/eigenvalues.dat', self.eigenvalues[:num_evals].view(float).reshape(-1, 2))
+            np.savetxt(self.folder + '/eigenvectors_r.dat', self.eigenvectors.real[:, :num_evals])
+            np.savetxt(self.folder + '/eigenvectors_i.dat', self.eigenvectors.imag[:, :num_evals])
+        elif self.settings['output_file_format'] == 'h5':
+            with h5py.File(stability_folder_path + '/{:s}stability.h5'.format(filename), 'w') as f:
+                f.create_dataset('eigenvalues', data=eigenvalues[:num_evals], dtype=complex)
+                f.create_dataset('eigenvectors', data=eigenvectors[:, :num_evals], dtype=complex)
+                f.create_dataset('num_eigenvalues', data=num_evals, dtype=int)
+        else:
+            raise TypeError(f'Unrecognised file type saving option {self.settings["output_file_format"]}')
+            # this shouldn't happen as the settings_options should check the validity of the setting
 
     def velocity_analysis(self):
         """
@@ -350,7 +382,7 @@ class AsymptoticStability(BaseSolver):
         np.savetxt(velocity_file_name,
                    np.concatenate((uinf_part_plot, real_part_plot, imag_part_plot)).reshape((-1, 3), order='F'))
 
-        if self.settings['print_info']:
+        if self.print_info:
             cout.cout_wrap('\t\tSuccessfully saved velocity analysis to {:s}'.format(velocity_file_name), 2)
 
     @staticmethod
@@ -439,47 +471,6 @@ class AsymptoticStability(BaseSolver):
         eta *= 0
         zeta_mode = modalutils.get_mode_zeta(self.data, eta)
         modalutils.write_zeta_vtk(zeta_mode, self.data.linear.tsaero0.zeta, filename_root=route + 'mode_ref')
-
-            # # fact_rbm = self.scale_rigid_body_mode(self.eigenvectors[:, mode], self.eigenvalues[mode].imag)* 100
-            # # print(fact_rbm)
-            #
-            # t, x = self.mode_time_domain(amplitude_factor, fact_rbm, mode)
-            #
-            # # Initialise postprocessors - new folder for each mode
-            # # initialise postprocessors
-            # route = self.settings['folder'] + '/stability/mode_%06d/' % mode
-            # postprocessors = dict()
-            # postprocessor_list = ['AerogridPlot', 'BeamPlot']
-            # postprocessors_settings = dict()
-            # postprocessors_settings['AerogridPlot'] = {'folder': route,
-            #                         'include_rbm': 'on',
-            #                         'include_applied_forces': 'on',
-            #                         'minus_m_star': 0,
-            #                         'u_inf': 1
-            #                         }
-            # postprocessors_settings['BeamPlot'] = {'folder': route + '/',
-            #                         'include_rbm': 'on',
-            #                         'include_applied_forces': 'on'}
-            #
-            # for postproc in postprocessor_list:
-            #     postprocessors[postproc] = initialise_solver(postproc)
-            #     postprocessors[postproc].initialise(
-            #         self.data, postprocessors_settings[postproc])
-            #
-            # # Plot reference
-            # for postproc in postprocessor_list:
-            #     self.data = postprocessors[postproc].run(online=True)
-            # for n in range(t.shape[1]):
-            #     aero_tstep, struct_tstep = lindynamicsim.state_to_timestep(self.data, x[:, n])
-            #     self.data.aero.timestep_info.append(aero_tstep)
-            #     self.data.structure.timestep_info.append(struct_tstep)
-            #
-            #     for postproc in postprocessor_list:
-            #         self.data = postprocessors[postproc].run(online=True)
-            #
-            # # Delete 'modal' timesteps ready for next mode
-            # del self.data.structure.timestep_info[1:]
-            # del self.data.aero.timestep_info[1:]
 
     def mode_time_domain(self, fact, fact_rbm, mode_num, cycles=2):
         """
