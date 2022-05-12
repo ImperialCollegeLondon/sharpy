@@ -89,10 +89,7 @@ class AsymptoticStability(BaseSolver):
         self.folder = None
         self.print_info = False
 
-        self.eigenvalues = None
-        self.eigenvectors = None
         self.frequency_cutoff = np.inf
-        self.eigenvalue_table = None
         self.num_evals = None
 
         self.postprocessors = dict()
@@ -122,11 +119,6 @@ class AsymptoticStability(BaseSolver):
         else:
             self.print_info = False
 
-        if self.print_info:
-            cout.cout_wrap('Dynamical System Eigenvalues')
-            eigenvalue_description_file = self.folder + '/eigenvaluetable.txt'
-            self.eigenvalue_table = modalutils.EigenvalueTable(filename=eigenvalue_description_file)
-
         try:
             self.frequency_cutoff = self.settings['frequency_cutoff']
         except AttributeError:
@@ -134,9 +126,6 @@ class AsymptoticStability(BaseSolver):
 
         if self.frequency_cutoff == 0:
             self.frequency_cutoff = np.inf
-
-        # Output dict
-        self.data.linear.stability = dict()
 
         self.caller = caller
 
@@ -150,21 +139,32 @@ class AsymptoticStability(BaseSolver):
 
         """
 
+        # if the system is scaled, only one system can be analysed
         if self.settings['reference_velocity'] != 1. and self.data.linear.linear_system.uvlm.scaled:
             ss_list = [self.data.linear.linear_system.update(self.settings['reference_velocity'])]
             not_scaled = False
+            system_name_list = ['aeroelastic']
+            if len(self.settings['target_system']) > 1:
+                cout.cout_wrap('Warning: the system is scaled thus the only analysis currently supported is'
+                               ' for the aeroelastic system', 3)
         else:
             ss_list = [frequencyutils.find_target_system(self.data, system_name) for system_name in
                        self.settings['target_system']]
             not_scaled = True
-        system_name_list = self.settings['target_system']
+            system_name_list = self.settings['target_system']
 
         self.compute_eigenvalues(ss_list, system_name_list, not_scaled)
 
-    def compute_eigenvalues(self, ss, system_name_list=None, not_scaled=True):  # TODO: include system name list
-        """
-        Computes the eigenvalues and eigenvectors
+        return self.data
 
+    def compute_eigenvalues(self, ss, system_name_list=None, not_scaled=True):
+        """
+        Computes the eigenvalues and eigenvectors of the state-space
+
+        Args:
+            ss (libss.StateSpace or list([libss.StateSpace]): State-space or list of state-spaces
+            system_name_list (list([str]): Names of systems in the case multiple systems are required
+            not_scaled (bool): Flag to indicate whether the systems are assembled in non-dimensional time
         """
 
         if type(ss) is libss.StateSpace:
@@ -197,13 +197,14 @@ class AsymptoticStability(BaseSolver):
 
             num_evals = min(self.num_evals, len(eigenvalues))
 
-            eigenvalues, eigenvectors = self.sort_eigenvalues(eigenvalues, eigenvectors, self.frequency_cutoff)
+            eigenvalues, eigenvectors = self.sort_eigenvalues(eigenvalues, eigenvectors, self.frequency_cutoff,
+                                                              number_of_eigenvalues=num_evals)
 
             if self.settings['export_eigenvalues']:
                 self.export_eigenvalues(num_evals, eigenvalues, eigenvectors, filename=system_name)
 
             if self.settings['print_info']:
-                cout.cout_wrap('Dynamical System Eigenvalues')
+                cout.cout_wrap(f'Dynamical System Eigenvalues - {system_name} system')
                 if system_name != '':
                     eig_table_filename = system_name + '_'
                 else:
@@ -228,7 +229,7 @@ class AsymptoticStability(BaseSolver):
                 warn.warn('Plotting modes is under development')
                 self.plot_modes()
 
-        return self.data
+        return eigenvalues, eigenvectors
 
     def convert_to_continuoustime(self, dt, discrete_time_eigenvalues, not_scaled=False):
         r"""
@@ -272,10 +273,10 @@ class AsymptoticStability(BaseSolver):
 
         The files are saved in the output directory and include:
 
-            * ``eigenvalues.dat``: Array of eigenvalues of shape ``(num_evals, 2)`` where the first column corresponds
+            * ``{system_name}_eigenvalues.dat``: Array of eigenvalues of shape ``(num_evals, 2)`` where the first column corresponds
               to the real part and the second column to the imaginary part.
 
-            * ``stability.h5``: An ``.h5`` file containing the desired number of eigenvalues and eigenvectors of the
+            * ``{system_name}_stability.h5``: An ``.h5`` file containing the desired number of eigenvalues and eigenvectors of the
               chosen systems.
 
         The units of the eigenvalues are ``rad/s``.
@@ -298,19 +299,14 @@ class AsymptoticStability(BaseSolver):
         else:
             filename += '_'
 
-        num_evals = min(num_evals, eigenvalues.shape[0])
-
-        np.savetxt(stability_folder_path + '/{:s}eigenvalues.dat'.format(filename),
-                   eigenvalues[:num_evals].view(float).reshape(-1, 2))
-
         if self.settings['output_file_format'] == 'dat':
-            np.savetxt(self.folder + '/eigenvalues.dat', self.eigenvalues[:num_evals].view(float).reshape(-1, 2))
-            np.savetxt(self.folder + '/eigenvectors_r.dat', self.eigenvectors.real[:, :num_evals])
-            np.savetxt(self.folder + '/eigenvectors_i.dat', self.eigenvectors.imag[:, :num_evals])
+            np.savetxt(self.folder + f'/{filename:s}eigenvalues.dat', eigenvalues.view(float).reshape(-1, 2))
+            np.savetxt(self.folder + f'/{filename:s}eigenvectors_r.dat', eigenvectors.real)
+            np.savetxt(self.folder + f'/{filename:s}eigenvectors_i.dat', eigenvectors.imag)
         elif self.settings['output_file_format'] == 'h5':
-            with h5py.File(stability_folder_path + '/{:s}stability.h5'.format(filename), 'w') as f:
-                f.create_dataset('eigenvalues', data=eigenvalues[:num_evals], dtype=complex)
-                f.create_dataset('eigenvectors', data=eigenvectors[:, :num_evals], dtype=complex)
+            with h5py.File(stability_folder_path + f'/{filename:s}stability.h5', 'w') as f:
+                f.create_dataset('eigenvalues', data=eigenvalues, dtype=complex)
+                f.create_dataset('eigenvectors', data=eigenvectors, dtype=complex)
                 f.create_dataset('num_eigenvalues', data=num_evals, dtype=int)
         else:
             raise TypeError(f'Unrecognised file type saving option {self.settings["output_file_format"]}')
@@ -518,7 +514,7 @@ class AsymptoticStability(BaseSolver):
         return gamma, gamma_dot, gamma_star, x_struct
 
     @staticmethod
-    def sort_eigenvalues(eigenvalues, eigenvectors, frequency_cutoff=0):
+    def sort_eigenvalues(eigenvalues, eigenvectors, frequency_cutoff=0, number_of_eigenvalues=None):
         """
         Sort continuous-time eigenvalues by order of magnitude.
 
@@ -529,9 +525,10 @@ class AsymptoticStability(BaseSolver):
             eigenvalues (np.ndarray): Continuous-time eigenvalues
             eigenvectors (np.ndarray): Corresponding right eigenvectors
             frequency_cutoff (float): Cutoff frequency for truncation ``[rad/s]``
+            number_of_eigenvalues (int (optional)): Number of eigenvalues to retain
 
         Returns:
-
+            tuple(np.array, np.array): eigenvalues and eigenvectors
         """
 
         if frequency_cutoff == 0:
@@ -545,6 +542,12 @@ class AsymptoticStability(BaseSolver):
 
         order = np.argsort(eigenvalues_truncated.real)[::-1]
 
+        if number_of_eigenvalues is not None:
+            if number_of_eigenvalues > len(order):
+                cout.cout_wrap(f'Desired number of eigenvalues ({number_of_eigenvalues}) exceeds system size '
+                               f'({len(order)}) after frequency truncation.', 3)
+            else:
+                order = order[:number_of_eigenvalues]
         return eigenvalues_truncated[order], eigenvectors_truncated[:, order]
 
     @staticmethod
