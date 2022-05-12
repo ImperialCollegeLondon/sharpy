@@ -15,7 +15,10 @@ Examples:
     >>>                                           'gust_parameters': '<gust_settings>'}}
 
 """
+from functools import reduce
 import numpy as np
+from scipy.interpolate import NearestNDInterpolator
+from scipy.interpolate import interp1d
 from abc import ABCMeta
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
@@ -96,14 +99,17 @@ class one_minus_cos(BaseGust):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-    def gust_shape(self, x, y, z, time=0):
+    def gust_shape(self, x, y, z, time=0): #, print_info = False):
         gust_length = self.settings['gust_length']
         gust_intensity = self.settings['gust_intensity']
 
         vel = np.zeros((3,))
-        if x > 0.0 or x < -gust_length:
-            return vel
-
+        if x > 0.0 or x < -gust_length:  
+            # if print_info:          
+            #     print("skipped at x = {}".format(x))
+            return vel   
+        # if print_info:
+        #     print("not skipped at x = {}".format(x))
         vel[2] = (1.0 - np.cos(2.0 * np.pi * x / gust_length)) * gust_intensity * 0.5
         return vel
 
@@ -266,22 +272,41 @@ class time_varying(BaseGust):
         super().__init__()
 
         self.file_info = None
+        self.interpolation = None
 
     def initialise(self, in_dict):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-        self.file_info = np.loadtxt(self.settings['file'])
+        # self.file_info = np.loadtxt(self.settings['file'])
+        gust_data = np.loadtxt(self.settings['file'])
+        self.interpolation =  interp1d(gust_data[:, 0],
+                                       gust_data[:, 3],
+                                       kind = 'linear',
+                                       assume_sorted = True)
 
     def gust_shape(self, x, y, z, time=0):
         vel = np.zeros((3,))
-        d = np.dot(np.array([x, y, z]), self.u_inf_direction)
-        if d > 0.0:
+        # d = np.dot(np.array([x, y, z]), self.u_inf_direction)
+        # print("time ", time)
+        # print("d = ", d)
+        # print("x,y,z = {}, {}, {}".format(x,y,z))
+
+        # if d > 0.0:
+        #     return vel
+        if x > 0 or time < 0.01:
+            # print("skipped as x = {} and time {} ".format(x, time))
             return vel
 
-        vel[0] = np.interp(d, -self.file_info[::-1, 0] * self.u_inf, self.file_info[::-1, 1])
-        vel[1] = np.interp(d, -self.file_info[::-1, 0] * self.u_inf, self.file_info[::-1, 2])
-        vel[2] = np.interp(d, -self.file_info[::-1, 0] * self.u_inf, self.file_info[::-1, 3])
+        # vel[0] = np.interp(d, -self.file_info[::-1, 0] * self.u_inf, self.file_info[::-1, 1])
+        # vel[1] = np.interp(d, -self.file_info[::-1, 0] * self.u_inf, self.file_info[::-1, 2])
+        # print('x_new = ', -x/45.)
+        # print("x lowest = ")
+        vel[2] = self.interpolation(-x/45.)
+        
+        
+        #np.interp(x/45., -self.file_info[::-1, 0], self.file_info[::-1, 3])
+        # print("position x= {} leads to interpolated vz of {}".format(x, vel[2]))
         return vel
 
 
@@ -321,8 +346,8 @@ class time_varying_global(BaseGust):
     def gust_shape(self, x, y, z, time=0):
         vel = np.zeros((3,))
 
-        vel[0] = np.interp(time, self.file_info[:, 0], self.file_info[:, 1])
-        vel[1] = np.interp(time, self.file_info[:, 0], self.file_info[:, 2])
+        # vel[0] = np.interp(time, self.file_info[:, 0], self.file_info[:, 1])
+        # vel[1] = np.interp(time, self.file_info[:, 0], self.file_info[:, 2])
         vel[2] = np.interp(time, self.file_info[:, 0], self.file_info[:, 3])
         return vel
 
@@ -479,8 +504,8 @@ class GustVelocityField(generator_interface.BaseGenerator):
             t = params['t']
             dt = params['dt']
 
+        print_info = True
         for_pos = params['for_pos'][0:3]
-
         for i_surf in range(len(zeta)):
             if override:
                 uext[i_surf].fill(0.0)
