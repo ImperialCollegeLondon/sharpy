@@ -80,8 +80,8 @@ class LinearGust:
 
         # find free stream velocity
         u_ext = self.tsaero0.u_ext[0][:, 0, 0]  # use ref node external velocity
-        self.u_inf = np.linalg.norm(u_ext)
-        self.u_ext_direction = u_ext / self.u_inf
+        self.u_inf = 45 # np.linalg.norm(u_ext)
+        self.u_ext_direction = np.array([1,0,0]) # u_ext / self.u_inf
 
     def get_x_max(self):
         """
