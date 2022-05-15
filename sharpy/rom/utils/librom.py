@@ -7,7 +7,6 @@ import warnings
 import numpy as np
 import scipy.linalg as scalg
 
-# from IPython import embed
 import sharpy.linear.src.libsparse as libsp
 import sharpy.linear.src.libss as libss
 
@@ -92,13 +91,20 @@ def balreal_direct_py(A, B, C, DLTI=True, Schur=False, full_outputs=False):
     else:
         sollyap = scalg.solve_lyapunov
 
+    # A is a sparse matrix in csr_matrix(sparse) format, can not be directly passed into functions used in scipy _solver.py
+    # Sparse matrices do not work well with Scipy (Version 1.7.3) in the following code, so A is transformed into a dense matrix here first.
+    if type(A) is not np.ndarray:
+        try:
+            A = A.todense()
+        except AttributeError:
+            raise TypeError(f'Matrix needs to be in dense form. Unable to convert A matrix of type {type(A)} to '
+                            f'dense using method .todense()')
+
     # solve Lyapunov
     if Schur:
         # decompose A
         Atri, U = scalg.schur(A)
-        # A is a sparse matrix in csr_matrix(sparse) format, can not be directly passed into functions used in scipy _solver.py 
-        # Sparse matrices do not work well with Scipy (Version 1.7.3) in the following code, so A is transformed into a dense matrix here first.
-        A = A.todense()
+
         # solve Lyapunov
         BBtri = np.dot(U.T, np.dot(B, np.dot(B.T, U)))
         CCtri = np.dot(U.T, np.dot(C.T, np.dot(C, U)))
@@ -108,9 +114,6 @@ def balreal_direct_py(A, B, C, DLTI=True, Schur=False, full_outputs=False):
         Wc = np.dot(U, np.dot(Wctri, U.T))
         Wo = np.dot(U, np.dot(Wotri, U.T))
     else:
-        # A is a sparse matrix in csr_matrix(sparse) format, can not be directly passed into functions used in scipy _solver.py 
-        # Sparse matrices do not work well with Scipy (Version 1.7.3) in the following code, so A is transformed into a dense matrix here first.
-        A = A.todense()
         Wc = sollyap(A, np.dot(B, B.T))
         Wo = sollyap(A.T, np.dot(C.T, C))
 
