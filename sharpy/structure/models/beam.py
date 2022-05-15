@@ -328,9 +328,9 @@ class Beam(BaseStructure):
 
             if replace:
                 self.elements[i_lumped_master_elem].rbmass[i_lumped_master_node_local, :, :] = (
-                    inertia_tensor) # += necessary in case multiple masses defined per node
+                    inertia_tensor)
             else:
-                self.elements[i_lumped_master_elem].rbmass[i_lumped_master_node_local, :, :] = (
+                self.elements[i_lumped_master_elem].rbmass[i_lumped_master_node_local, :, :] += (
                     inertia_tensor) # += necessary in case multiple masses defined per node
 
     # def generate_master_structure(self):
