@@ -6,14 +6,14 @@ class Linear(Modal):
     predefined_flows = dict()
     #############
 
-    predefined_flows['502'] = ['BeamLoader', 'AerogridLoader',
+    predefined_flows['502'] = ('BeamLoader', 'AerogridLoader',
                                'StaticCoupled',
                                'Modal',
-                               'LinearAssembler']
-    predefined_flows['504'] = ['BeamLoader', 'AerogridLoader',
+                               'LinearAssembler')
+    predefined_flows['504'] = ('BeamLoader', 'AerogridLoader',
                                'StaticTrim',
                                'Modal',
-                               'LinearAssembler']
+                               'LinearAssembler')
     
     def __init__(self):
         super().__init__()
@@ -25,7 +25,7 @@ class Linear(Modal):
                 rho_static=1e-5,
                 panels_wake=1,
                 num_modes=10,
-                inout_coordinates='modal',
+                inout_coordinates='modes',
                 newmark_damp=1e-4,
                 use_euler=False,
                 track_body=True,

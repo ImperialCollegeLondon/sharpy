@@ -129,9 +129,9 @@ class DynamicLoads(BaseSolver):
         self.folder = None
 
         self.save_eigenvalues = False
-        self.frequency_cutoff = 0
-        self.u_flutter = 1.
-        self.dt = 0.1
+        self.frequency_cutoff = None
+        self.u_flutter = None
+        self.dt = None
         self.caller = None
 
     def initialise(self, data, custom_settings=None, caller=None):
@@ -155,7 +155,7 @@ class DynamicLoads(BaseSolver):
         self.flight_conditions = self.settings['flight_conditions']
         self.gust_regulation = self.settings['gust_regulation']
 
-        self.folder = data.output_folder + '//'
+        self.folder = data.output_folder + '/dynamicloads_analysis'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
 
@@ -264,19 +264,22 @@ class DynamicLoads(BaseSolver):
         flutter_calculation = 1 # find flutter speed unless an upper bound is
                                 # defined and the speed is beyond that bound   
         if self.save_eigenvalues:
-            eigs_r_series = [] 
+            eigs_r_series = []
             eigs_i_series = []
+            damping_series = []
             u_inf_series = []
-        
+        length_ref = self.data.linear.linear_system.uvlm.sys.ScalingFacts['length']
         u_new = u_inf
         ss_aeroelastic = self.data.linear.linear_system.update(u_new)
+        self.dt = ss_aeroelastic.dt
+        dt_dimensional = (length_ref / u_new) * self.dt
         eigs, eigenvectors = sclalg.eig(ss_aeroelastic.A)
         # Obtain dimensional time
         if self.dt:
-            eigs = np.log(eigs) / self.dt
+            eigs = np.log(eigs) / dt_dimensional
             
         eigs, eigenvectors = self.sort_eigenvalues(eigs, eigenvectors, self.frequency_cutoff)
-        damping_vector = eigs.real/np.abs(eigs)
+        damping_vector = eigs.real / np.abs(eigs)
         if damping_tolerance: # set damping as the maximum of eigenvalues above a tolerance
             damping_condition = np.abs(damping_vector) > damping_tolerance
             damping_old = np.max(damping_vector[damping_condition])
@@ -287,7 +290,7 @@ class DynamicLoads(BaseSolver):
             eigs_r_series.append(eigs.real)
             eigs_i_series.append(eigs.imag)
             u_inf_series.append(np.ones_like(eigs.real)*u_new)
-            
+            damping_series.append(damping_vector)
         ###########################################
         # Find bounds (+- h) to the flutter speed #
         ###########################################
@@ -301,11 +304,13 @@ class DynamicLoads(BaseSolver):
             else:  # Singularity: only possible if damping_tolerance=0 and damping_new=0 too
                 u_old = u_new
                 break
-            
+
+            dt_dimensional = (length_ref / u_new) * self.dt
             ss_aeroelastic = self.data.linear.linear_system.update(u_new) #Build new aeroelastic system
             eigs, eigenvectors = sclalg.eig(ss_aeroelastic.A)
             if self.dt:
-                eigs = np.log(eigs) / self.dt
+                eigs = np.log(eigs) / dt_dimensional
+
             eigs, eigenvectors = self.sort_eigenvalues(eigs, eigenvectors, self.frequency_cutoff)
 
             damping_vector = eigs.real/np.abs(eigs)
@@ -319,6 +324,7 @@ class DynamicLoads(BaseSolver):
                 eigs_r_series.append(eigs.real)
                 eigs_i_series.append(eigs.imag)
                 u_inf_series.append(np.ones_like(eigs.real)*u_new)
+                damping_series.append(damping_vector)
             if u_new > flutter_bound:
                 flutter_calculation = 0
                 break
@@ -337,18 +343,20 @@ class DynamicLoads(BaseSolver):
             elif (self.settings['root_method'] == 'bisection' or
                   self.flutter_root_calls > secant_max_calls):
                 u_secant = (u_new + u_old)/2
-            ss_aeroelastic = self.data.linear.linear_system.update(u_secant)
-            #print('Secant velocity new: %s'%u_new)
-            #print('Secant velocity: %s'%u_secant)
+                
+            dt_dimensional = (length_ref / u_secant) * self.dt
+            ss_aeroelastic = self.data.linear.linear_system.update(u_secant) #Build new aeroelastic system
             eigs, eigenvectors = sclalg.eig(ss_aeroelastic.A)
             if self.dt:
-                eigs = np.log(eigs) / self.dt
+                eigs = np.log(eigs) / dt_dimensional
             eigs, eigenvectors = self.sort_eigenvalues(eigs, eigenvectors, self.frequency_cutoff)
             damping_vector = eigs.real/np.abs(eigs)
             # Store eigenvalues
-            eigs_r_series.append(eigs.real)
-            eigs_i_series.append(eigs.imag)
-            u_inf_series.append(np.ones_like(eigs.real)*u_secant)
+            if self.save_eigenvalues:
+                eigs_r_series.append(eigs.real)
+                eigs_i_series.append(eigs.imag)
+                u_inf_series.append(np.ones_like(eigs.real)*u_secant)
+                damping_series.append(damping_vector)
             if damping_tolerance:
                 damping_condition = np.abs(damping_vector) > damping_tolerance
                 damping_secant = np.max(damping_vector[damping_condition])
@@ -382,9 +390,13 @@ class DynamicLoads(BaseSolver):
             eigs_r_series = np.hstack(eigs_r_series)
             eigs_i_series = np.hstack(eigs_i_series)
             u_inf_series = np.hstack(u_inf_series)
+            damping_series = np.hstack(damping_series)
             cout.cout_wrap('Saving flutter eigenvalues...')
-            np.savetxt(self.folder + '/flutter_results.dat',
-                   np.concatenate((u_inf_series, eigs_r_series, eigs_i_series)).reshape((-1, 3), order='F'))
+            np.savetxt(self.folder + '/flutter_eigs.dat',
+                       np.concatenate((u_inf_series, eigs_r_series, eigs_i_series,
+                                       damping_series)).reshape((-1, 4),
+                                                                order='F'),
+                       fmt='%.8e', header='u_inf eigs_r eigs_i damping')
             cout.cout_wrap('\tSuccessful', 1)
 
         self.data.linear.dynamic_loads['flutter_results']['u_flutter'] = np.array([self.u_flutter])
@@ -415,6 +427,7 @@ class DynamicLoads(BaseSolver):
         eigenvalues_truncated = eigenvalues[criteria_a].copy()
         eigenvectors_truncated = eigenvectors[:, criteria_a].copy()
 
-        order = np.argsort(eigenvalues_truncated.real)[::-1]
+        #order = np.argsort(eigenvalues_truncated.real)[::-1]
+        order = (np.argsort(eigenvalues_truncated.real / np.abs(eigenvalues_truncated)))[::-1]
 
         return eigenvalues_truncated[order], eigenvectors_truncated[:, order]

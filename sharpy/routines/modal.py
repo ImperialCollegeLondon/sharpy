@@ -7,7 +7,7 @@ class Modal(Static):
 
     #global predefined_flows
     predefined_flows = dict()
-    predefined_flows['103'] = ('BeamLoader', 'Modal')
+    predefined_flows['103'] = ('BeamLoader', 'AerogridLoader', 'Modal')
     predefined_flows['132'] = ('BeamLoader', 'AerogridLoader',
                                'StaticCoupled',
                                'Modal')
@@ -40,7 +40,8 @@ class Modal(Static):
             predefined_flow = list(self.predefined_flows['103'])
             self.set_constants(**kwargs)
             self.set_flow(predefined_flow, **kwargs)
-            self.set_struct_loader(**kwargs)
+            self.set_loaders(0,0.,0.1,**kwargs)
+            #self.set_struct_loader(**kwargs)
             self.set_plot(**kwargs)
 
         self.settings_new['Modal'] = self.get_solver_sett('Modal',

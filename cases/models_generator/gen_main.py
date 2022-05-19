@@ -1119,7 +1119,7 @@ class Model:
                                            labels_list=self.model_labels)
 
         
-            return data
+        return data
 
 #folder_replace = partial(change_dic, oldstr='folder')
 #'run_in_loop','generate_sharpy','run_sharpy','generate_nastran','run_nastran','generate_cpacs'

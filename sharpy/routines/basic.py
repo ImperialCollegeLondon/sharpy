@@ -10,11 +10,21 @@ import sharpy.utils.algebra as algebra
 import sharpy.solvers
 import sharpy.generators
 
+class FixedDict(object):
+        def __init__(self, dictionary):
+            self._dictionary = dictionary
+        def __setitem__(self, key, item):
+                if key not in self._dictionary:
+                    raise KeyError("The key {} is not defined.".format(key))
+                self._dictionary[key] = item
+        def __getitem__(self, key):
+            return self._dictionary[key]
+
 class Basic:
 
     def __init__(self, **kwargs):
         self.settings_new = dict()
-        self.flow = dict()
+        self.flow = []
         self.constants = dict()
         #self.infosol =InfoSolutions()
         
@@ -76,7 +86,7 @@ class Basic:
         
         self.settings_new['AerogridLoader']['freestream_dir'] = \
             self.constants['u_inf_direction']
-        self.settings_new['AerogridLoader']['unsteady'] = 'unsteady'
+        self.settings_new['AerogridLoader']['unsteady'] = unsteady
         self.settings_new['AerogridLoader']['mstar'] = panels_wake
         self.settings_new['AerogridLoader']['aligned_grid'] = aligned_grid
         self.settings_new['AerogridLoader']['control_surface_deflection'] = \
