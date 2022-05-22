@@ -16,6 +16,13 @@ class Flutter(Linear):
                                'LinearAssembler',
                                'DynamicLoads')
     #############
+    predefined_flows['152s'] = ('BeamLoader', 'AerogridLoader',
+                                'StaticCoupled',
+                                'Modal',
+                                'LinearAssembler',
+                                'AsymptoticStability')
+
+    #############
     predefined_flows['154'] = ('BeamLoader', 'AerogridLoader',
                                'StaticTrim',
                                'Modal',
@@ -34,6 +41,7 @@ class Flutter(Linear):
                 u_inf,
                 dt,
                 rho,
+                secant_max_calls=0,
                 frequency_cutoff=0,
                 save_eigenvalues=True,                
                 panels_wake=1,
@@ -114,6 +122,7 @@ class Flutter(Linear):
                                              'velocity_increment': velocity_increment,
                                              'flutter_error':      flutter_error,
                                              'root_method':        root_method,
+                                             'secant_max_calls':   secant_max_calls,
                                              'damping_tolerance':  damping_tolerance,
                                              'calculate_flutter':  True,
                                              'frequency_cutoff':   frequency_cutoff,
@@ -161,6 +170,7 @@ class Flutter(Linear):
                 u_inf,
                 dt,
                 rho,
+                secant_max_calls=0,
                 frequency_cutoff=0,
                 save_eigenvalues=True,                
                 panels_wake=1,
@@ -221,6 +231,7 @@ class Flutter(Linear):
                                              'velocity_increment': velocity_increment,
                                              'flutter_error':      flutter_error,
                                              'root_method':        root_method,
+                                             'secant_max_calls':   secant_max_calls,
                                              'damping_tolerance':  damping_tolerance,
                                              'calculate_flutter':  True,
                                              'frequency_cutoff':   frequency_cutoff,
@@ -282,6 +293,119 @@ class Flutter(Linear):
             self.modify_settings(self.flow, **kwargs)
             return self.flow, self.settings_new
 
+
+    def sol_152s(self,
+                 velocity_analysis,
+                 u_inf,
+                 dt,
+                 rho,
+                 reference_velocity=1.,
+                 num_eigs=300,
+                 frequency_cutoff=0,
+                 save_eigenvalues=True,                
+                 panels_wake=1,
+                 num_modes=10,
+                 inout_coordinates='modes',
+                 mach_number=0.,
+                 newmark_damp=1e-4,
+                 use_euler=False,
+                 track_body=True,
+                 c_ref=1.,
+                 gravity_on=1,
+                 horseshoe=False,
+                 rotationA=[0., 0., 0.],
+                 rom_method='',
+                 rom_settings=None,
+                 rigid_body_modes=False,
+                 rigid_modes_cg=False,
+                 use_undamped_modes=True,
+                 write_modal_data=True,
+                 write_modes_vtk=True,
+                 max_modal_disp=0.15,
+                 max_modal_rot_deg=15.,
+                 print_modal_matrices=False,
+                 fsi_maxiter=100,
+                 fsi_tolerance=1e-5,
+                 fsi_relaxation=0.05,
+                 fsi_load_steps=1,
+                 s_maxiter=100,
+                 s_tolerance=1e-5,
+                 s_relaxation=1e-3,
+                 s_load_steps=1,
+                 s_delta_curved=1e-4,
+                 correct_forces_method=None,
+                 correct_forces_settings=None,
+                 primary=True,
+                 **kwargs
+                 ):
+        """
+        Flutter predifined solution after aeroelastic equilibrium
+        """
+        if horseshoe:
+            panels_wake = 1        
+        if primary:
+            predefined_flow = list(self.predefined_flows['152s'])
+            self.set_constants(**kwargs)
+            self.set_flow(predefined_flow, **kwargs)
+            self.set_loaders(panels_wake,
+                             u_inf,
+                             dt,
+                             rotationA,
+                             unsteady=False,
+                             **kwargs)
+            self.set_plot(u_inf,
+                          dt,
+                          **kwargs)
+
+        self.settings_new['AsymptoticStability'] = self.get_solver_sett('AsymptoticStability',
+                                                                        velocity_analysis=velocity_analysis,
+                                                                        reference_velocity=reference_velocity,
+                                                                        export_eigenvalues=True,
+                                                                        num_evals=num_eigs)
+        self.sol_502(u_inf,
+                     dt,
+                     rho,
+                     rho,
+                     panels_wake,
+                     num_modes,
+                     inout_coordinates,
+                     newmark_damp,
+                     use_euler,
+                     track_body,
+                     mach_number,
+                     c_ref,
+                     gravity_on,
+                     horseshoe,
+                     rotationA,
+                     rom_method,
+                     rom_settings,
+                     rigid_body_modes,
+                     rigid_modes_cg,
+                     use_undamped_modes,
+                     write_modal_data,
+                     write_modes_vtk,
+                     max_modal_disp,
+                     max_modal_rot_deg,
+                     print_modal_matrices,
+                     fsi_maxiter,
+                     fsi_tolerance,
+                     fsi_relaxation,
+                     fsi_load_steps,
+                     s_maxiter,
+                     s_tolerance,
+                     s_relaxation,
+                     s_load_steps,
+                     s_delta_curved,
+                     correct_forces_method,
+                     correct_forces_settings,
+                     primary=False,
+                     **kwargs)
+
+        if primary:
+            self.modify_settings(self.flow, **kwargs)
+            return self.flow, self.settings_new
+
+        
 def sol_410(num_modes,                  # Num modes in the solution
             alpha,                      # Static AoA       
             beta,                       # Static sideslip anum_modes,

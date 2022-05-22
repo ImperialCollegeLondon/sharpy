@@ -8,6 +8,7 @@ import sharpy.utils.rom_interface as rom_interface
 import sharpy.rom.balanced as balanced
 import sharpy.utils.algebra as algebra
 import sharpy.solvers
+import sharpy.postproc
 import sharpy.generators
 
 class FixedDict(object):

@@ -96,7 +96,7 @@ class Linear(Modal):
             rom_settings = {'algorithm':'mimo_rational_arnoldi',
                             'r':6}
             frequency_continuous_k = np.array([0.])
-            frequency_continuous_w = 2 * u_inf * frequency_continuous_k / c_ref
+            frequency_continuous_w = 2 * u_inf * frequency_continuous_k / (c_ref / 2.)
             rom_settings['frequency'] = frequency_continuous_w
             rom_methodX = ['Krylov']
         if inout_coordinates == 'modes': #Flutter after projection on the modes
@@ -119,7 +119,7 @@ class Linear(Modal):
 
         aero_settings = self.get_linear_sett('LinearUVLM',
                                              dt=dt,                                         
-                                             ScalingDict= {'length': c_ref,            
+                                             ScalingDict= {'length': c_ref / 2,            
                                                             'speed': u_inf,                   
                                                             'density': rho},
                                              density=rho,                                   

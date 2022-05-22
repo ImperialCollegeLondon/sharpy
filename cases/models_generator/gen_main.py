@@ -1016,30 +1016,27 @@ class Model:
             compX = []
             for ci in self.components:
                 # Symmetric component with respect to ci2
-                if 'symmetric' in self.components_dict[ci]: 
+                if 'symmetric' in self.components_dict[ci]:
                     ci2 = self.components_dict[ci]['symmetric']['component']
                     components_dictx = copy.deepcopy(self.components_dict[ci2])
                     #########
-                    if 'geometry' not in self.components_dict[ci].keys():
+                    if 'geometry' not in components_dictx.keys():
                         components_dictx['fem']['coordinates'][:,1] = \
                             -self.components_dict[ci2]['fem']['coordinates'][:,1]
-                    if 'geometry' in self.components_dict[ci].keys() and \
-                       'node0' in self.components_dict[ci]['geometry'].keys():
-                        components_dictx['geometry']['node0'] = self.components_dict[ci]['geometry']['node0']
-                    if 'geometry' in components_dictx.keys() and \
-                       'sweep' in components_dictx['geometry'].keys() and \
-                       components_dictx['geometry']['sweep'] > 0.:
-                        components_dictx['geometry']['sweep'] = -components_dictx['geometry']['sweep']
-                    if 'geometry' in components_dictx.keys() and \
-                       'dihedral' in components_dictx['geometry'].keys() and \
-                       components_dictx['geometry']['dihedral'] > 0.:
-                        components_dictx['geometry']['dihedral'] = -components_dictx['geometry']['dihedral']
-                    if 'geometry' in components_dictx.keys() and \
-                         'direction' in components_dictx['geometry'].keys() and \
-                         components_dictx['geometry']['direction'] is not None:
-                        components_dictx['geometry']['direction'][1] = \
-                            -components_dictx['geometry']['direction'][1]
-                    try:
+                    else:
+                        if 'sweep' in components_dictx['geometry'].keys() and \
+                           components_dictx['geometry']['sweep'] > 0.:
+                            components_dictx['geometry']['sweep'] = -components_dictx['geometry']['sweep']
+                        if 'dihedral' in components_dictx['geometry'].keys() and \
+                           components_dictx['geometry']['dihedral'] > 0.:
+                            components_dictx['geometry']['dihedral'] = -components_dictx['geometry']['dihedral']
+                        if 'direction' in components_dictx['geometry'].keys() and \
+                           components_dictx['geometry']['direction'] is not None:
+                            components_dictx['geometry']['direction'][1] = \
+                                -components_dictx['geometry']['direction'][1]
+                        else:
+                            components_dictx['geometry']['direction'] = np.array([0, -1, 0])
+                    try: #TODO: check this assumption
                         components_dictx['fem']['frame_of_reference_delta'] = \
                             -components_dictx['fem']['frame_of_reference_delta']
                     except TypeError:
@@ -1074,8 +1071,10 @@ class Model:
                         components_dictx['aero']['point_platform']['trailing_edge2'][1] = \
                        -components_dictx['aero']['point_platform']['trailing_edge2'][1]
                         if 'beam_origin' in components_dictx['aero'].keys():
-                            components_dictx['aero']['beam_origin'][1] = -components_dictx['aero']['beam_origin'][1]
-                    compX.append(Components(ci, in_put=self.m_input, out_put=self.m_output, settings=components_dictx))
+                            components_dictx['aero']['beam_origin'][1] = \
+                                -components_dictx['aero']['beam_origin'][1]
+                    compX.append(Components(ci, in_put=self.m_input,
+                                            out_put=self.m_output, settings=components_dictx))
                 else:
                     compX.append(Components(ci, in_put=self.m_input, out_put=self.m_output,
                                             settings=self.components_dict[ci]))
