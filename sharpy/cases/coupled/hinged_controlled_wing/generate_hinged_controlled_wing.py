@@ -29,7 +29,7 @@ wake_length = 10 # chords
 
 alpha_rad = alpha*np.pi/180
 
-pitch_file = 'pitch.csv'
+pitch_file = route + 'pitch.csv'
 
 gains = -np.array([0.9, 6.0, 0.75])
 

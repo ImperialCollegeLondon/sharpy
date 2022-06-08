@@ -67,6 +67,8 @@ def write_folder(folder, ignore_list):
     files, mtitle, mbody = open_folder(folder)
     for file in files:
         if os.path.isfile(file) and not check_folder_in_ignore(file, ignore_list):
+            if file[-3:] != '.py':
+                continue
             write_file(file)
         elif os.path.isdir(file) and not check_folder_in_ignore(file, ignore_list):
             mtitlesub, mbodysub = write_folder(file, ignore_list)
