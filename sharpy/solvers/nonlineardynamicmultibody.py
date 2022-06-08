@@ -106,7 +106,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 os.makedirs(dire)
 
             self.out_files = {'lambda': dire + 'lambda.dat',
-                              'lambda_dot': dire + 'lambda.dat',
+                              'lambda_dot': dire + 'lambda_dot.dat',
                               'lambda_ddot': dire + 'lambda_ddot.dat',
                               'cond_number': dire + 'cond_num.dat'}
             # clean up files
@@ -313,13 +313,14 @@ class NonLinearDynamicMultibody(_BaseStructural):
         for out_var, data in out_data.items():
             file_name = self.out_files[out_var]
             with open(file_name, 'a') as fid:
-                fid.write(f'{self.data.ts:g} {iteration:g}')
+                fid.write(f'{self.data.ts:g} {iteration:g} ')
                 for ilm in range(self.num_LM_eq):
                     fid.write(f'{data[ilm]} ')
+                fid.write(f'\n')    
 
         with open(self.out_files['cond_number'], 'a') as fid:
-            fid.write(f'{self.data.ts:g} {iteration:g}')
-            fid.write(f'{cond_num:e} {cond_num_lm:e}')
+            fid.write(f'{self.data.ts:g} {iteration:g} ')
+            fid.write(f'{cond_num:e} {cond_num_lm:e} \n')
 
     def run(self, structural_step=None, dt=None):
         if structural_step is None:
