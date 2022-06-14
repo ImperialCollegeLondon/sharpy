@@ -261,7 +261,8 @@ class LinearUVLM(ss_interface.BaseElement):
         if 'u_gust' not in self.settings['remove_inputs'] and self.settings['gust_assembler'] != '':
             import sharpy.linear.assembler.lineargustassembler as lineargust
             self.gust_assembler = lineargust.gust_from_string(self.settings['gust_assembler'])
-            self.gust_assembler.initialise(data.aero, self.sys, self.tsaero0,
+            self.gust_assembler.initialise(data, self.sys, self.tsaero0,
+                                           u_ext=lineargust.get_freestream_velocity(data),
                                            custom_settings=self.settings['gust_assembler_inputs'])
 
     def assemble(self, track_body=False, wake_prop_settings=None):

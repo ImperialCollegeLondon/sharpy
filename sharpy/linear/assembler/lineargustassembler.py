@@ -4,6 +4,7 @@ import sharpy.linear.src.libss as libss
 import scipy.signal as scsig
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
+from abc import ABCMeta, abstractmethod
 
 dict_of_linear_gusts = {}
 
@@ -31,7 +32,7 @@ def gust_from_string(gust_name):
     return dict_of_linear_gusts[gust_name]()
 
 
-class LinearGust:
+class LinearGust(metaclass=ABCMeta):
     # Base class from which to develop the desired gusts
     settings_types = {}
     settings_default = {}
@@ -57,7 +58,7 @@ class LinearGust:
         self.u_ext_direction = None  # np.ndarray Unit external velocity vector in G frame
         self.u_inf = None  # float Free stream velocity magnitude
 
-    def initialise(self, aero, linuvlm, tsaero0, custom_settings=None):
+    def initialise(self, aero, linuvlm, tsaero0, u_ext, custom_settings=None):
         """
         Initialise gust class
 
@@ -65,6 +66,7 @@ class LinearGust:
             aero (sharpy.aero.models.Aerogrid):
             linuvlm (sharpy.linear.src.linuvlm.Dynamic) :
             tsaero0 (sharpy.utils.datstructures.AeroTimestepInfo) : time step at reference state
+            u_ext (np.ndarray): free-stream velocity
             custom_settings (dict):
         """
         self.aero = aero
@@ -79,7 +81,6 @@ class LinearGust:
             settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # find free stream velocity
-        u_ext = self.tsaero0.u_ext[0][:, 0, 0]  # use ref node external velocity
         self.u_inf = np.linalg.norm(u_ext)
         self.u_ext_direction = u_ext / self.u_inf
 
@@ -103,6 +104,7 @@ class LinearGust:
             min_chord_surf.append(np.min(zeta_proj))
         return min(min_chord_surf), max(max_chord_surf)
 
+    @abstractmethod
     def assemble(self):
         """
         Assemble gust system according to specific gust requirements in inherited classes
@@ -310,8 +312,8 @@ class MultiLeadingEdge(LinearGust):
         self.span_loc = None
         self.n_gust = None
 
-    def initialise(self, aero, linuvlm, tsaero0, custom_settings=None):
-        super().initialise(aero, linuvlm, tsaero0, custom_settings)
+    def initialise(self, aero, linuvlm, tsaero0, u_ext, custom_settings=None):
+        super().initialise(aero, linuvlm, tsaero0, u_ext, custom_settings)
 
         self.span_loc = self.settings['span_location']
         self.n_gust = len(self.span_loc)
@@ -388,6 +390,7 @@ def get_freestream_velocity(data):
             v0 = np.array(u_inf_direction, dtype=float) * float(u_inf)
 
     return v0
+
 
 def linear_interpolation_weights(x_vertex, x_domain):
 
