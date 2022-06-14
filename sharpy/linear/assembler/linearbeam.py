@@ -24,7 +24,18 @@ class LinearBeam(BaseElement):
 
     State-space models can be defined in continuous or discrete time (dt
     required). Modal projection, either on the damped or undamped modal shapes,
-    is also avaiable.
+    is also available.
+
+    The beam state space has information on the states which will depend on whether the system is modal or expressed
+    in physical coordinates.
+
+    If ``modal`` the state variables will be ``q`` and ``q_dot`` representing the modal displacements and the
+    time derivatives.
+
+    If ``nodal`` and free-flying, the state variables will be ``eta`` for the flexible degrees of freedom (displacements
+    and CRVs for each node (dim6)), ``V`` representing the linear velocities at the A frame (dim3), ``W`` representing
+    the angular velocities at the ``A`` frame (dim3), and ``orient`` representing the orientation variable of the
+    ``A`` frame with respect to ``G``
 
     Notes on the settings:
 
@@ -104,7 +115,7 @@ class LinearBeam(BaseElement):
     settings_types['newmark_damp'] = 'float'
     settings_description['newmark_damp'] = 'Newmark damping value. For systems assembled using ``newmark``'
 
-    settings_default['use_euler'] = False
+    settings_default['use_euler'] = True
     settings_types['use_euler'] = 'bool'
     settings_description['use_euler'] = 'Use euler angles for rigid body parametrisation'
 
@@ -118,7 +129,8 @@ class LinearBeam(BaseElement):
 
     settings_types['remove_dofs'] = 'list(str)'
     settings_default['remove_dofs'] = []
-    settings_description['remove_dofs'] = 'Remove desired degrees of freedom'
+    settings_description['remove_dofs'] = 'Remove desired degrees of freedom (flexible DOFs, ' \
+                                          'linear velocities, rotational velocities, orientation)'
     settings_options['remove_dofs'] = ['eta', 'V', 'W', 'orient']
 
     settings_types['remove_sym_modes'] = 'bool'
@@ -164,16 +176,17 @@ class LinearBeam(BaseElement):
         num_dof_flex = self.sys.structure.num_dof.value
         num_dof_rig = self.sys.Mstr.shape[0] - num_dof_flex
 
+        # Variables described in class docstring. If modified, remember to change docstring
         if num_dof_rig == 0:
             state_variable_list = [
                 VectorVariable('eta', size=num_dof_flex, index=0),
             ]
         else:
             state_variable_list = [
-                VectorVariable('eta', size=num_dof_flex, index=0),
-                VectorVariable('V', size=3, index=1),
-                VectorVariable('W', size=3, index=2),
-                VectorVariable('orient', size=num_dof_rig - 6, index=3),
+                VectorVariable('eta', size=num_dof_flex, index=0),  # flexible dofs
+                VectorVariable('V', size=3, index=1),  # translational velocities
+                VectorVariable('W', size=3, index=2),  # angular velocities
+                VectorVariable('orient', size=num_dof_rig - 6, index=3),  # orientation
             ]
 
         self.state_variables = LinearVector(state_variable_list)
