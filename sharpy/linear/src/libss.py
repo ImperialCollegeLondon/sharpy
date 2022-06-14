@@ -97,16 +97,6 @@ class StateSpace:
         self.dt = dt
         self.check_types()
 
-        # determine inputs/outputs/states
-        if self.B.shape.__len__() == 1:
-            # Allow for SISO systems
-            self.inputs = 1
-            self.states = self.B.shape[0]
-        else:
-            (self.states, self.inputs) = self.B.shape
-
-        self.outputs = self.C.shape[0]
-
         # vector variable tracking
         self._input_variables = None  # type: LinearVector
         self._state_variables = None
@@ -558,9 +548,6 @@ class Gain:
         self.value = value
         self._input_variables = None
         self._output_variables = None
-
-        self._inputs = None
-        self._outputs = None
 
         if input_vars is not None:
             self.input_variables = input_vars
