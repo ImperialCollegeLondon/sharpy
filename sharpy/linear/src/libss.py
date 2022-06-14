@@ -125,36 +125,19 @@ class StateSpace:
     def inputs(self):
         """Number of inputs :math:`m` to the system."""
         if self.B.shape.__len__() == 1:
-            self.inputs = 1
+            return 1
         else:
-            self.inputs = self.B.shape[1]
-
-        return self._inputs
-
-    @inputs.setter
-    def inputs(self, value):
-        # print('Setting Number of inputs')
-        self._inputs = value
+            return self.B.shape[1]
 
     @property
     def outputs(self):
         """Number of outputs :math:`p` of the system."""
-        self.outputs = self.C.shape[0]
-        return self._outputs
-
-    @outputs.setter
-    def outputs(self, value):
-        self._outputs = value
+        return self.C.shape[0]
 
     @property
     def states(self):
         """Number of states :math:`n` of the system."""
-        self.states = self.A.shape[0]
-        return self._states
-
-    @states.setter
-    def states(self, value):
-        self._states = value
+        return self.A.shape[0]
 
     @property
     def input_variables(self):
@@ -616,25 +599,14 @@ class Gain:
     def inputs(self):
         """Number of inputs :math:`m` to the system."""
         if self.value.shape.__len__() == 1:
-            self.inputs = 1
+            return 1
         else:
-            self.inputs = self.value.shape[1]
-
-        return self._inputs
-
-    @inputs.setter
-    def inputs(self, value):
-        self._inputs = value
+            return self.value.shape[1]
 
     @property
     def outputs(self):
         """Number of outputs :math:`p` of the gain."""
-        self.outputs = self.value.shape[0]
-        return self._outputs
-
-    @outputs.setter
-    def outputs(self, value):
-        self._outputs = value
+        return self.value.shape[0]
 
     def dot(self, elem):
         """
