@@ -4,7 +4,7 @@ template_wt
 Functions needed to generate a wind turbines
 
 Notes:
-    To load this library: import cases.templates.template_wt as template_wt
+    To load this library: import sharpy.cases.templates.template_wt as template_wt
 """
 
 
