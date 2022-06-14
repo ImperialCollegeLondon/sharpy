@@ -1145,7 +1145,8 @@ def retain_inout_channels(sys, retain_channels, where):
 
     # Go through variables...
     for var in gain_input_vars:
-        n_vars = np.sum((np.array(retain_channels) < var.end_position) * (np.array(retain_channels) >= var.first_position))
+        n_vars = np.sum(
+            (np.array(retain_channels) < var.end_position) * (np.array(retain_channels) >= var.first_position))
 
         if n_vars == 0:
             gain_output_vars.remove(var.name)
