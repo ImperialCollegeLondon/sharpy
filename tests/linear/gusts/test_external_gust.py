@@ -2,7 +2,7 @@ import numpy as np
 import sharpy.utils.algebra as algebra
 import sharpy.sharpy_main as smain
 import unittest
-import cases.templates.flying_wings as wings
+import sharpy.cases.templates.flying_wings as wings
 import os
 import shutil
 
@@ -45,7 +45,7 @@ def generate_sharpy(alpha=0., case_name='hale_static', case_route='./', **kwargs
                           'flow': kwargs.get('flow', []),
                           'write_screen': 'off',
                           'write_log': 'on',
-                          'log_folder': './output/',
+                          'log_folder': output_route,
                           'log_file': case_name + '.log'}
 
     settings['BeamLoader'] = {'unsteady': 'on',
@@ -306,7 +306,8 @@ class TestGustAssembly(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         for folder in cls.directories:
-            shutil.rmtree(cls.route_test_dir + '/' + folder)
+            if os.path.isdir(cls.route_test_dir + '/' + folder):
+                shutil.rmtree(cls.route_test_dir + '/' + folder)
 
     def linear_response(self):
 
@@ -384,7 +385,7 @@ class TestGustAssembly(unittest.TestCase):
         case_file = generate_sharpy(alpha=alpha,
                                     case_name='nonlinear',
                                     case_route=self.route_test_dir + '/cases/',
-                                    output_route=self.route_test_dir + '/output',
+                                    output_route=self.route_test_dir + '/output/',
                                     flow=flow,
                                     u_inf=self.u_inf,
                                     M=self.M,
@@ -459,6 +460,15 @@ class TestGustAssembly(unittest.TestCase):
         u_in = np.loadtxt(path_to_input)
 
         np.testing.assert_array_almost_equal(x_sharpy[1:, 0], u_in[:-1])
+
+    def tearDown(self):
+        folders = ['cases', 'output']
+        import shutil
+
+        for folder in folders:
+            path = self.route_test_dir + '/' + folder
+            if os.path.isdir(path):
+                shutil.rmtree(path)
 
 
 if __name__ == '__main__':

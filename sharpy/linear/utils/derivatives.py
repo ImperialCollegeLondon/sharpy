@@ -5,21 +5,20 @@ from sharpy.utils import algebra as algebra, cout_utils as cout
 
 
 class Derivatives:
-
+    """
+    Class containing the derivatives set for a given state-space system (i.e. aeroelastic or aerodynamic)
+    """
     def __init__(self, reference_dimensions, static_state, target_system=None):
 
-        self.target_system = target_system
-        self.transfer_function = None
+        self.target_system = target_system  # type: str # name of target system (aerodynamic/aeroelastic)
+        self.transfer_function = None  # type: np.array # matrix of steady-state TF for target system
 
-        self.static_state = static_state
-        self.reference_dimensions = reference_dimensions
-
-        self.matrix = None
+        self.static_state = static_state  # type: tuple # [fx, fy, fz] at ref state
+        self.reference_dimensions = reference_dimensions  # type: dict # name: ref_dimension_value dictionary
 
         self.separator = '\n' + 80 * '#' + '\n'
 
-        self.angles = None
-        self.dict_of_derivatives = {} # Each of the derivative sets DerivativeSet
+        self.dict_of_derivatives = {}  # type: dict # {name:DerivativeSet} Each of the derivative sets DerivativeSet
 
         s_ref = self.reference_dimensions['S_ref']
         b_ref = self.reference_dimensions['b_ref']
@@ -54,16 +53,18 @@ class Derivatives:
             state_space (sharpy.linear.src.libss.StateSpace): State-space object for the target system
             steady_forces (np.array): Array of steady forces (at the linearisation) expressed in the beam degrees of
               freedom and with size equal to the number of structural degrees of freedom
-            quat (np.array): Quaternion at the linearisation
+            quat (np.array): Quaternion at the linearisation reference state
             v0 (np.array): Free stream velocity vector at the linearisation condition
             phi (np.array (optional)): Mode shape matrix for modal systems
+            tpa (np.array (optional)): Transformation matrix onto principal axes
 
         """
-        cls = DerivativeSet
-        cls.quat = quat
-        cls.cga = algebra.quat2rotation(cls.quat)
-        cls.v0 = v0
-        cls.coefficients = self.coefficients
+        cls = DerivativeSet  # explain what is the DerivativeSet class
+        if cls.quat is None:
+            cls.quat = quat
+            cls.cga = algebra.quat2rotation(cls.quat)
+            cls.v0 = v0
+            cls.coefficients = self.coefficients
 
         if phi is not None:
             cls.modal = True
@@ -74,11 +75,7 @@ class Derivatives:
             cls.modal = False
         cls.steady_forces = steady_forces
 
-        H0 = state_space.freqresp(np.array([1e-5]))[:, :, 0]
-        # A, B, C, D = state_space.get_mats()
-        # H0 = C.dot(np.linalg.inv(np.eye(state_space.states) - A).dot(B)) + D
-        # H0 = C.dot(-np.linalg.inv(A).dot(B)) + D
-        # np.savetxt('./nodal_aeroelastic_static_manual.txt', H0.real)
+        H0 = state_space.freqresp(np.array([1e-5]))[:, :, 0].real
         if cls.modal:
             vel_inputs_variables = state_space.input_variables.get_variable_from_name('q_dot')
             output_indices = state_space.output_variables.get_variable_from_name('Q').rows_loc[:6]
@@ -195,7 +192,13 @@ class Derivatives:
 
 
 class DerivativeSet:
+    """
+    Class containing the stability derivative set for each of the input/output combinations. A derivative set may be
+    force/angle or force/control_surface, for example.
 
+    The class attributes contain the parameters common across all derivative sets. The instance attributes those
+    pertaining to the specific set.
+    """
     steady_forces = None
     coefficients = None
     quat = None
@@ -213,15 +216,23 @@ class DerivativeSet:
 
     def __init__(self, frame_of_reference, derivative_calculation=None, name=None,
                  transfer_function=None):
+        """
 
-        self.transfer_function = transfer_function
-        self.matrix = None
-        self.labels_in = []
-        self.labels_out = []
-        self.frame_of_reference = frame_of_reference
+        Args:
+            frame_of_reference (str): Name of the frame of reference (stability or body axes)
+            derivative_calculation (str): Name of the method to compute derivatives
+            name (str): Name of the derivative set
+            transfer_function (np.array): steady state transfer function for the desired input output channels
+        """
 
-        self.table = None
-        self.name = name
+        self.transfer_function = transfer_function  # type: np.array # steady-state TF for the specific out/in
+        self.matrix = None  # type: np.array # matrix of stability derivatives
+        self.labels_in = []  # type: list(str) # strings describing the input channels
+        self.labels_out = []  # type list(str) # strings describing the output channels
+        self.frame_of_reference = frame_of_reference  # type: str # name of the FoR (stability or body axes)
+
+        self.table = None  # type: cout.TablePrinter
+        self.name = name  # type: str # name of the set
 
         # TODO: remove in clean up and make derivative_calculation a position argument
         if derivative_calculation is not None:
@@ -272,8 +283,6 @@ class DerivativeSet:
         The term :math:`\frac{\partial F^A}{\partial v^A}` is obtained directly from the steady state transfer
         function of the linear UVLM expressed in the beam degrees of freedoms.
 
-        Returns:
-            sharpy.linear.utils.derivatives.DerivativeSet: containing the derivatives.
         """
         self.labels_in = ['phi', 'alpha', 'beta']
         self.labels_out = ['CD', 'CY', 'CL', 'Cl', 'Cm', 'Cn']
@@ -383,24 +392,3 @@ class DerivativeSet:
         self.matrix[:3, :] /= self.coefficients['force']
         self.matrix[np.ix_([3, 5]), :] /= self.coefficients['moment_lat']
         self.matrix[4, :] /= self.coefficients['moment_lon']
-
-
-if __name__ == '__main__':
-    import pickle
-    with open('/home/ng213/2TB/KK_AirbusHALE/02_Derivatives/output/hale_static.pkl', 'rb') as f:
-        data = pickle.load(f)
-    steady_forces = data.linear.linear_system.linearisation_vectors['forces_aero_beam_dof'][:6]
-    state_space = data.linear.linear_system.uvlm.ss
-    quat = data.linear.tsstruct0.quat
-    phi = data.linear.linear_system.linearisation_vectors['mode_shapes']
-
-    coefficients = {'force': 1960., 'moment_lon': 1960., 'moment_lat': 62720.}
-
-    DerivativeSet.initialise_derivatives(state_space, steady_forces, quat, np.array([-10., 0, 0]), phi)
-
-    trial = DerivativeSet('body')
-    trial.coefficients = coefficients
-    trial.angle_derivatives()
-    trial.print(derivative_filename='ders_trial.txt')
-    breakpoint()
-

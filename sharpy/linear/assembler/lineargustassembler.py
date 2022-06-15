@@ -3,6 +3,8 @@ import numpy as np
 import sharpy.linear.src.libss as libss
 import scipy.signal as scsig
 import sharpy.utils.settings as settings
+import sharpy.utils.cout_utils as cout
+from abc import ABCMeta, abstractmethod
 
 dict_of_linear_gusts = {}
 
@@ -18,61 +20,99 @@ def linear_gust(arg):
 
 
 def gust_from_string(gust_name):
+    """
+    Returns an instance of the ``gust_name`` class
+
+    Args:
+        gust_name (str): Name of gust
+
+    Returns:
+        LinearGust: instance of linear gust
+    """
     return dict_of_linear_gusts[gust_name]()
 
 
-class LinearGust:
+class LinearGust(metaclass=ABCMeta):
     # Base class from which to develop the desired gusts
     settings_types = {}
     settings_default = {}
     settings_description = {}
 
+    print_info = True  # for debugging
+
     def __init__(self):
         self.aero = None  #: aerogrid
-        self.linuvlm = None # :linuvlm
         self.tsaero0 = None  # timestep info at the linearisation point
 
-        self.state_to_uext = None #: np.array Gust system C matrix (for unpacking into timestep_info)
-        self.uin_to_uext = None #: np.array Gust system D matrix (for unpacking into timestep_info)
-        self.gust_ss = None # :libss.StateSpace containing the gust state-space system
+        self.dt = None  # type: float
+        self.remove_predictor = None  # type: bool
+        self.Kzeta = None  # type: int  # total number of lattice vertices
+        self.KKzeta = None  # type: list  # list of number of lattice vertices in each surface
+
+        self.state_to_uext = None  #type: np.array # Gust system C matrix (for unpacking into timestep_info)
+        self.uin_to_uext = None  #type: np.array # Gust system D matrix (for unpacking into timestep_info)
+        self.gust_ss = None  #type: libss.StateSpace # containing the gust state-space system
 
         self.settings = None
 
-        self.u_ext_direction = None # np.ndarray Unit external velocity vector in G frame
+        self.u_ext_direction = None  # np.ndarray Unit external velocity vector in G frame
         self.u_inf = None  # float Free stream velocity magnitude
 
-    def initialise(self, aero, linuvlm, tsaero0, custom_settings=None):
+    def initialise(self, aero, linuvlm, tsaero0, u_ext, custom_settings=None):
+        """
+        Initialise gust class
+
+        Args:
+            aero (sharpy.aero.models.Aerogrid):
+            linuvlm (sharpy.linear.src.linuvlm.Dynamic) :
+            tsaero0 (sharpy.utils.datstructures.AeroTimestepInfo) : time step at reference state
+            u_ext (np.ndarray): free-stream velocity
+            custom_settings (dict):
+        """
         self.aero = aero
-        self.linuvlm = linuvlm
         self.tsaero0 = tsaero0
+        self.dt = linuvlm.dt
+        self.remove_predictor = linuvlm.remove_predictor
+        self.KKzeta = linuvlm.MS.KKzeta
+        self.Kzeta = sum(self.KKzeta)
 
         if custom_settings is not None:
             self.settings = custom_settings
             settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # find free stream velocity
-        u_ext = self.tsaero0.u_ext[0][:, 0, 0]  # use ref node external velocity
         self.u_inf = np.linalg.norm(u_ext)
         self.u_ext_direction = u_ext / self.u_inf
 
-        try:
-            np.testing.assert_array_almost_equal(self.u_ext_direction, np.array([1., 0., 0.]))
-        except AssertionError:
-            raise NotImplementedError('Gust system not yet implemented when the free-stream vector is not '
-                                      'coincident with the inertial G (x) vector. Please rotate structure rather '
-                                      'than fluid.')
-
     def get_x_max(self):
-        # TODO: fix such that it doesn't take x-max but rather the projection onto the freestream vector
+        """
+        Returns the maximum and minimum and minimum coordinates of the UVLM lattice projected onto the free-stream
+        velocity vector
+
+        Returns:
+            tuple: minimum and maximum coordinates of lattice projected onto velocity vector
+        """
         max_chord_surf = []
         min_chord_surf = []
-        for i_surf in range(len(self.tsaero0.zeta)):
-            max_chord_surf.append(np.max(self.tsaero0.zeta[i_surf][0, :, :]))
-            min_chord_surf.append(np.min(self.tsaero0.zeta[i_surf][0, :, :]))
+        for zeta in self.tsaero0.zeta:
+            zeta_proj = np.zeros_like(zeta)
+            _, m, n = zeta.shape
+            for i_m in range(m):
+                for i_n in range(n):
+                    zeta_proj[:, i_m, i_n] = zeta[:, i_m, i_n].dot(self.u_ext_direction) * self.u_ext_direction
+            max_chord_surf.append(np.max(zeta_proj))
+            min_chord_surf.append(np.min(zeta_proj))
         return min(min_chord_surf), max(max_chord_surf)
 
+    @abstractmethod
     def assemble(self):
-        pass
+        """
+        Assemble gust system according to specific gust requirements in inherited classes
+
+        Returns:
+            libss.StateSpace
+        """
+        return libss.StateSpace(0, 0, 0, 0)  # placeholder for state space
 
     def apply(self, ssuvlm):
         r"""
@@ -109,7 +149,7 @@ class LinearGust:
         Returns:
             libss.StateSpace: Coupled gust system with Linear UVLM.
         """
-        ssgust = self.assemble()
+        ssgust = self.assemble()  # libss.StateSpace()
         #
         # Feed through UVLM inputs
         b_aug = np.zeros((ssgust.states, ssuvlm.inputs - ssgust.outputs + ssgust.inputs))
@@ -145,14 +185,14 @@ class LinearGust:
         Returns:
             libss.StateSpace: StateSpace object of the individual gust system
         """
-        if self.linuvlm.remove_predictor:
+        if self.remove_predictor:
             a_mod, b_mod, c_mod, d_mod = libss.SSconv(a_i, None, b_i, c_i, d_i)
-            gustss = libss.StateSpace(a_mod, b_mod, c_mod, d_mod, dt=self.linuvlm.SS.dt)
+            gustss = libss.StateSpace(a_mod, b_mod, c_mod, d_mod, dt=self.dt)
             self.state_to_uext = c_mod
             self.uin_to_uext = d_mod
         else:
             gustss = libss.StateSpace(a_i, b_i, c_i, d_i,
-                                      dt=self.linuvlm.SS.dt)
+                                      dt=self.dt)
             self.state_to_uext = c_i
             self.uin_to_uext = d_i
         gustss.input_variables = ss_interface.LinearVector(
@@ -165,21 +205,19 @@ class LinearGust:
         return gustss
 
     def discretise_domain(self):
+        """
+        Generates a "gust-station" domain, aligned with the free-stream velocity equispaced in
+        :math:`\Delta t U_\infty` increments.
 
+        Returns:
+            tuple: domain and number of elements in the domain
+        """
         x_min, x_max = self.get_x_max()  # G frame, min and max of panels x coordinates
 
-        u_ext_direction = self.u_ext_direction
-
-        # Project onto free stream
-        # TODO: need to fix. Projection before getting xmin/xmax
-        # x_min = x_min.dot(u_ext_direction) * u_ext_direction
-        # x_max = x_max.dot(u_ext_direction) * u_ext_direction
-
-        N = int(np.ceil((x_max - x_min) / self.linuvlm.SS.dt))
+        N = int(np.ceil((x_max - x_min) / self.dt / self.u_inf))
         x_domain = np.linspace(x_min, x_max, N)
 
         return x_domain, N
-
 
 
 @linear_gust
@@ -197,7 +235,7 @@ class LeadingEdge(LinearGust):
         Assembles the gust state space system, creating the (A, B, C and D) matrices that convect the single gust input
         at the leading edge downstream and uniformly across the span
         """
-        Kzeta = self.linuvlm.Kzeta
+        Kzeta = self.Kzeta  # total number of lattice vertices
 
         # Convection system: needed for as many inputs (since it carries their time histories)
         x_domain, N = self.discretise_domain()
@@ -213,17 +251,32 @@ class LeadingEdge(LinearGust):
         for i_surf in range(self.aero.n_surf):
 
             M_surf, N_surf = self.aero.aero_dimensions[i_surf]
-            Kzeta_start = 3 * sum(self.linuvlm.MS.KKzeta[:i_surf])  # number of coordinates up to current surface
+            Kzeta_start = 3 * sum(self.KKzeta[:i_surf])  # number of coordinates up to current surface
             shape_zeta = (3, M_surf + 1, N_surf + 1)
+
+            if self.print_info:
+                cout.cout_wrap(f'Aero surface {i_surf}')
+                cout.cout_wrap(f'Gust monitoring station domain:\n{x_domain}', 1)
 
             for i_node_span in range(N_surf + 1):
                 for i_node_chord in range(M_surf + 1):
                     i_vertex = [Kzeta_start + np.ravel_multi_index((i_axis, i_node_chord, i_node_span),
                                                                    shape_zeta) for i_axis in range(3)]
-                    x_vertex = self.tsaero0.zeta[i_surf][0, i_node_chord, i_node_span]
+                    zeta = self.tsaero0.zeta[i_surf][:, i_node_chord, i_node_span]
+                    x_vertex = zeta.dot(self.u_ext_direction)
                     interpolation_weights, column_indices = linear_interpolation_weights(x_vertex, x_domain)
                     c_i[i_vertex, column_indices[0]] = np.array([0, 0, interpolation_weights[0]])
                     c_i[i_vertex, column_indices[1]] = np.array([0, 0, interpolation_weights[1]])
+
+                    if self.print_info:
+                        cout.cout_wrap(f'Vertex info: i_n = {i_node_span}\ti_m = {i_node_chord}')
+                        cout.cout_wrap(f'\tCoordinate: {zeta}', 1)
+                        cout.cout_wrap(f'\tProjected coordinate: {x_vertex}', 1)
+                        cout.cout_wrap(f'\tInterpolation weights: {interpolation_weights}', 2)
+                        cout.cout_wrap(f'\tC matrix column indices: {column_indices}', 2)
+                        cout.cout_wrap(f'\ti_vertex: {i_vertex}', 2)
+
+
 
         d_i = np.zeros((c_i.shape[0], b_i.shape[1]))
 
@@ -259,8 +312,8 @@ class MultiLeadingEdge(LinearGust):
         self.span_loc = None
         self.n_gust = None
 
-    def initialise(self, aero, linuvlm, tsaero0, custom_settings=None):
-        super().initialise(aero, linuvlm, tsaero0, custom_settings)
+    def initialise(self, aero, linuvlm, tsaero0, u_ext, custom_settings=None):
+        super().initialise(aero, linuvlm, tsaero0, u_ext, custom_settings)
 
         self.span_loc = self.settings['span_location']
         self.n_gust = len(self.span_loc)
@@ -270,7 +323,7 @@ class MultiLeadingEdge(LinearGust):
     def assemble(self):
 
         n_gust = self.n_gust
-        Kzeta = self.linuvlm.Kzeta
+        Kzeta = self.Kzeta
         span_loc = self.span_loc
 
         # Convection system: needed for as many inputs (since it carries their time histories)
@@ -289,7 +342,7 @@ class MultiLeadingEdge(LinearGust):
         for i_surf in range(self.aero.n_surf):
 
             M_surf, N_surf = self.aero.aero_dimensions[i_surf]
-            Kzeta_start = 3 * sum(self.linuvlm.MS.KKzeta[:i_surf])  # number of coordinates up to current surface
+            Kzeta_start = 3 * sum(self.KKzeta[:i_surf])  # number of coordinates up to current surface
             shape_zeta = (3, M_surf + 1, N_surf + 1)
 
             for i_node_span in range(N_surf + 1):
@@ -304,6 +357,39 @@ class MultiLeadingEdge(LinearGust):
 
         gustss = self.assemble_gust_statespace(gust_a, gust_b, gust_c, gust_d)
         return gustss
+
+
+def get_freestream_velocity(data):
+    try:
+        u_inf = data.settings['StaticUvlm']['aero_solver_settings']['u_inf']
+        u_inf_direction = data.settings['StaticCoupled']['aero_solver_settings']['u_inf_direction']
+    except KeyError:
+        try:
+            u_inf = data.settings['StaticCoupled']['aero_solver_settings']['velocity_field_input']['u_inf']
+            u_inf_direction = data.settings['StaticCoupled']['aero_solver_settings']['velocity_field_input']['u_inf_direction']
+        except KeyError:
+            cout.cout_wrap('Unable to find free stream velocity settings in StaticUvlm or StaticCoupled,'
+                           'please ensure these settings are provided in the config .sharpy file. If'
+                           'you are running a restart simulation make sure they are included too, regardless'
+                           'of these solvers being present in the SHARPy flow', 4)
+            raise KeyError
+
+    try:
+        v0 = u_inf * u_inf_direction
+    except TypeError:
+        # For restart solutions, where the settings may have not been processed and thus may
+        # exist but in string format
+        try:
+            u_inf_direction = np.array(u_inf_direction, dtype=float)
+        except ValueError:
+            if u_inf_direction.find(',') < 0:
+                u_inf_direction = np.fromstring(u_inf_direction.strip('[]'), sep=' ', dtype=float)
+            else:
+                u_inf_direction = np.fromstring(u_inf_direction.strip('[]'), sep=',', dtype=float)
+        finally:
+            v0 = np.array(u_inf_direction, dtype=float) * float(u_inf)
+
+    return v0
 
 
 def linear_interpolation_weights(x_vertex, x_domain):
