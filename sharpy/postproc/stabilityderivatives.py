@@ -9,7 +9,16 @@ from sharpy.linear.utils.derivatives import Derivatives, DerivativeSet
 @solver_interface.solver
 class StabilityDerivatives(solver_interface.BaseSolver):
     """
-    Outputs the stability derivatives of a free-flying aircraft
+    Outputs the stability derivatives of a free-flying aircraft.
+
+    The simulation set-up to obtain the stability derivatives is not standard, and requires specific settings
+    in the solvers ran prior to this post-processor. Please see the tutorial at:
+    https://github.com/ngoiz/hale-ders/blob/main/Delivery/01_StabilityDerivatives/01_StabilityDerivatives.ipynb
+
+    In the future, a routine will be available where these required solvers' settings are pre-populated
+
+    Note:
+        Requires the AeroForcesCalculator post-processor to have been run before.
 
     """
     solver_id = 'StabilityDerivatives'
@@ -213,13 +222,10 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         return ss
 
     def steady_aero_forces(self):
-        """Retrieve steady aerodynamic forces at the linearisation reference
+        """Retrieve steady aerodynamic forces and moments at the linearisation reference at the
 
         Returns:
-            tuple: (fx, fy, fz) in the inertial G frame
+            tuple: (fx, fy, fz, mx, my, mz) in the inertial G frame
         """
-        fx = np.sum(self.data.linear.tsaero0.inertial_steady_forces[:, 0], 0)
-        fy = np.sum(self.data.linear.tsaero0.inertial_steady_forces[:, 1], 0)
-        fz = np.sum(self.data.linear.tsaero0.inertial_steady_forces[:, 2], 0)
 
-        return fx, fy, fz
+        return self.data.linear.tsaero0.total_steady_inertial_forces

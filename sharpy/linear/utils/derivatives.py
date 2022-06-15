@@ -7,13 +7,19 @@ from sharpy.utils import algebra as algebra, cout_utils as cout
 class Derivatives:
     """
     Class containing the derivatives set for a given state-space system (i.e. aeroelastic or aerodynamic)
+
+    Args:
+        reference_dimensions (dict): Info on the reference dimensions ``S_ref`` (area) ``b_ref`` (span) ``c_ref`` chord
+          ``u_inf`` velocity and ``rho`` density
+        static_state (tuple): Force and moment coefficient at the reference state (dim6) (inertial frame)
+        target_system (str): Name of target system ``aeroelastic`` or ``aerodynamic``
     """
     def __init__(self, reference_dimensions, static_state, target_system=None):
 
         self.target_system = target_system  # type: str # name of target system (aerodynamic/aeroelastic)
         self.transfer_function = None  # type: np.array # matrix of steady-state TF for target system
 
-        self.static_state = static_state  # type: tuple # [fx, fy, fz] at ref state
+        self.static_state = static_state  # type: tuple # [fx, fy, fz, mx, my, mz] at ref state
         self.reference_dimensions = reference_dimensions  # type: dict # name: ref_dimension_value dictionary
 
         self.separator = '\n' + 80 * '#' + '\n'
@@ -33,6 +39,8 @@ class Derivatives:
                              'force_angular_vel': self.dynamic_pressure * s_ref * c_ref / u_inf,
                              'moment_lon_angular_vel': self.dynamic_pressure * s_ref * c_ref * c_ref / u_inf}  # missing rates
 
+        # only used to show the forces/moment coefficient at ref state
+        # for derivatives calculation the vectors at the linearisation ref are used
         self.steady_coefficients = np.array(self.static_state)
         self.steady_coefficients[:3] /= self.coefficients['force']
         self.steady_coefficients[3] /= self.coefficients['moment_lat']
