@@ -194,6 +194,15 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         return v0
 
     def get_state_space(self, target_system):
+        """
+        Returns the target state-space ``target_system`` either ``aeroelastic`` or ``aerodynamic``
+
+        Returns:
+            libss.StateSpace: relevant state-space
+
+        Raises:
+            NameError: if the target system is not ``aeroelastic`` or ``aerodynamic``
+        """
         if target_system == 'aerodynamic':
             ss = self.data.linear.linear_system.uvlm.ss
         elif target_system == 'aeroelastic':
@@ -204,15 +213,13 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         return ss
 
     def steady_aero_forces(self):
-        # Find ref forces in G
-        fx, fy, fz = self.data.linear.tsaero0.total_steady_inertial_forces[:3]
-        mx, my, mz = self.data.linear.tsaero0.total_steady_inertial_forces[3:]
-        return fx, fy, fz, mx, my, mz
+        """Retrieve steady aerodynamic forces at the linearisation reference
 
-        fy = np.sum(self.data.aero.timestep_info[0].inertial_steady_forces[:, 1], 0) + \
-             np.sum(self.data.aero.timestep_info[0].inertial_unsteady_forces[:, 1], 0)
-
-        fz = np.sum(self.data.aero.timestep_info[0].inertial_steady_forces[:, 2], 0) + \
-             np.sum(self.data.aero.timestep_info[0].inertial_unsteady_forces[:, 2], 0)
+        Returns:
+            tuple: (fx, fy, fz) in the inertial G frame
+        """
+        fx = np.sum(self.data.linear.tsaero0.inertial_steady_forces[:, 0], 0)
+        fy = np.sum(self.data.linear.tsaero0.inertial_steady_forces[:, 1], 0)
+        fz = np.sum(self.data.linear.tsaero0.inertial_steady_forces[:, 2], 0)
 
         return fx, fy, fz

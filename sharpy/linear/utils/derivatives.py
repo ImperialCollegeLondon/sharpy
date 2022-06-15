@@ -59,7 +59,7 @@ class Derivatives:
             tpa (np.array (optional)): Transformation matrix onto principal axes
 
         """
-        cls = DerivativeSet  # explain what is the DerivativeSet class
+        cls = DerivativeSet  # type: DerivativeSet
         if cls.quat is None:
             cls.quat = quat
             cls.cga = algebra.quat2rotation(cls.quat)
