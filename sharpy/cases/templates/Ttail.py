@@ -559,7 +559,6 @@ class Ttail_3beams():
 
         config['Modal'] = {'NumLambda': 60,
                            'print_matrices': 'off',
-                           'keep_linear_matrices': 'on',
                            'write_modes_vtk': True,
                            'use_undamped_modes': True}
 

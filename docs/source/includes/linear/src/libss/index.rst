@@ -11,7 +11,7 @@ the sparse arrays types defined in libsparse.
 The module includes:
 
 Classes:
-- ss: provides a class to build DLTI/LTI systems with full and/or sparse
+- StateSpace: provides a class to build DLTI/LTI systems with full and/or sparse
 	matrices and wraps many of the methods in these library. Methods include:
 	- freqresp: wraps the freqresp function
 	- addGain: adds gains in input/output. This is not a wrapper of addGain, as
@@ -61,6 +61,7 @@ to do:
 	./SSconv
 	./SSderivative
 	./SSintegr
+	./StateSpace
 	./addGain
 	./adjust_phase
 	./build_SS_poly
@@ -76,10 +77,10 @@ to do:
 	./parallel
 	./project
 	./random_ss
+	./retain_inout_channels
 	./scale_SS
 	./series
 	./simulate
-	./ss
 	./ss_block
 	./ss_to_scipy
 	./sum_ss

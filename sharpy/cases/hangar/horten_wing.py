@@ -270,7 +270,6 @@ class HortenWing:
             np.savetxt(self.case_route + '/' + self.case_name + '.input.txt', cs)
             i += 1
 
-
     def planform_area(self):
         S_fus = 0.5 * (self.c_fuselage + self.c_root) * self.fuselage_width
         S_wing = 0.5 * (self.c_root + self.c_root*self.taper_ratio) * self.span / 2
@@ -1299,7 +1298,7 @@ class HortenWing:
                              'rigid_body_modes': True,
                              'write_modes_vtk': 'on',
                              'print_matrices': 'on',
-                             'write_data': 'on',
+                             'save_data': 'on',
                              'continuous_eigenvalues': 'off',
                              'dt': dt,
                              'plot_eigenvalues': False}
