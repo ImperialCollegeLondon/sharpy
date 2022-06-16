@@ -50,7 +50,7 @@ def generate_infinite_wing(case_name, alpha, **kwargs):
     settings['SHARPy'] = {'case': case_name,
                           'route': case_route,
                           'flow': kwargs.get('flow', []),
-                          'write_screen': 'off',
+                          'write_screen': kwargs.get('write_screen', 'off'),
                           'write_log': 'on',
                           'log_folder': output_route,
                           'log_file': case_name + '.log'}

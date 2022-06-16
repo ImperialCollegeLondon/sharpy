@@ -32,7 +32,7 @@ class TestAirfoilPolars(unittest.TestCase):
     polar.initialise(np.column_stack((polar_data[:, 0] * np.pi / 180, polar_data[:, 1], polar_data[:, 2],
                                       polar_data[:, 4])))
 
-    print_info = False
+    print_info = True
 
     def test_infinite_wing(self):
         """
@@ -108,7 +108,8 @@ class TestAirfoilPolars(unittest.TestCase):
                                   polar_file=self.route_test_dir + '/xf-naca0018-il-50000.txt',
                                   aspect_ratio=1e7,
                                   main_ea=0.25,
-                                  output_route=output_route)
+                                  output_route=output_route,
+                                  write_screen=self.print_info)
 
         derivatives = self.postprocess_linear(case_name)
 
