@@ -73,10 +73,14 @@ class DynamicLoads(BaseSolver):
     settings_default['mach_number'] = 0.
     settings_description['mach_number'] = 'Scale results with Mach number'
 
-    settings_types['flutter_bound'] = 'float'
-    settings_default['flutter_bound'] = 0.
-    settings_description['flutter_bound'] = 'Set an upper velocity bound (> reference_velocity) after \
+    settings_types['flutter_upperbound'] = 'float'
+    settings_default['flutter_upperbound'] = 0.
+    settings_description['flutter_upperbound'] = 'Set an upper velocity bound (> reference_velocity) after \
     which flutter is not calculated (useful for optimization problems where flutter is a constraint)'
+
+    settings_types['flutter_lowerbound'] = 'float'
+    settings_default['flutter_lowerbound'] = 0.
+    settings_description['flutter_lowerbound'] = 'Set a lower velocity bound (< reference_velocity)'
 
     settings_types['frequency_cutoff'] = 'float'
     settings_default['frequency_cutoff'] = 0
@@ -136,7 +140,6 @@ class DynamicLoads(BaseSolver):
 
     def initialise(self, data, custom_settings=None, caller=None):
         self.data = data
-        #import pdb; pdb.set_trace();
 
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -256,10 +259,14 @@ class DynamicLoads(BaseSolver):
         else:
             secant_max_calls = self.settings['secant_max_calls']
             
-        if self.settings['flutter_bound'] == 0:
-            flutter_bound = np.inf
+        if self.settings['flutter_upperbound'] == 0:
+            flutter_upperbound = np.inf
         else:
-            flutter_bound = self.settings['flutter_bound']
+            flutter_upperbound = self.settings['flutter_upperbound']
+        if self.settings['flutter_lowerbound'] == 0:
+            flutter_lowerbound = 0.
+        else:
+            flutter_lowerbound = self.settings['flutter_lowerbound']
             
         flutter_calculation = 1 # find flutter speed unless an upper bound is
                                 # defined and the speed is beyond that bound   
@@ -325,9 +332,13 @@ class DynamicLoads(BaseSolver):
                 eigs_i_series.append(eigs.imag)
                 u_inf_series.append(np.ones_like(eigs.real)*u_new)
                 damping_series.append(damping_vector)
-            if u_new > flutter_bound:
+            if u_new >= flutter_upperbound:                
                 flutter_calculation = 0
                 break
+            elif u_new <= flutter_lowerbound:
+                flutter_calculation = 0
+                break
+
         ##############################################################################
         # root finding via secant or bisection method (x-axis=speed, y-axis=damping) #
         ##############################################################################
