@@ -7,6 +7,11 @@
   var_type: 'control_surface'
   inout: 'in'
   position: 1
+- name: 'app_forces'
+  var_type: 'node'
+  inout: 'in'
+  position: 0
+  index: 1
 - name: 'for_pos'
   inout: 'out'
   position: 0

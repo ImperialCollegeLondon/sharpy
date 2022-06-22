@@ -21,6 +21,7 @@ import sharpy.utils.rom_interface as rom_interface
 import sharpy.rom.utils.librom as librom
 import sharpy.linear.src.libss as libss
 import time
+from sharpy.linear.utils.ss_interface import LinearVector, StateVariable
 
 dict_of_balancing_roms = dict()
 
@@ -116,9 +117,9 @@ class Direct(BaseBalancedRom):
         Cr = C.dot(Tinv)
 
         if dtsystem:
-            ss_bal = libss.ss(Ar, Br, Cr, D, dt=ss.dt)
+            ss_bal = libss.StateSpace(Ar, Br, Cr, D, dt=ss.dt)
         else:
-            ss_bal = libss.ss(Ar, Br, Cr, D)
+            ss_bal = libss.StateSpace(Ar, Br, Cr, D)
 
         t1 = time.time()
         if self.print_info:
@@ -293,7 +294,7 @@ class Iterative(BaseBalancedRom):
         Br = Tinv.dot(B)
         Cr = C.dot(T)
 
-        ssrom = libss.ss(Ar, Br, Cr, D, dt=ss.dt)
+        ssrom = libss.StateSpace(Ar, Br, Cr, D, dt=ss.dt)
         return ssrom
 
 
@@ -369,14 +370,23 @@ class Balanced(rom_interface.BaseRom):
 
         out = self.algorithm.run(ss)
 
-        if type(out) == libss.ss:
+        if type(out) == libss.StateSpace:
             self.ssrom = out
 
         else:
             Ar, Br, Cr = out
             if self.dtsystem:
-                self.ssrom = libss.ss(Ar, Br, Cr, D, dt=self.ss.dt)
+                self.ssrom = libss.StateSpace(Ar, Br, Cr, D, dt=self.ss.dt)
             else:
-                self.ssrom = libss.ss(Ar, Br, Cr, D)
+                self.ssrom = libss.StateSpace(Ar, Br, Cr, D)
+
+        try:
+            self.ssrom.input_variables = self.ss.input_variables.copy()
+            self.ssrom.output_variables = self.ss.output_variables.copy()
+            self.ssrom.state_variables = LinearVector(
+                [StateVariable('balanced_{:s}'.format(self.settings['algorithm'].lower()),
+                               size=self.ssrom.states, index=0)])
+        except AttributeError:
+            pass
 
         return self.ssrom

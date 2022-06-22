@@ -18,7 +18,7 @@ class TestRotor(unittest.TestCase):
 
     def setUp(self):
         import sharpy.utils.generate_cases as gc
-        import cases.templates.template_wt as template_wt
+        import sharpy.cases.templates.template_wt as template_wt
         from sharpy.utils.constants import deg2rad
 
         ######################################################################
@@ -100,7 +100,7 @@ class TestRotor(unittest.TestCase):
         SimInfo.solvers['BeamLoader']['unsteady'] = 'on'
 
         SimInfo.solvers['Modal']['write_modes_vtk'] = False
-        SimInfo.solvers['Modal']['write_dat'] = True
+        SimInfo.solvers['Modal']['save_data'] = True
 
         ######################################################################
         #######################  GENERATE FILES  #############################

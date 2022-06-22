@@ -7,7 +7,6 @@ import warnings
 import numpy as np
 import scipy.linalg as scalg
 
-# from IPython import embed
 import sharpy.linear.src.libsparse as libsp
 import sharpy.linear.src.libss as libss
 
@@ -92,10 +91,20 @@ def balreal_direct_py(A, B, C, DLTI=True, Schur=False, full_outputs=False):
     else:
         sollyap = scalg.solve_lyapunov
 
+    # A is a sparse matrix in csr_matrix(sparse) format, can not be directly passed into functions used in scipy _solver.py
+    # Sparse matrices do not work well with Scipy (Version 1.7.3) in the following code, so A is transformed into a dense matrix here first.
+    if type(A) is not np.ndarray:
+        try:
+            A = A.todense()
+        except AttributeError:
+            raise TypeError(f'Matrix needs to be in dense form. Unable to convert A matrix of type {type(A)} to '
+                            f'dense using method .todense()')
+
     # solve Lyapunov
     if Schur:
         # decompose A
         Atri, U = scalg.schur(A)
+
         # solve Lyapunov
         BBtri = np.dot(U.T, np.dot(B, np.dot(B.T, U)))
         CCtri = np.dot(U.T, np.dot(C.T, np.dot(C, U)))
@@ -970,7 +979,7 @@ def balfreq(SS, DictBalFreq):
     Ab = libsp.dot(Ti, libsp.dot(SS.A, T))
     Bb = libsp.dot(Ti, SS.B)
     Cb = libsp.dot(SS.C, T)
-    SSb = libss.ss(Ab, Bb, Cb, SS.D, dt=SS.dt)
+    SSb = libss.StateSpace(Ab, Bb, Cb, SS.D, dt=SS.dt)
 
     ### Eliminate unstable modes - if any:
     if DictBalFreq['check_stability']:
@@ -1007,7 +1016,7 @@ def modred(SSb, N, method='residualisation'):
 
     Nb = SSb.A.shape[0]
     if Nb == N:
-        SSrom = libss.ss(SSb.A, SSb.B, SSb.C, SSb.D, dt=SSb.dt)
+        SSrom = libss.StateSpace(SSb.A, SSb.B, SSb.C, SSb.D, dt=SSb.dt)
         return SSrom
 
     A11 = SSb.A[:N, :N]
@@ -1016,7 +1025,7 @@ def modred(SSb, N, method='residualisation'):
     D = SSb.D
 
     if method is 'truncation':
-        SSrom = libss.ss(A11, B11, C11, D, dt=SSb.dt)
+        SSrom = libss.StateSpace(A11, B11, C11, D, dt=SSb.dt)
     else:
         Nb = SSb.A.shape[0]
         IA22inv = -SSb.A[N:, N:].copy()
@@ -1024,7 +1033,7 @@ def modred(SSb, N, method='residualisation'):
         IA22inv[eevec, eevec] += 1.
         IA22inv = scalg.inv(IA22inv, overwrite_a=True)
 
-        SSrom = libss.ss(
+        SSrom = libss.StateSpace(
             A11 + np.dot(SSb.A[:N, N:], np.dot(IA22inv, SSb.A[N:, :N])),
             B11 + np.dot(SSb.A[:N, N:], np.dot(IA22inv, SSb.B[N:, :])),
             C11 + np.dot(SSb.C[:, N:], np.dot(IA22inv, SSb.A[N:, :N])),

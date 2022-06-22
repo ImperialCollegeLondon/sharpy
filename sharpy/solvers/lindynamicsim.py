@@ -7,6 +7,7 @@ import sharpy.linear.src.libss as libss
 import scipy.linalg as sclalg
 import sharpy.utils.h5utils as h5utils
 from sharpy.utils.datastructures import LinearTimeStepInfo
+from sharpy.linear.utils.ss_interface import InputVariable, LinearVector
 import sharpy.utils.cout_utils as cout
 import time
 import warnings
@@ -17,7 +18,14 @@ class LinDynamicSim(BaseSolver):
 
     Uses the derived linear time invariant systems and solves it in time domain.
 
-    Requires a ``case_name.lininput.h5`` file in the case root folder that contains:
+    The inputs are provided by means of a list of dictionaries to the setting
+    ``input_generators``. For each input you want, you need a dictionary entry containing
+    ``name`` (str) which is the name of the variable, ``index`` (int) for the index of the variable
+    in the case of multidimensional variables (if unspecified reverts to ``0``) and the ``file_path``
+    to a text file containing the time series of the input. If the input variable is multidimensional,
+    ``index`` may be a list of indices for each column of time series in the array in the input file.
+
+    Alternatively a ``case_name.lininput.h5`` file in the case root folder can be used with the following entries:
 
         * ``x0`` (optional): Initial state vector
         * ``input_vec``: Input vector ``(n_tsteps, n_inputs)``.
@@ -51,6 +59,10 @@ class LinDynamicSim(BaseSolver):
     settings_default['physical_time'] = 2.
     settings_description['physical_time'] = 'Time to run'
 
+    settings_types['input_generators'] = 'list(dict)'
+    settings_default['input_generators'] = []
+    settings_description['input_generators'] = 'List of dictionaries for each input'
+
     settings_default['dt'] = 0.001
     settings_types['dt'] = 'float'
     settings_description['dt'] = 'Time increment for the solution of systems without a specified dt'
@@ -83,7 +95,7 @@ class LinDynamicSim(BaseSolver):
             self.settings = custom_settings
         else:
             self.settings = data.settings[self.solver_id]
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
 
         # Read initial state and input data and store in dictionary
         self.read_files()
@@ -102,13 +114,51 @@ class LinDynamicSim(BaseSolver):
             self.postprocessors[postproc].initialise(
                 self.data, self.settings['postprocessors_settings'][postproc], caller=self)
 
+    def input_vector(self, ss):
+        """
+        Generates an input vector ``u`` of size ``n_tsteps x inputs`` and populates the
+        correct columns with the time series arrays provided as text files in the settings
+        ``input_generators``.
+
+        Args:
+            ss (libss.StateSpace): State Space object for which to generate input
+
+        Returns:
+            np.array: Input vector.
+        """
+        n_steps = self.settings['n_tsteps']
+        u_vect = np.zeros((n_steps, ss.inputs))
+
+        for in_settings in self.settings['input_generators']:
+            var_name = in_settings['name']
+            index = in_settings.get('index', 0)
+            file_path = in_settings['file_path']
+
+            variable = ss.input_variables.get_variable_from_name(var_name)
+            input_data = np.loadtxt(file_path)
+
+            cout.cout_wrap('Found input for {:s}'.format(str(variable)))
+
+            if type(index) is list:
+                for ith, i_ind in enumerate(index):
+                    in_channel = variable.cols_loc[i_ind]
+                    u_vect[:, in_channel] = input_data[:, ith]
+            else:
+                in_channel = variable.cols_loc[index]
+                u_vect[:, in_channel] = input_data
+
+        return u_vect
+
     def run(self):
 
         ss = self.data.linear.ss
 
         n_steps = self.settings['n_tsteps']
         x0 = self.input_data_dict.get('x0', np.zeros(ss.states))
-        u = self.input_data_dict['u']
+        if len(self.settings['input_generators']) != 0:
+            u = self.input_vector(ss)
+        else:
+            u = self.input_data_dict['u']
 
         if len(x0) != ss.states:
             warnings.warn('Number of states in the initial state vector not equal to the number of states')
@@ -128,14 +178,14 @@ class LinDynamicSim(BaseSolver):
             dt = self.settings['dt']
 
         # Total time to run
-        T = n_steps*dt
+        T = (n_steps - 1) * dt
 
         u_ref = self.settings['reference_velocity']
         # If the system is scaled:
         if u_ref != 1.:
             scaling_factors = self.data.linear.linear_system.uvlm.sys.ScalingFacts
             dt_dimensional = scaling_factors['length'] / u_ref
-            T_dimensional = n_steps * dt_dimensional
+            T_dimensional = (n_steps - 1) * dt_dimensional
             T = T_dimensional / scaling_factors['time']
             ss = self.data.linear.linear_system.update(self.settings['reference_velocity'])
         t_dom = np.linspace(0, T, n_steps)
@@ -144,7 +194,6 @@ class LinDynamicSim(BaseSolver):
         sys = libss.ss_to_scipy(ss)
         cout.cout_wrap('Solving linear system using scipy...')
         t0 = time.time()
-        # breakpoint()
         out = sys.output(u, t=t_dom, x0=x0)
         ts = time.time() - t0
         cout.cout_wrap('\tSolved in %.2fs' % ts, 1)
@@ -232,19 +281,13 @@ def state_to_timestep(data, x, u=None, y=None):
         modal = True
     else:
         modal = False
-    # modal = True
-    if data.linear.linear_system.uvlm.gust_assembler:
-        start_x_aero = data.linear.linear_system.uvlm.gust_assembler.ss_gust.states
-    else:
-        start_x_aero = 0
-    x_aero = x[start_x_aero:data.linear.linear_system.uvlm.ss.states]
-    x_struct = x[-data.linear.linear_system.beam.ss.states:]
-    # u_aero = TODO: external velocities
-    phi = data.linear.linear_system.beam.sys.U
-    Kas = data.linear.linear_system.couplings['Kas']
+
+    aero_state = x[:-data.linear.linear_system.beam.ss.states]
+    beam_state = x[-data.linear.linear_system.beam.ss.states:] # after aero all the rest is beam, but should not use
+    # in case it is in DT the state variables do not mean the same!
 
     # Beam output
-    y_beam = x_struct
+    y_beam = y[-data.linear.linear_system.beam.ss.outputs:]
 
     u_q = np.zeros(data.linear.linear_system.uvlm.ss.inputs)
     if u is not None:
@@ -253,26 +296,36 @@ def state_to_timestep(data, x, u=None, y=None):
     else:
         u_q[:y_beam.shape[0]] += y_beam
 
+    Kas = data.linear.linear_system.couplings['Kas']
     if modal:
-        # add eye matrix for extra inputs
-        n_modes = phi.shape[1]
-        n_inputs_aero_only = len(u_q) - 2*n_modes  # Inputs to the UVLM other than structural inputs
-        u_aero = Kas.dot(sclalg.block_diag(phi, phi, np.eye(n_inputs_aero_only)).dot(u_q))
+        # Transform to aerodynamic raw inputs
+        uvlm_in_mode_gain = data.linear.linear_system.couplings['in_mode_gain']
+        aero_input = Kas.dot(uvlm_in_mode_gain.dot(u_q))
     else:
-        # if u_q.shape[0] !=
-        # u_aero_zero = data.linear.tsaero0
-        u_aero = Kas.dot(u_q)
+        aero_input = Kas.dot(u_q)
 
-    # Unpack input
-    zeta, zeta_dot, u_ext = data.linear.linear_system.uvlm.unpack_input_vector(u_aero)
-
-    # Also add the beam forces. I have a feeling there is a minus there as well....
     # Aero
-    forces, gamma, gamma_dot, gamma_star = data.linear.linear_system.uvlm.unpack_ss_vector(
+    forces, gamma, gamma_dot, gamma_star, gust_state_vec = data.linear.linear_system.uvlm.unpack_ss_vector(
         data,
-        x_n=x_aero,
+        x_n=aero_state,
+        u_aero=aero_input,
         aero_tstep=data.linear.tsaero0,
-        track_body=True)
+        track_body=True,
+        state_variables=data.linear.linear_system.uvlm.ss.state_variables,
+        gust_in=True)
+
+    if data.linear.linear_system.uvlm.gust_assembler:
+        gust_in_loc = data.linear.ss.input_variables('u_gust').cols_loc
+        u_in_gust = u[gust_in_loc]
+        gust_assembler = data.linear.linear_system.uvlm.gust_assembler
+        u_ext_gust = gust_assembler.state_to_uext.dot(gust_state_vec) + gust_assembler.uin_to_uext.dot(u_in_gust)
+    else:
+        u_ext_gust = np.array([])
+
+    uvlm_input_variables = LinearVector.transform(Kas.output_variables, InputVariable)
+    # Unpack input
+    zeta, zeta_dot, u_ext = data.linear.linear_system.uvlm.unpack_input_vector(aero_input, u_ext_gust,
+                                                                               input_variables=uvlm_input_variables)
 
     current_aero_tstep = data.aero.timestep_info[-1].copy()
     current_aero_tstep.forces = [forces[i_surf] + data.linear.tsaero0.forces[i_surf] for i_surf in
@@ -289,8 +342,8 @@ def state_to_timestep(data, x, u=None, y=None):
 
     # self.data.aero.timestep_info.append(current_aero_tstep)
 
-    aero_forces = data.linear.linear_system.uvlm.C_to_vertex_forces.dot(x_aero)
-    beam_forces = data.linear.linear_system.couplings['Ksa'].dot(aero_forces)
+    aero_forces_vec = np.concatenate([forces[i_surf][:3, :, :].reshape(-1, order='C') for i_surf in range(len(forces))])
+    beam_forces = data.linear.linear_system.couplings['Ksa'].dot(aero_forces_vec)
 
     if u is not None:
         u_struct = u[-data.linear.linear_system.beam.ss.inputs:]
@@ -299,9 +352,9 @@ def state_to_timestep(data, x, u=None, y=None):
     # Reconstruct the state if modal
     if modal:
         phi = data.linear.linear_system.beam.sys.U
-        x_s = sclalg.block_diag(phi, phi).dot(x_struct)
+        x_s = sclalg.block_diag(phi, phi).dot(y_beam)
     else:
-        x_s = x_struct
+        x_s = y_beam
     y_s = beam_forces #+ phi.dot(u_struct)
     # y_s = self.data.linear.lsys['LinearBeam'].sys.U.T.dot(y_struct)
 

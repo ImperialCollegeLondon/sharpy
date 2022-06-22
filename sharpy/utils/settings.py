@@ -171,7 +171,7 @@ def to_custom_types(dictionary, types, default, options=dict(), no_ctype=True):
                 continue
             if isinstance(dictionary[k], list):
                 for i in range(len(dictionary[k])):
-                    dictionary[k][i] = float(dictionary[k][i])
+                    dictionary[k][i] = complex(dictionary[k][i])
                 dictionary[k] = np.array(dictionary[k])
                 continue
             # dictionary[k] = dictionary[k].split(',')

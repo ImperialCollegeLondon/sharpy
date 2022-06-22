@@ -19,6 +19,7 @@ flow = ['BeamLoader',
         'AerogridPlot',
         'BeamPlot',
         'DynamicCoupled',
+        'SaveData'
         # 'Modal',
         # 'LinearAssember',
         # 'AsymptoticStability',
@@ -737,6 +738,10 @@ def generate_solver_file():
                                                   'num_steps': n_tstep,
                                                   'dt': dt,
                                                   'initial_velocity': u_inf * int(free_flight)}
+    settings['SaveData'] = { 'save_aero': 'on',
+                             'save_struct': 'on',
+                             'save_linear': 'off',
+                             'save_linear_uvlm': 'off'}
 
     relative_motion = 'off'
     if not free_flight:

@@ -4,12 +4,23 @@ Control surface deflector for linear systems
 import sharpy.linear.utils.ss_interface as ss_interface
 import numpy as np
 import sharpy.utils.algebra as algebra
+import sharpy.linear.src.libsparse as libsp
+import scipy.sparse as sp
+import sharpy.linear.src.libss as libss
 
 
 @ss_interface.linear_system
 class LinControlSurfaceDeflector(object):
     """
-    Subsystem that deflects control surfaces for use with linear state space systems
+    Subsystem that deflects control surfaces for use with linear state space systems.
+
+    Note:
+        The control surface sign convention is different to the convention in the nonlinear solver. See
+        https://www.github.com/imperialcollegelondon/sharpy/issues/193 for more details.
+
+    In the linear implementation, the control surface deflection sign convention follows the :math:`x_B` vector,
+    thus, in order to have symmetric control surface deflections, additional inputs may be required compared to the
+    implementation in the nonlinear solver.
 
     The current version supports only deflections. Future work will include standalone state-space systems to model
     physical actuators.
@@ -36,11 +47,11 @@ class LinControlSurfaceDeflector(object):
         self.tsaero0 = None
         self.tsstruct0 = None
 
+        self.gain_cs = None  # type: np.ndarray # input gain to the UVLM
+
+        self.print_info = False  # used for debugging purposes
+
     def initialise(self, data, linuvlm):
-        # Tasks:
-        # 1 - Generic information
-        #   * How many control surfaces (number of actual inputs)
-        #   * How many uvlm surfaces
         self.n_control_surfaces = data.aero.n_control_surfaces
 
         self.linuvlm = linuvlm
@@ -98,7 +109,7 @@ class LinControlSurfaceDeflector(object):
                 if global_node in structure.connectivities[i_elem, :]:
                     i_local_node = np.where(structure.connectivities[i_elem, :] == global_node)[0][0]
 
-                    for_delta = structure.frame_of_reference_delta[i_elem, :, 0]
+                    for_delta = structure.frame_of_reference_delta[i_elem, i_local_node, :]
 
                     # CRV to transform from G to B frame
                     psi = tsstruct0.psi[i_elem, i_local_node]
@@ -170,26 +181,79 @@ class LinControlSurfaceDeflector(object):
                                     zeta_node = zeta0[i_vertex]  # Gframe
                                     chord_vec = (zeta_node - zeta_hinge)
 
+                                    if self.print_info:
+                                        print(f'i_node = {global_node}')
+                                        print(f'i_node_chord = {i_node_chord}')
+                                        print(f'zeta_node = {zeta_node}')
+                                        print(f'chord_vec = {chord_vec}')
+                                        print(f'zeta_hinge = {zeta_hinge}')
+                                        print(f'zeta_next_hinge = {zeta_next_hinge}')
+                                        print(f'hinge_axis = {hinge_axis}')
+
+                                    # Flap displacement
                                     Kdisp[i_vertex, i_control_surface] = \
-                                        Cgb.dot(der_R_arbitrary_axis_times_v(Cbg.dot(hinge_axis),
-                                                                             0,
-                                                                             -for_delta * Cbg.dot(chord_vec))) * for_delta * -1
+                                        der_R_arbitrary_axis_times_v(hinge_axis, 0, chord_vec)
 
                                     # Flap velocity
-                                    Kvel[i_vertex, i_control_surface] = -algebra.skew(-for_delta * chord_vec).dot(
-                                        hinge_axis) * for_delta * -1
+                                    Kvel[i_vertex, i_control_surface] = -algebra.skew(chord_vec).dot(
+                                        hinge_axis)
+
+                                    if self.print_info:
+                                        print('Matrix entries:')
+                                        print('Kdisp:')
+                                        print(Kdisp[i_vertex, i_control_surface])
+                                        print('Kvel:')
+                                        print(Kvel[i_vertex, i_control_surface])
 
                         else:
                             with_control_surface = False
                             hinge_axis = None  # Reset for next control surface
 
-        # >>>> Merge control surfaces 0 and 1
-        # Kdisp[:, 0] -= Kdisp[:, 1]
-        # Kvel[:, 0] -= Kvel[:, 1]
-
         self.Kzeta_delta = Kdisp
         self.Kdzeta_ddelta = Kvel
+
         return Kdisp, Kvel
+
+    def apply(self, ss):
+        """
+        Applies the control surface deflection to the UVLM state space
+
+        Args:
+            ss (libss.StateSpace): UVLM state space
+
+        Returns:
+            libss.StateSpace: UVLM state-space with control surfaces and control surface deflection rate as inputs
+        """
+
+        Kzeta_delta, Kdzeta_ddelta = self.generate()
+        n_zeta, n_ctrl_sfc = Kzeta_delta.shape
+
+        if type(ss.A) is libsp.csc_matrix:
+            gain_cs = sp.eye(ss.inputs, ss.inputs + 2 * self.n_control_surfaces,
+                             format='lil')
+            gain_cs[:n_zeta, ss.inputs: ss.inputs + n_ctrl_sfc] = Kzeta_delta
+            gain_cs[n_zeta: 2*n_zeta, ss.inputs + n_ctrl_sfc: ss.inputs + 2 * n_ctrl_sfc] = Kdzeta_ddelta
+            gain_cs = libsp.csc_matrix(gain_cs)
+        else:
+            gain_cs = np.eye(ss.inputs, ss.inputs + 2 * self.n_control_surfaces)
+            gain_cs[:n_zeta, ss.inputs: ss.inputs + n_ctrl_sfc] = Kzeta_delta
+            gain_cs[n_zeta: 2*n_zeta, ss.inputs + n_ctrl_sfc: ss.inputs + 2 * n_ctrl_sfc] = Kdzeta_ddelta
+
+        control_surface_gain = libss.Gain(gain_cs)
+        in_vars = ss.input_variables.copy()
+        in_vars.append('control_surface_deflection', size=n_ctrl_sfc)
+        in_vars.append('dot_control_surface_deflection', size=n_ctrl_sfc)
+        control_surface_gain.input_variables = in_vars
+        control_surface_gain.output_variables = ss_interface.LinearVector.transform(ss.input_variables,
+                                                                                    to_type=ss_interface.OutputVariable)
+
+        self.gain_cs = control_surface_gain
+
+        return ss
+    # def generator():
+    # future feature idea: instead of defining the inputs for the time domain simulations as the whole input vector
+    # etc, we could add a generate() method to these systems that can be called from the LinDynamicSim to apply
+    # the gust and generate the correct input vector.
 
 
 def der_Cx_by_v(delta, v):

@@ -152,8 +152,15 @@ class AeroForcesCalculator(BaseSolver):
                                 columns=['fx_g','fy_g','fz_g','mx_g','my_g','mz_g',
                                          'fx_a','fy_a','fz_a', 'mx_a','my_a','mz_a'])
         # Express total forces in A frame
-        self.data.aero.timestep_info[ts].total_steady_body_forces = np.sum(steady_forces_a, axis=0)
-        self.data.aero.timestep_info[ts].total_unsteady_body_forces = np.sum(unsteady_forces_a, axis=0)
+        moment_reference_location = np.array([0., 0., 0.])
+        self.data.aero.timestep_info[ts].total_steady_body_forces = \
+            mapping.total_forces_moments(steady_forces_a,
+                                         self.data.structure.timestep_info[ts].pos,
+                                         ref_pos=moment_reference_location)
+        self.data.aero.timestep_info[ts].total_unsteady_body_forces = \
+            mapping.total_forces_moments(unsteady_forces_a,
+                                         self.data.structure.timestep_info[ts].pos,
+                                         ref_pos=moment_reference_location)
 
         # Express total forces in G frame
         self.data.aero.timestep_info[ts].total_steady_inertial_forces = \
@@ -234,6 +241,8 @@ class AeroForcesCalculator(BaseSolver):
         header += 'fx_unsteady_G, fy_unsteady_G, fz_unsteady_G, '
         header += 'fx_steady_a, fy_steady_a, fz_steady_a, '
         header += 'fx_unsteady_a, fy_unsteady_a, fz_unsteady_a'
+        header += 'mx_total_G, my_total_G, mz_total_G'
+        header += 'mx_total_a, my_total_a, mz_total_a'
 
         np.savetxt(self.folder + 'forces_' + filename,
                    force_matrix,
