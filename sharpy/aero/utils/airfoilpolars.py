@@ -64,7 +64,7 @@ class Polar:
 
         return cl, cd, cm
 
-    def get_aoa(self, cl, aoa_0cl=0., aoa_in_degrees=True):
+    def get_aoa(self, cl, aoa_0cl=0., aoa_in_degrees=False):
 
         if self.rigid_slope is not None:
             aoa = (cl - self.Cl0) / self.rigid_slope
