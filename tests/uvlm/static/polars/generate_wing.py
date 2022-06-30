@@ -3,6 +3,7 @@ import sharpy.cases.templates.flying_wings as wings
 import sharpy.utils.algebra as algebra
 import sharpy.sharpy_main
 
+np.set_printoptions(precision=16)
 
 def generate_infinite_wing(case_name, alpha, **kwargs):
 
@@ -84,7 +85,7 @@ def generate_infinite_wing(case_name, alpha, **kwargs):
     settings['StaticUvlm'] = {'print_info': 'on',
                               'horseshoe': 'on',
                               'num_cores': 4,
-                              'vortex_radius': 1e-6,
+                              'vortex_radius': 1e-9,
                               'velocity_field_generator': 'SteadyVelocityField',
                               'velocity_field_input': {'u_inf': u_inf,
                                                        'u_inf_direction': u_inf_direction},
@@ -124,7 +125,7 @@ def generate_infinite_wing(case_name, alpha, **kwargs):
                          'save_data': 'off',
                          'continuous_eigenvalues': 'off',
                          'plot_eigenvalues': False,
-                         'rigid_modes_ppal_axes': 'on',
+                         'rigid_modes_ppal_axes': 'off',
                          }
 
     # ROM settings
@@ -137,10 +138,8 @@ def generate_infinite_wing(case_name, alpha, **kwargs):
     settings['LinearAssembler'] = {'linear_system': 'LinearAeroelastic',
                                    'linear_system_settings': {
                                        'beam_settings': {'modal_projection': 'off',
-                                                         'inout_coords': 'modes',
+                                                         'inout_coords': 'nodes',
                                                          'discrete_time': 'off',
-                                                         'newmark_damp': 0.5e-3,
-                                                         'discr_method': 'newmark',
                                                          'dt': wing.dt,
                                                          'proj_modes': 'undamped',
                                                          'use_euler': 'on',
@@ -154,7 +153,7 @@ def generate_infinite_wing(case_name, alpha, **kwargs):
                                                          'density': rho,
                                                          'remove_predictor': 'off',
                                                          'use_sparse': False,
-                                                         'vortex_radius': 1e-7,
+                                                         'vortex_radius': 1e-9,
                                                          'remove_inputs': ['u_gust'],
                                                          'convert_to_ct': 'on',
                                                          },
