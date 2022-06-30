@@ -75,7 +75,7 @@ class Polar:
         p = np.array(self.get_coefs(aoa))
         m1 = np.array(self.get_coefs(aoa - delta_aoa))
 
-        der = (3 * p1 - 4 * p + m1) / 2 / delta_aoa
+        der = (p1 - m1) / 2 / delta_aoa
 
         return der
 
