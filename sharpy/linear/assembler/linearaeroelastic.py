@@ -176,9 +176,10 @@ class LinearAeroelastic(ss_interface.BaseElement):
         """
         uvlm = self.uvlm
         beam = self.beam
-        if self.beta_inf != 1.: 
+        if self.beta_inf != 1.:
             #uvlm.ss.A /= (self.beta_inf)
             uvlm.ss.C /= self.beta_inf
+            uvlm.ss.D /= self.beta_inf
         # Linearisation of the aerodynamic forces introduces stiffenning and damping terms into the beam matrices
         flex_nodes = self.beam.sys.num_dof_flex
 
