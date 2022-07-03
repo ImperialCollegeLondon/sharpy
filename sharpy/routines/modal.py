@@ -118,7 +118,7 @@ class Modal(Static):
                                     max_displacement=max_modal_disp,
                                     max_rotation_deg=max_modal_rot_deg,
                                     print_matrices=print_modal_matrices,
-                                    write_dat=write_modal_data,
+                                    save_data=write_modal_data,
                                     write_modes_vtk=write_modes_vtk)
 
         self.sol_112(u_inf,

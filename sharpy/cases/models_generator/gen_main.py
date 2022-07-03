@@ -11,7 +11,7 @@ import sharpy.utils.generate_cases as gc
 import sharpy.utils.h5utils as h5utils
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.sharpy_main
-import cases.models_generator.gen_utils as gu
+import sharpy.cases.models_generator.gen_utils as gu
 
 class Sharpy_data:
 
