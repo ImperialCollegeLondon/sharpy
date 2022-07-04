@@ -201,3 +201,31 @@ If you contribute, please make sure you know what branch to work from. If in dou
 Commit names are also important since they are the backbone of the code's change log. Please write concise commit titles
 and explain the main changes in the body of the commit message. An excellent guide on writing good commit messages can
 be found [here](https://chris.beams.io/posts/git-commit/).
+
+# For developers: 
+
+## Releasing a new version
+
+In the release candidate branch:
+
+* Update the version number in the docs configuration file `docs/conf.py`
+* Update `version.json` file
+* Update version in `sharpy/__init__.py` file
+* Commit, push and wait for tests to pass
+* Merge release candidate branch into `master` branch
+
+In the `master` branch:
+
+* Run the [github_changelog_generator](https://github.com/github-changelog-generator/github-changelog-generator) tool locally with the following parameters:
+  ```
+  github_changelog_generator -u imperialcollegelondon -p sharpy -t <your_github_token> --future-release <new_release_version>
+  ```
+  
+* Create a release tag. IMPORTANT: ensure it is an *annotated* tag, otherwise the version and commit number in SHARPy will not display properly
+  ```
+  git tag -a <tagname>
+  git push origin --tags -f
+  ```
+  where `<tagname>` is something like `2.0`.
+  
+* Create the GitHub release, choosing the newly created tag from the dropdown menu. Do not create a tag from the dropdown menu directly because it will not be an annotated tag
