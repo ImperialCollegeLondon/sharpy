@@ -204,28 +204,34 @@ be found [here](https://chris.beams.io/posts/git-commit/).
 
 # For developers: 
 
-## Releasing a new version
+## Releasing a new SHARPy version
 
 In the release candidate branch:
 
-* Update the version number in the docs configuration file `docs/conf.py`
-* Update `version.json` file
-* Update version in `sharpy/__init__.py` file
-* Commit, push and wait for tests to pass
-* Merge release candidate branch into `master` branch
+1. Update the version number in the docs configuration file `docs/source/conf.py`. Update variables `version` and `release`
+
+2. Update `version.json` file
+
+3. Update version in `sharpy/__init__.py` file
+
+4. Commit, push and wait for tests to pass
+
+5. Merge release candidate branch into `master` branch
 
 In the `master` branch:
 
-* Run the [github_changelog_generator](https://github.com/github-changelog-generator/github-changelog-generator) tool locally with the following parameters:
+1. Run the [github_changelog_generator](https://github.com/github-changelog-generator/github-changelog-generator) tool locally with the following parameters:
   ```
   github_changelog_generator -u imperialcollegelondon -p sharpy -t <your_github_token> --future-release <new_release_version>
   ```
+
+2. Push the changes to the `CHANGELOG.md` file
   
-* Create a release tag. IMPORTANT: ensure it is an *annotated* tag, otherwise the version and commit number in SHARPy will not display properly
+3. Create a release tag. IMPORTANT: ensure it is an *annotated* tag, otherwise the version and commit number in SHARPy will not display properly
   ```
   git tag -a <tagname>
   git push origin --tags -f
   ```
   where `<tagname>` is something like `2.0`.
   
-* Create the GitHub release, choosing the newly created tag from the dropdown menu. Do not create a tag from the dropdown menu directly because it will not be an annotated tag
+4. Create the GitHub release, choosing the newly created tag from the dropdown menu. Do not create a tag from the dropdown menu directly because it will not be an annotated tag
