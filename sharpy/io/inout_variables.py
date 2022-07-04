@@ -58,8 +58,31 @@ class Variable:
         """
         if self.node is not None:
             # structural variables for now
-            variable = getattr(data.structure.timestep_info[timestep_index], self.name)
-            if len(variable.shape) == 2:
+            try:
+                #Look for the variables in time_step_info
+                variable = getattr(data.structure.timestep_info[timestep_index], self.name)
+            except AttributeError:
+                try:
+                    #First get the dict postproc_cell and the try to find the variable in it.
+                    get_postproc_cell = getattr(data.structure.timestep_info[timestep_index], 'postproc_cell')
+                    variable = get_postproc_cell[self.name]
+                except (KeyError, AttributeError):
+                    msg = ('Node {} is neither in timestep_info nor in postproc_cell.'.format(self.node))
+                    logger.error(msg)
+                    raise IndexError(msg)
+
+            #Needed for for_pos and for_vel since they are arrays.
+            if len(variable.shape) == 1:
+                try:
+                    value = variable[self.node, self.index]
+                except IndexError:
+                    msg = 'Node {} and/or Index {} are out of index of variable {}, ' \
+                          'which is of size ({})'.format(self.node, self.index, self.dref_name,
+                                                         variable.shape)
+                    logger.error(msg)
+                    raise IndexError(msg)
+
+            elif len(variable.shape) == 2:
                 try:
                     value = variable[self.node, self.index]
                 except IndexError:
@@ -135,24 +158,48 @@ class Variable:
             data (sharpy.presharpy.PreSharpy): Simulation data object
 
         """
-        if self.node is not None: # structural variable then
-            variable = getattr(data.structure.timestep_info[-1], self.name)
-            try:
-                variable[self.node, self.index] = self.value
-            except IndexError:
-                logger.warning('Unable to set node {}, index {} of variable {}'.format(
-                    self.node, self.index, self.dref_name
-                ))
+        if self.node is not None:
+            # Check if the node is an app_forces (f.e. Thrust)
+            if self.name == 'app_forces':
+                logger.debug('Setting thrust variable')
+                variable = data.structure.ini_info.steady_applied_forces
+                try:
+                    variable[self.node, self.index] = self.value
+                except IndexError:
+                    logger.warning('Unable to set node {}, index {} of variable {}'.format(
+                        self.node, self.index, self.dref_name
+                    ))
+
+                data.structure.ini_info.steady_applied_forces = variable
+                logger.debug('Updated timestep')
+
+            # else it is a structural variable
             else:
+                variable = getattr(data.structure.timestep_info[-1], self.name)
+                try:
+                    variable[self.node, self.index] = self.value
+                except IndexError:
+                    logger.warning('Unable to set node {}, index {} of variable {}'.format(
+                        self.node, self.index, self.dref_name
+                    ))
+
                 setattr(data.structure.timestep_info[-1], self.name, variable)
                 logger.debug('Updated timestep')
 
         if self.cs_index is not None:
             variable = getattr(data.aero.timestep_info[-1], self.name)
-            if len(variable) == 0:
-                variable = np.hstack((variable, np.array([self.value])))
-            else:
+
+            # Creates an array as long as needed. Not required Cs_deflections will be set to zero. If the CS_type in the
+            # aero.h5 file is 0 this shouldnt have a influence on them.
+
+            while len(variable) <= self.cs_index:
+                # Adds an element in the array for the new control surface.
+                variable = np.hstack((variable, np.array(0)))
+            try:
                 variable[self.cs_index] = self.value
+            except IndexError:
+                logger.warning('Unable to set control surface deflection {}. Check the order of '
+                               'you control surfaces.'.format(self.cs_index))
 
             setattr(data.aero.timestep_info[-1], self.name, variable)
             logger.debug('Updated control surface deflection')

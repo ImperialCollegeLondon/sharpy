@@ -233,6 +233,8 @@ class AeroForcesCalculator(BaseSolver):
         header += 'fx_unsteady_G, fy_unsteady_G, fz_unsteady_G, '
         header += 'fx_steady_a, fy_steady_a, fz_steady_a, '
         header += 'fx_unsteady_a, fy_unsteady_a, fz_unsteady_a'
+        header += 'mx_total_G, my_total_G, mz_total_G'
+        header += 'mx_total_a, my_total_a, mz_total_a'
 
         np.savetxt(self.folder + 'forces_' + filename,
                    force_matrix,

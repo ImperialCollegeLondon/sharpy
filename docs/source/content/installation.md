@@ -127,10 +127,10 @@ change compilers see the Custom Installation.
     ```
     where the number after the `-j` flag will specify how many cores to use during installation.
 
-4. Finally, load the SHARPy variables
+4. Finally, leave the build directory and install SHARPy
     ```bash
-    cd ../
-    source bin/sharpy_vars.sh
+    cd ..
+    pip install .
     ```
 
 __You are ready to run SHARPy__. Continue reading the [Running SHARPy](#running-sharpy) section.
@@ -187,10 +187,17 @@ file if you are installing SHARPy on Mac OS X
     make install -j 4
     ```
 
-7. Finally, load the SHARPy variables
+7. Finally, leave the build directory and install SHARPy
     ```bash
-    source bin/sharpy_vars.sh
+    cd ..
+    pip install .
     ```
+    If you want to install it in development mode (the source files will stay
+    where the are so you can modify them), you can make an editable install:
+    ```
+    pip install -e .
+    ```
+    You can obtain further information on editable installs [here](https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs)
 
 8. This concludes the installation! Continue reading the [Running SHARPy](#running-sharpy) section.
 
@@ -259,17 +266,11 @@ above replacing the `stable` tag for `experimental`.
 
 ## Running SHARPy
 
-In order to run SHARPy, you need to load the conda environment and load the SHARPy variables (so your computer knows
-where SHARPy is). Therefore, __before you run any SHARPy case__:
+In order to run SHARPy, you need to load the conda environment. Therefore, __before you run any SHARPy case__:
 
 1. Activate the SHARPy conda environment
     ```bash
     conda activate sharpy_env
-    ```
-
-2. Load the SHARPy variables
-    ```bash
-    source sharpy/bin/sharpy_vars.sh
     ```
 
 You are now ready to run SHARPy cases from the terminal.
@@ -311,7 +312,7 @@ This script creates the output files that will then be used by SHARPy, namely:
     * The linear input files `.lininput.h5` (when required).
     * The ROM settings file `.rom.h5` (when required).
 
-    See the [chapter](./casefiles.html) on the case files for a detailed description on the contents of each one.    
+    See the [chapter](./casefiles.html) on the case files for a detailed description on the contents of each one.
     Data is exchanged in binary format by means of `.h5` files that make the transmission efficient between the different
     languages of the required libraries. To view these `.h5` files, a viewer like [HDF5](https://portal.hdfgroup.org/display/support) is recommended.
 

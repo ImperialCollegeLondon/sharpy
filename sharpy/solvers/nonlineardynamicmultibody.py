@@ -43,7 +43,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
     settings_types['write_lm'] = 'bool'
     settings_default['write_lm'] = False
-    settings_description['write_lm'] = 'Write lagrange multipliers'
+    settings_description['write_lm'] = 'Write lagrange multipliers to file'
 
     settings_types['relax_factor_lm'] = 'float'
     settings_default['relax_factor_lm'] = 0.
@@ -70,6 +70,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
         self.beta = None
 
         self.prev_Dq = None
+
+        self.out_files = None  # dict: containing output_variable:file_path if desired to write output
 
     def initialise(self, data, custom_settings=None):
 
@@ -99,13 +101,18 @@ class NonLinearDynamicMultibody(_BaseStructural):
         self.Lambda_ddot = np.zeros((self.num_LM_eq,), dtype=ct.c_double, order='F')
 
         if self.settings['write_lm']:
-            dire = './output/' + self.data.settings['SHARPy']['case'] + '/NonLinearDynamicMultibody/'
+            dire = self.data.output_folder + '/NonLinearDynamicMultibody/'
             if not os.path.isdir(dire):
                 os.makedirs(dire)
-            self.fid_lambda = open(dire + 'lambda.dat', "w")
-            self.fid_lambda_dot = open(dire + 'lambda_dot.dat', "w")
-            self.fid_lambda_ddot = open(dire + 'lambda_ddot.dat', "w")
-            self.fid_cond_num = open(dire + 'cond_num.dat', "w")
+
+            self.out_files = {'lambda': dire + 'lambda.dat',
+                              'lambda_dot': dire + 'lambda_dot.dat',
+                              'lambda_ddot': dire + 'lambda_ddot.dat',
+                              'cond_number': dire + 'cond_num.dat'}
+            # clean up files
+            for file in self.out_files.values():
+                if os.path.isfile(file):
+                    os.remove(file)
 
         # Define the number of dofs
         self.define_sys_size()
@@ -296,20 +303,24 @@ class NonLinearDynamicMultibody(_BaseStructural):
         # TODO: right now, these forces are only used as an output, they are not read when the multibody is splitted
 
     def write_lm_cond_num(self, iteration, Lambda, Lambda_dot, Lambda_ddot, cond_num, cond_num_lm):
+        # Maybe not the most efficient way to output this, as files are opened and closed every time data is written
+        # However, containing the writing in the with statement prevents from files remaining open in the previous
+        # implementation
+        out_data = {'lambda': Lambda,
+                    'lambda_dot': Lambda_dot,
+                    'lambda_ddot': Lambda_ddot}
 
-        self.fid_lambda.write("%d %d " % (self.data.ts, iteration))
-        self.fid_lambda_dot.write("%d %d " % (self.data.ts, iteration))
-        self.fid_lambda_ddot.write("%d %d " % (self.data.ts, iteration))
-        self.fid_cond_num.write("%d %d " % (self.data.ts, iteration))
-        for ilm in range(self.num_LM_eq):
-            self.fid_lambda.write("%f " % Lambda[ilm])
-            self.fid_lambda_dot.write("%f " % Lambda_dot[ilm])
-            self.fid_lambda_ddot.write("%f " % Lambda_ddot[ilm])
-        self.fid_lambda.write("\n")
-        self.fid_lambda_dot.write("\n")
-        self.fid_lambda_ddot.write("\n")
-        self.fid_cond_num.write("%e %e\n" % (cond_num, cond_num_lm))
+        for out_var, data in out_data.items():
+            file_name = self.out_files[out_var]
+            with open(file_name, 'a') as fid:
+                fid.write(f'{self.data.ts:g} {iteration:g} ')
+                for ilm in range(self.num_LM_eq):
+                    fid.write(f'{data[ilm]} ')
+                fid.write(f'\n')    
 
+        with open(self.out_files['cond_number'], 'a') as fid:
+            fid.write(f'{self.data.ts:g} {iteration:g} ')
+            fid.write(f'{cond_num:e} {cond_num_lm:e} \n')
 
     def run(self, structural_step=None, dt=None):
         if structural_step is None:
@@ -364,6 +375,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
         LM_old_Dq = 1.0
 
         converged = False
+
         for iteration in range(self.settings['max_iterations']):
             # Check if the maximum of iterations has been reached
             if iteration == self.settings['max_iterations'] - 1:

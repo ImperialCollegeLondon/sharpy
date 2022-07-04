@@ -1,6 +1,16 @@
 name: Python package
 
-on: [push]
+on:
+  push:
+    paths:
+      - '*.py'
+      - 'lib/*'
+      - '.github/workflows/*'
+  pull_request:
+    branches:
+      - master
+      - develop
+      - 'rc*'
 
 jobs:
   build:
@@ -8,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6]
+        python-version: [3.7]
 
     steps:
       - uses: actions/checkout@v2
@@ -24,7 +34,7 @@ jobs:
       - name: Setup conda
         uses: s-weigand/setup-conda@v1
         with:
-          python-version: 3.6
+          python-version: 3.7
       - name: Pre-Install dependencies
         run: |
           gfortran --version
@@ -45,9 +55,9 @@ jobs:
           git submodule init
           git submodule update
           git fetch -t
-          source bin/sharpy_vars.sh
           mkdir build && cd build
           cmake .. && make install -j 4 && cd ..
+          pip install .
           pip install coverage
           coverage run -m unittest discover
       - name: Upload Coverage to Codecov

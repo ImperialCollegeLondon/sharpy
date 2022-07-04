@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import unittest
-import cases.templates.flying_wings as wings
+import sharpy.cases.templates.flying_wings as wings
 import sharpy.sharpy_main
 
 
@@ -149,8 +149,7 @@ class TestROMFramework(unittest.TestCase):
         ws.config['Modal'] = {'NumLambda': 20,
                               'rigid_body_modes': 'off',
                               'print_matrices': 'on',
-                              'keep_linear_matrices': 'on',
-                              'write_dat': 'off',
+                              'save_data': 'off',
                               'rigid_modes_cg': 'off',
                               'continuous_eigenvalues': 'off',
                               'dt': 0,

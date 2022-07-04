@@ -920,7 +920,7 @@ class Linear(object):
     as class attributes the following classes that describe the linearised problem.
 
     Attributes:
-        ss (sharpy.linear.src.libss.ss): State-space system
+        ss (sharpy.linear.src.libss.StateSpace): State-space system
         linear_system (sharpy.linear.utils.ss_interface.BaseElement): Assemble system properties
         tsaero0 (sharpy.utils.datastructures.AeroTimeStepInfo): Linearisation aerodynamic timestep
         tsstruct0 (sharpy.utils.datastructures.StructTimeStepInfo): Linearisation structural timestep
