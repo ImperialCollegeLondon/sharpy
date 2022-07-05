@@ -146,8 +146,15 @@ class AeroForcesCalculator(BaseSolver):
                                                                                       self.data.structure)
 
         # Express total forces in A frame
-        self.data.aero.timestep_info[ts].total_steady_body_forces = np.sum(steady_forces_a, axis=0)
-        self.data.aero.timestep_info[ts].total_unsteady_body_forces = np.sum(unsteady_forces_a, axis=0)
+        moment_reference_location = np.array([0., 0., 0.])
+        self.data.aero.timestep_info[ts].total_steady_body_forces = \
+            mapping.total_forces_moments(steady_forces_a,
+                                         self.data.structure.timestep_info[ts].pos,
+                                         ref_pos=moment_reference_location)
+        self.data.aero.timestep_info[ts].total_unsteady_body_forces = \
+            mapping.total_forces_moments(unsteady_forces_a,
+                                         self.data.structure.timestep_info[ts].pos,
+                                         ref_pos=moment_reference_location)
 
         # Express total forces in G frame
         self.data.aero.timestep_info[ts].total_steady_inertial_forces = \

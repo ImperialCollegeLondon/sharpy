@@ -192,7 +192,7 @@ class SaveData(BaseSolver):
                                        sharpy.linear.src.lingebm.FlexDynamic,)
 
             if self.settings['save_linear_uvlm']:
-                self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss)
+                self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss_block)
         self.caller = caller
 
     def run(self, **kwargs):

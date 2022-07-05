@@ -67,6 +67,12 @@ class LinearUVLM(ss_interface.BaseElement):
     .. math:: \dot{\mathbf{\Gamma}}^{n+1} = \frac{3\mathbf{\Gamma}^{n+1}-4\mathbf{\Gamma}^n + \mathbf{\Gamma}^{n-1}}
         {2\Delta t}
 
+    Note:
+        Control surface deflections are implemented using :class:`~sharpy.linear.assembler.lincontrolsurfacedeflector.LinControlSurfaceDeflector`
+        and the sign convention differs from the nonlinear solver. In the linear solver, the control
+        surface deflects according to the local :math:`x_B` vector. See the control surface deflection class for more
+        details.
+
     References:
         [1] Franklin, GF and Powell, JD. Digital Control of Dynamic Systems, Addison-Wesley Publishing Company, 1980
 
@@ -170,7 +176,7 @@ class LinearUVLM(ss_interface.BaseElement):
         self.sys = None
         self.ss = None
         self.tsaero0 = None
-        self.rom = None
+        self.rom = None  # dict: rom_name: rom_class dictionary
 
         self.settings = dict()
         self.state_variables = None
@@ -193,7 +199,8 @@ class LinearUVLM(ss_interface.BaseElement):
             self.settings = custom_settings
         else:
             try:
-                self.settings = data.settings['LinearAssembler']['linear_system_settings']  # Load settings, the settings should be stored in data.linear.settings
+                self.settings = data.settings['LinearAssembler'][
+                    'linear_system_settings']  # Load settings, the settings should be stored in data.linear.settings
             except KeyError:
                 pass
 
@@ -228,15 +235,16 @@ class LinearUVLM(ss_interface.BaseElement):
             VectorVariable('gamma_w', size=self.sys.K_star, index=1),
             VectorVariable('dtgamma_dot', size=self.sys.K, index=2),
             VectorVariable('gamma_m1', size=self.sys.K, index=3),
-                                ]
+        ]
         self.linearisation_vectors['zeta'] = np.concatenate([self.tsaero0.zeta[i_surf].reshape(-1, order='C')
                                                              for i_surf in range(self.tsaero0.n_surf)])
         self.linearisation_vectors['zeta_dot'] = np.concatenate([self.tsaero0.zeta_dot[i_surf].reshape(-1, order='C')
                                                                  for i_surf in range(self.tsaero0.n_surf)])
         self.linearisation_vectors['u_ext'] = np.concatenate([self.tsaero0.u_ext[i_surf].reshape(-1, order='C')
                                                               for i_surf in range(self.tsaero0.n_surf)])
-        self.linearisation_vectors['forces_aero'] = np.concatenate([self.tsaero0.forces[i_surf][:3].reshape(-1, order='C')
-                                                                    for i_surf in range(self.tsaero0.n_surf)])
+        self.linearisation_vectors['forces_aero'] = np.concatenate(
+            [self.tsaero0.forces[i_surf][:3].reshape(-1, order='C')
+             for i_surf in range(self.tsaero0.n_surf)])
 
         if data.aero.n_control_surfaces >= 1:
             import sharpy.linear.assembler.lincontrolsurfacedeflector as lincontrolsurfacedeflector
@@ -254,6 +262,7 @@ class LinearUVLM(ss_interface.BaseElement):
             import sharpy.linear.assembler.lineargustassembler as lineargust
             self.gust_assembler = lineargust.gust_from_string(self.settings['gust_assembler'])
             self.gust_assembler.initialise(data.aero, self.sys, self.tsaero0,
+                                           u_ext=lineargust.get_freestream_velocity(data),
                                            custom_settings=self.settings['gust_assembler_inputs'])
 
     def assemble(self, track_body=False, wake_prop_settings=None):
@@ -375,13 +384,13 @@ class LinearUVLM(ss_interface.BaseElement):
         else:
             Cg_uvlm = np.eye(3)
 
-
         if self.rom is not None:
             try:
                 rom = self.rom['Krylov']
             except KeyError:
-                # raise NotImplementedError('only Krylov ROMS supported')
                 pass
+                # The krylov ROM variable names are applied here
+                # the remaining are applied in the balanced rom class
             else:
                 x_n = rom.projection_gain.dot(x_n).real
                 state_variables = LinearVector.transform(rom.projection_gain.output_variables, StateVariable)
@@ -426,7 +435,7 @@ class LinearUVLM(ss_interface.BaseElement):
 
             # Append reshaped forces to each entry in list (one for each surface)
             f_aero = y_n
-            forces.append(f_aero[worked_points:worked_points+points_in_surface].reshape(dimensions, order='C'))
+            forces.append(f_aero[worked_points:worked_points + points_in_surface].reshape(dimensions, order='C'))
 
             ### project forces.
             # - forces are in UVLM linearisation frame. Hence, these  are projected
@@ -434,19 +443,19 @@ class LinearUVLM(ss_interface.BaseElement):
             if track_body:
                 for mm in range(dimensions[1]):
                     for nn in range(dimensions[2]):
-                        forces[i_surf][:,mm,nn] = np.dot(Cg_uvlm, forces[i_surf][:, mm, nn])
+                        forces[i_surf][:, mm, nn] = np.dot(Cg_uvlm, forces[i_surf][:, mm, nn])
 
             # Add the null bottom 3 rows to to the forces entry
             forces[i_surf] = np.concatenate((forces[i_surf], np.zeros(dimensions)))
 
             # Reshape bound circulation terms
-            gamma.append(gamma_vec[worked_panels:worked_panels+panels_in_surface].reshape(
+            gamma.append(gamma_vec[worked_panels:worked_panels + panels_in_surface].reshape(
                 dimensions_gamma, order='C'))
-            gamma_dot.append(gamma_dot_vec[worked_panels:worked_panels+panels_in_surface].reshape(
+            gamma_dot.append(gamma_dot_vec[worked_panels:worked_panels + panels_in_surface].reshape(
                 dimensions_gamma, order='C'))
 
             # Reshape wake circulation terms
-            gamma_star.append(gamma_star_vec[worked_wake_panels:worked_wake_panels+panels_in_wake].reshape(
+            gamma_star.append(gamma_star_vec[worked_wake_panels:worked_wake_panels + panels_in_wake].reshape(
                 dimensions_wake, order='C'))
 
             worked_points += points_in_surface
@@ -481,7 +490,7 @@ class LinearUVLM(ss_interface.BaseElement):
             try:
                 if var.name == 'u_gust':
                     # if len(u_ext_gust) != var.size:
-                        # continue # provided input for external velocities does not match size. will be zero
+                    # continue # provided input for external velocities does not match size. will be zero
                     input_vectors['u_gust'] = u_ext_gust
                 else:
                     input_vectors[var.name] = u_n[var.cols_loc]
@@ -496,18 +505,18 @@ class LinearUVLM(ss_interface.BaseElement):
         for i_surf in range(tsaero0.n_surf):
             vertices_in_surface = tsaero0.zeta[i_surf].size
             dimensions_zeta = tsaero0.zeta[i_surf].shape
-            zeta.append(input_vectors['zeta'][worked_vertices:worked_vertices+vertices_in_surface].reshape(
+            zeta.append(input_vectors['zeta'][worked_vertices:worked_vertices + vertices_in_surface].reshape(
                 dimensions_zeta, order='C'))
-            zeta_dot.append(input_vectors['zeta_dot'][worked_vertices:worked_vertices+vertices_in_surface].reshape(
+            zeta_dot.append(input_vectors['zeta_dot'][worked_vertices:worked_vertices + vertices_in_surface].reshape(
                 dimensions_zeta, order='C'))
             try:
                 u_gust = input_vectors['u_gust']
-                    # TODO: fix this check because it is not correct
-                    # u_gust is not 3 * vertices *n_surf because different surfaces can have different vertices
-                    # take outside of loop and fix at the top!
+                # TODO: fix this check because it is not correct
+                # u_gust is not 3 * vertices *n_surf because different surfaces can have different vertices
+                # take outside of loop and fix at the top!
             except KeyError:
-                u_gust = np.zeros(3*vertices_in_surface*tsaero0.n_surf)
-            u_ext.append(u_gust[worked_vertices:worked_vertices+vertices_in_surface].reshape(
+                u_gust = np.zeros(3 * vertices_in_surface * tsaero0.n_surf)
+            u_ext.append(u_gust[worked_vertices:worked_vertices + vertices_in_surface].reshape(
                 dimensions_zeta, order='C'))
 
             zeta[i_surf] += tsaero0.zeta[i_surf]
@@ -518,9 +527,14 @@ class LinearUVLM(ss_interface.BaseElement):
         return zeta, zeta_dot, u_ext
 
     def connect_input(self, element):
-        # connect gain or statespace on the input side
+        """
+        Connect a gain or a StateSpace to the input of the UVLM
+
+        Args:
+            element (libss.StateSpace or libss.Gain): element to connect to the input of the UVLM
+
+        """
         if type(element) is libss.StateSpace:
-            print('here')
             self.ss = libss.series(element, self.ss)
         elif type(element) is libss.Gain:
             self.ss.addGain(element, where='in')
@@ -529,9 +543,14 @@ class LinearUVLM(ss_interface.BaseElement):
             TypeError('Unable to connect system that is not StateSpace or Gain')
 
     def connect_output(self, element):
-        # connect gain or statespace on the output side
+        """
+        Connect a gain or a StateSpace to the output of the UVLM
+
+        Args:
+            element (libss.StateSpace or libss.Gain): element to connect to the output of the UVLM
+
+        """
         if type(element) is libss.StateSpace:
-            print('here')
             self.ss = libss.series(self.ss, element)
         elif type(element) is libss.Gain:
             self.ss.addGain(element, where='out')

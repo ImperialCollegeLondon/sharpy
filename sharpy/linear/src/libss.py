@@ -58,6 +58,9 @@ import numpy as np
 import scipy.signal as scsig
 import scipy.linalg as scalg
 from sharpy.linear.utils.ss_interface import LinearVector, StateVariable, InputVariable, OutputVariable
+import scipy.interpolate as scint
+import h5py
+import sharpy.utils.h5utils as h5utils
 
 # dependency
 import sharpy.linear.src.libsparse as libsp
@@ -94,16 +97,6 @@ class StateSpace:
         self.dt = dt
         self.check_types()
 
-        # determine inputs/outputs/states
-        if self.B.shape.__len__() == 1:
-            # Allow for SISO systems
-            self.inputs = 1
-            self.states = self.B.shape[0]
-        else:
-            (self.states, self.inputs) = self.B.shape
-
-        self.outputs = self.C.shape[0]
-
         # vector variable tracking
         self._input_variables = None  # type: LinearVector
         self._state_variables = None
@@ -122,36 +115,19 @@ class StateSpace:
     def inputs(self):
         """Number of inputs :math:`m` to the system."""
         if self.B.shape.__len__() == 1:
-            self.inputs = 1
+            return 1
         else:
-            self.inputs = self.B.shape[1]
-
-        return self._inputs
-
-    @inputs.setter
-    def inputs(self, value):
-        # print('Setting Number of inputs')
-        self._inputs = value
+            return self.B.shape[1]
 
     @property
     def outputs(self):
         """Number of outputs :math:`p` of the system."""
-        self.outputs = self.C.shape[0]
-        return self._outputs
-
-    @outputs.setter
-    def outputs(self, value):
-        self._outputs = value
+        return self.C.shape[0]
 
     @property
     def states(self):
         """Number of states :math:`n` of the system."""
-        self.states = self.A.shape[0]
-        return self._states
-
-    @states.setter
-    def states(self, value):
-        self._states = value
+        return self.A.shape[0]
 
     @property
     def input_variables(self):
@@ -424,6 +400,55 @@ class StateSpace:
 
         return c.dot(scalg.inv(s * np.eye(n) - a)).dot(b) + d
 
+    def save(self, path):
+        """Save state-space object to h5 file"""
+        with h5py.File(path, 'w') as f:
+            f.create_dataset('a', data=self.A)
+            f.create_dataset('b', data=self.B)
+            f.create_dataset('c', data=self.C)
+            f.create_dataset('d', data=self.D)
+            if self.dt:
+                f.create_dataset('dt', data=self.dt)
+
+            if self.input_variables is not None:
+                self.input_variables.add_to_h5_file(f)
+                self.output_variables.add_to_h5_file(f)
+                self.state_variables.add_to_h5_file(f)
+
+    @classmethod
+    def load_from_h5(cls, h5_file_name):
+        """
+        Loads a state-space object from an h5 file, including variable information
+
+        Args:
+            h5_file_name (str): Path to file
+
+        Returns:
+            StateSpace: loaded state-space from file
+        """
+
+        with h5py.File(h5_file_name, 'r') as f:
+            data_dict = h5utils.load_h5_in_dict(f)
+
+        new_ss = cls(data_dict['a'],
+                     data_dict['b'],
+                     data_dict['c'],
+                     data_dict['d'],
+                     dt=data_dict.get('dt'))
+
+        input_variables = data_dict.get('InputVariable')
+        if input_variables is not None:
+            new_ss.input_variables = LinearVector.load_from_h5_file('InputVariable',
+                                                                    data_dict['InputVariable'])
+            new_ss.output_variables = LinearVector.load_from_h5_file('OutputVariable',
+                                                                     data_dict['OutputVariable'])
+            new_ss.state_variables = LinearVector.load_from_h5_file('StateVariable',
+                                                                    data_dict['StateVariable'])
+
+            return new_ss
+        else:
+            return new_ss
+
     def remove_inputs(self, *input_remove_list):
         """
         Removes inputs through their variable names.
@@ -524,9 +549,6 @@ class Gain:
         self._input_variables = None
         self._output_variables = None
 
-        self._inputs = None
-        self._outputs = None
-
         if input_vars is not None:
             self.input_variables = input_vars
         if output_vars is not None:
@@ -564,25 +586,14 @@ class Gain:
     def inputs(self):
         """Number of inputs :math:`m` to the system."""
         if self.value.shape.__len__() == 1:
-            self.inputs = 1
+            return 1
         else:
-            self.inputs = self.value.shape[1]
-
-        return self._inputs
-
-    @inputs.setter
-    def inputs(self, value):
-        self._inputs = value
+            return self.value.shape[1]
 
     @property
     def outputs(self):
         """Number of outputs :math:`p` of the gain."""
-        self.outputs = self.value.shape[0]
-        return self._outputs
-
-    @outputs.setter
-    def outputs(self, value):
-        self._outputs = value
+        return self.value.shape[0]
 
     def dot(self, elem):
         """
@@ -621,15 +632,130 @@ class Gain:
         Transposes the gain, such that the inputs become the outputs and vice-versa.
         """
 
-        temp_input_var = self.input_variables.copy()
-        input_variables = LinearVector.transform(self.output_variables,
-                                                 to_type=InputVariable)
-        output_variables = LinearVector.transform(temp_input_var,
-                                                  to_type=OutputVariable)
+        if self.input_variables is not None:
+            temp_input_var = self.input_variables.copy()
+            input_variables = LinearVector.transform(self.output_variables,
+                                                     to_type=InputVariable)
+            output_variables = LinearVector.transform(temp_input_var,
+                                                      to_type=OutputVariable)
 
-        return Gain(self.value.T,
-                    input_vars=input_variables,
-                    output_vars=output_variables)
+            return Gain(self.value.T,
+                        input_vars=input_variables,
+                        output_vars=output_variables)
+        else:
+            return Gain(self.value.T)
+
+    @property
+    def T(self):
+        return self.transpose()
+
+    def copy(self):
+        if self.input_variables is not None:
+            return Gain(self.value, input_vars=self.input_variables.copy(), output_vars=self.output_variables.copy())
+        else:
+            return Gain(self.value)
+
+    def save(self, path):
+        """Save gain object to h5 file"""
+        with h5py.File(path, 'w') as f:
+            f.create_dataset('gain', data=self.value)
+
+            if self.input_variables is not None:
+                self.input_variables.add_to_h5_file(f)
+                self.output_variables.add_to_h5_file(f)
+
+    def add_as_group_to_h5(self, h5_file_handle, group_name):
+        """
+        Adds gain to an h5 file handle
+        
+        Args:
+            h5_file_handle (h5py.File): writeable h5 file handle
+            group_name (str): Desired group name to save gain in h5
+
+        """
+        gain_group = h5_file_handle.create_group(group_name)
+        gain_group.create_dataset(name='gain', data=self.value)
+
+        if self.input_variables is not None:
+            self.input_variables.add_to_h5_file(gain_group)
+            self.output_variables.add_to_h5_file(gain_group)
+
+    @classmethod
+    def load_from_h5(cls, h5_file_name):
+        """
+        Returns a gain object from an .h5 file
+
+        Args:
+            h5_file_name (str): Path to h5 file
+
+        Returns:
+            Gain: instance of a Gain
+        """
+        with h5py.File(h5_file_name, 'r') as f:
+            data_dict = h5utils.load_h5_in_dict(f)
+
+        return cls.load_from_dict(data_dict)
+
+    @classmethod
+    def load_from_dict(cls, data_dict):
+        """
+
+        Returns a Gain from a dictionary of data, useful for loading from a group of gains in a single
+        .h5 file
+
+        Args:
+            data_dict (dict): Dictionary with keys: ``gain`` and (if available) ``InputVariable``
+              and ``OutputVariable``.
+
+        Returns:
+            Gain: instance of Gain
+        """
+        input_variables = data_dict.get('InputVariable')
+        if input_variables is not None:
+            input_variables = LinearVector.load_from_h5_file('InputVariable',
+                                                             data_dict['InputVariable'])
+            output_variables = LinearVector.load_from_h5_file('OutputVariable',
+                                                              data_dict['OutputVariable'])
+
+            return cls(data_dict['gain'], input_vars=input_variables,
+                       output_vars=output_variables)
+        else:
+            return cls(data_dict['gain'])
+
+    @classmethod
+    def save_multiple_gains(cls, h5_file_name, *gains_names_tuple):
+        """
+        Saves multiple gains to a single h5 file
+
+        Args:
+            h5_file_name (str): Path to h5 file
+            *gains_names_tuple (tuple): ``(gain_name (str), gain(Gain))`` tuples to save. The gain name will be the name
+              given on the h5 file
+
+        """
+        with h5py.File(h5_file_name, 'w') as f:
+            for name, gain in gains_names_tuple:
+                gain.add_as_group_to_h5(f, name)
+
+    @classmethod
+    def load_multiple_gains(cls, h5_file_name):
+        """
+        Loads multiple gains from a single h5 file
+
+        Args:
+            h5_file_name (str): Path to h5 file
+
+        Returns:
+            dict: Dictionary of loaded gains in a gain_name: Gain dictionary
+        """
+        with h5py.File(h5_file_name, 'r') as f:
+            data_dict = h5utils.load_h5_in_dict(f)
+
+        out_gains = {}
+        for gain_name, gain_data in data_dict.items():
+            out_gains[gain_name] = cls.load_from_dict(gain_data)
+
+        return out_gains
 
 
 class ss_block():
@@ -1078,7 +1204,8 @@ def retain_inout_channels(sys, retain_channels, where):
 
     # Go through variables...
     for var in gain_input_vars:
-        n_vars = np.sum((np.array(retain_channels) < var.end_position) * (np.array(retain_channels) >= var.first_position))
+        n_vars = np.sum(
+            (np.array(retain_channels) < var.end_position) * (np.array(retain_channels) >= var.first_position))
 
         if n_vars == 0:
             gain_output_vars.remove(var.name)

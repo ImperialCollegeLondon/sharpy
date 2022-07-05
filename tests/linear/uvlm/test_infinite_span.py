@@ -16,7 +16,7 @@ import sharpy.sharpy_main
 import sharpy.utils.algebra as algebra
 import sharpy.utils.analytical as an
 import sharpy.linear.src.linuvlm as linuvlm
-import cases.templates.flying_wings as flying_wings
+import sharpy.cases.templates.flying_wings as flying_wings
 import sharpy.utils.sharpydir as sharpydir
 import sharpy.utils.cout_utils as cout
 

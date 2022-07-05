@@ -4,7 +4,7 @@ import os
 import shutil
 
 import sharpy.utils.generate_cases as gc
-import cases.templates.template_wt as template_wt
+import sharpy.cases.templates.template_wt as template_wt
 from sharpy.utils.constants import deg2rad
 
 

@@ -44,7 +44,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
     settings_types['write_lm'] = 'bool'
     settings_default['write_lm'] = False
-    settings_description['write_lm'] = 'Write lagrange multipliers'
+    settings_description['write_lm'] = 'Write lagrange multipliers to file'
 
     settings_types['relax_factor_lm'] = 'float'
     settings_default['relax_factor_lm'] = 0.
@@ -84,6 +84,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         self.prev_Dq = None
 
+        self.out_files = None  # dict: containing output_variable:file_path if desired to write output
+
     def initialise(self, data, custom_settings=None, restart=False):
 
         self.data = data
@@ -110,13 +112,18 @@ class NonLinearDynamicMultibody(_BaseStructural):
         self.Lambda_ddot = np.zeros((self.num_LM_eq,), dtype=ct.c_double, order='F')
 
         if self.settings['write_lm']:
-            dire = './output/' + self.data.settings['SHARPy']['case'] + '/NonLinearDynamicMultibody/'
+            dire = self.data.output_folder + '/NonLinearDynamicMultibody/'
             if not os.path.isdir(dire):
                 os.makedirs(dire)
-            self.fname_lambda = dire + 'lambda.dat'
-            self.fname_lambda_dot = dire + 'lambda_dot.dat'
-            self.fname_lambda_ddot = dire + 'lambda_ddot.dat'
-            self.fname_cond_num = dire + 'cond_num.dat'
+
+            self.out_files = {'lambda': dire + 'lambda.dat',
+                              'lambda_dot': dire + 'lambda_dot.dat',
+                              'lambda_ddot': dire + 'lambda_ddot.dat',
+                              'cond_number': dire + 'cond_num.dat'}
+            # clean up files
+            for file in self.out_files.values():
+                if os.path.isfile(file):
+                    os.remove(file)
 
         # Define the number of dofs
         self.define_sys_size()
@@ -321,29 +328,24 @@ class NonLinearDynamicMultibody(_BaseStructural):
         # TODO: right now, these forces are only used as an output, they are not read when the multibody is splitted
 
     def write_lm_cond_num(self, iteration, Lambda, Lambda_dot, Lambda_ddot, cond_num, cond_num_lm):
+        # Maybe not the most efficient way to output this, as files are opened and closed every time data is written
+        # However, containing the writing in the with statement prevents from files remaining open in the previous
+        # implementation
+        out_data = {'lambda': Lambda,
+                    'lambda_dot': Lambda_dot,
+                    'lambda_ddot': Lambda_ddot}
 
-        fid_lambda = open(self.fname_lambda, "a")
-        fid_lambda_dot = open(self.fname_lambda_dot, "a")
-        fid_lambda_ddot = open(self.fname_lambda_ddot, "a")
-        fid_cond_num = open(self.fname_cond_num, "a")
+        for out_var, data in out_data.items():
+            file_name = self.out_files[out_var]
+            with open(file_name, 'a') as fid:
+                fid.write(f'{self.data.ts:g} {iteration:g} ')
+                for ilm in range(self.num_LM_eq):
+                    fid.write(f'{data[ilm]} ')
+                fid.write(f'\n')    
 
-        fid_lambda.write("%d %d " % (self.data.ts, iteration))
-        fid_lambda_dot.write("%d %d " % (self.data.ts, iteration))
-        fid_lambda_ddot.write("%d %d " % (self.data.ts, iteration))
-        fid_cond_num.write("%d %d " % (self.data.ts, iteration))
-        for ilm in range(self.num_LM_eq):
-            fid_lambda.write("%f " % Lambda[ilm])
-            fid_lambda_dot.write("%f " % Lambda_dot[ilm])
-            fid_lambda_ddot.write("%f " % Lambda_ddot[ilm])
-        fid_lambda.write("\n")
-        fid_lambda_dot.write("\n")
-        fid_lambda_ddot.write("\n")
-        fid_cond_num.write("%e %e\n" % (cond_num, cond_num_lm))
-
-        fid_lambda.close()
-        fid_lambda_dot.close()
-        fid_lambda_ddot.close()
-        fid_cond_num.close()
+        with open(self.out_files['cond_number'], 'a') as fid:
+            fid.write(f'{self.data.ts:g} {iteration:g} ')
+            fid.write(f'{cond_num:e} {cond_num_lm:e} \n')
 
 
 

@@ -1,12 +1,82 @@
 # Changelog
 
-## [1.2.1](https://github.com/imperialcollegelondon/sharpy/tree/1.2.1) (2021-02-09)
+## [2.0](https://github.com/imperialcollegelondon/sharpy/tree/2.0) (2022-07-04)
 
-[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.2...1.2.1)
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/1.3...2.0)
+
+**Implemented enhancements:**
+
+- Plot the aeroelastic mode shape to Paraview [\#202](https://github.com/ImperialCollegeLondon/sharpy/pull/202) ([ngoiz](https://github.com/ngoiz))
+- Enhanced linear solver [\#196](https://github.com/ImperialCollegeLondon/sharpy/pull/196) ([ngoiz](https://github.com/ngoiz))
+- Add pip support [\#175](https://github.com/ImperialCollegeLondon/sharpy/pull/175) ([DavidAnderegg](https://github.com/DavidAnderegg))
+
+**Fixed bugs:**
+
+- Flap inputs in state-space model not working in certain wing configurations [\#192](https://github.com/ImperialCollegeLondon/sharpy/issues/192)
+- Fix mass matrix generation for lumped masses in case of several masses per node [\#194](https://github.com/ImperialCollegeLondon/sharpy/pull/194) ([sduess](https://github.com/sduess))
+- Fix the sparse matrix in balancing ROM [\#186](https://github.com/ImperialCollegeLondon/sharpy/pull/186) ([AntonioWR](https://github.com/AntonioWR))
+
+**Closed issues:**
+
+- scipy used for direct balancing method [\#184](https://github.com/ImperialCollegeLondon/sharpy/issues/184)
+- Potential Issue in the balancing direct method [\#183](https://github.com/ImperialCollegeLondon/sharpy/issues/183)
+- Why no pip support? [\#171](https://github.com/ImperialCollegeLondon/sharpy/issues/171)
+
+**Merged pull requests:**
+
+- Contain write operations within with statements [\#195](https://github.com/ImperialCollegeLondon/sharpy/pull/195) ([ngoiz](https://github.com/ngoiz))
+- Support loading/saving state-spaces and gains to h5 files [\#188](https://github.com/ImperialCollegeLondon/sharpy/pull/188) ([ngoiz](https://github.com/ngoiz))
+- Update installation docs [\#187](https://github.com/ImperialCollegeLondon/sharpy/pull/187) ([nacho-carnicero](https://github.com/nacho-carnicero))
+- Unittest for nonlinear dynamic solver [\#185](https://github.com/ImperialCollegeLondon/sharpy/pull/185) ([sduess](https://github.com/sduess))
+- Change in the io-Settings to add thrust. [\#164](https://github.com/ImperialCollegeLondon/sharpy/pull/164) ([Eriklyy](https://github.com/Eriklyy))
+- UDP-Inout change for multiply cs\_surface\_deflections and loads/strain [\#162](https://github.com/ImperialCollegeLondon/sharpy/pull/162) ([Eriklyy](https://github.com/Eriklyy))
+- Update AsymptoticStability and FrequencyResponse post-processors [\#103](https://github.com/ImperialCollegeLondon/sharpy/pull/103) ([ngoiz](https://github.com/ngoiz))
+
+## [1.3](https://github.com/imperialcollegelondon/sharpy/tree/1.3) (2021-11-11)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.2.1...1.3)
+
+**Implemented enhancements:**
+
+- Include gravity direction as input for structural solvers [\#112](https://github.com/ImperialCollegeLondon/sharpy/issues/112)
+- Simulation settings check - Unrecognised settings raise Error [\#148](https://github.com/ImperialCollegeLondon/sharpy/pull/148) ([ngoiz](https://github.com/ngoiz))
+- Aerodynamic forces correction enhancements [\#140](https://github.com/ImperialCollegeLondon/sharpy/pull/140) ([ngoiz](https://github.com/ngoiz))
+- New feature: apply external forces to the system at runtime [\#125](https://github.com/ImperialCollegeLondon/sharpy/pull/125) ([ArturoMS13](https://github.com/ArturoMS13))
+- Lift distribution post-processor [\#121](https://github.com/ImperialCollegeLondon/sharpy/pull/121) ([sduess](https://github.com/sduess))
+
+**Fixed bugs:**
+
+- Fix bug in computing total moments in A frame [\#177](https://github.com/ImperialCollegeLondon/sharpy/pull/177) ([ngoiz](https://github.com/ngoiz))
+
+**Closed issues:**
+
+- Unrecognised model in goland test case [\#143](https://github.com/ImperialCollegeLondon/sharpy/issues/143)
+
+**Merged pull requests:**
+
+- Implement GitHub Actions as testing suite provider [\#179](https://github.com/ImperialCollegeLondon/sharpy/pull/179) ([ngoiz](https://github.com/ngoiz))
+- Update submodules and conda environments [\#161](https://github.com/ImperialCollegeLondon/sharpy/pull/161) ([sduess](https://github.com/sduess))
+- Support element variables in UDP output [\#160](https://github.com/ImperialCollegeLondon/sharpy/pull/160) ([ngoiz](https://github.com/ngoiz))
+- Output directory in the location specified in settings\[SHARPy\]\[log\_folder\] [\#130](https://github.com/ImperialCollegeLondon/sharpy/pull/130) ([ngoiz](https://github.com/ngoiz))
+- Update and include features in multibody [\#126](https://github.com/ImperialCollegeLondon/sharpy/pull/126) ([ArturoMS13](https://github.com/ArturoMS13))
+- Update linear UVLM to account for CFL not equal to one in the wake convection [\#124](https://github.com/ImperialCollegeLondon/sharpy/pull/124) ([ArturoMS13](https://github.com/ArturoMS13))
+- Minor changes [\#123](https://github.com/ImperialCollegeLondon/sharpy/pull/123) ([ArturoMS13](https://github.com/ArturoMS13))
+
+## [v1.2.1](https://github.com/imperialcollegelondon/sharpy/tree/v1.2.1) (2021-02-09)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.2...v1.2.1)
+
+**Implemented enhancements:**
+
+- Allow CFL != 1in shedding step [\#78](https://github.com/ImperialCollegeLondon/sharpy/issues/78)
+- Vortex wake managed by SHARPy [\#77](https://github.com/ImperialCollegeLondon/sharpy/issues/77)
+- Recover vortex core in UVLM [\#76](https://github.com/ImperialCollegeLondon/sharpy/issues/76)
+- Include viscous drag force from airfoil properties [\#75](https://github.com/ImperialCollegeLondon/sharpy/issues/75)
 
 **Fixed bugs:**
 
 - Bug in beamstructure.py [\#117](https://github.com/ImperialCollegeLondon/sharpy/issues/117)
+- Definition of control surfaces and impact of node ordering in mirrored wings [\#43](https://github.com/ImperialCollegeLondon/sharpy/issues/43)
 
 **Closed issues:**
 

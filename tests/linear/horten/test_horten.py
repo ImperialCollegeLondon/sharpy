@@ -1,11 +1,13 @@
 import sharpy.utils.algebra as algebra
-from cases.hangar.richards_wing import Baseline
+from sharpy.cases.hangar.richards_wing import Baseline
 import sharpy.sharpy_main
 import numpy as np
 import configobj
 import unittest
 import os
 import shutil
+
+route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
 
 def run_rom_convergence(case_name, case_route='./cases/', output_folder='./output/', **kwargs):
@@ -89,7 +91,7 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
                           'flow': flow,
                           'write_screen': 'off',
                           'write_log': 'on',
-                          'log_folder': output_folder + ws.case_name + '/',
+                          'log_folder': output_folder,
                           'log_file': ws.case_name + '.log'}
 
     settings['BeamLoader'] = {'unsteady': 'off',
@@ -269,6 +271,8 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
         'display_root_locus': 'off',
         'frequency_cutoff': 0,
         'export_eigenvalues': 'on',
+        'target_system': ['aeroelastic', 'aerodynamic', 'structural'],
+        'output_file_format': 'dat',
         'num_evals': 100}
 
     settings['FrequencyResponse'] = {'print_info': 'on',
@@ -315,7 +319,6 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
 
 class TestHortenWing(unittest.TestCase):
 
-    route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
     def test_horten(self):
 
@@ -327,15 +330,21 @@ class TestHortenWing(unittest.TestCase):
 
         case_name = 'horten_'
 
-        case_route = self.route_test_dir + '/cases/'
-        output_route = self.route_test_dir + '/output/'
+        case_route = route_test_dir + '/cases/'
+        output_route = route_test_dir + '/output/'
 
         data = run_rom_convergence(case_name=case_name, case_route=case_route,
                                    output_folder=output_route,
                                    M=M, N=N, Msf=Msf, trim=trim)
 
         # check first 10 eigs are zero (9 integro states + yaw)
-        eigs = data.linear.stability['eigenvalues']
+        path_to_eigs = data.output_folder + '/stability/aeroelastic_eigenvalues.dat'
+        eigs = np.loadtxt(path_to_eigs)
+
+        # check that aerodynamic and structural eigs are also written
+        target_system = ['aerodynamic', 'structural']
+        for sys in target_system:
+            np.loadtxt(data.output_folder + f'/stability/{sys}_eigenvalues.dat')
 
         np.testing.assert_allclose(np.abs(eigs[:10]), 0, atol=1e-8)
 
@@ -349,7 +358,8 @@ class TestHortenWing(unittest.TestCase):
         folders = ['output/', 'cases/']
 
         for folder in folders:
-            shutil.rmtree(self.route_test_dir + '/' + folder)
+            if os.path.isdir(route_test_dir + '/' + folder):
+                shutil.rmtree(route_test_dir + '/' + folder)
 
 
 if __name__ == '__main__':

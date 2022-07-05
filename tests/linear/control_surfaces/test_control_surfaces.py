@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import unittest
-import cases.templates.flying_wings as wings
+import sharpy.cases.templates.flying_wings as wings
 import sharpy.sharpy_main
 import pickle
 
@@ -59,6 +59,7 @@ class TestGolandControlSurface(unittest.TestCase):
         ws.update_derived_params()
         ws.set_default_config_dict()
 
+        # Full moving control surface on the right wing
         ws.control_surface_chord[0] = M
         ws.control_surface_hinge_coord[0] = 0.5
         ws.control_surface[4, :] = 1
@@ -233,8 +234,9 @@ class TestGolandControlSurface(unittest.TestCase):
 
                 # zeta indices [(xyz), chord, span]
                 if i_surf == 0:
-                    zeta_elev = zeta[:, -1, -1] - zeta[:, 2, -1]  # elevator starts at chordwise node 2
-                    zeta_0elev = zeta0[:, -1, -1] - zeta0[:, 2, -1]
+                    # Full moving control surface with hinge at c=0.5
+                    zeta_elev = zeta[:, -1, -1] - zeta[:, 0, -1]  # elevator starts at chordwise node 0
+                    zeta_0elev = zeta0[:, -1, -1] - zeta0[:, 0, -1]
                 elif i_surf == 1:
                     # mirrored surface. span index 0 is the wing tip
                     zeta_elev = zeta[:, -1, 0] - zeta[:, 2, 0]  # elevator starts at chordwise node 2

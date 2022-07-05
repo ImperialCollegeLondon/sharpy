@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import unittest
-import cases.templates.flying_wings as wings
+import sharpy.cases.templates.flying_wings as wings
 import sharpy.sharpy_main
 from sharpy.linear.assembler.lineargustassembler import campbell
 import pickle
@@ -14,7 +14,7 @@ class TestGolandControlSurface(unittest.TestCase):
 
     def run_sharpy(self, flow, **kwargs):
         # Problem Set up
-        u_inf = 1.
+        u_inf = 2.
         alpha_deg = 0.
         rho = 1.02
         num_modes = 4
@@ -271,7 +271,8 @@ class TestGolandControlSurface(unittest.TestCase):
         import shutil
         folders = ['cases', 'figures', 'output']
         for folder in folders:
-            shutil.rmtree(self.route_test_dir + '/' + folder)
+            if os.path.isdir(self.route_test_dir + '/' + folder):
+                shutil.rmtree(self.route_test_dir + '/' + folder)
 
 
 class TestGusts(unittest.TestCase):
