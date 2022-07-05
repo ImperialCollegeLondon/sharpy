@@ -95,7 +95,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
     settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
-    scaling_table = settings_utils.SettingsTable()
+    scaling_table = su.SettingsTable()
     __doc__ += scaling_table.generate(scaling_types, scaling_default, scaling_description,
                                       header_line='The scaling dictionary takes the following entries:')
 
@@ -133,7 +133,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
                 scaling = self.data.linear.linear_system.uvlm.sys.ScalingFacts
             else:
                 scaling = self.settings['frequency_scaling']
-                settings_utils.to_custom_types(scaling, self.scaling_types, self.scaling_default,
+                su.to_custom_types(scaling, self.scaling_types, self.scaling_default,
                                                no_ctype=True)
             self.w_to_k = scaling['length'] / scaling['speed']
         else:
