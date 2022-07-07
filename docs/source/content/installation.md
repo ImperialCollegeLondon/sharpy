@@ -1,7 +1,7 @@
-# SHARPy Installation Guide
-__Last revision 3 February 2020__
+# SHARPy v2.0 Installation Guide
+__Last revision 1 July 2022__
 
-The following step by step tutorial will guide you through the installation process of SHARPy.
+The following step by step tutorial will guide you through the installation process of SHARPy. This is the updated process valid from v2.0.
 
 ## Requirements
 
@@ -10,6 +10,7 @@ __Operating System Requirements__
 SHARPy is being developed and tested on the following operating systems:
 + CentOS 7 and CentOS 8
 + Ubuntu 18.04 LTS
++ Debian 10
 + MacOS Mojave and Catalina
 
 It is also available to the vast majority of operating systems that are supported
