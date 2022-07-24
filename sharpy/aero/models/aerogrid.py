@@ -355,7 +355,6 @@ class Aerogrid(object):
                  aero_tstep.zeta_dot[i_surf][:, :, i_n]) = (
                     generate_strip(node_info,
                                    self.airfoil_db,
-                                   aero_settings['aligned_grid'],
                                    orientation_in=aero_settings['freestream_dir'],
                                    calculate_zeta_dot=True))
 
@@ -488,7 +487,7 @@ class Aerogrid(object):
 
 
 
-def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array([1, 0, 0]), calculate_zeta_dot = False):
+def generate_strip(node_info, airfoil_db, orientation_in=np.array([1, 0, 0]), calculate_zeta_dot = False):
     """
     Returns a strip of panels in ``A`` frame of reference, it has to be then rotated to
     simulate angles of attack, etc
