@@ -72,7 +72,16 @@ class AerogridLoader(BaseSolver):
 
     settings_types['control_surface_deflection_generator_settings'] = 'dict'
     settings_default['control_surface_deflection_generator_settings'] = dict()
-    settings_description['control_surface_deflection_generator_settings'] = 'List of dictionaries with the settings ' \
+    settings_description['control_surface_deflection_generator_settings'] = 'Dict of dictionaries with the settings ' \
+                                                                            'for each generator'
+
+    settings_types['gust_vanes'] = 'bool'
+    settings_default['gust_vanes'] = False
+    settings_description['gust_vanes'] = 'Gust vane generator'
+
+    settings_types['gust_vanes_generator_settings'] = 'dict'
+    settings_default['gust_vanes_generator_settings'] = dict()
+    settings_description['gust_vanes_generator_settings'] = 'Dict of dictionaries with the settings ' \
                                                                             'for each generator'
 
     settings_types['wake_shape_generator'] = 'str'

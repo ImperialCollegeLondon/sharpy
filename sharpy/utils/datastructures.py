@@ -70,7 +70,7 @@ class AeroTimeStepInfo(object):
         dimensions_star (np.ndarray): Matrix defining the dimensions of the vortex grid on wakes
           ``[num_surf x streamwise panels x spanwise panels]``
     """
-    def __init__(self, dimensions, dimensions_star):
+    def __init__(self, dimensions, dimensions_star, gust_vane_surfaces = []):
         self.ct_dimensions = None
         self.ct_dimensions_star = None
 
@@ -177,6 +177,11 @@ class AeroTimeStepInfo(object):
 
         self.control_surface_deflection = np.array([])
 
+        # Gust vane variables        
+        self.gust_vane_surface = np.zeros((self.n_surf))
+        for isurf in gust_vane_surfaces:
+            self.gust_vane_surface[isurf] = 1
+
     def copy(self):
         """
         Returns a copy of a deepcopy of a :class:`~sharpy.utils.datastructures.AeroTimeStepInfo`
@@ -235,6 +240,8 @@ class AeroTimeStepInfo(object):
         copied.postproc_node = copy.deepcopy(self.postproc_node)
 
         copied.control_surface_deflection = self.control_surface_deflection.astype(dtype=ct.c_double, copy=True)
+
+        copied.gust_vane_surface = self.gust_vane_surface.astype(dtype=ct.c_double, copy=True)
 
         return copied
 

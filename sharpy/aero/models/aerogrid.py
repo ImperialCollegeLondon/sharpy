@@ -75,9 +75,18 @@ class Aerogrid(object):
         self.output_info()
 
         # allocating initial grid storage
-        self.ini_info = AeroTimeStepInfo(self.aero_dimensions,
-                                         self.aero_dimensions_star)
 
+        if self.aero_settings['gust_vanes']:
+            generator_type = gen_interface.generator_from_string('GustVanes')
+            self.gust_vanes = generator_type()
+            self.gust_vanes.initialise({'n_vanes': 2})
+            self.ini_info = AeroTimeStepInfo(np.concatenate((self.aero_dimensions, self.gust_vanes.aero_dimensions)),
+                                             np.concatenate((self.aero_dimensions_star, self.gust_vanes.aero_dimensions_star)),
+                                             gust_vane_surfaces = list(range(self.n_surf, self.n_surf + self.gust_vanes.n_vanes)))
+        else:
+            self.ini_info = AeroTimeStepInfo(self.aero_dimensions,
+                                            self.aero_dimensions_star)
+                                            
         # load airfoils db
         # for i_node in range(self.n_node):
         for i_elem in range(self.n_elem):
