@@ -358,6 +358,12 @@ class Aerogrid(object):
                                    orientation_in=aero_settings['freestream_dir'],
                                    calculate_zeta_dot=True))
 
+        if self.aero_settings['gust_vanes']:
+            self.gust_vanes.generate_zeta(it,
+                                          aero_tstep,
+                                          self.airfoil_db,
+                                          freestream_dir = aero_settings['freestream_dir'])
+
     def generate_zeta(self, beam, aero_settings, ts=-1, beam_ts=-1):
         self.generate_zeta_timestep_info(beam.timestep_info[beam_ts],
                                          self.timestep_info[ts],
