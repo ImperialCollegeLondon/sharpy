@@ -109,3 +109,20 @@ class GustVanes(generator_interface.BaseGenerator):
                 cout.cout_wrap('Error, unable to locate a settings dictionary for gust vane '
                                 '{:g}'.format(ivane), 4)
 
+    def generate_zeta(self, iteration, aero_tstep, airfoil_db, freestream_dir = np.array([1., 0., 0.])):
+        if iteration > 0:
+            self.update_cs_deflection_and_rate(iteration)
+        for ivane in range(self.n_vanes):
+            for inode in range(self.vane_info[ivane]['N']):
+                self.vane_info[ivane]['beam_coord'][1] = self.y_coord[inode]
+                (aero_tstep.zeta[aero_tstep.n_surf - self.n_vanes + ivane][:, :, inode],
+                        aero_tstep.zeta_dot[aero_tstep.n_surf - self.n_vanes + ivane][:, :, inode]) = (
+                            generate_strip(self.vane_info[ivane],
+                                            airfoil_db,
+                                            orientation_in=freestream_dir, #TODO: Check if this changes
+                                            calculate_zeta_dot=True)) #TODO: Check effect of zeta dot on wake later
+        
+    def update_cs_deflection_and_rate(self, iteration):
+        for ivane in range(self.n_vanes):
+            self.vane_info[ivane]['control_surface']['deflection'], self.vane_info[ivane]['control_surface']['deflection_dot'] = \
+                                    self.cs_generators[ivane]({'it': iteration})
