@@ -33,8 +33,8 @@ class DynamicControlSurface(generator_interface.BaseGenerator):
             dict_of_cs = {'0': cs0_settings,
                                   '1': cs1_settings} # This dictionary groups all the settings for all the control surfaces
             settings = {}
-            settings['AerogridLoader] = {'control_surface_deflection' : ['DynamicControlSurface],
-                                                         'control_surface_deflection_generator_settings: dict_of_cs}
+            settings['AerogridLoader'] = {'control_surface_deflection' : ['DynamicControlSurface'],
+                                                         'control_surface_deflection_generator_settings': dict_of_cs}
 
 
 

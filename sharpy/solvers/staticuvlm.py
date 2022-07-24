@@ -159,7 +159,7 @@ class StaticUvlm(BaseSolver):
         return self.data
 
     def next_step(self):
-        """ Updates de aerogrid based on the info of the step, and increases
+        """ Updates the aerogrid based on the info of the step, and increases
         the self.ts counter """
         self.data.aero.add_timestep()
         self.update_step()
