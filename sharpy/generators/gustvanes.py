@@ -3,6 +3,7 @@ import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
+from sharpy.aero.models.aerogrid import generate_strip
 
 @generator_interface.generator
 class GustVanes(generator_interface.BaseGenerator):
