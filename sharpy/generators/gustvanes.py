@@ -5,6 +5,7 @@ import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
 from sharpy.aero.models.aerogrid import generate_strip
 
+
 @generator_interface.generator
 class GustVanes(generator_interface.BaseGenerator):
     """
@@ -115,7 +116,7 @@ class GustVanes(generator_interface.BaseGenerator):
             self.update_cs_deflection_and_rate(iteration)
         for ivane in range(self.n_vanes):
             for inode in range(self.vane_info[ivane]['N']):
-                self.vane_info[ivane]['beam_coord'][1] = self.y_coord[inode]
+                self.vane_info[ivane]['beam_coord'][1] = self.y_coord[ivane][inode]
                 (aero_tstep.zeta[aero_tstep.n_surf - self.n_vanes + ivane][:, :, inode],
                         aero_tstep.zeta_dot[aero_tstep.n_surf - self.n_vanes + ivane][:, :, inode]) = (
                             generate_strip(self.vane_info[ivane],
