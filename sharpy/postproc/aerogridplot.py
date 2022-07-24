@@ -180,11 +180,11 @@ class AerogridPlot(BaseSolver):
             counter = -1
             node_counter = -1
             for i_n in range(dims[1] + 1):
-                global_counter = self.data.aero.aero2struct_mapping[i_surf][i_n]
+                if not bool(aero_tstep.gust_vane_surface[i_surf]):              
+                    point_struct_id[:] = self.data.aero.aero2struct_mapping[i_surf][i_n]
                 for i_m in range(dims[0] + 1):
                     node_counter += 1
                     # point data
-                    point_struct_id[node_counter] = global_counter
                     point_cf[node_counter, :] = aero_tstep.forces[i_surf][0:3, i_m, i_n]
                     try:
                         point_unsteady_cf[node_counter, :] = aero_tstep.dynamic_forces[i_surf][0:3, i_m, i_n]
