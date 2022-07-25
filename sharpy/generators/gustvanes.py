@@ -115,7 +115,7 @@ class GustVanes(generator_interface.BaseGenerator):
         if iteration > 0:
             self.update_cs_deflection_and_rate(iteration)
         for ivane in range(self.n_vanes):
-            for inode in range(self.vane_info[ivane]['N']):
+            for inode in range(self.vane_info[ivane]['N']+1):
                 self.vane_info[ivane]['beam_coord'][1] = self.y_coord[ivane][inode]
                 (aero_tstep.zeta[aero_tstep.n_surf - self.n_vanes + ivane][:, :, inode],
                         aero_tstep.zeta_dot[aero_tstep.n_surf - self.n_vanes + ivane][:, :, inode]) = (
