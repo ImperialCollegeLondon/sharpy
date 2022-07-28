@@ -31,6 +31,7 @@ class VMopts(ct.Structure):
             bool cfl1;
             double vortex_radius;
             double vortex_radius_wake_ind;
+            bool symmetry_condition;
         };
     """
     _fields_ = [("ImageMethod", ct.c_bool),
@@ -51,7 +52,8 @@ class VMopts(ct.Structure):
                 ("iterative_precond", ct.c_bool),
                 ("cfl1", ct.c_bool),
                 ("vortex_radius", ct.c_double),
-                ("vortex_radius_wake_ind", ct.c_double)]
+                ("vortex_radius_wake_ind", ct.c_double),
+                ("symmetry_condition", ct.c_bool)]
 
     def __init__(self):
         ct.Structure.__init__(self)
@@ -75,6 +77,7 @@ class VMopts(ct.Structure):
         self.vortex_radius = ct.c_double(vortex_radius_def)
         self.vortex_radius_wake_ind = ct.c_double(vortex_radius_def)
         self.rbm_vel_g = np.ctypeslib.as_ctypes(np.zeros((6)))
+        self.symmetry_condition= ct.c_bool(False)
 
 
 class UVMopts(ct.Structure):
@@ -98,7 +101,8 @@ class UVMopts(ct.Structure):
                 ("filter_method", ct.c_uint),
                 ("interp_method", ct.c_uint),
                 ("yaw_slerp", ct.c_double),
-                ("quasi_steady", ct.c_bool),]
+                ("quasi_steady", ct.c_bool),
+                ("symmetry_condition", ct.c_bool)]
 
     def __init__(self):
         ct.Structure.__init__(self)
@@ -117,6 +121,7 @@ class UVMopts(ct.Structure):
         self.vortex_radius_wake_ind = ct.c_double(vortex_radius_def)
         self.yaw_slerp = ct.c_double(0.)
         self.quasi_steady = ct.c_bool(False)
+        self.symmetry_condition= ct.c_bool(False)
 
 
 class FlightConditions(ct.Structure):
@@ -162,6 +167,7 @@ def vlm_solver(ts_info, options):
     vmopts.cfl1 = ct.c_bool(options['cfl1'])
     vmopts.vortex_radius = ct.c_double(options['vortex_radius'])
     vmopts.vortex_radius_wake_ind = ct.c_double(options['vortex_radius_wake_ind'])
+    vmopts.symmetry_condition== ct.c_bool(options['symmetry_condition'])
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -261,6 +267,7 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
     uvmopts.interp_method = ct.c_uint(options["interp_method"])
     uvmopts.yaw_slerp = ct.c_double(options["yaw_slerp"])
     uvmopts.quasi_steady = ct.c_bool(options['quasi_steady'])
+    uvmopts.symmetry_condition== ct.c_bool(options['symmetry_condition'])
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
