@@ -79,7 +79,7 @@ class Aerogrid(object):
         if self.aero_settings['gust_vanes']:
             generator_type = gen_interface.generator_from_string('GustVanes')
             self.gust_vanes = generator_type()
-            self.gust_vanes.initialise({'n_vanes': 2})
+            self.gust_vanes.initialise(aero_settings['gust_vanes_generator_settings'])
             self.ini_info = AeroTimeStepInfo(np.concatenate((self.aero_dimensions, self.gust_vanes.aero_dimensions)),
                                              np.concatenate((self.aero_dimensions_star, self.gust_vanes.aero_dimensions_star)),
                                              gust_vane_surfaces = list(range(self.n_surf, self.n_surf + self.gust_vanes.n_vanes)))
