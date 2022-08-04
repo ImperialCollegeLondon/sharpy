@@ -40,6 +40,10 @@ class GustVanes(generator_interface.BaseGenerator):
     settings_default['vane_parameters'] = [{'M': 4,'N': 20, 'M_star': 40, 'span': 10., 'chord': 0.1,}]
     settings_description['vane_parameters'] = 'Dictionary of parameters to specify the gust vane geometry and its position '
 
+    settings_types['symmetry_condition'] = 'bool'
+    settings_default['symmetry_condition'] = False
+    settings_description['symmetry_condition'] = 'If ``True``, symmetry is enforced at global x-z-plane at y = 0'
+
 
     def __init__(self):
         self.settings = None
@@ -63,9 +67,12 @@ class GustVanes(generator_interface.BaseGenerator):
 
     def get_y_coordinates(self):
         for ivane in range(self.n_vanes):
+            # Starts at y = 0 if symmetry condition is enforced
             self.y_coord.append(np.linspace(self.vane_info[ivane]['span']/2,
-                                            -self.vane_info[ivane]['span']/2,
-                                            self.vane_info[ivane]['N']+1))
+                -self.vane_info[ivane]['span']/2*int(not self.settings["symmetry_condition"]),
+                self.vane_info[ivane]['N']+1))
+            print(self.y_coord[-1])
+            print(np.shape(self.y_coord[-1]))
 
     def set_default_vane_settings(self):
         # TODO: Find better solution, especially for beam_psi
