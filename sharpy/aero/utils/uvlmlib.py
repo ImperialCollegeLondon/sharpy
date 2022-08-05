@@ -167,7 +167,7 @@ def vlm_solver(ts_info, options):
     vmopts.cfl1 = ct.c_bool(options['cfl1'])
     vmopts.vortex_radius = ct.c_double(options['vortex_radius'])
     vmopts.vortex_radius_wake_ind = ct.c_double(options['vortex_radius_wake_ind'])
-    vmopts.symmetry_condition== ct.c_bool(options['symmetry_condition'])
+    vmopts.symmetry_condition = ct.c_bool(options['symmetry_condition'])
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
@@ -267,7 +267,7 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
     uvmopts.interp_method = ct.c_uint(options["interp_method"])
     uvmopts.yaw_slerp = ct.c_double(options["yaw_slerp"])
     uvmopts.quasi_steady = ct.c_bool(options['quasi_steady'])
-    uvmopts.symmetry_condition== ct.c_bool(options['symmetry_condition'])
+    uvmopts.symmetry_condition= ct.c_bool(options['symmetry_condition'])
 
     flightconditions = FlightConditions()
     flightconditions.rho = options['rho']
