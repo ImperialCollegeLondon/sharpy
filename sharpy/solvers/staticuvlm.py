@@ -50,6 +50,7 @@ class StaticUvlm(BaseSolver):
     settings_default['num_cores'] = 0
     settings_description['num_cores'] = 'Number of cores to use in the VLM lib'
 
+    # TODO: summarize roll up parameters in one setting
     settings_types['n_rollup'] = 'int'
     settings_default['n_rollup'] = 1
     settings_description['n_rollup'] = 'Number of rollup iterations for free wake. Use at least ``n_rollup > 1.1*m_star``'
@@ -110,6 +111,11 @@ class StaticUvlm(BaseSolver):
     settings_default['centre_rot_g'] = [0., 0., 0.]
     settings_description['centre_rot_g'] = 'Centre of rotation in G FoR around which ``rbm_vel_g`` is applied'
 
+    settings_types['symmetry_condition'] = 'bool'
+    settings_default['symmetry_condition'] = False
+    settings_description['symmetry_condition'] = 'If ``True``, symmetry is enforced at global x-z-plane at y = 0'
+
+    set
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
