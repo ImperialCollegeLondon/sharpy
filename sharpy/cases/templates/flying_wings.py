@@ -79,7 +79,8 @@ class FlyingWing():
                  route='.',
                  case_name='flying_wing',
                  RollNodes=False,
-                 polar_file=None):
+                 polar_file=None,
+                 symmetry_condition=False):
 
         ### parametrisation
         assert n_surfaces < 3, "use 1 or 2 surfaces only!"
@@ -131,6 +132,7 @@ class FlyingWing():
         self.polars = None # list of polar for each airfoil
         if polar_file is not None:
             self.load_polar(polar_file)
+        self.symmetry_condition = symmetry_condition
 
         # Numerics for dynamic simulations
         self.dt_factor = 1
@@ -446,6 +448,7 @@ class FlyingWing():
             'rollup_dt': self.dt,
             'print_info': 'on',
             'horseshoe': 'off',
+            'symmetry_condition': self.symmetry_condition,
             'num_cores': 4,
             'n_rollup': 0,
             'rollup_aic_refresh': 0,
@@ -467,6 +470,7 @@ class FlyingWing():
                 'rollup_dt': self.dt,
                 'rollup_aic_refresh': 1,
                 'rollup_tolerance': 1e-4,
+                'symmetry_condition': self.symmetry_condition,
                 'velocity_field_generator': 'SteadyVelocityField',
                 'velocity_field_input': {
                     'u_inf': self.u_inf,
@@ -515,6 +519,7 @@ class FlyingWing():
                                 'rollup_dt': self.dt,
                                 'rollup_aic_refresh': 1,
                                 'rollup_tolerance': 1e-4,
+                                'symmetry_condition': self.symmetry_condition,
                                 # 'velocity_field_generator': 'TurbSimVelocityField',
                                 # 'velocity_field_input': {'turbulent_field': '/2TB/turbsim_fields/TurbSim_wide_long_A_low.h5',
                                 #                          'offset': [30., 0., -10],
@@ -762,30 +767,60 @@ class FlyingWing():
             fc_h = h5file.create_dataset('fc', data=fc)
             rc_h = h5file.create_dataset('rc', data=rc)
 
+    def reduce_model_to_symmetric_wing(self):
+        """
+        Function to reduce a flying with n_surfaces = 2 to one symmetric wing. Used in
+        test_static_pazy for untitest.
+        """
+
+        # aero.h5 inputs
+        self.chord = self.chord[:self.num_elem_surf,:]
+        self.twist = self.twist[:self.num_elem_surf,:]
+        self.airfoil_distribution = self.airfoil_distribution[:self.num_elem_surf,:]
+        self.surface_number = self.surface_number[:self.num_elem_surf]
+        self.surface_m = self.surface_m[:1]
+        self.aero_node[:self.num_node_surf]
+        self.elastic_axis = self.elastic_axis[:self.num_elem_surf,:]
+        self.control_surface = self.control_surface[:self.num_elem_surf,:]
+        self.control_surface_type = self.control_surface_type[:self.n_control_surfaces//2]
+        self.control_surface_deflection = self.control_surface_deflection[:self.n_control_surfaces//2]
+        self.control_surface_chord = self.control_surface_chord[:self.n_control_surfaces//2]
+        if self.control_surface_hinge_coord is not None:
+            self.control_surface_hinge_coord = self.control_surface_hinge_coord[:self.n_control_surfaces//2]
+
+        # fem.h5 inputs
+        self.x = self.x[:self.num_node_surf]
+        self.y = self.y[:self.num_node_surf]
+        self.z = self.z[:self.num_node_surf]
+
+        self.conn_glob = self.conn_glob[:self.num_elem_surf]
+        self.num_node_tot = self.num_node_surf
+        self.num_elem_tot = self.num_elem_surf
+        self.elem_stiffness = self.elem_stiffness[:self.num_elem_surf]
+        self.elem_mass = self.elem_mass[:self.num_elem_surf]
+        self.frame_of_reference_delta = self.frame_of_reference_delta[:self.num_elem_surf]
+
+        self.boundary_conditions = np.zeros((self.num_node_surf,), dtype=int)
+        self.boundary_conditions[-1] = -1  # free-ends
+        self.boundary_conditions[0] = 1  # mid-clamp symemtry
+
+        n_lumped_mass = np.size(self.lumped_mass)
+        if n_lumped_mass > 1:
+            n_lumped_mass  //= 2
+            self.lumped_mass = self.lumped_mass[:n_lumped_mass]
+            self.lumped_mass_inertia = self.lumped_mass_inertia[:n_lumped_mass ,:, :]            
+            self.lumped_mass_position= self.lumped_mass_position[:n_lumped_mass, :]
+            self.lumped_mass_nodes = self.lumped_mass_nodes[:n_lumped_mass]          
+
+    
     def clean_test_files(self):
-        fem_file_name = self.route + '/' + self.case_name + '.fem.h5'
-        if os.path.isfile(fem_file_name):
-            os.remove(fem_file_name)
+        list_file_extensions = ['.fem.h5', '.aero.h5', '.sharpy', '.flightcon.txt', '.lininput.h5', '.rom.h5']
+        for file_extension in list_file_extensions:
+            file_name = self.route + '/' + self.case_name + file_extension
+            if os.path.isfile(file_name):
+                os.remove(file_name)
 
-        aero_file_name = self.route + '/' + self.case_name + '.aero.h5'
-        if os.path.isfile(aero_file_name):
-            os.remove(aero_file_name)
 
-        solver_file_name = self.route + '/' + self.case_name + '.sharpy'
-        if os.path.isfile(solver_file_name):
-            os.remove(solver_file_name)
-
-        flightcon_file_name = self.route + '/' + self.case_name + '.flightcon.txt'
-        if os.path.isfile(flightcon_file_name):
-            os.remove(flightcon_file_name)
-
-        lininput_file_name = self.route + '/' + self.case_name + '.lininput.h5'
-        if os.path.isfile(lininput_file_name):
-            os.remove(lininput_file_name)
-
-        rom_file = self.route + '/' + self.case_name + '.rom.h5'
-        if os.path.isfile(rom_file):
-            os.remove(rom_file)
 
 class Smith(FlyingWing):
     '''
@@ -1156,7 +1191,8 @@ class Pazy(FlyingWing):
                  physical_time=2,
                  route='.',
                  case_name='pazy',
-                 RollNodes=False):
+                 RollNodes=False,
+                 symmetry_condition=False):
 
         super().__init__(M=M, N=N,
                          Mstar_fact=Mstar_fact,
@@ -1174,7 +1210,8 @@ class Pazy(FlyingWing):
                          n_surfaces=n_surfaces,
                          route=route,
                          case_name=case_name,
-                         RollNodes=RollNodes)
+                         RollNodes=RollNodes,
+                         symmetry_condition=symmetry_condition)
 
         # aeroelasticity parameters
 #         self.main_ea = 0.3
@@ -1311,7 +1348,8 @@ class PazyControlSurface(Pazy):
                  physical_time=2,
                  route='.',
                  case_name='pazy',
-                 RollNodes=False):
+                 RollNodes=False,
+                 symmetry_condition=False):
 
         super().__init__(M=M, N=N,
                          Mstar_fact=Mstar_fact,
@@ -1330,7 +1368,8 @@ class PazyControlSurface(Pazy):
                          n_surfaces=n_surfaces,
                          route=route,
                          case_name=case_name,
-                         RollNodes=RollNodes)
+                         RollNodes=RollNodes,
+                         symmetry_condition=symmetry_condition)
 
         # aeroelasticity parameters
 #         self.main_ea = 0.3

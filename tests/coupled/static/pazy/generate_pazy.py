@@ -8,6 +8,8 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
     rho = 1.225
     num_modes = 16
     gravity_on = kwargs.get('gravity_on', True)
+    symmetry_condition = kwargs.get('symmetry_condition', False)
+    dynamic = kwargs.get('dynamic', False)
 
     # Lattice Discretisation
     M = kwargs.get('M', 4)
@@ -34,17 +36,26 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
     ws.clean_test_files()
     ws.update_derived_params()
     ws.set_default_config_dict()
-
+    if symmetry_condition:
+        ws.reduce_model_to_symmetric_wing()
     ws.generate_aero_file()
     ws.generate_fem_file()
+    set_final_settings(ws, dynamic,
+                        output_folder=output_folder,
+                        symmetry_condition = symmetry_condition,
+                        gravity_on = gravity_on)
 
+    sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.sharpy'])
+
+def set_final_settings(ws, dynamic = False, output_folder='/output/', symmetry_condition = False, gravity_on = True):
     ws.config['SHARPy'] = {
         'flow':
             ['BeamLoader',
             'AerogridLoader',
-             'StaticCoupled',
-             'AerogridPlot',
-             'BeamPlot',
+            'AerogridPlot',
+            'StaticCoupled',
+            'AerogridPlot',
+            'BeamPlot',
              'WriteVariablesTime',
              ],
         'case': ws.case_name, 'route': ws.route,
@@ -76,6 +87,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
         'rollup_dt': ws.dt,
         'print_info': 'on',
         'horseshoe': 'on',
+        'symmetry_condition': symmetry_condition,
         'num_cores': 4,
         'n_rollup': 0,
         'rollup_aic_refresh': 0,
@@ -110,7 +122,8 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
             'velocity_field_input': {
                 'u_inf': ws.u_inf,
                 'u_inf_direction': ws.u_inf_direction},
-            'vortex_radius': 1e-9},
+            'vortex_radius': 1e-9,
+            'symmetry_condition': symmetry_condition,},
         'structural_solver': 'NonLinearStatic',
         'structural_solver_settings': settings['NonLinearStatic']}
 
@@ -127,4 +140,3 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
 
     ws.config.write()
 
-    sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.sharpy'])

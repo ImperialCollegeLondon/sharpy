@@ -14,29 +14,58 @@ class TestPazyCoupledStatic(unittest.TestCase):
 
     route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
+    def init_simulation_parameters(self, symmetry_condition = False):
+        self.u_inf = 50
+        self.alpha = 7
+        self.M = 16
+        self.N= 64
+        self.Msf = 1
+
+        self.cases_folder = self.route_test_dir + '/pazy/cases/'
+        self.output_folder = self.route_test_dir + '/pazy/cases/'
+
+        self.symmetry_condition = symmetry_condition
+
     def test_static_aoa(self):
-        u_inf = 50
-        alpha = 7
-        case_name = 'pazy_uinf{:04g}_alpha{:04g}'.format(u_inf * 10, alpha * 10)
+        self.init_simulation_parameters()
+        self.case_name = 'pazy_uinf{:04g}_alpha{:04g}_symmetry_{}'.format(self.u_inf * 10, self.alpha * 10, str(int(self.symmetry_condition)))
 
-        M = 16
-        N = 64
-        Msf = 1
 
-        cases_folder = self.route_test_dir + '/pazy/cases/'
-        output_folder = self.route_test_dir + '/pazy/cases/'
         # run case
-        gp.generate_pazy(u_inf, case_name, output_folder, cases_folder,
-                         alpha=alpha,
-                         M=M,
-                         N=N,
-                         Msf=Msf)
+        gp.generate_pazy(self.u_inf, self.case_name, self.output_folder, self.cases_folder,
+                         alpha=self.alpha,
+                         M=self.M,
+                         N=self.N,
+                         Msf=self.Msf)     
 
-        node_number = N / 2 # wing tip node
+        self.evaluate_output()
+
+        self.tearDown()
+        
+    def test_static_aoa_symmetry(self):
+        self.init_simulation_parameters(symmetry_condition=True)
+        self.case_name = 'pazy_uinf{:04g}_alpha{:04g}_symmetry_{}'.format(self.u_inf * 10, self.alpha * 10, str(int(self.symmetry_condition)))
+
+        # run case
+        gp.generate_pazy(self.u_inf, self.case_name, self.output_folder, self.cases_folder,
+                         alpha=self.alpha,
+                         M=self.M,
+                         N=self.N,
+                         Msf=self.Msf,
+                         symmetry_condition=self.symmetry_condition)
+
+        self.evaluate_output()
+
+        self.tearDown()
+
+
+
+
+    def evaluate_output(self):        
+        node_number = self.N / 2 # wing tip node
 
         # Get results in A frame
-        tip_displacement = np.loadtxt(output_folder + '/' + case_name + '/WriteVariablesTime/struct_pos_node{:g}.dat'.format(node_number))
-
+        tip_displacement = np.loadtxt(self.output_folder + '/' + self.case_name + '/WriteVariablesTime/struct_pos_node{:g}.dat'.format(node_number))
         # current reference from Technion abstract
         ref_displacement = 2.033291e-1  # m
         np.testing.assert_almost_equal(tip_displacement[-1], ref_displacement,
