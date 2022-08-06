@@ -14,7 +14,7 @@ class TestPazyCoupledStatic(unittest.TestCase):
 
     route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
-    def init_simulation_parameters(self, symmetry_condition = False):
+    def setUp(self):
         self.u_inf = 50
         self.alpha = 7
         self.M = 16
@@ -24,10 +24,10 @@ class TestPazyCoupledStatic(unittest.TestCase):
         self.cases_folder = self.route_test_dir + '/pazy/cases/'
         self.output_folder = self.route_test_dir + '/pazy/cases/'
 
-        self.symmetry_condition = symmetry_condition
+        self.symmetry_condition = False
+
 
     def test_static_aoa(self):
-        self.init_simulation_parameters()
         self.case_name = 'pazy_uinf{:04g}_alpha{:04g}_symmetry_{}'.format(self.u_inf * 10, self.alpha * 10, str(int(self.symmetry_condition)))
 
 
@@ -40,10 +40,8 @@ class TestPazyCoupledStatic(unittest.TestCase):
 
         self.evaluate_output()
 
-        self.tearDown()
-        
     def test_static_aoa_symmetry(self):
-        self.init_simulation_parameters(symmetry_condition=True)
+        self.symmetry_condition=True
         self.case_name = 'pazy_uinf{:04g}_alpha{:04g}_symmetry_{}'.format(self.u_inf * 10, self.alpha * 10, str(int(self.symmetry_condition)))
 
         # run case
@@ -55,11 +53,6 @@ class TestPazyCoupledStatic(unittest.TestCase):
                          symmetry_condition=self.symmetry_condition)
 
         self.evaluate_output()
-
-        self.tearDown()
-
-
-
 
     def evaluate_output(self):        
         node_number = self.N / 2 # wing tip node
