@@ -1,3 +1,4 @@
+from tkinter import S
 import sharpy.cases.templates.flying_wings as wings
 import sharpy.sharpy_main
 
@@ -10,6 +11,8 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
     gravity_on = kwargs.get('gravity_on', True)
     symmetry_condition = kwargs.get('symmetry_condition', False)
     dynamic = kwargs.get('dynamic', False)
+    n_tsteps = kwargs.get('n_tsteps', 1)
+    print("n_tsteps= ", n_tsteps)
 
     # Lattice Discretisation
     M = kwargs.get('M', 4)
@@ -43,21 +46,21 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
     set_final_settings(ws, dynamic,
                         output_folder=output_folder,
                         symmetry_condition = symmetry_condition,
-                        gravity_on = gravity_on)
+                        gravity_on = gravity_on,
+                        n_tsteps=n_tsteps)
 
     sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.sharpy'])
 
-def set_final_settings(ws, dynamic = False, output_folder='/output/', symmetry_condition = False, gravity_on = True):
+def set_final_settings(ws, dynamic = False, output_folder='/output/', symmetry_condition = False, gravity_on = True, n_tsteps=1):
     ws.config['SHARPy'] = {
         'flow':
             ['BeamLoader',
             'AerogridLoader',
             'AerogridPlot',
             'StaticCoupled',
-            'AerogridPlot',
             'BeamPlot',
-             'WriteVariablesTime',
-             ],
+            'WriteVariablesTime',
+            ],
         'case': ws.case_name, 'route': ws.route,
         'write_screen': 'off', 'write_log': 'on',
         'save_settings': 'on',
@@ -75,8 +78,8 @@ def set_final_settings(ws, dynamic = False, output_folder='/output/', symmetry_c
         'freestream_dir': ws.u_inf_direction,
         'wake_shape_generator': 'StraightWake',
         'wake_shape_generator_input': {'u_inf': ws.u_inf,
-                                       'u_inf_direction': ws.u_inf_direction,
-                                       'dt': ws.dt}}
+                                    'u_inf_direction': ws.u_inf_direction,
+                                    'dt': ws.dt}}
 
     ws.config['StaticUvlm'] = {
         'rho': ws.rho,
@@ -95,12 +98,12 @@ def set_final_settings(ws, dynamic = False, output_folder='/output/', symmetry_c
 
     settings = dict()
     settings['NonLinearStatic'] = {'print_info': 'off',
-                                   'max_iterations': 200,
-                                   'num_load_steps': 5,
-                                   'delta_curved': 1e-6,
-                                   'min_delta': 1e-8,
-                                   'gravity_on': gravity_on,
-                                   'gravity': 9.81}
+                                'max_iterations': 200,
+                                'num_load_steps': 5,
+                                'delta_curved': 1e-6,
+                                'min_delta': 1e-8,
+                                'gravity_on': gravity_on,
+                                'gravity': 9.81}
 
     ws.config['StaticCoupled'] = {
         'print_info': 'on',
@@ -128,15 +131,74 @@ def set_final_settings(ws, dynamic = False, output_folder='/output/', symmetry_c
         'structural_solver_settings': settings['NonLinearStatic']}
 
     ws.config['AerogridPlot'] = {'include_rbm': 'off',
-                                 'include_applied_forces': 'on',
-                                 'minus_m_star': 0}
+                                'include_applied_forces': 'on',
+                                'minus_m_star': 0}
 
     ws.config['BeamPlot'] = {'include_rbm': 'off',
-                             'include_applied_forces': 'on'}
+                            'include_applied_forces': 'on'}
 
     ws.config['WriteVariablesTime'] = {'structure_variables': ['pos'],
-                                       'structure_nodes': list(range(0, ws.num_node_surf)),
-                                       'cleanup_old_solution': 'on'}
+                                    'structure_nodes': list(range(0, ws.num_node_surf)),
+                                    'cleanup_old_solution': 'on'}
+
+    if dynamic:
+        ws.config['SHARPy']['flow'].insert(-2, 'DynamicCoupled')
+        ws.config['SHARPy']['flow'].insert(-2, 'BeamLoads')
+  
+        settings['StepUvlm'] = {'num_cores': 2,
+                        'convection_scheme': 3,
+                        'gamma_dot_filtering': 7,
+                        'cfl1': True,
+                        # 'velocity_field_generator': 'SteadyVelocityField',
+                        # 'velocity_field_input': {'u_inf':u_inf,
+                        #                         'u_inf_direction': [1., 0, 0]},
+                        'velocity_field_generator': 'GustVelocityField',
+                        'velocity_field_input':{'u_inf': ws.u_inf,
+                                                'u_inf_direction': [1., 0, 0],
+                                                'relative_motion': True,
+                                                'offset': 0,
+                                                'gust_shape': 'continuous_sin',
+                                                'gust_parameters': {'gust_length':  5. * ws.u_inf,
+                                                                    'gust_intensity': 0.05 * ws.u_inf,
+                                                                }                                                                
+                                            },
+                        'rho': ws.rho,
+                        'n_time_steps': 20,
+                        'dt': ws.dt,
+                        'symmetry_condition': symmetry_condition,
+                        }
+
+        settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'on',
+                    'max_iterations': 950,
+                    'delta_curved': 1e-1,
+                    'min_delta': 1e-6,
+                    'newmark_damp': 1e-4,
+                    'gravity_on': gravity_on,
+                    'gravity': 9.81,
+                    'num_steps': 10,
+                    'dt': ws.dt,
+                    # 'initial_velocity': u_inf,
+                    }
+
+        ws.config['DynamicCoupled'] = {'structural_solver':'NonLinearDynamicPrescribedStep',
+            'structural_solver_settings': settings['NonLinearDynamicPrescribedStep'],
+            'aero_solver': 'StepUvlm',
+            'aero_solver_settings': settings['StepUvlm'],
+            'fsi_substeps': 200,
+            'fsi_tolerance': 1e-4,
+            'relaxation_factor': 0.2,
+            'minimum_steps': 1,
+            'relaxation_steps': 150,
+            'final_relaxation_factor': 0.05,
+            'n_time_steps': n_tsteps,
+            'dt': ws.dt,
+            'include_unsteady_force_contribution': True, 
+            'postprocessors': ['BeamLoads'],
+            'postprocessors_settings': {
+                                        'BeamLoads': {'csv_output': 'on'},
+                                        },
+            }
+        ws.config['BeamLoads'] = {'csv_output': True}
 
     ws.config.write()
 
