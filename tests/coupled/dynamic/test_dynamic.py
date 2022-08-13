@@ -23,7 +23,7 @@ class TestCoupledDynamic(unittest.TestCase):
         """
         Case and results from:
         tests/coupled/dynamic/hale 
-        reference results produced with SHARPy version 1.3
+        reference results produced with SHARPy version 1.3 to check for backward compatibility
         :return:
         """
         import sharpy.sharpy_main
