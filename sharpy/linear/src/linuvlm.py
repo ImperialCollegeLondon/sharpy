@@ -35,6 +35,7 @@ import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.exceptions as exceptions
 from sharpy.utils.constants import vortex_radius_def
+from sharpy.linear.utils.ss_interface import LinearVector, StateVariable, InputVariable, OutputVariable
 
 settings_types_static = dict()
 settings_default_static = dict()
@@ -67,24 +68,6 @@ settings_default_dynamic['remove_predictor'] = True
 
 settings_types_dynamic['use_sparse'] = 'bool'
 settings_default_dynamic['use_sparse'] = True
-
-settings_types_dynamic['density'] = 'float'
-settings_default_dynamic['density'] = 1.225
-
-settings_types_dynamic['velocity_field_generator'] = 'str'
-settings_default_dynamic['velocity_field_generator'] = 'SteadyVelocityField'
-
-settings_types_dynamic['velocity_field_input'] = 'dict'
-settings_default_dynamic['velocity_field_input'] = {}
-
-settings_types_dynamic['physical_model'] = 'bool'
-settings_default_dynamic['physical_model'] = True
-
-settings_types_dynamic['track_body'] = 'bool'
-settings_default_dynamic['track_body'] = False
-
-settings_types_dynamic['track_body_number'] = 'int'
-settings_default_dynamic['track_body_number'] = -1
 
 settings_types_dynamic['vortex_radius'] = 'float'
 settings_default_dynamic['vortex_radius'] = vortex_radius_def
@@ -132,6 +115,15 @@ class Static():
         self.zeta_dot = np.zeros((3 * self.Kzeta))
         self.u_ext = np.zeros((3 * self.Kzeta))
 
+        self.input_variables_list = [InputVariable('zeta', size=3 * self.Kzeta, index=0),
+                                     InputVariable('zeta_dot', size=3 * self.Kzeta, index=1),
+                                     InputVariable('u_gust', size=3 * self.Kzeta, index=2)]
+
+        self.state_variables_list = [StateVariable('gamma', size=self.K, index=0),
+                                     StateVariable('gamma_w', size=self.K_star, index=1),
+                                     StateVariable('gamma_m1', size=self.K, index=2)]
+
+        self.output_variables_list = [OutputVariable('forces_v', size=3 * self.Kzeta, index=0)]
 
         # profiling output
         self.prof_out = './asbly.prof'
@@ -637,6 +629,20 @@ class Dynamic(Static):
         ScalingFacts['force'] = ScalingFacts['dyn_pressure'] * ScalingFacts['length'] ** 2
         self.ScalingFacts = ScalingFacts
 
+        self.input_variables_list = [InputVariable('zeta', size=3 * self.Kzeta, index=0),
+                                     InputVariable('zeta_dot', size=3 * self.Kzeta, index=1),
+                                     InputVariable('u_gust', size=3 * self.Kzeta, index=2)]
+
+        self.state_variables_list = [StateVariable('gamma', size=self.K, index=0),
+                                     StateVariable('gamma_w', size=self.K_star, index=1),
+                                     StateVariable('dtgamma_dot', size=self.K, index=2),
+                                     StateVariable('gamma_m1', size=self.K, index=3)]
+
+        self.output_variables_list = [OutputVariable('forces_v', size=3 * self.Kzeta, index=0)]
+
+        if self.integr_order == 1:
+            self.state_variables_list.pop(2) # remove time derivative state
+
         ### collect statistics
         self.cpu_summary = {'dim': 0.,
                             'nondim': 0.,
@@ -953,7 +959,7 @@ class Dynamic(Static):
         if self.remove_predictor:
             Ass, Bmod, Css, Dmod = \
                 libss.SSconv(Ass, None, Bss, Css, Dss, Bm1=None)
-            self.SS = libss.ss(Ass, Bmod, Css, Dmod, dt=self.dt)
+            self.SS = libss.StateSpace(Ass, Bmod, Css, Dmod, dt=self.dt)
 
             # Store original B matrix for state unpacking
             self.B_predictor = Bss
@@ -963,9 +969,14 @@ class Dynamic(Static):
                            '\t\th_{n+1} = A h_{n} + B u_{n}\n\t' \
                            '\t\twith:\n\tx_n = h_n + Bp u_n', 1)
         else:
-            self.SS = libss.ss(Ass, Bss, Css, Dss, dt=self.dt)
+            self.SS = libss.StateSpace(Ass, Bss, Css, Dss, dt=self.dt)
             cout.cout_wrap('\tstate-space model produced in form:\n\t' \
                            'x_{n+1} = A x_{n} + Bp u_{n+1}', 1)
+
+        # add variable tracker
+        self.SS.input_variables = LinearVector(self.input_variables_list)
+        self.SS.state_variables = LinearVector(self.state_variables_list)
+        self.SS.output_variables = LinearVector(self.output_variables_list)
 
         self.cpu_summary['assemble'] = time.time() - t0
         cout.cout_wrap('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'])
@@ -1374,7 +1385,7 @@ class Dynamic(Static):
         Ab = libsp.dot(Ti, libsp.dot(self.SS.A, T))
         Bb = libsp.dot(Ti, self.SS.B)
         Cb = libsp.dot(self.SS.C, T)
-        SSb = libss.ss(Ab, Bb, Cb, self.SS.D, dt=self.SS.dt)
+        SSb = libss.StateSpace(Ab, Bb, Cb, self.SS.D, dt=self.SS.dt)
 
         ### Eliminate unstable modes - if any:
         if DictBalFreq['check_stability']:
@@ -2060,6 +2071,11 @@ class DynamicBlock(Dynamic):
         cout.cout_wrap('\tstate-space model produced in form:\n\t' \
                        'x_{n+1} = A x_{n} + Bp u_{n+1}', 1)
 
+        # add variable tracker
+        self.SS.input_variables = LinearVector(self.input_variables_list)
+        self.SS.state_variables = LinearVector(self.state_variables_list)
+        self.SS.output_variables = LinearVector(self.output_variables_list)
+
         self.cpu_summary['assemble'] = time.time() - t0
         cout.cout_wrap('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'], 1)
 
@@ -2407,10 +2423,10 @@ class DynamicBlock(Dynamic):
             Ab, Bb, Cb, Db = \
                 libss.SSconv(np.block(Ab), None, np.block(Bb),
                              np.block(Cb), np.block(self.SS.D), Bm1=None)
-            SSb = libss.ss(Ab, Bb, Cb, Db, dt=self.dt)
+            SSb = libss.StateSpace(Ab, Bb, Cb, Db, dt=self.dt)
         else:
-            SSb = libss.ss(np.block(Ab), np.block(Bb),
-                           np.block(Cb), np.block(self.SS.D), dt=self.SS.dt)
+            SSb = libss.StateSpace(np.block(Ab), np.block(Bb),
+                                   np.block(Cb), np.block(self.SS.D), dt=self.SS.dt)
 
         ### Eliminate unstable modes - if any:
         if DictBalFreq['check_stability']:

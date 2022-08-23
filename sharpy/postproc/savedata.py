@@ -182,11 +182,11 @@ class SaveData(BaseSolver):
                                        sharpy.linear.assembler.linearaeroelastic.LinearAeroelastic,
                                        sharpy.linear.assembler.linearbeam.LinearBeam,
                                        sharpy.linear.assembler.linearuvlm.LinearUVLM,
-                                       sharpy.linear.src.libss.ss,
+                                       sharpy.linear.src.libss.ss_block,
                                        sharpy.linear.src.lingebm.FlexDynamic,)
 
             if self.settings['save_linear_uvlm']:
-                self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss)
+                self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss_block)
         self.caller = caller
 
     def run(self, online=False):
@@ -267,28 +267,25 @@ class SaveData(BaseSolver):
                             'D': D}
                 for k, v in linearisation_vectors.items():
                     savedict[k] = v
-                try:
-                    dt = self.data.linear.ss.dt
+                dt = self.data.linear.ss.dt
+                if dt is not None:
                     savedict['dt'] = dt
-                except AttributeError:
-                    pass
                 savemat(matfilename, savedict)
 
             if self.settings['save_linear_uvlm']:
                 matfilename = self.filename.replace('.data.h5', '.uvlmss.mat')
                 linearisation_vectors = self.data.linear.linear_system.uvlm.linearisation_vectors
                 A, B, C, D = self.data.linear.linear_system.uvlm.ss.get_mats()
+
                 savedict = {'A': A,
                             'B': B,
                             'C': C,
                             'D': D}
                 for k, v in linearisation_vectors.items():
                     savedict[k] = v
-                try:
-                    dt = self.data.linear.ss.dt
+                dt = self.data.linear.linear_system.uvlm.ss.dt
+                if dt is not None:
                     savedict['dt'] = dt
-                except AttributeError:
-                    pass
                 savemat(matfilename, savedict)
 
         return self.data

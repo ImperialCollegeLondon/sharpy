@@ -109,7 +109,7 @@ class TestWakeCFLn1(unittest.TestCase):
         nodes_y[:num_node_semispan] = -1*nodes_y_semispan[::-1]
         nodes_y[num_node_semispan - 1:] = nodes_y_semispan
         
-        assert not (np.diff(nodes_y) == 0).any(), "Repited nodes"
+        assert not (np.diff(nodes_y) == 0).any(), "Repeated nodes"
         
         nodes = np.zeros((len(nodes_y), 3))
         nodes[:, 1] = nodes_y
@@ -187,7 +187,7 @@ class TestWakeCFLn1(unittest.TestCase):
         SimInfo.solvers['BeamLoader']['unsteady'] = 'on'
 
         import sharpy.utils.generator_interface as gi
-        if case_header == 'traditional':        
+        if case_header == 'traditional' or case_header == 'statespace_cfl1':
 
             SimInfo.solvers['AerogridLoader']['wake_shape_generator'] = 'StraightWake'
             SimInfo.solvers['AerogridLoader']['wake_shape_generator_input'] = {'u_inf': self.uinf,
@@ -214,7 +214,7 @@ class TestWakeCFLn1(unittest.TestCase):
             SimInfo.solvers['AerogridLoader']['mstar'] = mstar
             SimInfo.solvers['AerogridLoader']['freestream_dir'] = np.array([0.,0.,0.])
         
-        elif case_header in ['new_nonlinear', 'new_linear']:
+        elif case_header in ['new_nonlinear', 'new_linear', 'statespace']:
 
             SimInfo.solvers['AerogridLoader']['wake_shape_generator_input'] = {'u_inf': self.uinf,
                                                 'u_inf_direction': self.uinf_dir,
@@ -273,7 +273,7 @@ class TestWakeCFLn1(unittest.TestCase):
 
             SimInfo.solvers['StepLinearUVLM']['dt'] = self.dt
             SimInfo.solvers['StepLinearUVLM']['integr_order'] = 2
-            SimInfo.solvers['StepLinearUVLM']['remove_predictor'] = True
+            SimInfo.solvers['StepLinearUVLM']['remove_predictor'] = 'off'
             SimInfo.solvers['StepLinearUVLM']['use_sparse'] = True
             SimInfo.solvers['StepLinearUVLM']['density'] = self.air_density
             SimInfo.solvers['StepLinearUVLM']['vortex_radius'] = 1e-6
@@ -314,24 +314,73 @@ class TestWakeCFLn1(unittest.TestCase):
         SimInfo.solvers['DynamicCoupled']['dynamic_relaxation'] = False
         SimInfo.solvers['DynamicCoupled']['relaxation_steps'] = 0
         SimInfo.solvers['DynamicCoupled']['fsi_tolerance'] = 1e-6
-        
+
         # Time discretization
         time_steps = int(self.final_ndtime / self.nd_dt - 1)
         SimInfo.define_num_steps(time_steps)
-        
+
         SimInfo.with_forced_vel = True
         SimInfo.for_vel = np.zeros((time_steps,6), dtype=float)
         SimInfo.for_acc = np.zeros((time_steps,6), dtype=float)
         SimInfo.with_dynamic_forces = True
         SimInfo.dynamic_forces = np.zeros((time_steps,airfoil.StructuralInformation.num_node,6), dtype=float)
-        
+
+        SimInfo.solvers['PickleData'] = {'folder': route + '/output/'}
+        if 'statespace' in case_header:
+            SimInfo.solvers['SHARPy']['flow'] = ['BeamLoader',
+                                                 'AerogridLoader',
+                                                 'StaticCoupled',
+                                                 'Modal',
+                                                 'LinearAssembler',
+                                                 'AsymptoticStability',
+                                                 ]
+
+            SimInfo.solvers['SHARPy']['write_screen'] = 'on'
+            SimInfo.solvers['Modal'] = {'save_data': 'off',
+                                        'NumLambda': 50,
+                                        'rigid_body_modes': 'off'}
+
+            SimInfo.solvers['LinearAssembler'] = {'linear_system': 'LinearAeroelastic',
+                                   'linear_system_settings': {
+                                       'beam_settings': {'modal_projection': 'off',
+                                                         'inout_coords': 'nodes',
+                                                         'discrete_time': 'on',
+                                                         'newmark_damp': 0.5e-4,
+                                                         'discr_method': 'newmark',
+                                                         'dt': self.dt,
+                                                         'proj_modes': 'undamped',
+                                                         'use_euler': 'on',
+                                                         'num_modes': 2,
+                                                         'print_info': 'on',
+                                                         'gravity': 'on',
+                                                         'remove_dofs': [],
+                                                         'remove_rigid_states': 'off'},
+                                       'aero_settings': {'dt': self.dt,
+                                                         'integr_order': 2,
+                                                         'density': self.air_density,
+                                                         'remove_predictor': 'off',
+                                                         'use_sparse': 'off',
+                                                         'rigid_body_motion': 'off',
+                                                         'use_euler': 'on',
+                                                         'vortex_radius': 1e-6,
+                                                         'convert_to_ct': 'off',
+                                                         'gust_assembler': 'LeadingEdge',
+                                                         'gust_assembler_inputs': {},
+                                                         },
+                                       'rigid_body_motion': 'off',
+                                       'track_body': 'on',
+                                       'use_euler': 'on',
+                                       'linearisation_tstep': -1
+                                   },
+                                                  }
+            SimInfo.solvers['AsymptoticStability'] = {'num_evals': 100}
+
         gc.clean_test_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
         airfoil.generate_h5_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
         SimInfo.generate_solver_file()
         SimInfo.generate_dyn_file(time_steps)
         
         return case, route
-
 
     def run_test(self, case_header):
 
@@ -351,25 +400,37 @@ class TestWakeCFLn1(unittest.TestCase):
         factor = 0.5*self.air_density*self.uinf**2*self.chord*2.5e6
         sharpy_cl_clss = -lift/factor/clsteady
         kussner_cl_clss = 2*np.pi*self.aoa_ini_deg*deg2rad
-        kussner_cl_clss += 2*np.pi*daoa*deg2rad*np.interp(nd_time,
-                                                        kussner_function[:, 0],
-                                                        kussner_function[:, 1])
+        kussner_cl_clss += 2 * np.pi * daoa * deg2rad * np.interp(nd_time,
+                                                                  kussner_function[:, 0],
+                                                                  kussner_function[:, 1])
         kussner_cl_clss /= clsteady
 
         self.assertAlmostEqual(sharpy_cl_clss, kussner_cl_clss, 1)
 
-    
     def test_traditional(self):
         self.run_test('traditional')
-       
- 
+
+
     def test_new_nonlinear(self):
         self.run_test('new_nonlinear')
 
-        
+
     def test_new_linear(self):
         self.run_test('new_linear')
-        
+
+    def test_statespace(self):
+        results = {}
+        for case in ['statespace', 'statespace_cfl1']:
+            with self.subTest(case):
+                results[case] = self.run_statespace(case)
+
+    def run_statespace(self, case_header):
+        airfoil = self.generate_geometry()
+
+        case, route = self.generate_files(case_header, airfoil)
+        sharpy_file = route + case + '.sharpy'
+        return sharpy.sharpy_main.main(['', sharpy_file])
+
     @classmethod
     def tearDownClass(cls):
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))

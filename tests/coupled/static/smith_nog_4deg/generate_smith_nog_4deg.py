@@ -309,8 +309,7 @@ def generate_solver_file(horseshoe=False):
                                                         'velocity_field_input': {'u_inf': u_inf,
                                                                                  'u_inf_direction': [1., 0, 0]},
                                                         'rho': rho,
-                                                        'alpha': alpha_rad,
-                                                        'beta': beta},
+                                                        },
                                'max_iter': 100,
                                'n_load_steps': 5,
                                'tolerance': 1e-5,
@@ -345,7 +344,6 @@ def generate_solver_file(horseshoe=False):
     config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                       'text_file_name': case_name + '_aeroforces.csv',
                                       'screen_output': 'on',
-                                      'unsteady': 'off'
                                       }
     config['BeamPlot'] = {'include_rbm': 'off',
                           'include_applied_forces': 'on'}

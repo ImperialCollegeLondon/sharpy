@@ -8,7 +8,12 @@ import platform
 import os
 from sharpy.utils.constants import NDIM, vortex_radius_def
 
-UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/UVLM/lib/', 'libuvlm')
+try:
+    UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/UVLM', 'libuvlm')
+except OSError:
+    UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/UVLM/lib', 'libuvlm')
+
+
 
 # TODO: Combine VMOpts and UVMOpts (Class + inheritance)?
 # TODO: Combine solver functions (e.g. vlm solver is able to start nonlifting only, lifitng only, nonlifting and lifting coupled) 
@@ -512,11 +517,12 @@ def uvlm_calculate_incidence_angle(ts_info,
                               ts_info.postproc_cell['incidence_angle_ct_pointer'])
     ts_info.remove_ctypes_pointers()
 
+
 def uvlm_calculate_total_induced_velocity_at_points(ts_info,
-                                                   target_triads,
-                                                   vortex_radius,
-                                                   for_pos=np.zeros((6)),
-                                                   ncores=ct.c_uint(1)):
+                                                    target_triads,
+                                                    vortex_radius,
+                                                    for_pos=np.zeros((6)),
+                                                    ncores=ct.c_uint(1)):
     """
     uvlm_calculate_total_induced_velocity_at_points
 
@@ -526,6 +532,7 @@ def uvlm_calculate_total_induced_velocity_at_points(ts_info,
     Args:
         ts_info (AeroTimeStepInfo): Time step information
         target_triads (np.array): Point coordinates, size=(npoints, 3)
+        vortex_radius (float): Vortex radius threshold below which do not compute induced velocity
         uind (np.array): Induced velocity
 
     Returns:
@@ -539,7 +546,7 @@ def uvlm_calculate_total_induced_velocity_at_points(ts_info,
     uvmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
     uvmopts.ImageMethod = ct.c_bool(False)
     uvmopts.NumCores = ct.c_uint(ncores)
-    uvmopts.vortex_radius = ct.c_double(options['vortex_radius'])
+    uvmopts.vortex_radius = ct.c_double(vortex_radius)
 
     npoints = target_triads.shape[0]
     uind = np.zeros((npoints, 3), dtype=ct.c_double)

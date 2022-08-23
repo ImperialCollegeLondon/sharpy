@@ -8,7 +8,6 @@ import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
-import sharpy.utils.correct_forces as cf
 import sharpy.utils.generator_interface as gen_interface
 
 @solver
@@ -202,19 +201,9 @@ class StaticCoupled(BaseSolver):
                         self.correct_forces_generator.generate(aero_kstep=self.data.aero.timestep_info[self.data.ts],
                                                                structural_kstep=self.data.structure.timestep_info[self.data.ts],
                                                                struct_forces=struct_forces)
-                   
-                # if self.settings['nonlifting_body_interaction']:
-                #     struct_forces +=  mapping.aero2struct_force_mapping(
-                #         self.data.nonlifting_body.timestep_info[self.data.ts].forces,
-                #         self.data.nonlifting_body.struct2aero_mapping,
-                #         self.data.nonlifting_body.timestep_info[self.data.ts].zeta,
-                #         self.data.structure.timestep_info[self.data.ts].pos,
-                #         self.data.structure.timestep_info[self.data.ts].psi,
-                #         self.data.structure.node_master_elem,
-                #         self.data.structure.connectivities,
-                #         self.data.structure.timestep_info[self.data.ts].cag(),
-                #         self.data.nonlifting_body.data_dict)
-
+                self.data.aero.timestep_info[self.data.ts].aero_steady_forces_beam_dof = struct_forces
+                self.data.structure.timestep_info[self.data.ts].postproc_node['aero_steady_forces'] = struct_forces  # B
+                
                 # Add external forces
                 if self.with_runtime_generators:
                     self.data.structure.timestep_info[self.data.ts].runtime_generated_forces.fill(0.)

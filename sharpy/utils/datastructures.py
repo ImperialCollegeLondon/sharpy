@@ -40,9 +40,6 @@ class TimeStepInfo(object):
         u_ext (list(np.ndarray)): Background flow velocity on solid grid nodes
           ``[n_surf][3 x (chordwise nodes + 1) x (spanwise nodes + 1)]``
 
-
-        inertial_total_forces (list(np.ndarray)): Total aerodynamic forces in ``G`` FoR ``[n_surf x 6]``
-        body_total_forces (list(np.ndarray)): Total aerodynamic forces in ``A`` FoR ``[n_surf x 6]``
         inertial_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``G`` FoR ``[n_surf x 6]``
         body_steady_forces (list(np.ndarray)): Total aerodynamic steady forces in ``A`` FoR ``[n_surf x 6]``
         inertial_unsteady_forces (list(np.ndarray)): Total aerodynamic unsteady forces in ``G`` FoR ``[n_surf x 6]``
@@ -108,9 +105,40 @@ class TimeStepInfo(object):
                                         dimensions[i_surf, 1] + 1),
                                        dtype=ct.c_double))
 
-        # total forces
-        self.inertial_total_forces = np.zeros((self.n_surf, 6))
-        self.body_total_forces = np.zeros((self.n_surf, 6))
+        self.u_ext_star = []
+        for i_surf in range(self.n_surf):
+            self.u_ext_star.append(np.zeros((3,
+                                             dimensions_star[i_surf, 0] + 1,
+                                             dimensions_star[i_surf, 1] + 1),
+                                            dtype=ct.c_double))
+
+        # allocate gamma and gamma star matrices
+        self.gamma = []
+        for i_surf in range(self.n_surf):
+            self.gamma.append(np.zeros((dimensions[i_surf, 0],
+                                        dimensions[i_surf, 1]),
+                                       dtype=ct.c_double))
+
+        self.gamma_star = []
+        for i_surf in range(self.n_surf):
+            self.gamma_star.append(np.zeros((dimensions_star[i_surf, 0],
+                                             dimensions_star[i_surf, 1]),
+                                            dtype=ct.c_double))
+
+        self.gamma_dot = []
+        for i_surf in range(self.n_surf):
+            self.gamma_dot.append(np.zeros((dimensions[i_surf, 0],
+                                            dimensions[i_surf, 1]),
+                                           dtype=ct.c_double))
+
+        # Distance from the trailing edge of the wake vertices
+        self.dist_to_orig = []
+        for i_surf in range(self.n_surf):
+            self.dist_to_orig.append(np.zeros((dimensions_star[i_surf, 0] + 1,
+                                               dimensions_star[i_surf, 1] + 1),
+                                               dtype=ct.c_double))
+
+        # total forces - written by AeroForcesCalculator
         self.inertial_steady_forces = np.zeros((self.n_surf, 6))
         self.body_steady_forces = np.zeros((self.n_surf, 6))
         self.inertial_unsteady_forces = np.zeros((self.n_surf, 6))
@@ -154,13 +182,11 @@ class TimeStepInfo(object):
             copied.u_ext[i_surf] = self.u_ext[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
 
         # total forces
-        copied.inertial_total_forces = self.inertial_total_forces.astype(dtype=ct.c_double, copy=True, order='C')
-        copied.body_total_forces = self.body_total_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.inertial_steady_forces = self.inertial_steady_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.body_steady_forces = self.body_steady_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.inertial_unsteady_forces = self.inertial_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
         copied.body_unsteady_forces = self.body_unsteady_forces.astype(dtype=ct.c_double, copy=True, order='C')
-
+        
         copied.postproc_cell = copy.deepcopy(self.postproc_cell)
         copied.postproc_node = copy.deepcopy(self.postproc_node)
 
@@ -1154,7 +1180,7 @@ class Linear(object):
     as class attributes the following classes that describe the linearised problem.
 
     Attributes:
-        ss (sharpy.linear.src.libss.ss): State-space system
+        ss (sharpy.linear.src.libss.StateSpace): State-space system
         linear_system (sharpy.linear.utils.ss_interface.BaseElement): Assemble system properties
         tsaero0 (sharpy.utils.datastructures.AeroTimeStepInfo): Linearisation aerodynamic timestep
         tsstruct0 (sharpy.utils.datastructures.StructTimeStepInfo): Linearisation structural timestep

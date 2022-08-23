@@ -37,7 +37,7 @@ def compute_xf_zf(hf, vf, l, w, EA, cb):
         if not cb == 0.:
             xf += cb*w/2/EA*(-lb**2 + (lb - hf/cb/w)*np.maximum((lb - hf/cb/w), 0))
         zf = hf/w*(root1 - 1) + vf**2/2/EA/w
-    
+
     return xf, zf
 
 
@@ -427,6 +427,7 @@ class FloatingForces(generator_interface.BaseGenerator):
     [3] https://map-plus-plus.readthedocs.io/en/latest/theory.html (accessed on Octorber 14th, 2020)
     """
     generator_id = 'FloatingForces'
+    generator_classification = 'runtime'
 
     settings_types = dict()
     settings_default = dict()

@@ -1,7 +1,7 @@
 # Simulation of High Aspect Ratio aeroplanes in Python [SHARPy]
 
 ![Version badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmaster%2F.version.json)
-[![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=master)](https://travis-ci.org/ImperialCollegeLondon/sharpy)
+![Build Status](https://github.com/ImperialCollegeLondon/sharpy/actions/workflows/sharpy_tests.yaml/badge.svg)
 [![Documentation Status](https://readthedocs.org/projects/ic-sharpy/badge/?version=master)](https://ic-sharpy.readthedocs.io/en/master/?badge=master)
 [![codecov](https://codecov.io/gh/ImperialCollegeLondon/sharpy/branch/master/graph/badge.svg)](https://codecov.io/gh/ImperialCollegeLondon/sharpy)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
@@ -74,7 +74,7 @@ For the latest documentation, see the
 [installation docs](https://ic-sharpy.readthedocs.io/en/latest/content/installation.html).
 
 As of version v1.0.1, SHARPy can also be obtained from Docker Hub to avoid compilation
-and platform-dependant issues. If you are interested, make sure you check
+and platform-dependant issues. If you are interested, make sure you check 
 the [SHARPy Docker distribution docs](https://ic-sharpy.readthedocs.io/en/latest/content/installation.html#using-sharpy-from-a-docker-container).
 
 ## Contributing and Bug reports
@@ -117,7 +117,7 @@ SHARPy uses Continuous Integration to control the integrity of its code. The sta
 is:
 
 Master
-[![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=master)](https://travis-ci.org/ImperialCollegeLondon/sharpy)
+![Build Status](https://github.com/ImperialCollegeLondon/sharpy/actions/workflows/sharpy_tests.yaml/badge.svg)
 
 Develop
-[![Build Status](https://travis-ci.org/ImperialCollegeLondon/sharpy.svg?branch=develop)](https://travis-ci.org/ImperialCollegeLondon/sharpy)
+![Build Status](https://github.com/ImperialCollegeLondon/sharpy/actions/workflows/sharpy_tests.yaml/badge.svg?branch=develop)

@@ -15,6 +15,7 @@ If you feel that a function/class is not well documented and, hence, you cannot 
 	:maxdepth: 1
 
 	./aero/index
+	./cases/index
 	./controllers/index
 	./generators/index
 	./io/index

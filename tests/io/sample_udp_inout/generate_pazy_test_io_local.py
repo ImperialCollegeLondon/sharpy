@@ -86,7 +86,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
              #              'SaveParametricCase',
              ],
         'case': ws.case_name, 'route': ws.route,
-        'write_screen': 'on', 'write_log': 'on',
+        'write_screen': 'off', 'write_log': 'on',
         'save_settings': 'on',
         'log_folder': output_folder + '/' + ws.case_name + '/',
         'log_file': ws.case_name + '.log'}
@@ -114,10 +114,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
         'rollup_dt': ws.dt,
         'print_info': 'on',
         'horseshoe': 'off',
-        'num_cores': 4,
-        'n_rollup': 0,
-        'rollup_aic_refresh': 0,
-        'rollup_tolerance': 1e-4}
+        'num_cores': 4}
 
     settings = dict()
     settings['NonLinearStatic'] = {'print_info': 'off',
@@ -140,10 +137,6 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
             'print_info': 'off',
             'horseshoe': 'off',
             'num_cores': 4,
-            'n_rollup': 0,
-            'rollup_dt': ws.dt,
-            'rollup_aic_refresh': 1,
-            'rollup_tolerance': 1e-4,
             'velocity_field_generator': 'SteadyVelocityField',
             'velocity_field_input': {
                 'u_inf': ws.u_inf,
@@ -158,8 +151,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
 
     ws.config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                          'text_file_name': ws.case_name + '_aeroforces.csv',
-                                         'screen_output': 'on',
-                                         'unsteady': 'off'}
+                                         'screen_output': 'on'}
 
     ws.config['BeamPlot'] = {'include_rbm': 'off',
                              'include_applied_forces': 'on'}
@@ -171,8 +163,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
     ws.config['Modal'] = {'NumLambda': 20,
                           'rigid_body_modes': 'off',
                           'print_matrices': 'on',
-                          'keep_linear_matrices': 'on',
-                          'write_dat': 'off',
+                          'save_data': 'off',
                           'rigid_modes_cg': 'off',
                           'continuous_eigenvalues': 'off',
                           'dt': 0,
@@ -211,7 +202,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
                                                           'remove_inputs': ['u_gust'],
                                                           'rom_method': ['Krylov'],
                                                           'rom_method_settings': {'Krylov': rom_settings}},
-                                        'rigid_body_motion': False}}
+                                    }}
 
     ws.config['AsymptoticStability'] = {'print_info': True,
                                         'export_eigenvalues': 'on',
@@ -253,13 +244,8 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
                                                   'dt': ws.dt}
 
     settings['StepUvlm'] = {'print_info': 'on',
-                            'horseshoe': 'off',
                             'num_cores': 4,
-                            'n_rollup': 100,
                             'convection_scheme': 0,
-                            'rollup_dt': ws.dt,
-                            'rollup_aic_refresh': 1,
-                            'rollup_tolerance': 1e-4,
                             'velocity_field_generator': 'SteadyVelocityField',
                             'velocity_field_input': {'u_inf': ws.u_inf*1,
                                                      'u_inf_direction': [1., 0., 0.]},
@@ -272,7 +258,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
     settings['DynamicCoupled'] = {'print_info': 'on',
                                   'structural_substeps': 0,
                                   'dynamic_relaxation': 'on',
-                                  'clean_up_previous_solution': 'on',
+                                  'cleanup_previous_solution': 'on',
                                   'structural_solver': 'NonLinearDynamicPrescribedStep',
                                   'structural_solver_settings': settings['NonLinearDynamicPrescribedStep'],
                                   'aero_solver': 'StepUvlm',

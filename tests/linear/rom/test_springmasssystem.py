@@ -129,14 +129,14 @@ class TestKrylovRom(unittest.TestCase):
 
         # Build State Space
         if system_time == 'ct':
-            system = libss.ss(A, b, c, d, dt=None)
+            system = libss.StateSpace(A, b, c, d, dt=None)
 
         else:
             # Discrete time system
             dt = 1e-2
             Adt, Bdt, Cdt, Ddt = lingebm.newmark_ss(Minv, C, k, dt=dt, num_damp=0)
 
-            system = libss.ss(Adt, Bdt, Cdt, Ddt, dt=dt)
+            system = libss.StateSpace(Adt, Bdt, Cdt, Ddt, dt=dt)
 
             # SISO Gains for DT system
             if system_inputs == 'SISO':
