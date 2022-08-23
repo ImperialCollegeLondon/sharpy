@@ -302,6 +302,7 @@ def vlm_solver_lifting_and_nonlifting_bodies(ts_info_lifting, ts_info_nonlifting
     flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info_lifting.u_ext[0][:, 0, 0]/flightconditions.uinf)
 
     p_rbm_vel_g = options['rbm_vel_g'].ctypes.data_as(ct.POINTER(ct.c_double))
+    p_centre_rot = options['centre_rot_g'].ctypes.data_as(ct.POINTER(ct.c_double))
     ts_info_lifting.generate_ctypes_pointers()
     ts_info_nonlifting.generate_ctypes_pointers()
     run_VLM_lifting_and_nonlifting(ct.byref(vmopts),
@@ -320,7 +321,9 @@ def vlm_solver_lifting_and_nonlifting_bodies(ts_info_lifting, ts_info_nonlifting
             ts_info_nonlifting.ct_p_zeta,
             ts_info_nonlifting.ct_p_u_ext,
             ts_info_nonlifting.ct_p_sigma,
-            ts_info_nonlifting.ct_p_forces)
+            ts_info_nonlifting.ct_p_forces,
+            p_rbm_vel_g,
+            p_centre_rot)
 
     ts_info_lifting.remove_ctypes_pointers()
     ts_info_nonlifting.remove_ctypes_pointers()
@@ -437,7 +440,9 @@ def uvlm_solver_lifting_and_nonlifting(i_iter, ts_info, ts_info_nonlifting, stru
              ts_info_nonlifting.ct_p_zeta,
              ts_info_nonlifting.ct_p_u_ext,
              ts_info_nonlifting.ct_p_sigma,
-             ts_info_nonlifting.ct_p_forces)
+             ts_info_nonlifting.ct_p_forces,
+             p_rbm_vel,
+             p_centre_rot)
 
     ts_info.remove_ctypes_pointers()
     ts_info_nonlifting.remove_ctypes_pointers()
