@@ -106,9 +106,6 @@ class AerogridLoader(GridLoader):
                                        self.settings_types,
                                        self.settings_default, options=self.settings_options)
 
-        # read input file (aero)
-        self.read_files()
-
         wake_shape_generator_type = gen_interface.generator_from_string(
             self.settings['wake_shape_generator'])
         self.wake_shape_generator = wake_shape_generator_type()
