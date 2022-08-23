@@ -105,39 +105,6 @@ class TimeStepInfo(object):
                                         dimensions[i_surf, 1] + 1),
                                        dtype=ct.c_double))
 
-        self.u_ext_star = []
-        for i_surf in range(self.n_surf):
-            self.u_ext_star.append(np.zeros((3,
-                                             dimensions_star[i_surf, 0] + 1,
-                                             dimensions_star[i_surf, 1] + 1),
-                                            dtype=ct.c_double))
-
-        # allocate gamma and gamma star matrices
-        self.gamma = []
-        for i_surf in range(self.n_surf):
-            self.gamma.append(np.zeros((dimensions[i_surf, 0],
-                                        dimensions[i_surf, 1]),
-                                       dtype=ct.c_double))
-
-        self.gamma_star = []
-        for i_surf in range(self.n_surf):
-            self.gamma_star.append(np.zeros((dimensions_star[i_surf, 0],
-                                             dimensions_star[i_surf, 1]),
-                                            dtype=ct.c_double))
-
-        self.gamma_dot = []
-        for i_surf in range(self.n_surf):
-            self.gamma_dot.append(np.zeros((dimensions[i_surf, 0],
-                                            dimensions[i_surf, 1]),
-                                           dtype=ct.c_double))
-
-        # Distance from the trailing edge of the wake vertices
-        self.dist_to_orig = []
-        for i_surf in range(self.n_surf):
-            self.dist_to_orig.append(np.zeros((dimensions_star[i_surf, 0] + 1,
-                                               dimensions_star[i_surf, 1] + 1),
-                                               dtype=ct.c_double))
-
         # total forces - written by AeroForcesCalculator
         self.inertial_steady_forces = np.zeros((self.n_surf, 6))
         self.body_steady_forces = np.zeros((self.n_surf, 6))
