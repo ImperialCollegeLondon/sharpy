@@ -179,9 +179,9 @@ class DynamicCoupled(BaseSolver):
                                                  'needed by each generator.'
 
 
-    settings_types['nonlifting_body_interaction'] = 'bool'
-    settings_default['nonlifting_body_interaction'] = True #False
-    settings_description['nonlifting_body_interaction'] = 'Effect of Nonlifting Bodies on Lifting bodies are considered'
+    settings_types['nonlifting_body_interactions'] = 'bool'
+    settings_default['nonlifting_body_interactions'] = False
+    settings_description['nonlifting_body_interactions'] = 'Effect of Nonlifting Bodies on Lifting bodies are considered'
     
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
@@ -494,7 +494,7 @@ class DynamicCoupled(BaseSolver):
 
             structural_kstep = self.data.structure.timestep_info[-1].copy()
             aero_kstep = self.data.aero.timestep_info[-1].copy()
-            if self.settings['nonlifting_body_interaction']:
+            if self.settings['nonlifting_body_interactions']:
                 nl_body_kstep = self.data.nonlifting_body.timestep_info[-1].copy()
             else:
                 nl_body_kstep = None
@@ -587,7 +587,7 @@ class DynamicCoupled(BaseSolver):
 
                 # run the solver
                 ini_time_aero = time.perf_counter()
-                if self.settings['nonlifting_body_interaction']:
+                if self.settings['nonlifting_body_interactions']:
                     self.data = self.aero_solver.run(aero_kstep,
                                                     structural_kstep,
                                                     convect_wake=True,
@@ -611,7 +611,7 @@ class DynamicCoupled(BaseSolver):
                         structural_kstep,
                                                         aero_kstep,
                         nl_body_kstep)
-                if self.settings['nonlifting_body_interaction']:
+                if self.settings['nonlifting_body_interactions']:
                     self.map_forces(aero_kstep,
                                 structural_kstep,
                                 nl_body_kstep = nl_body_kstep,
@@ -815,17 +815,17 @@ class DynamicCoupled(BaseSolver):
         structural_kstep.postproc_node['aero_steady_forces'] = struct_forces
         structural_kstep.postproc_node['aero_unsteady_forces'] = dynamic_struct_forces
 
-        if self.settings['nonlifting_body_interaction']:
-            struct_forces +=  mapping.aero2struct_force_mapping(
-                nl_body_kstep.forces,
-                self.data.nonlifting_body.struct2aero_mapping,
-                nl_body_kstep.zeta,
-                structural_kstep.pos,
-                structural_kstep.psi,
-                self.data.structure.node_master_elem,
-                self.data.structure.connectivities,
-                structural_kstep.cag(),
-                self.data.nonlifting_body.data_dict)
+        # if self.settings['nonlifting_body_interactions']:
+        #     struct_forces +=  mapping.aero2struct_force_mapping(
+        #         nl_body_kstep.forces,
+        #         self.data.nonlifting_body.struct2aero_mapping,
+        #         nl_body_kstep.zeta,
+        #         structural_kstep.pos,
+        #         structural_kstep.psi,
+        #         self.data.structure.node_master_elem,
+        #         self.data.structure.connectivities,
+        #         structural_kstep.cag(),
+        #         self.data.nonlifting_body.data_dict)
         # prescribed forces + aero forces
         structural_kstep.steady_applied_forces = (
             (struct_forces + self.data.structure.ini_info.steady_applied_forces).
