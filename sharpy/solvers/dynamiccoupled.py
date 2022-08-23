@@ -609,7 +609,7 @@ class DynamicCoupled(BaseSolver):
                 # move the aerodynamic surface according the the structural one
                 self.aero_solver.update_custom_grid(
                         structural_kstep,
-                                                        aero_kstep,
+                        aero_kstep,
                         nl_body_kstep)
                 if self.settings['nonlifting_body_interactions']:
                     self.map_forces(aero_kstep,
