@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from sharpy.utils.solver_interface import solver, BaseSolver
+import sharpy.aero.utils.uvlmlib as uvlmlib
 import sharpy.utils.settings as settings
 
 
@@ -27,6 +28,7 @@ class WriteVariablesTime(BaseSolver):
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
+    settings_options = dict()
 
     settings_types['delimiter'] = 'str'
     settings_default['delimiter'] = ' '
@@ -87,6 +89,7 @@ class WriteVariablesTime(BaseSolver):
     settings_types['vel_field_variables'] = 'list(str)'
     settings_default['vel_field_variables'] = list()
     settings_description['vel_field_variables'] = 'Variables associated to the velocity field. Only ``uext`` implemented so far'
+    settings_options['vel_field_variables'] = ['uext', 'uind']
 
     settings_types['vel_field_points'] = 'list(float)'
     settings_default['vel_field_points'] = np.array([0., 0., 0.])
@@ -297,12 +300,23 @@ class WriteVariablesTime(BaseSolver):
                                     'is_wake': False,
                                     'override': True},
                                     uext)
-                for ipoint in range(self.n_vel_field_points):
-                    filename = self.folder + "vel_field_" + self.settings['vel_field_variables'][ivariable] + "_point" + str(ipoint) + ".dat"
-                    with open(filename, 'a') as fid:
-                        self.write_nparray_to_file(fid, self.data.ts, uext[0][:,ipoint,0], self.settings['delimiter'])
+                self.write_vel_field_variables(ivariable, uext[0][:,:,0]) 
+
+            elif self.settings['vel_field_variables'][ivariable] == 'uind':
+                uind = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(self.data.aero.timestep_info[it],
+                                                                                np.reshape(self.vel_field_points, (self.n_vel_field_points, 3)),
+                                                                                self.caller.settings['aero_solver_settings']['vortex_radius'],
+                                                                                self.data.structure.timestep_info[it].for_pos,
+                                                                                self.caller.settings['aero_solver_settings']['num_cores'])
+                self.write_vel_field_variables(ivariable, np.transpose(uind))
 
         return self.data
+
+    def write_vel_field_variables(self, ivariable, vel_data):
+        for ipoint in range(self.n_vel_field_points):
+            filename = self.folder + "vel_field_" + self.settings['vel_field_variables'][ivariable] + "_point" + str(ipoint) + ".dat"
+            with open(filename, 'a') as fid:
+                self.write_nparray_to_file(fid, self.data.ts, vel_data[:,ipoint], self.settings['delimiter']) 
 
     def write_nparray_to_file(self, fid, ts, nparray, delimiter):
 
