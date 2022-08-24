@@ -125,8 +125,8 @@ class LinControlSurfaceDeflector(object):
                             continue
 
                         # Surface panelling
-                        M = aero.aero_dimensions[i_surf][0]
-                        N = aero.aero_dimensions[i_surf][1]
+                        M = aero.dimensions[i_surf][0]
+                        N = aero.dimensions[i_surf][1]
 
                         K_zeta_start = 3 * sum(linuvlm.MS.KKzeta[:i_surf])
                         shape_zeta = (3, M + 1, N + 1)

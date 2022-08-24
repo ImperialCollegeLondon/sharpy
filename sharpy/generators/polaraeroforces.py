@@ -114,7 +114,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
         cd_from_cl = self.settings['cd_from_cl']
         moment_from_polar = self.settings['moment_from_polar']
 
-        aero_dict = aerogrid.aero_dict
+        data_dict = aerogrid.data_dict
         if aerogrid.polars is None:
             return struct_forces
         new_struct_forces = np.zeros_like(struct_forces)
@@ -127,18 +127,18 @@ class PolarCorrection(generator_interface.BaseGenerator):
 
         for inode in range(nnode):
             new_struct_forces[inode, :] = struct_forces[inode, :].copy()
-            if aero_dict['aero_node'][inode]:
+            if data_dict['aero_node'][inode]:
                 ielem, inode_in_elem = structure.node_master_elem[inode]
-                iairfoil = aero_dict['airfoil_distribution'][ielem, inode_in_elem]
+                iairfoil = data_dict['airfoil_distribution'][ielem, inode_in_elem]
                 isurf = aerogrid.struct2aero_mapping[inode][0]['i_surf']
                 i_n = aerogrid.struct2aero_mapping[inode][0]['i_n']
-                N = aerogrid.aero_dimensions[isurf, 1]
+                N = aerogrid.dimensions[isurf, 1]
                 polar = aerogrid.polars[iairfoil]
                 cab = algebra.crv2rotation(structural_kstep.psi[ielem, inode_in_elem, :])
                 cgb = np.dot(cga, cab)
 
                 if not cd_from_cl:
-                    airfoil_coords = aerogrid.aero_dict['airfoils'][str(aero_dict['airfoil_distribution'][ielem, inode_in_elem])]
+                    airfoil_coords = aerogrid.data_dict['airfoils'][str(data_dict['airfoil_distribution'][ielem, inode_in_elem])]
 
                 dir_span, span, dir_chord, chord = span_chord(i_n, aero_kstep.zeta[isurf])
 
@@ -260,11 +260,11 @@ class EfficiencyCorrection(generator_interface.BaseGenerator):
 
         n_node = self.structure.num_node
         n_elem = self.structure.num_elem
-        aero_dict = self.aero.aero_dict
+        data_dict = self.aero.data_dict
         new_struct_forces = np.zeros_like(struct_forces)
 
         # load airfoil efficiency (if it exists); else set to one (to avoid multiple ifs in the loops)
-        airfoil_efficiency = aero_dict['airfoil_efficiency']
+        airfoil_efficiency = data_dict['airfoil_efficiency']
         # force efficiency dimensions [n_elem, n_node_elem, 2, [fx, fy, fz]] - all defined in B frame
         force_efficiency = np.zeros((n_elem, 3, 2, 3))
         force_efficiency[:, :, 0, :] = 1.

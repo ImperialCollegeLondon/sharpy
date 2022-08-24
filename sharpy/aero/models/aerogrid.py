@@ -113,7 +113,7 @@ class Aerogrid(Grid):
             nairfoils = np.amax(self.data_dict['airfoil_distribution']) + 1
             for iairfoil in range(nairfoils):
                 new_polar = ap.Polar()
-                new_polar.initialise(aero_dict['polars'][str(iairfoil)])
+                new_polar.initialise(data_dict['polars'][str(iairfoil)])
                 self.polars.append(new_polar)
 
     def output_info(self):

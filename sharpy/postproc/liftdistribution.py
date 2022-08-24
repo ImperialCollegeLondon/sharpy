@@ -85,7 +85,7 @@ class LiftDistribution(BaseSolver):
             lift_distribution = np.concatenate((lift_distribution, np.zeros((N_nodes, 2))), axis=1)
 
         for inode in range(N_nodes):
-            if self.data.aero.aero_dict['aero_node'][inode]:
+            if self.data.aero.data_dict['aero_node'][inode]:
                 local_node = self.data.aero.struct2aero_mapping[inode][0]["i_n"]
                 ielem, inode_in_elem = self.data.structure.node_master_elem[inode]
                 i_surf = int(self.data.aero.surface_distribution[ielem])

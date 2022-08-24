@@ -250,7 +250,7 @@ class LeadingEdge(LinearGust):
         c_i = np.zeros((3 * Kzeta, N))
         for i_surf in range(self.aero.n_surf):
 
-            M_surf, N_surf = self.aero.aero_dimensions[i_surf]
+            M_surf, N_surf = self.aero.dimensions[i_surf]
             Kzeta_start = 3 * sum(self.KKzeta[:i_surf])  # number of coordinates up to current surface
             shape_zeta = (3, M_surf + 1, N_surf + 1)
 
@@ -341,7 +341,7 @@ class MultiLeadingEdge(LinearGust):
         gust_d = np.zeros((gust_c.shape[0], gust_b.shape[1]))
         for i_surf in range(self.aero.n_surf):
 
-            M_surf, N_surf = self.aero.aero_dimensions[i_surf]
+            M_surf, N_surf = self.aero.dimensions[i_surf]
             Kzeta_start = 3 * sum(self.KKzeta[:i_surf])  # number of coordinates up to current surface
             shape_zeta = (3, M_surf + 1, N_surf + 1)
 
