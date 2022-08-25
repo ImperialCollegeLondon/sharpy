@@ -378,7 +378,9 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
              # previous_ts_info.ct_p_gamma,
              ts_info.ct_p_normals,
              ts_info.ct_p_forces,
-             ts_info.ct_p_dynamic_forces)
+             ts_info.ct_p_dynamic_forces,
+             p_rbm_vel,
+             p_centre_rot)
     ts_info.remove_ctypes_pointers()
     # previous_ts_info.remove_ctypes_pointers()
 
