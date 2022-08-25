@@ -1685,9 +1685,7 @@ class SimulationInformation():
         """
 
         self.solvers = dict()
-        # cout.start_writer()
         aux_names = solver_interface.dictionary_of_solvers(print_info=False)
-        # cout.finish_writer()
         aux_names.update(generator_interface.dictionary_of_generators(print_info=False))
 
         # TODO: I am sure this can be done in a better way
@@ -1697,6 +1695,9 @@ class SimulationInformation():
             else:
                 solver_name = solver
             self.solvers[solver_name] = {}
+            if solver in ['GridLoader', 'NonliftingbodygridLoader']:
+                # Skip this solver as no default values for GridLoader exist. 
+                continue
             try:
                 aux_solver = solver_interface.solver_from_string(solver)
             except:

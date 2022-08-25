@@ -92,16 +92,13 @@ class AerogridLoader(GridLoader):
     def __init__(self):
         super().__init__
         self.file_name = '.aero.h5'
-
-        # aero storage
         self.aero = None
-
         self.wake_shape_generator = None
 
     def initialise(self, data):
         super().initialise(data)
-
-        # init settings
+        
+        self.settings = data.settings[self.solver_id]
         settings_utils.to_custom_types(self.settings,
                                        self.settings_types,
                                        self.settings_default, options=self.settings_options)

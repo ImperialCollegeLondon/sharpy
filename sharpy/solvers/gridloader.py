@@ -28,36 +28,31 @@ class GridLoader(BaseSolver):
 
     """
     solver_id = 'GridLoader'
-    solver_classification = 'loader'
+    solver_classification = 'other'
+
+    settings_types = dict()
+    settings_default = dict()
+    settings_description = dict()
 
     def __init__(self):
         self.data = None
         self.settings = None
         self.file_name = ''
-        # storage of file contents
         self.data_dict = dict()
-
-        # aero storage
-        #self.aero = None
 
     def initialise(self, data):
         self.data = data
-        self.settings = data.settings[self.solver_id]
-
-        # read input file
-        self.read_files()
+        self.read_input_files()
 
 
-    def read_files(self):
-        #  first check that the file exists
+    def read_input_files(self):
         self.file_name = (self.data.case_route +
                           '/' +
                           self.data.case_name +
                           self.file_name)
-        #  first check that the file exists
+                                                    
         h5utils.check_file_exists(self.file_name)
 
-        #  read and store the hdf5 file
+        #  read and store the hdf5 file in dictionary
         with h5.File(self.file_name, 'r') as file_handle:
-            # store files in dictionary
             self.data_dict = h5utils.load_h5_in_dict(file_handle)

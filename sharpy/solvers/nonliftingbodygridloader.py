@@ -29,7 +29,7 @@ class NonliftingbodygridLoader(GridLoader):
     solver_classification = 'loader'
 
     def __init__(self):
-        super().__init__()
+        super().__init__
         self.file_name = '.nonlifting_body.h5'
 
         # nonlifting_body storage

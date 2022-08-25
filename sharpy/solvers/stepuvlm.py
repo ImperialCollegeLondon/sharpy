@@ -242,7 +242,6 @@ class StepUvlm(BaseSolver):
         if self.settings['nonlifting_body_interactions']:
             if nl_body_tstep is None:
                 nl_body_tstep = self.data.nonlifting_body.timestep_info[-1]
-            # TODO: Extent velocity field generators
             self.velocity_generator.generate({'zeta': nl_body_tstep.zeta,
                                               'override': True,
                                               'ts': self.data.ts,
@@ -259,11 +258,7 @@ class StepUvlm(BaseSolver):
                                                        self.settings,
                                                        convect_wake=convect_wake, 
                                                        dt=dt)
-            
-            # print("UNSTEADY UVLM finsihed in StepUVLM!")
-
-        else:
-            
+        else:            
             uvlmlib.uvlm_solver(self.data.ts,
                                 aero_tstep,
                                 structure_tstep,
@@ -293,7 +288,6 @@ class StepUvlm(BaseSolver):
         else:
             for i_surf in range(len(aero_tstep.gamma)):
                 aero_tstep.gamma_dot[i_surf][:] = 0.0
-        # print("Step UVLM finsihed!")
         return self.data
 
     def add_step(self):

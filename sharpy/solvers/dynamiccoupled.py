@@ -675,7 +675,8 @@ class DynamicCoupled(BaseSolver):
 
             self.aero_solver.add_step()
             self.data.aero.timestep_info[-1] = aero_kstep.copy()
-            self.data.nonlifting_body.timestep_info[-1] = nl_body_kstep.copy()
+            if self.settings['nonlifting_body_interactions']:
+                self.data.nonlifting_body.timestep_info[-1] = nl_body_kstep.copy()
             self.structural_solver.add_step()
             self.data.structure.timestep_info[-1] = structural_kstep.copy()
 
