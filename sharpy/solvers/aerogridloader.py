@@ -51,14 +51,6 @@ class AerogridLoader(GridLoader):
     settings_description = dict()
     settings_options = dict()
 
-    settings_types['unsteady'] = 'bool'
-    settings_default['unsteady'] = False
-    settings_description['unsteady'] = 'Unsteady effects'
-
-    settings_types['aligned_grid'] = 'bool'
-    settings_default['aligned_grid'] = True
-    settings_description['aligned_grid'] = 'Align grid'
-
     settings_types['freestream_dir'] = 'list(float)'
     settings_default['freestream_dir'] = [1.0, 0.0, 0.0]
     settings_description['freestream_dir'] = 'Free stream flow direction'

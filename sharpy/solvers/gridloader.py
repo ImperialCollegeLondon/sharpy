@@ -30,10 +30,6 @@ class GridLoader(BaseSolver):
     solver_id = 'GridLoader'
     solver_classification = 'loader'
 
-    settings_types = dict()
-    settings_default = dict()
-    settings_description = dict()
-
     def __init__(self):
         self.data = None
         self.settings = None
@@ -47,11 +43,6 @@ class GridLoader(BaseSolver):
     def initialise(self, data):
         self.data = data
         self.settings = data.settings[self.solver_id]
-
-        # init settings
-        settings_utils.to_custom_types(self.settings,
-                                       self.settings_types,
-                                       self.settings_default)
 
         # read input file
         self.read_files()
