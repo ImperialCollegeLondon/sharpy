@@ -23,7 +23,7 @@ class Polar:
         """
         # Store the table
         if (np.diff(table[:, 0]) > 0.).all():
-            self.table = table
+            self.table = table[~np.isnan(table).any(axis=1), :]
         else:
             raise RuntimeError("ERROR: angles of attack not ordered")
 
