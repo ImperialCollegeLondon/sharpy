@@ -66,8 +66,19 @@ def raise_key_error(default_value, k, data_type, py_type):
     notify_default_value(k, converted_value)
     return converted_value
 
-def get_data_type_for_several_options(dict_value, v):
-    for data_type in v:
+def get_data_type_for_several_options(dict_value, list_settings_types):
+    """
+    Checks the data type of the setting input in case of several data type options. 
+    Only a scalar or list can be the case for these cases.  
+
+    Args:
+        dict_values: Dictionary value of processed settings
+        list_settings_types (list): Possible setting type options for this setting
+
+    Raises:
+        exception.NotValidSetting: if the setting is not allowed.
+    """
+    for data_type in list_settings_types:
         if 'list' in data_type and (type(dict_value) == list or not np.isscalar(dict_value)):
                 return data_type
         elif 'list' not in data_type and np.isscalar(dict_value):
