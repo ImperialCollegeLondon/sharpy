@@ -39,7 +39,7 @@ def to_custom_types(dictionary, types, default, options=dict(), no_ctype=True):
             data_type = v
         else:
             if k in dictionary:
-                data_type = get_data_type_for_several_options(dictionary[k], v)
+                data_type = get_data_type_for_several_options(dictionary[k], v, k)
             else:
                 # Choose first data type  in list for default value
                 data_type = v[0]
@@ -59,7 +59,7 @@ def to_custom_types(dictionary, types, default, options=dict(), no_ctype=True):
         raise Exception(unrecognised_settings)
 
 
-def get_data_type_for_several_options(dict_value, list_settings_types):
+def get_data_type_for_several_options(dict_value, list_settings_types, setting_name):
     """
     Checks the data type of the setting input in case of several data type options. 
     Only a scalar or list can be the case for these cases.  
@@ -76,7 +76,7 @@ def get_data_type_for_several_options(dict_value, list_settings_types):
                 return data_type
         elif 'list' not in data_type and np.isscalar(dict_value):
                 return data_type
-    return False# TODO raise error
+    exceptions.NotValidSettingType(setting_name, dict_value, list_settings_types)
 
 def get_default_value(default_value, k, v, data_type = None, py_type = None):
     if default_value is None:
