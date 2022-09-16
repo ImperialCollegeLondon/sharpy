@@ -69,7 +69,16 @@ class PolarCorrection(generator_interface.BaseGenerator):
                                                 'simply from polar derived data, i.e. the polars Cm and the moments' \
                                                 'arising from the lift and drag (derived from the polar) contribution. ' \
                                                 'Else, it will add the polar Cm to the moment already computed by ' \
-                                                'SHARPy.'
+                                                'SHARPy.'    
+
+    settings_types['skip_surfaces'] = 'list(int)'
+    settings_default['skip_surfaces'] = []
+    settings_description['skip_surfaces'] = 'Surfaces on which force correction is skipped.'
+
+
+    settings_types['aoa_cl0'] = 'list(float)'
+    settings_default['aoa_cl0'] = []
+    settings_description['aoa_cl0'] = 'Angle of attack for which zero lift is achieved specified in deg for each airfoil.'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options,
@@ -91,6 +100,13 @@ class PolarCorrection(generator_interface.BaseGenerator):
         self.structure = kwargs.get('structure')
         self.rho = kwargs.get('rho')
         self.vortex_radius = kwargs.get('vortex_radius', 1e-6)
+        self.list_aoa_cl0 = self.settings['aoa_cl0']
+        self.cd_from_cl = self.settings['cd_from_cl']
+
+        if self.cd_from_cl and len(self.list_aoa_cl0) == 0:
+            # compute aoa for cl0 if not specified in settings
+            self.compute_aoa_cl0_from_airfoil_data(self.aero)
+
 
     def generate(self, **params):
         """
@@ -111,8 +127,8 @@ class PolarCorrection(generator_interface.BaseGenerator):
         structure = self.structure
         rho = self.rho
         correct_lift = self.settings['correct_lift']
-        cd_from_cl = self.settings['cd_from_cl']
         moment_from_polar = self.settings['moment_from_polar']
+        
 
         aero_dict = aerogrid.aero_dict
         if aerogrid.polars is None:
@@ -131,88 +147,101 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 ielem, inode_in_elem = structure.node_master_elem[inode]
                 iairfoil = aero_dict['airfoil_distribution'][ielem, inode_in_elem]
                 isurf = aerogrid.struct2aero_mapping[inode][0]['i_surf']
-                i_n = aerogrid.struct2aero_mapping[inode][0]['i_n']
-                N = aerogrid.aero_dimensions[isurf, 1]
-                polar = aerogrid.polars[iairfoil]
-                cab = algebra.crv2rotation(structural_kstep.psi[ielem, inode_in_elem, :])
-                cgb = np.dot(cga, cab)
+                if isurf not in self.settings['skip_surfaces']:
+                    # print(isurf)
+                    i_n = aerogrid.struct2aero_mapping[inode][0]['i_n']
+                    N = aerogrid.dimensions[isurf, 1]
+                    polar = aerogrid.polars[iairfoil]
+                    cab = algebra.crv2rotation(structural_kstep.psi[ielem, inode_in_elem, :])
+                    cgb = np.dot(cga, cab)
 
-                if not cd_from_cl:
-                    airfoil_coords = aerogrid.aero_dict['airfoils'][str(aero_dict['airfoil_distribution'][ielem, inode_in_elem])]
+                    if not self.cd_from_cl:
+                        airfoil = str(aero_dict['airfoil_distribution'][ielem, inode_in_elem])
+                        aoa_0cl = self.list_aoa_cl0[int(airfoil)]
 
-                dir_span, span, dir_chord, chord = span_chord(i_n, aero_kstep.zeta[isurf])
+                    dir_span, span, dir_chord, chord = span_chord(i_n, aero_kstep.zeta[isurf])
 
-                # Define the relative velocity and its direction
-                urel, dir_urel = magnitude_and_direction_of_relative_velocity(structural_kstep.pos[inode, :],
-                                                                              structural_kstep.pos_dot[inode, :],
-                                                                              structural_kstep.for_vel[:],
-                                                                              cga,
-                                                                              aero_kstep.u_ext[isurf][:, :, i_n])
+                    # Define the relative velocity and its direction
+                    urel, dir_urel = magnitude_and_direction_of_relative_velocity(structural_kstep.pos[inode, :],
+                                                                                structural_kstep.pos_dot[inode, :],
+                                                                                structural_kstep.for_vel[:],
+                                                                                cga,
+                                                                                aero_kstep.u_ext[isurf][:, :, i_n])
 
-                # Coefficient to change from aerodynamic coefficients to forces (and viceversa)
-                coef = 0.5 * rho * np.linalg.norm(urel) ** 2 * chord * span
+                    # Coefficient to change from aerodynamic coefficients to forces (and viceversa)
+                    coef = 0.5 * rho * np.linalg.norm(urel) ** 2 * chord * span
 
-                # Stability axes - projects forces in B onto S
-                c_bs = local_stability_axes(cgb.T.dot(dir_urel), cgb.T.dot(dir_chord))
-                forces_s = c_bs.T.dot(struct_forces[inode, :3])
-                moment_s = c_bs.T.dot(struct_forces[inode, 3:])
-                drag_force = forces_s[0]
-                lift_force = forces_s[2]
+                    # Stability axes - projects forces in B onto S
+                    c_bs = local_stability_axes(cgb.T.dot(dir_urel), cgb.T.dot(dir_chord))
+                    forces_s = c_bs.T.dot(struct_forces[inode, :3])
+                    moment_s = c_bs.T.dot(struct_forces[inode, 3:])
+                    drag_force = forces_s[0]
+                    lift_force = forces_s[2]
 
-                # Compute the associated lift
-                cl = np.sign(lift_force) * np.linalg.norm(lift_force) / coef
-                cd_sharpy = np.linalg.norm(drag_force) / coef
+                    # Compute the associated lift
+                    cl = np.sign(lift_force) * np.linalg.norm(lift_force) / coef
+                    cd_sharpy = np.linalg.norm(drag_force) / coef
 
-                if cd_from_cl:
-                    # Compute the drag from the UVLM computed lift
-                    cd, cm = polar.get_cdcm_from_cl(cl)
+                    if self.cd_from_cl:
+                        # Compute the drag from the UVLM computed lift
+                        cd, cm = polar.get_cdcm_from_cl(cl)
 
-                else:
-                    # Compute L, D, M from polar depending on:
-                    # ii) Compute the effective angle of attack from potential flow theory. The local lift curve
-                    # slope is 2pi and the zero-lift angle of attack is given by thin airfoil theory. From this,
-                    # the effective angle of attack is computed for the section and includes 3D effects.
-                    aoa_0cl = get_aoacl0_from_camber(airfoil_coords[:, 0], airfoil_coords[:, 1])
-                    aoa = cl / 2 / np.pi + aoa_0cl
-                    # Compute the coefficients associated to that angle of attack
-                    cl_polar, cd, cm = polar.get_coefs(aoa)
+                    else:
+                        """
+                        Compute L, D, M from polar depending on:
+                        ii) Compute the effective angle of attack from potential flow theory or specified it as setting
+                        input. The local lift curve slope is 2pi and the zero-lift angle of attack is given by thin 
+                        airfoil theory or specified it as setting input. From this, the effective angle of attack is 
+                        computed for the section and includes 3D effects.
+                        """
+                        aoa = cl / 2 / np.pi + aoa_0cl 
+                        # Compute the coefficients associated to that angle of attack
+                        cl_polar, cd, cm = polar.get_coefs(aoa)
+                        
+                        if correct_lift:
+                            # Use polar generated CL rather than UVLM computed CL
+                            cl = cl_polar
 
-                    if correct_lift:
-                        # Use polar generated CL rather than UVLM computed CL
-                        cl = cl_polar
+                    # Recompute the forces based on the coefficients (side force is uncorrected)
+                    forces_s[0] += cd * coef  # add viscous drag to induced drag from UVLM
+                    forces_s[2] = cl * coef
 
-                # Recompute the forces based on the coefficients (side force is uncorrected)
-                forces_s[0] += cd * coef  # add viscous drag to induced drag from UVLM
-                forces_s[2] = cl * coef
+                    new_struct_forces[inode, 0:3] = c_bs.dot(forces_s)
 
-                new_struct_forces[inode, 0:3] = c_bs.dot(forces_s)
+                    # Pitching moment
+                    # The panels are shifted by 0.25 of a panel aft from the leading edge
+                    panel_shift = 0.25 * (aero_kstep.zeta[isurf][:, 1, i_n] - aero_kstep.zeta[isurf][:, 0, i_n])
+                    ref_point = aero_kstep.zeta[isurf][:, 0, i_n] + 0.25 * chord * dir_chord - panel_shift
 
-                # Pitching moment
-                # The panels are shifted by 0.25 of a panel aft from the leading edge
-                panel_shift = 0.25 * (aero_kstep.zeta[isurf][:, 1, i_n] - aero_kstep.zeta[isurf][:, 0, i_n])
-                ref_point = aero_kstep.zeta[isurf][:, 0, i_n] + 0.25 * chord * dir_chord - panel_shift
+                    # viscous contribution (pure moment)
+                    moment_s[1] += cm * coef * chord
 
-                # viscous contribution (pure moment)
-                moment_s[1] += cm * coef * chord
-
-                # moment due to drag
-                arm = cgb.T.dot(ref_point - pos_g[inode])  # in B frame
-                moment_polar_drag = algebra.cross3(c_bs.T.dot(arm), cd * dir_urel * coef)  # in S frame
-                moment_s += moment_polar_drag
-
-                # moment due to lift (if corrected)
-                if correct_lift and moment_from_polar:
-                    # add moment from scratch: cm_polar + cm_drag_polar + cl_lift_polar
-                    moment_s = np.zeros(3)
-                    moment_s[1] = cm * coef * chord
+                    # moment due to drag
+                    arm = cgb.T.dot(ref_point - pos_g[inode])  # in B frame
+                    moment_polar_drag = algebra.cross3(c_bs.T.dot(arm), cd * dir_urel * coef)  # in S frame
                     moment_s += moment_polar_drag
-                    moment_polar_lift = algebra.cross3(c_bs.T.dot(arm), forces_s[2] * np.array([0, 0, 1]))
-                    moment_s += moment_polar_lift
 
-                new_struct_forces[inode, 3:6] = c_bs.dot(moment_s)
+                    # moment due to lift (if corrected)
+                    if correct_lift and moment_from_polar:
+                        # add moment from scratch: cm_polar + cm_drag_polar + cl_lift_polar
+                        moment_s = np.zeros(3)
+                        moment_s[1] = cm * coef * chord
+                        moment_s += moment_polar_drag
+                        moment_polar_lift = algebra.cross3(c_bs.T.dot(arm), forces_s[2] * np.array([0, 0, 1]))
+                        moment_s += moment_polar_lift
+
+                    new_struct_forces[inode, 3:6] = c_bs.dot(moment_s)
 
         return new_struct_forces
+    
 
+    def compute_aoa_cl0_from_airfoil_data(self, aerogrid):
+        """
+         Computes the angle of attack for which zero lift is achieved for every airfoil
+        """
+        for _, airfoil in enumerate(aerogrid.aero_dict['airfoils']):
+            airfoil_coords = aerogrid.aero_dict['airfoils'][airfoil]
+            self.list_aoa_cl0.append(get_aoacl0_from_camber(airfoil_coords[:, 0], airfoil_coords[:, 1]))
 
 @generator_interface.generator
 class EfficiencyCorrection(generator_interface.BaseGenerator):
