@@ -189,12 +189,12 @@ class Aerogrid(object):
                 if self.aero_dict['aero_node'][i_global_node]:
                     self.aero_dimensions[i_surf, 1] += 1
 
-        # accounting for N+1 nodes -> N panels
-        self.aero_dimensions[:, 1] -= 1
-
-        self.aero_dimensions_star = self.aero_dimensions.copy()
-        for i_surf in range(self.n_surf):
-            self.aero_dimensions_star[i_surf, 0] = self.aero_settings['mstar']
+        self.dimensions_star = self.dimensions.copy()
+        if np.isscalar(self.aero_settings['mstar']) :
+            for i_surf in range(self.n_surf):
+                self.dimensions_star[i_surf, 0] = self.aero_settings['mstar']    
+        else:
+            self.dimensions_star[:, 0] = self.aero_settings['mstar']
 
     def add_timestep(self):
         try:
