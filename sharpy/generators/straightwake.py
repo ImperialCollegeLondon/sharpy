@@ -41,19 +41,19 @@ class StraightWake(generator_interface.BaseGenerator):
     settings_default['dt'] = 0.1 # None
     settings_description['dt'] = 'Time step'
 
-    settings_types['dx1'] = 'float'
+    settings_types['dx1'] =  ['float', 'list(float)']
     settings_default['dx1'] = -1.0
     settings_description['dx1'] = 'Size of the first wake panel'
 
-    settings_types['ndx1'] = 'int'
+    settings_types['ndx1'] =  ['int', 'list(int)']
     settings_default['ndx1'] = 1
     settings_description['ndx1'] = 'Number of panels with size ``dx1``'
 
-    settings_types['r'] = 'float'
+    settings_types['r'] = ['float', 'list(float)']
     settings_default['r'] = 1.
     settings_description['r'] = 'Growth rate after ``ndx1`` panels'
 
-    settings_types['dxmax'] = 'float'
+    settings_types['dxmax'] =  ['float', 'list(float)']
     settings_default['dxmax'] = -1.0
     settings_description['dxmax'] = 'Maximum panel size'
 
@@ -144,11 +144,12 @@ class StraightWake(generator_interface.BaseGenerator):
 
         nsurf = len(zeta)
         for isurf in range(nsurf):
+            r_surf, ndx1_surf, dx1_surf, dxmax_surf = self.get_all_surface_parameters(isurf)
             M, N = zeta_star[isurf][0, :, :].shape
             for j in range(N):
                 zeta_star[isurf][:, 0, j] = zeta[isurf][:, -1, j]
                 for i in range(1, M):
-                    deltax = self.get_deltax(i, self.dx1, self.ndx1, self.r, self.dxmax)
+                    deltax = self.get_deltax(i, dx1_surf, ndx1_surf, r_surf, dxmax_surf)
                     zeta_star[isurf][:, i, j] = zeta_star[isurf][:, i - 1, j] + deltax*self.u_inf_direction
             gamma[isurf] *= 0.
             gamma_star[isurf] *= 0.
@@ -173,3 +174,19 @@ class StraightWake(generator_interface.BaseGenerator):
         deltax = min(deltax, dxmax)
 
         return deltax
+    @staticmethod
+    def get_surface_parameter(parameter, i_surf):
+        if np.isscalar(parameter):
+            return parameter
+        else:
+            return parameter[i_surf]
+
+    def get_all_surface_parameters(self,i_surf):
+        r_surf = self.get_surface_parameter(self.r, i_surf)
+        dx1_surf = self.get_surface_parameter(self.dx1, i_surf)
+        ndx1_surf = self.get_surface_parameter(self.ndx1, i_surf)
+        dxmax_surf = self.get_surface_parameter(self.dxmax, i_surf)
+        return r_surf, ndx1_surf, dx1_surf, dxmax_surf
+
+
+
