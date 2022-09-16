@@ -103,7 +103,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
         self.list_aoa_cl0 = self.settings['aoa_cl0']
         self.cd_from_cl = self.settings['cd_from_cl']
 
-        if self.cd_from_cl and len(self.list_aoa_cl0) == 0:
+        if not self.cd_from_cl and len(self.list_aoa_cl0) == 0:
             # compute aoa for cl0 if not specified in settings
             self.compute_aoa_cl0_from_airfoil_data(self.aero)
 
@@ -239,9 +239,10 @@ class PolarCorrection(generator_interface.BaseGenerator):
         """
          Computes the angle of attack for which zero lift is achieved for every airfoil
         """
-        for _, airfoil in enumerate(aerogrid.aero_dict['airfoils']):
+        self.list_aoa_cl0 = np.zeros((len(aerogrid.aero_dict['airfoils']),1))
+        for i, airfoil in enumerate(aerogrid.aero_dict['airfoils']):
             airfoil_coords = aerogrid.aero_dict['airfoils'][airfoil]
-            self.list_aoa_cl0.append(get_aoacl0_from_camber(airfoil_coords[:, 0], airfoil_coords[:, 1]))
+            self.list_aoa_cl0[i] = get_aoacl0_from_camber(airfoil_coords[:, 0], airfoil_coords[:, 1])
 
 @generator_interface.generator
 class EfficiencyCorrection(generator_interface.BaseGenerator):
