@@ -58,13 +58,6 @@ def to_custom_types(dictionary, types, default, options=dict(), no_ctype=True):
     if unrecognised_settings:
         raise Exception(unrecognised_settings)
 
-def raise_key_error(default_value, k, data_type, py_type):
-    # TODO insert in get custom type function and test, be careful, with types
-    if default_value is None:
-        raise exceptions.NoDefaultValueException(k)
-    converted_value = cast(k, default_value, py_type, data_type, default_value)
-    notify_default_value(k, converted_value)
-    return converted_value
 
 def get_data_type_for_several_options(dict_value, list_settings_types):
     """
@@ -85,6 +78,18 @@ def get_data_type_for_several_options(dict_value, list_settings_types):
                 return data_type
     return False# TODO raise error
 
+def get_default_value(default_value, k, v, data_type = None, py_type = None):
+    if default_value is None:
+        raise exceptions.NoDefaultValueException(k)
+    if v in ['float', 'int', 'bool']:
+        converted_value = cast(k, default_value, py_type, data_type, default_value)
+    elif v == 'str':
+        converted_value = cast(k, default_value, eval(v), eval(v), default_value)
+    else:
+        converted_value = default_value.copy()
+    notify_default_value(k, converted_value)
+    return converted_value
+
 def get_custom_type(dictionary, v, k, default, no_ctype):
     if v == 'int':
         if no_ctype:
@@ -94,10 +99,7 @@ def get_custom_type(dictionary, v, k, default, no_ctype):
         try:
             dictionary[k] = cast(k, dictionary[k], int, data_type, default[k])
         except KeyError:
-            if default[k] is None:
-                raise exceptions.NoDefaultValueException(k)
-            dictionary[k] = cast(k, default[k], int, data_type, default[k])
-            notify_default_value(k, dictionary[k])
+            dictionary[k] = get_default_value(default[k], k, v, data_type=data_type, py_type=int)
 
     elif v == 'float':
         if no_ctype:
@@ -107,19 +109,13 @@ def get_custom_type(dictionary, v, k, default, no_ctype):
         try:
             dictionary[k] = cast(k, dictionary[k], float, data_type, default[k])
         except KeyError:
-            if default[k] is None:
-                raise exceptions.NoDefaultValueException(k)
-            dictionary[k] = cast(k, default[k], float, data_type, default[k])
-            notify_default_value(k, dictionary[k])
+            dictionary[k] = get_default_value(default[k], k, v, data_type=data_type, py_type=float)
 
     elif v == 'str':
         try:
             dictionary[k] = cast(k, dictionary[k], str, str, default[k])
         except KeyError:
-            if default[k] is None:
-                raise exceptions.NoDefaultValueException(k)
-            dictionary[k] = cast(k, default[k], eval(v), eval(v), default[k])
-            notify_default_value(k, dictionary[k])
+            dictionary[k] = get_default_value(default[k], k, v)
 
     elif v == 'bool':
         if no_ctype:
@@ -129,10 +125,7 @@ def get_custom_type(dictionary, v, k, default, no_ctype):
         try:
             dictionary[k] = cast(k, dictionary[k], str2bool, data_type, default[k])
         except KeyError:
-            if default[k] is None:
-                raise exceptions.NoDefaultValueException(k)
-            dictionary[k] = cast(k, default[k], str2bool, data_type, default[k])
-            notify_default_value(k, dictionary[k])
+            dictionary[k] = get_default_value(default[k], k, v, data_type=data_type, py_type=str2bool)
 
     elif v == 'list(str)':
         try:
@@ -142,10 +135,7 @@ def get_custom_type(dictionary, v, k, default, no_ctype):
             # getting rid of leading and trailing spaces
             dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
         except KeyError:
-            if default[k] is None:
-                raise exceptions.NoDefaultValueException(k)
-            dictionary[k] = default[k].copy()
-            notify_default_value(k, dictionary[k])
+            dictionary[k] = get_default_value(default[k], k, v)
 
     elif v == 'list(dict)':
         try:
@@ -156,19 +146,13 @@ def get_custom_type(dictionary, v, k, default, no_ctype):
             for i in range(len(dictionary[k])):
                 dictionary[k][i] = ast.literal_eval(dictionary[k][i])
         except KeyError:
-            if default[k] is None:
-                raise exceptions.NoDefaultValueException(k)
-            dictionary[k] = default[k].copy()
-            notify_default_value(k, dictionary[k])
+            dictionary[k] = get_default_value(default[k], k, v)
 
     elif v == 'list(float)':
         try:
             dictionary[k]
         except KeyError:
-            if default[k] is None:
-                raise exceptions.NoDefaultValueException(k)
-            dictionary[k] = default[k].copy()
-            notify_default_value(k, dictionary[k])
+            dictionary[k] = get_default_value(default[k], k, v)
 
         if isinstance(dictionary[k], np.ndarray):
             return dictionary[k]
@@ -189,10 +173,7 @@ def get_custom_type(dictionary, v, k, default, no_ctype):
         try:
             dictionary[k]
         except KeyError:
-            if default[k] is None:
-                raise exceptions.NoDefaultValueException(k)
-            dictionary[k] = default[k].copy()
-            notify_default_value(k, dictionary[k])
+            dictionary[k] = get_default_value(default[k], k, v)
 
         if isinstance(dictionary[k], np.ndarray):
             return dictionary[k]
@@ -213,10 +194,7 @@ def get_custom_type(dictionary, v, k, default, no_ctype):
         try:
             dictionary[k]
         except KeyError:
-            if default[k] is None:
-                raise exceptions.NoDefaultValueException(k)
-            dictionary[k] = default[k].copy()
-            notify_default_value(k, dictionary[k])
+            dictionary[k] = get_default_value(default[k], k, v)
 
         if isinstance(dictionary[k], np.ndarray):
             return dictionary[k]
@@ -238,10 +216,7 @@ def get_custom_type(dictionary, v, k, default, no_ctype):
             if not isinstance(dictionary[k], dict):
                 raise TypeError('Setting for {:s} is not a dictionary'.format(k))
         except KeyError:
-            if default[k] is None:
-                raise exceptions.NoDefaultValueException(k)
-            dictionary[k] = default[k].copy()
-            notify_default_value(k, dictionary[k])
+            dictionary[k] = get_default_value(default[k], k, v)
     else:
         raise TypeError('Variable %s has an unknown type (%s) that cannot be casted' % (k, v))
     return dictionary[k]
