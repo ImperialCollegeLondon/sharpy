@@ -35,165 +35,16 @@ def cast(k, v, pytype, ctype, default):
 
 def to_custom_types(dictionary, types, default, options=dict(), no_ctype=True):
     for k, v in types.items():
-        if v == 'int':
-            if no_ctype:
-                data_type = int
-            else:
-                data_type = ct.c_int
-            try:
-                dictionary[k] = cast(k, dictionary[k], int, data_type, default[k])
-            except KeyError:
-                if default[k] is None:
-                    raise exceptions.NoDefaultValueException(k)
-                dictionary[k] = cast(k, default[k], int, data_type, default[k])
-                notify_default_value(k, dictionary[k])
-
-        elif v == 'float':
-            if no_ctype:
-                data_type = float
-            else:
-                data_type = ct.c_double
-            try:
-                dictionary[k] = cast(k, dictionary[k], float, data_type, default[k])
-            except KeyError:
-                if default[k] is None:
-                    raise exceptions.NoDefaultValueException(k)
-                dictionary[k] = cast(k, default[k], float, data_type, default[k])
-                notify_default_value(k, dictionary[k])
-
-        elif v == 'str':
-            try:
-                dictionary[k] = cast(k, dictionary[k], str, str, default[k])
-            except KeyError:
-                if default[k] is None:
-                    raise exceptions.NoDefaultValueException(k)
-                dictionary[k] = cast(k, default[k], eval(v), eval(v), default[k])
-                notify_default_value(k, dictionary[k])
-
-        elif v == 'bool':
-            if no_ctype:
-                data_type = bool
-            else:
-                data_type = ct.c_bool
-            try:
-                dictionary[k] = cast(k, dictionary[k], str2bool, data_type, default[k])
-            except KeyError:
-                if default[k] is None:
-                    raise exceptions.NoDefaultValueException(k)
-                dictionary[k] = cast(k, default[k], str2bool, data_type, default[k])
-                notify_default_value(k, dictionary[k])
-
-        elif v == 'list(str)':
-            try:
-                # if isinstance(dictionary[k], list):
-                #     continue
-                # dictionary[k] = dictionary[k].split(',')
-                # getting rid of leading and trailing spaces
-                dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
-            except KeyError:
-                if default[k] is None:
-                    raise exceptions.NoDefaultValueException(k)
-                dictionary[k] = default[k].copy()
-                notify_default_value(k, dictionary[k])
-
-        elif v == 'list(dict)':
-            try:
-                # if isinstance(dictionary[k], list):
-                #     continue
-                # dictionary[k] = dictionary[k].split(',')
-                # getting rid of leading and trailing spaces
-                for i in range(len(dictionary[k])):
-                    dictionary[k][i] = ast.literal_eval(dictionary[k][i])
-            except KeyError:
-                if default[k] is None:
-                    raise exceptions.NoDefaultValueException(k)
-                dictionary[k] = default[k].copy()
-                notify_default_value(k, dictionary[k])
-
-        elif v == 'list(float)':
-            try:
-                dictionary[k]
-            except KeyError:
-                if default[k] is None:
-                    raise exceptions.NoDefaultValueException(k)
-                dictionary[k] = default[k].copy()
-                notify_default_value(k, dictionary[k])
-
-            if isinstance(dictionary[k], np.ndarray):
-                continue
-            if isinstance(dictionary[k], list):
-                for i in range(len(dictionary[k])):
-                    dictionary[k][i] = float(dictionary[k][i])
-                dictionary[k] = np.array(dictionary[k])
-                continue
-            # dictionary[k] = dictionary[k].split(',')
-            # # getting rid of leading and trailing spaces
-            # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
-            if dictionary[k].find(',') < 0:
-                dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ', dtype=ct.c_double)
-            else:
-                dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',', dtype=ct.c_double)
-
-        elif v == 'list(int)':
-            try:
-                dictionary[k]
-            except KeyError:
-                if default[k] is None:
-                    raise exceptions.NoDefaultValueException(k)
-                dictionary[k] = default[k].copy()
-                notify_default_value(k, dictionary[k])
-
-            if isinstance(dictionary[k], np.ndarray):
-                continue
-            if isinstance(dictionary[k], list):
-                for i in range(len(dictionary[k])):
-                    dictionary[k][i] = int(dictionary[k][i])
-                dictionary[k] = np.array(dictionary[k])
-                continue
-            # dictionary[k] = dictionary[k].split(',')
-            # # getting rid of leading and trailing spaces
-            # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
-            if dictionary[k].find(',') < 0:
-                dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ').astype(ct.c_int)
-            else:
-                dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',').astype(ct.c_int)
-
-        elif v == 'list(complex)':
-            try:
-                dictionary[k]
-            except KeyError:
-                if default[k] is None:
-                    raise exceptions.NoDefaultValueException(k)
-                dictionary[k] = default[k].copy()
-                notify_default_value(k, dictionary[k])
-
-            if isinstance(dictionary[k], np.ndarray):
-                continue
-            if isinstance(dictionary[k], list):
-                for i in range(len(dictionary[k])):
-                    dictionary[k][i] = complex(dictionary[k][i])
-                dictionary[k] = np.array(dictionary[k])
-                continue
-            # dictionary[k] = dictionary[k].split(',')
-            # # getting rid of leading and trailing spaces
-            # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
-            if dictionary[k].find(',') < 0:
-                dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ').astype(complex)
-            else:
-                dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',').astype(complex)
-
-        elif v == 'dict':
-            try:
-                if not isinstance(dictionary[k], dict):
-                    raise TypeError('Setting for {:s} is not a dictionary'.format(k))
-            except KeyError:
-                if default[k] is None:
-                    raise exceptions.NoDefaultValueException(k)
-                dictionary[k] = default[k].copy()
-                notify_default_value(k, dictionary[k])
+        if type(v) != list:
+            data_type = v
         else:
-            raise TypeError('Variable %s has an unknown type (%s) that cannot be casted' % (k, v))
-
+            if k in dictionary:
+                data_type = get_data_type_for_several_options(dictionary[k], v, k)
+            else:
+                # Choose first data type  in list for default value
+                data_type = v[0]
+        dictionary[k] = get_custom_type(dictionary, data_type, k, default, no_ctype)
+      
     check_settings_in_options(dictionary, types, options)
 
     unrecognised_settings = []
@@ -207,6 +58,168 @@ def to_custom_types(dictionary, types, default, options=dict(), no_ctype=True):
     if unrecognised_settings:
         raise Exception(unrecognised_settings)
 
+
+def get_data_type_for_several_options(dict_value, list_settings_types, setting_name):
+    """
+    Checks the data type of the setting input in case of several data type options. 
+    Only a scalar or list can be the case for these cases.  
+
+    Args:
+        dict_values: Dictionary value of processed settings
+        list_settings_types (list): Possible setting type options for this setting
+
+    Raises:
+        exception.NotValidSetting: if the setting is not allowed.
+    """
+    for data_type in list_settings_types:
+        if 'list' in data_type and (type(dict_value) == list or not np.isscalar(dict_value)):
+                return data_type
+        elif 'list' not in data_type and np.isscalar(dict_value):
+                return data_type
+    exceptions.NotValidSettingType(setting_name, dict_value, list_settings_types)
+
+def get_default_value(default_value, k, v, data_type = None, py_type = None):
+    if default_value is None:
+        raise exceptions.NoDefaultValueException(k)
+    if v in ['float', 'int', 'bool']:
+        converted_value = cast(k, default_value, py_type, data_type, default_value)
+    elif v == 'str':
+        converted_value = cast(k, default_value, eval(v), eval(v), default_value)
+    else:
+        converted_value = default_value.copy()
+    notify_default_value(k, converted_value)
+    return converted_value
+
+def get_custom_type(dictionary, v, k, default, no_ctype):
+    if v == 'int':
+        if no_ctype:
+            data_type = int
+        else:
+            data_type = ct.c_int
+        try:
+            dictionary[k] = cast(k, dictionary[k], int, data_type, default[k])
+        except KeyError:
+            dictionary[k] = get_default_value(default[k], k, v, data_type=data_type, py_type=int)
+
+    elif v == 'float':
+        if no_ctype:
+            data_type = float
+        else:
+            data_type = ct.c_double
+        try:
+            dictionary[k] = cast(k, dictionary[k], float, data_type, default[k])
+        except KeyError:
+            dictionary[k] = get_default_value(default[k], k, v, data_type=data_type, py_type=float)
+
+    elif v == 'str':
+        try:
+            dictionary[k] = cast(k, dictionary[k], str, str, default[k])
+        except KeyError:
+            dictionary[k] = get_default_value(default[k], k, v)
+
+    elif v == 'bool':
+        if no_ctype:
+            data_type = bool
+        else:
+            data_type = ct.c_bool
+        try:
+            dictionary[k] = cast(k, dictionary[k], str2bool, data_type, default[k])
+        except KeyError:
+            dictionary[k] = get_default_value(default[k], k, v, data_type=data_type, py_type=str2bool)
+
+    elif v == 'list(str)':
+        try:
+            # if isinstance(dictionary[k], list):
+            #     continue
+            # dictionary[k] = dictionary[k].split(',')
+            # getting rid of leading and trailing spaces
+            dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
+        except KeyError:
+            dictionary[k] = get_default_value(default[k], k, v)
+
+    elif v == 'list(dict)':
+        try:
+            # if isinstance(dictionary[k], list):
+            #     continue
+            # dictionary[k] = dictionary[k].split(',')
+            # getting rid of leading and trailing spaces
+            for i in range(len(dictionary[k])):
+                dictionary[k][i] = ast.literal_eval(dictionary[k][i])
+        except KeyError:
+            dictionary[k] = get_default_value(default[k], k, v)
+
+    elif v == 'list(float)':
+        try:
+            dictionary[k]
+        except KeyError:
+            dictionary[k] = get_default_value(default[k], k, v)
+
+        if isinstance(dictionary[k], np.ndarray):
+            return dictionary[k]
+        if isinstance(dictionary[k], list):
+            for i in range(len(dictionary[k])):
+                dictionary[k][i] = float(dictionary[k][i])
+            dictionary[k] = np.array(dictionary[k])
+            return dictionary[k]
+        # dictionary[k] = dictionary[k].split(',')
+        # # getting rid of leading and trailing spaces
+        # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
+        if dictionary[k].find(',') < 0:
+            dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ', dtype=ct.c_double)
+        else:
+            dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',', dtype=ct.c_double)
+
+    elif v == 'list(int)':
+        try:
+            dictionary[k]
+        except KeyError:
+            dictionary[k] = get_default_value(default[k], k, v)
+
+        if isinstance(dictionary[k], np.ndarray):
+            return dictionary[k]
+        if isinstance(dictionary[k], list):
+            for i in range(len(dictionary[k])):
+                dictionary[k][i] = int(dictionary[k][i])
+            dictionary[k] = np.array(dictionary[k])
+            return dictionary[k]
+        # dictionary[k] = dictionary[k].split(',')
+        # # getting rid of leading and trailing spaces
+        # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
+        if dictionary[k].find(',') < 0:
+            dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ').astype(ct.c_int)
+        else:
+            dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',').astype(ct.c_int)
+
+    elif v == 'list(complex)':
+        try:
+            dictionary[k]
+        except KeyError:
+            dictionary[k] = get_default_value(default[k], k, v)
+
+        if isinstance(dictionary[k], np.ndarray):
+            return dictionary[k]
+        if isinstance(dictionary[k], list):
+            for i in range(len(dictionary[k])):
+                dictionary[k][i] = complex(dictionary[k][i])
+            dictionary[k] = np.array(dictionary[k])
+            return dictionary[k]
+        # dictionary[k] = dictionary[k].split(',')
+        # # getting rid of leading and trailing spaces
+        # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
+        if dictionary[k].find(',') < 0:
+            dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ').astype(complex)
+        else:
+            dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',').astype(complex)
+
+    elif v == 'dict':
+        try:
+            if not isinstance(dictionary[k], dict):
+                raise TypeError('Setting for {:s} is not a dictionary'.format(k))
+        except KeyError:
+            dictionary[k] = get_default_value(default[k], k, v)
+    else:
+        raise TypeError('Variable %s has an unknown type (%s) that cannot be casted' % (k, v))
+    return dictionary[k]
 
 def check_settings_in_options(settings, settings_types, settings_options):
     """
