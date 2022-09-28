@@ -88,6 +88,10 @@ class one_minus_cos(BaseGust):
     settings_default['gust_intensity'] = 0.0
     settings_description['gust_intensity'] = 'Intensity of the gust :math:`u_{de}`.'
 
+    settings_types['gust_component'] = 'int'
+    settings_default['gust_component'] = 2
+    settings_description['gust_component'] = 'Component of the gust velocity in the G-frame (x,y,z)->(0,1,2).'
+
     setting_table = settings.SettingsTable()
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
                                       header_line=doc_settings_description)
@@ -104,7 +108,7 @@ class one_minus_cos(BaseGust):
         if x > 0.0 or x < -gust_length:
             return vel
 
-        vel[2] = (1.0 - np.cos(2.0 * np.pi * x / gust_length)) * gust_intensity * 0.5
+        vel[self.settings['gust_component']] = (1.0 - np.cos(2.0 * np.pi * x / gust_length)) * gust_intensity * 0.5
         return vel
 
 
@@ -135,6 +139,10 @@ class DARPA(BaseGust):
     settings_default['span'] = 0.
     settings_description['span'] = 'Wing span'
 
+    settings_types['gust_component'] = 'int'
+    settings_default['gust_component'] = 2
+    settings_description['gust_component'] = 'Component of the gust velocity in the G-frame (x,y,z)->(0,1,2).'
+
     setting_table = settings.SettingsTable()
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
                                       header_line=doc_settings_description)
@@ -152,8 +160,8 @@ class DARPA(BaseGust):
         if x > 0.0 or x < -gust_length:
             return vel
 
-        vel[2] = (1.0 - np.cos(2.0 * np.pi * x / gust_length)) * gust_intensity * 0.5
-        vel[2] *= -np.cos(y / span * np.pi)
+        vel[self.settings['gust_component']] = (1.0 - np.cos(2.0 * np.pi * x / gust_length)) * gust_intensity * 0.5
+        vel[self.settings['gust_component']] *= -np.cos(y / span * np.pi)
         return vel
 
 
@@ -180,6 +188,10 @@ class continuous_sin(BaseGust):
     settings_default['gust_intensity'] = 0.0
     settings_description['gust_intensity'] = 'Intensity of the gust'
 
+    settings_types['gust_component'] = 'int'
+    settings_default['gust_component'] = 2
+    settings_description['gust_component'] = 'Component of the gust velocity in the G-frame (x,y,z)->(0,1,2).'
+
     setting_table = settings.SettingsTable()
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
                                       header_line=doc_settings_description)
@@ -196,48 +208,8 @@ class continuous_sin(BaseGust):
         if x > 0.0:
             return vel
 
-        vel[2] = 0.5 * gust_intensity * np.sin(2 * np.pi * x / gust_length)
+        vel[self.settings['gust_component']] = 0.5 * gust_intensity * np.sin(2 * np.pi * x / gust_length)
         return vel
-
-
-@gust
-class lateral_one_minus_cos(BaseGust):
-    r"""
-    This gust can be used by using the setting ``gust_shape = 'lateral 1-cos'`` in :class:`GustVelocityField`.
-    """
-    gust_id = 'lateral 1-cos'
-
-    settings_types = dict()
-    settings_default = dict()
-    settings_description = dict()
-
-    settings_types['gust_length'] = 'float'
-    settings_default['gust_length'] = 0.0
-    settings_description['gust_length'] = 'Length of gust'
-
-    settings_types['gust_intensity'] = 'float'
-    settings_default['gust_intensity'] = 0.0
-    settings_description['gust_intensity'] = 'Intensity of the gust'
-
-    setting_table = settings.SettingsTable()
-    __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
-                                      header_line=doc_settings_description)
-
-    def initialise(self, in_dict):
-        self.settings = in_dict
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
-
-    def gust_shape(self, x, y, z, time=0):
-        gust_length = self.settings['gust_length']
-        gust_intensity = self.settings['gust_intensity']
-
-        vel = np.zeros((3,))
-        if x > 0.0 or x < -gust_length:
-            return vel
-
-        vel[1] = (1.0 - np.cos(2.0 * np.pi * x / gust_length)) * gust_intensity * 0.5
-        return vel
-
 
 @gust
 class time_varying(BaseGust):
@@ -257,6 +229,10 @@ class time_varying(BaseGust):
     settings_types['file'] = 'str'
     settings_default['file'] = ''
     settings_description['file'] = 'File with the information'
+
+    settings_types['gust_component'] = 'list(int)'
+    settings_default['gust_component'] = [0, 1, 2]
+    settings_description['gust_component'] = 'List of components of the gust velocity in the G-frame to be considered (x,y,z)->(0,1,2).'
 
     setting_table = settings.SettingsTable()
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
@@ -279,9 +255,8 @@ class time_varying(BaseGust):
         if d > 0.0:
             return vel
 
-        vel[0] = np.interp(d, -self.file_info[::-1, 0] * self.u_inf, self.file_info[::-1, 1])
-        vel[1] = np.interp(d, -self.file_info[::-1, 0] * self.u_inf, self.file_info[::-1, 2])
-        vel[2] = np.interp(d, -self.file_info[::-1, 0] * self.u_inf, self.file_info[::-1, 3])
+        for idim in self.settings['gust_component']:
+            vel[idim] = np.interp(d, -self.file_info[::-1, 0] * self.u_inf, self.file_info[::-1, idim+1])
         return vel
 
 
@@ -303,6 +278,10 @@ class time_varying_global(BaseGust):
     settings_default['file'] = ''
     settings_description['file'] = 'File with the information (only for time varying)'
 
+    settings_types['gust_component'] = ['list(int)', 'int']
+    settings_default['gust_component'] = [0, 1, 2]
+    settings_description['gust_component'] = 'Component of the gust velocity in the G-frame to be considered (x,y,z)->(0,1,2).'
+
     setting_table = settings.SettingsTable()
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
                                       header_line=doc_settings_description)
@@ -321,9 +300,8 @@ class time_varying_global(BaseGust):
     def gust_shape(self, x, y, z, time=0):
         vel = np.zeros((3,))
 
-        vel[0] = np.interp(time, self.file_info[:, 0], self.file_info[:, 1])
-        vel[1] = np.interp(time, self.file_info[:, 0], self.file_info[:, 2])
-        vel[2] = np.interp(time, self.file_info[:, 0], self.file_info[:, 3])
+        for idim in self.settings['gust_component']:
+            vel[idim] = np.interp(time, self.file_info[:, 0], self.file_info[:, idim+1])
         return vel
 
 
