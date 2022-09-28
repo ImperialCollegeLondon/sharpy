@@ -114,6 +114,11 @@ class StaticUvlm(BaseSolver):
     settings_types['symmetry_condition'] = 'bool'
     settings_default['symmetry_condition'] = False
     settings_description['symmetry_condition'] = 'If ``True``, symmetry is enforced at global x-z-plane at y = 0'
+    
+    settings_types['symmetry_plane'] = 'int'
+    settings_default['symmetry_plane'] = 2
+    settings_description['symmetry_plane'] = 'Defines the symmetry plane: y-z (0), x-z(1), x-y (2). The number is the coordinate \
+                                              component of the G-frame to be mirrored (x,y,z) --> (0,1,2).' 
 
     set
     settings_table = settings.SettingsTable()

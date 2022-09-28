@@ -133,10 +133,14 @@ class StepUvlm(BaseSolver):
     settings_default['quasi_steady'] = False
     settings_description['quasi_steady'] = 'Use quasi-steady approximation in UVLM'
 
-
     settings_types['symmetry_condition'] = 'bool'
     settings_default['symmetry_condition'] = False
-    settings_description['symmetry_condition'] = 'If ``True``, symmetry is enforced at global x-z-plane at y = 0'
+    settings_description['symmetry_condition'] = 'If ``True``, symmetry is enforced at global specified plane'
+
+    settings_types['symmetry_plane'] = 'int'
+    settings_default['symmetry_plane'] = 2
+    settings_description['symmetry_plane'] = 'Defines the symmetry plane: y-z (0), x-z(1), x-y (2). The number is the coordinate \
+                                              component of the G-frame to be mirrored (x,y,z) --> (0,1,2).' 
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
