@@ -19,6 +19,7 @@ import numpy as np
 from abc import ABCMeta
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
+from scipy.interpolate import interp1d
 
 dict_of_gusts = {}
 
@@ -211,54 +212,6 @@ class continuous_sin(BaseGust):
         vel[self.settings['gust_component']] = 0.5 * gust_intensity * np.sin(2 * np.pi * x / gust_length)
         return vel
 
-@gust
-class time_varying(BaseGust):
-    r"""
-    The inflow velocity changes with time but it is uniform in space. It is read from a 4 column file:
-
-    .. math:: time[s] \Delta U_x \Delta U_y \Delta U_z
-
-    This gust can be used by using the setting ``gust_shape = 'time varying'`` in :class:.`GustVelocityField`.
-    """
-    gust_id = 'time varying'
-
-    settings_types = dict()
-    settings_default = dict()
-    settings_description = dict()
-
-    settings_types['file'] = 'str'
-    settings_default['file'] = ''
-    settings_description['file'] = 'File with the information'
-
-    settings_types['gust_component'] = 'list(int)'
-    settings_default['gust_component'] = [0, 1, 2]
-    settings_description['gust_component'] = 'List of components of the gust velocity in the G-frame to be considered (x,y,z)->(0,1,2).'
-
-    setting_table = settings.SettingsTable()
-    __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
-                                      header_line=doc_settings_description)
-
-    def __init__(self):
-        super().__init__()
-
-        self.file_info = None
-
-    def initialise(self, in_dict):
-        self.settings = in_dict
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
-
-        self.file_info = np.loadtxt(self.settings['file'])
-
-    def gust_shape(self, x, y, z, time=0):
-        vel = np.zeros((3,))
-        d = np.dot(np.array([x, y, z]), self.u_inf_direction)
-        if d > 0.0:
-            return vel
-
-        for idim in self.settings['gust_component']:
-            vel[idim] = np.interp(d, -self.file_info[::-1, 0] * self.u_inf, self.file_info[::-1, idim+1])
-        return vel
-
 
 @gust
 class time_varying_global(BaseGust):
@@ -290,6 +243,7 @@ class time_varying_global(BaseGust):
         super().__init__()
 
         self.file_info = None
+        self.list_interpolated_velocity_field_functions = []
 
     def initialise(self, in_dict):
         self.settings = in_dict
@@ -297,13 +251,32 @@ class time_varying_global(BaseGust):
 
         self.file_info = np.loadtxt(self.settings['file'])
 
+        for idim in self.settings['gust_component']:
+            self.list_interpolated_velocity_field_functions.append(interp1d(self.file_info[:, 0], self.file_info[:, idim+1]))
+
     def gust_shape(self, x, y, z, time=0):
         vel = np.zeros((3,))
 
         for idim in self.settings['gust_component']:
-            vel[idim] = np.interp(time, self.file_info[:, 0], self.file_info[:, idim+1])
+            vel[idim] = self.list_interpolated_velocity_field_functions[idim](time)
         return vel
 
+
+@gust
+class time_varying(time_varying_global):
+    r"""
+    The inflow velocity changes with time but it is uniform in space. It is read from a 4 column file:
+
+    .. math:: time[s] \Delta U_x \Delta U_y \Delta U_z
+
+    This gust can be used by using the setting ``gust_shape = 'time varying'`` in :class:.`GustVelocityField`.
+    """
+    def gust_shape(self, x, y, z, time=0):        
+        d = np.dot(np.array([x, y, z]), self.u_inf_direction)
+        if d > 0.0:
+            return np.zeros((3,))
+        else:
+            super.gust_shape(x, y, z)
 
 @gust
 class span_sine(BaseGust):
