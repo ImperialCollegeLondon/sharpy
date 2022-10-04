@@ -79,6 +79,10 @@ class PolarCorrection(generator_interface.BaseGenerator):
     settings_types['aoa_cl0'] = 'list(float)'
     settings_default['aoa_cl0'] = []
     settings_description['aoa_cl0'] = 'Angle of attack for which zero lift is achieved specified in deg for each airfoil.'
+    
+    settings_types['write_induced_aoa'] = 'bool'
+    settings_default['write_induced_aoa'] = False
+    settings_description['write_induced_aoa'] = 'Write induced aoa of each node to txt file.'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options,
@@ -91,13 +95,15 @@ class PolarCorrection(generator_interface.BaseGenerator):
         self.structure = None
         self.rho = None
         self.vortex_radius = None
-
+        self.n_node = None
+        
     def initialise(self, in_dict, **kwargs):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.aero = kwargs.get('aero')
         self.structure = kwargs.get('structure')
+        self.n_node = self.structure.num_node
         self.rho = kwargs.get('rho')
         self.vortex_radius = kwargs.get('vortex_radius', 1e-6)
         self.list_aoa_cl0 = self.settings['aoa_cl0']
@@ -122,6 +128,8 @@ class PolarCorrection(generator_interface.BaseGenerator):
         aero_kstep = params['aero_kstep']
         structural_kstep = params['structural_kstep']
         struct_forces = params['struct_forces']
+        folder = params['output_folder'] + '/aoa_induced/'
+        ts = params['ts']
 
         aerogrid = self.aero
         structure = self.structure
@@ -129,6 +137,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
         correct_lift = self.settings['correct_lift']
         moment_from_polar = self.settings['moment_from_polar']
         
+        list_aoa_induced = []
 
         aero_dict = aerogrid.aero_dict
         if aerogrid.polars is None:
@@ -195,6 +204,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
                         computed for the section and includes 3D effects.
                         """
                         aoa = cl / 2 / np.pi + aoa_0cl 
+                        list_aoa_induced.append(aoa)
                         # Compute the coefficients associated to that angle of attack
                         cl_polar, cd, cm = polar.get_coefs(aoa)
                         
@@ -231,9 +241,34 @@ class PolarCorrection(generator_interface.BaseGenerator):
                         moment_s += moment_polar_lift
 
                     new_struct_forces[inode, 3:6] = c_bs.dot(moment_s)
+        if self.settings['write_induced_aoa']:
+            self.write_induced_aoa_of_each_node(ts, folder, list_aoa_induced)
 
         return new_struct_forces
     
+    def write_induced_aoa_of_each_node(self,ts, folder,list_aoa_induced):
+        '''
+        Writes induced aoa of each node to txt file for each timestep. 
+
+        Args:
+            ts (int): simulation timestep 
+            folder (str): output folder to which indced aoa files shall be exported
+            list_aoa_induced (list(float)): list with induced aoa of each node
+        '''
+        if ts == 0:
+            import os
+            if not os.path.exists(folder):
+                os.makedirs(folder)                    
+            self.header = 'inode, '
+            for inode in range(self.n_node):
+                self.header += str(inode) + ', '
+        np.savetxt(folder + '/aoa_induced_ts_{}.txt'.format(ts),
+                   np.transpose(np.array([list(range(self.n_node)),list_aoa_induced])),
+                   fmt='%i' + ', %10e',
+                   delimiter=',',
+                   header=self.header,
+                   comments='#')
+                   
 
     def compute_aoa_cl0_from_airfoil_data(self, aerogrid):
         """
