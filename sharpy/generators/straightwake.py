@@ -121,18 +121,11 @@ class StraightWake(generator_interface.BaseGenerator):
         self.u_inf_direction = self.in_dict['u_inf_direction']
         self.dt = self.in_dict['dt']
 
-        if self.in_dict['dx1'] == -1:
-            self.dx1 = self.u_inf*self.dt
-        else:
-            self.dx1 = self.in_dict['dx1']
-
+        self.dx1 = self.in_dict['dx1']
         self.ndx1 = self.in_dict['ndx1']
         self.r = self.in_dict['r']
+        self.dxmax = self.in_dict['dxmax']
 
-        if self.in_dict['dxmax'] == -1:
-            self.dxmax = self.dx1
-        else:
-            self.dxmax = self.in_dict['dxmax']
 
     def generate(self, params):
         # Renaming for convenience
@@ -186,6 +179,10 @@ class StraightWake(generator_interface.BaseGenerator):
         dx1_surf = self.get_surface_parameter(self.dx1, i_surf)
         ndx1_surf = self.get_surface_parameter(self.ndx1, i_surf)
         dxmax_surf = self.get_surface_parameter(self.dxmax, i_surf)
+        if dx1_surf == -1.:
+            dx1_surf = self.u_inf*self.dt
+        if dxmax_surf == -1.:
+            dxmax_surf = dx1_surf
         return r_surf, ndx1_surf, dx1_surf, dxmax_surf
 
 
