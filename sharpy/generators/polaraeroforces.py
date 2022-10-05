@@ -163,7 +163,6 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 isurf = aerogrid.struct2aero_mapping[inode][0]['i_surf']
                 if isurf not in self.settings['skip_surfaces']:
                     i_n = aerogrid.struct2aero_mapping[inode][0]['i_n']
-                    N = aerogrid.aero_dimensions[isurf, 1]
                     polar = aerogrid.polars[iairfoil]
                     cab = algebra.crv2rotation(structural_kstep.psi[ielem, inode_in_elem, :])
                     cgb = np.dot(cga, cab)
