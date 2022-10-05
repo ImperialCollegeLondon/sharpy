@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
@@ -311,18 +312,14 @@ class PolarCorrection(generator_interface.BaseGenerator):
             folder (str): output folder to which indced aoa files shall be exported
             list_aoa_induced (list(float)): list with induced aoa of each node
         '''
-        if ts == 0:
-            import os
-            if not os.path.exists(folder):
-                os.makedirs(folder)                    
-            self.header = 'inode, '
-            for inode in range(self.n_node):
-                self.header += str(inode) + ', '
+        if ts == 0 and not os.path.exists(folder):
+            os.makedirs(folder)
+            
         np.savetxt(folder + '/aoa_induced_ts_{}.txt'.format(ts),
-                   np.transpose(np.array([list(range(self.n_node)),list_aoa_induced])),
-                   fmt='%i' + ', %10e',
+                   np.transpose(np.transpose(np.array(list_aoa_induced))),
+                   fmt='%10e',
                    delimiter=',',
-                   header=self.header,
+                   header='aoa_induced',
                    comments='#')
                    
 
