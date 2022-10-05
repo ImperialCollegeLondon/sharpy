@@ -157,7 +157,6 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 iairfoil = aero_dict['airfoil_distribution'][ielem, inode_in_elem]
                 isurf = aerogrid.struct2aero_mapping[inode][0]['i_surf']
                 if isurf not in self.settings['skip_surfaces']:
-                    # print(isurf)
                     i_n = aerogrid.struct2aero_mapping[inode][0]['i_n']
                     N = aerogrid.aero_dimensions[isurf, 1]
                     polar = aerogrid.polars[iairfoil]
@@ -168,8 +167,11 @@ class PolarCorrection(generator_interface.BaseGenerator):
                         airfoil = str(aero_dict['airfoil_distribution'][ielem, inode_in_elem])
                         aoa_0cl = self.list_aoa_cl0[int(airfoil)]
 
+                    # computing surface area of panels contributing to force
                     dir_span, span, dir_chord, chord = span_chord(i_n, aero_kstep.zeta[isurf])
-
+                    area = span * chord
+                    area += self.correct_surface_area_in_case_of_shared_surfaces(inode, aerogrid.struct2aero_mapping, aero_kstep.zeta)
+               
                     # Define the relative velocity and its direction
                     urel, dir_urel = magnitude_and_direction_of_relative_velocity(structural_kstep.pos[inode, :],
                                                                                 structural_kstep.pos_dot[inode, :],
@@ -178,15 +180,13 @@ class PolarCorrection(generator_interface.BaseGenerator):
                                                                                 aero_kstep.u_ext[isurf][:, :, i_n])
 
                     # Coefficient to change from aerodynamic coefficients to forces (and viceversa)
-                    coef = 0.5 * rho * np.linalg.norm(urel) ** 2 * chord * span
-
+                    coef = 0.5 * rho * np.linalg.norm(urel) ** 2 * area
                     # Stability axes - projects forces in B onto S
                     c_bs = local_stability_axes(cgb.T.dot(dir_urel), cgb.T.dot(dir_chord))
                     forces_s = c_bs.T.dot(struct_forces[inode, :3])
                     moment_s = c_bs.T.dot(struct_forces[inode, 3:])
                     drag_force = forces_s[0]
                     lift_force = forces_s[2]
-
                     # Compute the associated lift
                     cl = np.sign(lift_force) * np.linalg.norm(lift_force) / coef
                     cd_sharpy = np.linalg.norm(drag_force) / coef
@@ -246,6 +246,33 @@ class PolarCorrection(generator_interface.BaseGenerator):
 
         return new_struct_forces
     
+
+    def correct_surface_area_in_case_of_shared_surfaces(self, inode, struct2aero_mapping, zeta_ts):
+        '''
+        Corrects the surface area if node has shared surfaces. 
+
+        For example, when the wing is split into right and left wing both surfaces share the center node.
+        Necessary for cl calculation as the force on the node is already the sum of the forces generated 
+        at the adjacent panels of each surface.
+        
+        Args:
+            inode (int): global node id
+            struct2aero_mapping (list of dicts): maps the structural (global) nodes to aero surfaces and nodes
+            zeta_ts (array): zeta of current aero timestep
+
+        Returns:
+            float: corrected surface area of other surfaces
+        '''
+        area = 0.
+        n_surfaces_shared_by_node = len(struct2aero_mapping[inode])
+        if n_surfaces_shared_by_node > 1:
+            # add area for all other surfaces connected to this node
+            for isurf in range(1,n_surfaces_shared_by_node):
+                shared_surf = struct2aero_mapping[inode][isurf]['i_surf']
+                i_n_shared_surf = struct2aero_mapping[inode][isurf]['i_n']
+                _, span_shared_surf, _, chord_shared_surf = span_chord(i_n_shared_surf, zeta_ts[shared_surf])
+                area += span_shared_surf * chord_shared_surf
+        return area
     def write_induced_aoa_of_each_node(self,ts, folder,list_aoa_induced):
         '''
         Writes induced aoa of each node to txt file for each timestep. 
