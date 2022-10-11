@@ -111,6 +111,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
         self.vortex_radius = kwargs.get('vortex_radius', 1e-6)
         self.list_aoa_cl0 = self.settings['aoa_cl0']
         self.cd_from_cl = self.settings['cd_from_cl']
+        self.folder = kwargs.get('output_folder') + '/aoa_induced/'
 
         if not self.cd_from_cl and len(self.list_aoa_cl0) == 0:
             # compute aoa for cl0 if not specified in settings
@@ -133,7 +134,6 @@ class PolarCorrection(generator_interface.BaseGenerator):
         aero_kstep = params['aero_kstep']
         structural_kstep = params['structural_kstep']
         struct_forces = params['struct_forces']
-        folder = params['output_folder'] + '/aoa_induced/'
         ts = params['ts']
 
         aerogrid = self.aero
@@ -247,7 +247,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
                     new_struct_forces[inode, 3:6] = c_bs.dot(moment_s)
 
         if self.settings['write_induced_aoa']:
-            self.write_induced_aoa_of_each_node(ts, folder, list_aoa_induced)
+            self.write_induced_aoa_of_each_node(ts, list_aoa_induced)
 
         return new_struct_forces
     
@@ -302,19 +302,18 @@ class PolarCorrection(generator_interface.BaseGenerator):
       
 
 
-    def write_induced_aoa_of_each_node(self,ts, folder,list_aoa_induced):
+    def write_induced_aoa_of_each_node(self,ts, list_aoa_induced):
         '''
         Writes induced aoa of each node to txt file for each timestep. 
 
         Args:
             ts (int): simulation timestep 
-            folder (str): output folder to which indced aoa files shall be exported
             list_aoa_induced (list(float)): list with induced aoa of each node
         '''
-        if ts == 0 and not os.path.exists(folder):
-            os.makedirs(folder)
+        if ts == 0 and not os.path.exists(self.folder):
+            os.makedirs(self.folder)
             
-        np.savetxt(folder + '/aoa_induced_ts_{}.txt'.format(ts),
+        np.savetxt(self.folder + '/aoa_induced_ts_{}.txt'.format(ts),
                    np.transpose(np.transpose(np.array(list_aoa_induced))),
                    fmt='%10e',
                    delimiter=',',

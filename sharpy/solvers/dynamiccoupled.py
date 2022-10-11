@@ -321,7 +321,8 @@ class DynamicCoupled(BaseSolver):
                                                      aero=self.data.aero,
                                                      structure=self.data.structure,
                                                      rho=self.settings['aero_solver_settings']['rho'],
-                                                     vortex_radius=self.settings['aero_solver_settings']['vortex_radius'])
+                                                     vortex_radius=self.settings['aero_solver_settings']['vortex_radius'],
+                                                     output_folder = self.data.output_folder)
 
         # check for empty dictionary
         if self.settings['network_settings']:
@@ -777,7 +778,8 @@ class DynamicCoupled(BaseSolver):
             struct_forces = \
                 self.correct_forces_generator.generate(aero_kstep=aero_kstep,
                                                        structural_kstep=structural_kstep,
-                                                       struct_forces=struct_forces)
+                                                       struct_forces=struct_forces,
+                                                       ts=self.data.ts)
 
         aero_kstep.aero_steady_forces_beam_dof = struct_forces
         structural_kstep.postproc_node['aero_steady_forces'] = struct_forces
