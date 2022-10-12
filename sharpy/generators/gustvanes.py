@@ -43,6 +43,10 @@ class GustVanes(generator_interface.BaseGenerator):
     settings_types['symmetry_condition'] = 'bool'
     settings_default['symmetry_condition'] = False
     settings_description['symmetry_condition'] = 'If ``True``, symmetry is enforced at global x-z-plane at y = 0'
+        
+    settings_types['vertical'] = 'bool'
+    settings_default['vertical'] = False
+    settings_description['vertical'] = 'If ``True``, gust vanes are oriented vertically.'
 
 
     def __init__(self):
@@ -124,6 +128,9 @@ class GustVanes(generator_interface.BaseGenerator):
         for ivane in range(self.n_vanes):
             for inode in range(self.vane_info[ivane]['N']+1):
                 self.vane_info[ivane]['beam_coord'][1] = self.y_coord[ivane][inode]
+                if self.settings['vertical']:
+                    self.vane_info[ivane]['beam_coord'][1:] = np.flip(self.vane_info[ivane]['beam_coord'][1:])
+       
                 (aero_tstep.zeta[aero_tstep.n_surf - self.n_vanes + ivane][:, :, inode],
                         aero_tstep.zeta_dot[aero_tstep.n_surf - self.n_vanes + ivane][:, :, inode]) = (
                             generate_strip(self.vane_info[ivane],
