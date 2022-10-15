@@ -101,10 +101,13 @@ class one_minus_cos(BaseGust):
         gust_intensity = self.settings['gust_intensity']
 
         vel = np.zeros((3,))
+        vel[0] = np.cos(0.0698)*self.u_inf
+        vel[2] = np.sin(0.0698)*self.u_inf
+
         if x > 0.0 or x < -gust_length:
             return vel
 
-        vel[2] = (1.0 - np.cos(2.0 * np.pi * x / gust_length)) * gust_intensity * 0.5
+        vel[2] = np.sin(0.0698)*self.u_inf + (1.0 - np.cos(2.0 * np.pi * x / gust_length)) * gust_intensity * 0.5
         return vel
 
 

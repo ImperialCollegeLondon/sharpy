@@ -139,8 +139,8 @@ def generate_solver_file():
     config.filename = file_name
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        'flow': ['BeamLoader', 'NonLinearStatic', 'WriteVariablesTime'],
-                        'write_screen': 'off',
+                        'flow': ['BeamLoader', 'NonLinearStatic', 'WriteVariablesTime', 'BeamPlot'],
+                        'write_screen': 'on',
                         'write_log': 'on',
                         'log_folder': route + '/output/',
                         'log_file': case_name + '.log'}

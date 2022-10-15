@@ -172,7 +172,7 @@ class FlyingWing():
         # uniform mass/stiffness
 
         ea, ga = 1e7, 1e7
-        gj, eiy, eiz = 1e6, 2e5, 5e6
+        gj, eiy, eiz = 3e5, 6e5, 1.5e8
         base_stiffness = np.diag([ea, ga, ga, gj, eiy, eiz])
 
         self.stiffness = np.zeros((1, 6, 6))
@@ -184,15 +184,16 @@ class FlyingWing():
         self.elem_stiffness = np.zeros((self.num_elem_tot,), dtype=int)
         self.elem_mass = np.zeros((self.num_elem_tot,), dtype=int)
 
-        n_lumped_mass = 1
+        n_lumped_mass = 0
         self.lumped_mass = np.zeros((n_lumped_mass))
         self.lumped_mass_position = np.zeros((n_lumped_mass, 3))
         self.lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
         self.lumped_mass_nodes = np.zeros((n_lumped_mass), dtype=int)
 
-        self.lumped_mass[0] = 5.
+        self.lumped_mass[0] = 0
         self.lumped_mass_position[0] = np.array([0, 0.25, 0])
 
+ 
     def load_polar(self, file):
         """
         Read polar from Airfoil Tools polar txt file
@@ -799,10 +800,10 @@ class Smith(FlyingWing):
                  Mstar_fact,
                  u_inf,  # flight cond
                  alpha,
-                 rho=0.08891,
-                 b_ref=32.,  # geometry
+                 rho=0.1,
+                 b_ref=16.,  # geometry
                  main_chord=1.,
-                 aspect_ratio=32,
+                 aspect_ratio=16,
                  roll=0.,
                  beta=0.,
                  sweep=0.,
@@ -831,15 +832,15 @@ class Smith(FlyingWing):
         '''This method can be substituted to produce different wing configs'''
         # uniform mass/stiffness
 
-        ea, ga = 1e5, 1e5
-        gj, eiy, eiz = 1e4, 2e4, 5e6
+        ea, ga = 1e7, 1e6
+        gj, eiy, eiz = 3e5, 6e5, 1.5e8
         base_stiffness = np.diag([ea, ga, ga, gj, eiy, eiz])
 
         self.stiffness = np.zeros((1, 6, 6))
         self.stiffness[0] = self.sigma * base_stiffness
 
         self.mass = np.zeros((1, 6, 6))
-        self.mass[0, :, :] = np.diag([0.75, 0.75, 0.75, .1, .1, .1])
+        self.mass[0, :, :] = np.diag([0.75, 0.75, 0.75, .05, .05, .05])
 
         self.elem_stiffness = np.zeros((self.num_elem_tot,), dtype=int)
         self.elem_mass = np.zeros((self.num_elem_tot,), dtype=int)
