@@ -538,7 +538,7 @@ class FlyingWing():
         config['DynamicCoupled'] = {'print_info': 'on',
                                     'structural_substeps': 0,
                                     'dynamic_relaxation': 'on',
-                                    'clean_up_previous_solution': 'on',
+                                    'cleanup_previous_solution': 'on',
                                     'structural_solver': 'NonLinearDynamicPrescribedStep',
                                     'structural_solver_settings': settings['NonLinearDynamicPrescribedStep'],
                                     'aero_solver': 'StepUvlm',
