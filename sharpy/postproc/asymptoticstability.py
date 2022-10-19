@@ -1,5 +1,5 @@
 import os
-import warnings as warn
+import warnings
 import numpy as np
 import scipy.linalg as sclalg
 import sharpy.utils.settings as settings
@@ -19,6 +19,8 @@ class AsymptoticStability(BaseSolver):
     Calculates the asymptotic stability properties of the linearised system by computing
     the corresponding eigenvalues and eigenvectors.
 
+    The output of this solver is written to the ``stability`` directory in the case output.
+
     The stability of the systems specified in ``target_systems`` is performed. If the system has been previously
     scaled, a ``reference_velocity`` should be provided to compute the stability at such point.
 
@@ -27,6 +29,13 @@ class AsymptoticStability(BaseSolver):
 
     Results can be saved to file using ``export_eigenvalues``. The setting ``display_root_locus`` shows a simple
     Argand diagram where the continuous time eigenvalues are displayed.
+
+    The eigenvectors can be displayed (in .vtu format for use in Paraview) with the ``modes_to_plot`` setting, whereby
+    the user specifies the mode indices that are to be plotted (sorted with in the same way as the eigenvalue table,
+    i.e. by decreasing real part). A snapshot of the eigenvector is produced for the 0, 45, 90 and 135 degree phases.
+    This feature currently supports the flexible structural modes and does not show the rigid body contribution.
+    The output is written to the ``stability/modes`` folder and includes the structure at the
+    reference linearisation state.
     """
     solver_id = 'AsymptoticStability'
     solver_classification = 'post-processor'
@@ -77,7 +86,8 @@ class AsymptoticStability(BaseSolver):
 
     settings_types['modes_to_plot'] = 'list(int)'
     settings_default['modes_to_plot'] = []
-    settings_description['modes_to_plot'] = 'List of mode numbers to simulate and plot'
+    settings_description['modes_to_plot'] = 'List of mode numbers to plot. Plots the 0, 45, 90 and 135' \
+                                            'degree phases.'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
@@ -225,9 +235,8 @@ class AsymptoticStability(BaseSolver):
                 self.velocity_analysis()
 
             # Under development
-            if len(self.settings['modes_to_plot']) != 0:
-                warn.warn('Plotting modes is under development')
-                self.plot_modes()
+            if len(self.settings['modes_to_plot']) != 0 and system_name == 'aeroelastic':
+                self.plot_modes(eigenvectors)
 
         return eigenvalues, eigenvectors
 
@@ -411,18 +420,21 @@ class AsymptoticStability(BaseSolver):
 
         return fig, ax
 
-    def plot_modes(self):
-        """
-        Warnings:
-            Under development
-
+    def plot_modes(self, eigenvectors):
+        r"""
         Plot the aeroelastic mode shapes for the first ``n_modes_to_plot``
+
+        Plots the 0, 45, 90 and 135 degrees phase of the mode. Also plots the reference at the linearisation state.
+
+        .. math:: x_{out} = Re(\Phi_i e^{i\theta})
+
+        for :math:`\theta \in \{0, \pi/4, \pi/2, 3\pi/4}`.
 
         """
         try:
             import matplotlib.pyplot as plt
         except ModuleNotFoundError:
-            cout.cout_wrap('Could not plot in asymptoticstability beacuse there is no Matplotlib', 4)
+            cout.cout_wrap('Could not plot in asymptoticstability because there is no Matplotlib', 4)
             return
 
         mode_shape_list = self.settings['modes_to_plot']
@@ -439,79 +451,39 @@ class AsymptoticStability(BaseSolver):
             structural_states = beam.ss.states
             structural_modal_coords = beam.sys.modal
 
-            v = self.eigenvectors[-structural_states:-structural_states//2, mode]
-            v_dot = self.eigenvectors[-structural_states//2:, mode]
+            for phase in [0, 1, 2, 3]:
+                v = eigenvectors[-structural_states:-structural_states//2, mode]
+                v_dot = eigenvectors[-structural_states//2:, mode]
 
-            if beam.sys.clamped:
-                num_dof_rig = 1 # to get the full vector (if 0 line356 returns empty array)
-            else:
-                num_dof_rig = beam.sys.num_dof_rig
+                if beam.sys.clamped:
+                    num_dof_rig = 1  # to get the full vector (if 0 line356 returns empty array)
+                else:
+                    warnings.warn('The rigid body motion contribution to the mode will not be shown, '
+                                  'just the flexible contributions.')
+                    num_dof_rig = beam.sys.num_dof_rig
 
-            if structural_modal_coords:
-                # project aeroelastic mode back to modal coordinates
-                phi = beam.sys.U
-                eta = phi.dot(v).real
-                eta_dot = phi.dot(v_dot)[:-num_dof_rig].real
-            else:
-                eta = v[:-num_dof_rig].real
-                eta_dot = v_dot[:-num_dof_rig].real
+                if structural_modal_coords:
+                    # project aeroelastic mode back to modal coordinates
+                    phi = beam.sys.U
+                    eta = phi.dot(v)
+                    eta_dot = phi.dot(v_dot)[:-num_dof_rig]
+                else:
+                    eta = v[:-num_dof_rig]
+                    eta_dot = v_dot[:-num_dof_rig]
 
-            amplitude_factor = modalutils.scale_mode(self.data,
-                                                     eta,
-                                                     rot_max_deg=10, perc_max=0.15)
-            eta *= amplitude_factor
-            zeta_mode = modalutils.get_mode_zeta(self.data, eta)
-            modalutils.write_zeta_vtk(zeta_mode, self.data.linear.tsaero0.zeta, filename_root=route + 'mode_{:06g}'.format(mode))
+                eta_phase = np.real(np.exp(1j * phase * np.pi / 4) * eta)
+                amplitude_factor = modalutils.scale_mode(self.data,
+                                                         eta_phase,
+                                                         rot_max_deg=10, perc_max=0.15)
+                eta_phase *= amplitude_factor
+                zeta_mode = modalutils.get_mode_zeta(self.data, eta_phase)
+                modalutils.write_zeta_vtk(zeta_mode, self.data.linear.tsaero0.zeta,
+                                          filename_root=route + f'mode_{mode:06g}_phase{phase:04g}')
 
         # Reference - linearisation state
         eta *= 0
-        zeta_mode = modalutils.get_mode_zeta(self.data, eta)
+        zeta_mode = modalutils.get_mode_zeta(self.data, eta.real)
         modalutils.write_zeta_vtk(zeta_mode, self.data.linear.tsaero0.zeta, filename_root=route + 'mode_ref')
-
-    def mode_time_domain(self, fact, fact_rbm, mode_num, cycles=2):
-        """
-        Returns a single, scaled mode shape in time domain.
-
-        Args:
-            fact: Structural deformation scaling
-            fact_rbm: Rigid body motion scaling
-            mode_num: Number of mode to plot
-            cycles: Number of periods/cycles to plot
-
-        Returns:
-            tuple: Time domain array and scaled eigenvector in time.
-        """
-
-        # Time domain representation of the mode
-        eigenvalue = self.eigenvalues[mode_num]
-        natural_freq = np.abs(eigenvalue)
-        damping = eigenvalue.real / natural_freq
-        period = 2 * np.pi / natural_freq
-        dt = period / 100
-        t_dom = np.linspace(0, 2 * period, int(np.ceil(2 * cycles * period / dt)))
-        t_dom.shape = (1, len(t_dom))
-        eigenvector = self.eigenvectors[:, mode_num]
-        eigenvector.shape = (len(eigenvector), 1)
-
-        # eigenvector[-10:] *= fact_rbm
-        # eigenvector[-self.data.linear.linear_system.beam.ss.states // 2 - 10: -self.data.linear.linear_system.beam.ss.states] *= fact_rbm
-
-        # State simulation
-        # x_sim = np.real(fact_rbm * eigenvector.dot(np.exp(1j*eigenvalue*t_dom)))
-        x_sim = fact_rbm * eigenvector.real.dot(np.cos(natural_freq * t_dom) * np.exp(damping * t_dom))
-
-        return t_dom, x_sim
-
-    def reconstruct_mode(self, eig):
-        uvlm = self.data.linear.linear_system.uvlm
-        # beam = self.data.linear.lsys[sys_id].lsys['LinearBeam']
-
-        # for eig in range(10):
-        x_aero = self.eigenvectors[:uvlm.ss.states, eig]
-        forces, gamma, gamma_dot, gamma_star = uvlm.unpack_ss_vector(self.data, x_aero, self.data.linear.tsaero0)
-
-        x_struct = self.eigenvectors[uvlm.ss.states:, eig]
-        return gamma, gamma_dot, gamma_star, x_struct
 
     @staticmethod
     def sort_eigenvalues(eigenvalues, eigenvectors, frequency_cutoff=0, number_of_eigenvalues=None):
@@ -549,28 +521,3 @@ class AsymptoticStability(BaseSolver):
             else:
                 order = order[:number_of_eigenvalues]
         return eigenvalues_truncated[order], eigenvectors_truncated[:, order]
-
-    @staticmethod
-    def scale_rigid_body_mode(eigenvector, freq_d):
-        rigid_body_mode = eigenvector[-10:]
-
-        max_angle = 10 * np.pi / 180
-
-        v = rigid_body_mode[0:3].real
-        omega = rigid_body_mode[3:6].real
-        dquat = rigid_body_mode[-4:]
-        euler = algebra.quat2euler(dquat)
-        max_euler = np.max(np.abs(euler))
-
-        if max_euler >= max_angle:
-            fact = max_euler / max_angle
-        else:
-            fact = 1
-
-        if np.abs(freq_d) < 1e-3:
-            fact = 1 / np.max(np.abs(v))
-        else:
-            max_omega = max_angle * freq_d
-            fact = np.max(np.abs(omega)) / max_omega
-
-        return fact
