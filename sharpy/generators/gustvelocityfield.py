@@ -241,7 +241,6 @@ class time_varying_global(BaseGust):
 
     def __init__(self):
         super().__init__()
-
         self.file_info = None
         self.list_interpolated_velocity_field_functions = []
 
@@ -250,15 +249,17 @@ class time_varying_global(BaseGust):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.file_info = np.loadtxt(self.settings['file'])
-
+        self.initialise_inteprolation_functions()
+    
+    def initialise_inteprolation_functions(self):
         for idim in self.settings['gust_component']:
-            self.list_interpolated_velocity_field_functions.append(interp1d(self.file_info[:, 0], self.file_info[:, idim+1]))
+            self.list_interpolated_velocity_field_functions.append(interp1d(self.file_info[:, 0], self.file_info[:, idim+1], 
+                                                                            bounds_error=False,fill_value="extrapolate"))
 
     def gust_shape(self, x, y, z, time=0):
         vel = np.zeros((3,))
-
-        for idim in self.settings['gust_component']:
-            vel[idim] = self.list_interpolated_velocity_field_functions[idim](time)
+        for counter, idim in enumerate(self.settings['gust_component']):
+            vel[idim] = self.list_interpolated_velocity_field_functions[counter](time)
         return vel
 
 
@@ -271,13 +272,21 @@ class time_varying(time_varying_global):
 
     This gust can be used by using the setting ``gust_shape = 'time varying'`` in :class:.`GustVelocityField`.
     """
-    def gust_shape(self, x, y, z, time=0):        
-        d = np.dot(np.array([x, y, z]), self.u_inf_direction)
-        if d > 0.0:
-            return np.zeros((3,))
-        else:
-            super.gust_shape(x, y, z)
+    gust_id = 'time varying'
+    
+    def initialise_inteprolation_functions(self):
+        for idim in self.settings['gust_component']:
+            self.list_interpolated_velocity_field_functions.append(interp1d(-self.file_info[::-1, 0] * self.u_inf, self.file_info[::-1, idim+1], 
+                                                                            bounds_error=False,fill_value="extrapolate"))
 
+    def gust_shape(self, x, y, z, time=0):
+        vel = np.zeros((3,))
+        d = np.dot(np.array([x, y, z]), self.u_inf_direction)
+        if d <= 0.0:       
+            for counter, idim in enumerate(self.settings['gust_component']):
+                vel[idim] = self.list_interpolated_velocity_field_functions[counter](d)
+        return vel
+       
 @gust
 class span_sine(BaseGust):
     r"""
