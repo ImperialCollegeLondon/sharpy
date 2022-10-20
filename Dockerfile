@@ -39,6 +39,8 @@ RUN cd sharpy_dir && \
     CXX=g++ FC=gfortran cmake .. && make install -j 2 && \
     cd .. && \
     rm -rf build
+    
+RUN pip install . -e
 
 ENTRYPOINT ["/bin/bash", "--init-file", "/root/bashrc"]
 
