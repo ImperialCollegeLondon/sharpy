@@ -268,7 +268,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
         Returns:
             float: corrected surface area of other surfaces
         '''
-        if self.flag_shared_node_by_surfaces:
+        if self.flag_shared_node_by_surfaces[inode]:
             n_surfaces_shared_by_node = len(struct2aero_mapping[inode])
             # add area for all other surfaces connected to this node
             for isurf in range(1,n_surfaces_shared_by_node):
@@ -276,7 +276,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 i_n_shared_surf = struct2aero_mapping[inode][isurf]['i_n']
                 _, span_shared_surf, _, chord_shared_surf = span_chord(i_n_shared_surf, zeta_ts[shared_surf])
                 area += span_shared_surf * chord_shared_surf
-        elif self.flag_wingtip_node:
+        elif self.flag_wingtip_node[inode]:
             area *= 2.
         return area
         
@@ -296,9 +296,9 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 N = aerogrid.aero_dimensions[isurf, 1]
                 if i_n in [0, N]:
                     if len(aerogrid.struct2aero_mapping[inode]) > 1:
-                        self.flag_shared_node_by_surfaces = 1
+                        self.flag_shared_node_by_surfaces[inode] = 1
                     else:
-                        self.flag_wingtip_node = 1
+                        self.flag_wingtip_node[inode] = 1
       
 
 
