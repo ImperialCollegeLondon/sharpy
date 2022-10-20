@@ -98,7 +98,6 @@ class PolarCorrection(generator_interface.BaseGenerator):
         self.vortex_radius = None
         self.n_node = None
         self.flag_node_shared_by_multiple_surfaces = None
-        self.flag_wingtip_node = None
 
     def initialise(self, in_dict, **kwargs):
         self.settings = in_dict
@@ -254,11 +253,11 @@ class PolarCorrection(generator_interface.BaseGenerator):
 
     def correct_surface_area(self, inode, struct2aero_mapping, zeta_ts, area):
         '''
-        Corrects the surface area if the structural node is shared  by multiple surfaces or is a wingtip. 
+        Corrects the surface area if the structural node is shared  by multiple surfaces. 
 
         For example, when the wing is split into right and left wing both surfaces share the center node.
         Necessary for cl calculation as the force on the node is already the sum of the forces generated 
-        at the adjacent panels of each surface. For wingtips the span has to be simply doubled.
+        at the adjacent panels of each surface.
         
         Args:
             inode (int): global node id
@@ -276,19 +275,17 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 i_n_shared_surf = struct2aero_mapping[inode][isurf]['i_n']
                 _, span_shared_surf, _, chord_shared_surf = span_chord(i_n_shared_surf, zeta_ts[shared_surf])
                 area += span_shared_surf * chord_shared_surf
-        elif self.flag_wingtip_node[inode]:
-            area *= 2.
         return area
         
     def check_for_special_cases(self, aerogrid):
         '''
-        Checks if the outboard node is shared by multiple surfaces or single wingtip panel. 
+        Checks if the outboard node is shared by multiple surfaces. 
 
         Args:
             aerogrid :class:`~sharpy.aero.models.AerogridLoader
         '''
         # check if outboard node of aerosurface
-        self.flag_shared_node_by_surfaces, self.flag_wingtip_node = np.zeros((self.n_node,1)), np.zeros((self.n_node,1))
+        self.flag_shared_node_by_surfaces = np.zeros((self.n_node,1))
         for inode in range(self.n_node):
             if aerogrid.aero_dict['aero_node'][inode]:
                 i_n = aerogrid.struct2aero_mapping[inode][0]['i_n']                
@@ -297,8 +294,6 @@ class PolarCorrection(generator_interface.BaseGenerator):
                 if i_n in [0, N]:
                     if len(aerogrid.struct2aero_mapping[inode]) > 1:
                         self.flag_shared_node_by_surfaces[inode] = 1
-                    else:
-                        self.flag_wingtip_node[inode] = 1
       
 
 
