@@ -41,6 +41,7 @@ RUN ln -s /sharpy_dir/utils/docker/* /root/
 
 RUN cd sharpy_dir && \
     conda activate sharpy_minimal && \
+    git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
     CXX=g++ FC=gfortran cmake .. && make install -j 2 && \
