@@ -5,6 +5,13 @@ ENV BASH_ENV ~/.bashrc
 SHELL ["/bin/bash", "-c"]
 ENV PATH=${PATH}:/miniconda3/bin
 
+# CENTOS 8 has reached end of life - Not yet an updated Docker base for CentOS stream
+# Point to the CentOS 8 vault in order to download dependencies
+RUN cd /etc/yum.repos.d/ && \
+    sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
+    sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && \
+    cd /
+
 # Development tools including compilers
 RUN yum groupinstall "Development Tools" -y --nogpgcheck && \
     yum install -y --nogpgcheck mesa-libGL libXt libXt-devel wget gcc-gfortran lapack vim tmux && \
@@ -38,9 +45,8 @@ RUN cd sharpy_dir && \
     cd build && \
     CXX=g++ FC=gfortran cmake .. && make install -j 2 && \
     cd .. && \
+    pip install . && \
     rm -rf build
     
-RUN pip install . -e
-
 ENTRYPOINT ["/bin/bash", "--init-file", "/root/bashrc"]
 
