@@ -5,7 +5,7 @@ Here we present a list of past papers which have used SHARPy for research purpos
 
 ## 2022
 
-* Goizueta, N. (2022). Parametric reduced-order aeroelastic modelling for analysis, dynamic system interpolation and control of flexible aircraft. PhD Thesis. [http://hdl.handle.net/10044/1/100137](http://hdl.handle.net/10044/1/100137)
+* Goizueta, N. (2022). Parametric reduced-order aeroelastic modelling for analysis, dynamic system interpolation and control of flexible aircraft. PhD Thesis. [http://doi.org/10.25560/100137](http://doi.org/10.25560/100137)
 
 * Goizueta, N., Wynn, A., & Palacios, R. (2022). Adaptive sampling for interpolation of reduced-order aeroelastic dynamical systems. AIAA Journal. Article in Advance. [https://doi.org/10.2514/1.J062050](https://doi.org/10.2514/1.J062050)
 
