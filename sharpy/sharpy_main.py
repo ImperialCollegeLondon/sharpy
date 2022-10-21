@@ -5,6 +5,7 @@ import warnings
 import sys
 import dill as pickle
 import sharpy.utils.cout_utils as cout
+from .version import __version__
 
 
 def main(args=None, sharpy_input_dict=None):
