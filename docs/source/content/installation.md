@@ -100,7 +100,7 @@ you would like to install a develop build or modify the compilation settings of 
     cd sharpy
     ```
 
-1. Ensure that the SHARPy environment is active in the session. Your terminal prompt line should begin with
+2. Ensure that the SHARPy environment is active in the session. Your terminal prompt line should begin with
     ```bash
     (sharpy_env) [usr@host] $
     ```
@@ -110,28 +110,33 @@ you would like to install a develop build or modify the compilation settings of 
     conda activate sharpy_env
     ```
 
-1. Create a directory `build` that will be used during CMake's building process and `cd` into it:
+3. Create a directory `build` that will be used during CMake's building process and `cd` into it:
     ```bash
     mkdir build
     cd build
     ```
 
-2. Prepare UVLM and xbeam for compilation using `gfortran` and `g++` in their release builds running. If you'd like to
+4. Prepare UVLM and xbeam for compilation using `gfortran` and `g++` in their release builds running. If you'd like to
 change compilers see the Custom Installation.
     ```bash
     cmake ..
     ```
 
-3. Compile the libraries
+5. Compile the libraries
     ```bash
     make install -j 4
     ```
     where the number after the `-j` flag will specify how many cores to use during installation.
 
-4. Finally, leave the build directory and install SHARPy
+6. Finally, leave the build directory and install SHARPy
     ```bash
     cd ..
     pip install .
+    ```
+
+7. You can check the version of SHARPy you are running with
+    ```bash
+    sharpy --version
     ```
 
 __You are ready to run SHARPy__. Continue reading the [Running SHARPy](#running-sharpy) section.
@@ -250,6 +255,11 @@ Copyright Imperial College London. Released under BSD 3-Clause license.
 SHARPy>
 ```
 You are now good to go.
+
+You can check the version of SHARPy you are running with
+```
+sharpy --version
+```
 
 It is important to note that a docker container runs as an independent
 operating system with no access to your hard drive. If you want to copy your own
