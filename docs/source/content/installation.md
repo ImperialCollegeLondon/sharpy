@@ -1,5 +1,5 @@
 # SHARPy v2.0 Installation Guide
-__Last revision 1 July 2022__
+__Last revision 21 October 2022__
 
 The following step by step tutorial will guide you through the installation process of SHARPy. This is the updated process valid from v2.0.
 
@@ -221,16 +221,25 @@ If this works, you're good to go!
 
 First, obtain the SHARPy docker container:
 ```
-docker pull fonsocarre/sharpy:stable
+docker pull ghcr.io/imperialcollegelondon/sharpy:master
+```
+You can obtain other versions as well, check those available in the [containers](https://github.com/ImperialCollegeLondon/sharpy/pkgs/container/sharpy) page.
+
+This will donwload a Docker image of SHARPy to your machine, from where you can create and run Docker containers. To create and run a container from the downloaded image use:
+
+```
+docker run --name sharpy -it -p 8080:8080 ghcr.io/imperialcollegelondon/sharpy:master
 ```
 
-Now you can run it:
+A few details about the above command, although if in doubt please check the Docker documentation. The `--name` argument gives a name to the container. Note you can create multiple containers from a single image. 
+
+The `-it` is an important command as it runs the container in interactive mode with a terminal attached. Thus you can use it an navigate it. Otherwise the container will finish as soon as it is created. 
+
+The `-p 8080:8080` argument connects the container to your machine through port `8080` (it could be any other) which may be useful for some applications. For instance, running SHARPy as hardware-in-the-loop through UDP.
+
+Once you run it, you should see a welcome dialog such as:
 ```
-docker run --name sharpy -it fonsocarre/sharpy:stable
-```
-You should see a welcome dialog such as:
-```
->>>> docker run -it fonsocarre/sharpy:stable
+>>>> docker run --name sharpy -it -p 8080:8080 ghcr.io/imperialcollegelondon/sharpy:master
 SHARPy added to PATH from the directory: /sharpy_dir/bin
 =======================================================================
 Welcome to the Docker image of SHARPy
@@ -256,11 +265,6 @@ You can run the test suite once inside the container as:
 cd sharpy_dir
 python -m unittest
 ```
-
-We make available two different releases: `stable` and `experimental`. The former is the latest SHARPy
-release. The latter is our latest development work which will include new features but with higher chances
-of encountering some bugs along the way. To obtain the experimental build, follow the instructions
-above replacing the `stable` tag for `experimental`.
 
 **Enjoy!**
 
