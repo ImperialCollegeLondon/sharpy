@@ -54,7 +54,7 @@ jobs:
           source activate sharpy_minimal
           git submodule init
           git submodule update
-          git fetch -t
+          git fetch --tags -f
           mkdir build && cd build
           cmake .. && make install -j 4 && cd ..
           pip install .
