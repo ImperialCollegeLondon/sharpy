@@ -17,7 +17,5 @@ jobs:
     runs-on: ubuntu-latest
     name: Test Docker image build
     steps:
-      - run:
-          - runs: 
-              using: 'docker'
-              image: 'Dockerfile'
+      - name: Build image
+        run: docker image build . --file Dockerfile
