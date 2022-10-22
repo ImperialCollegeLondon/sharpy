@@ -5,7 +5,7 @@ on:
     paths:
       - '*.py'
       - 'lib/*'
-      - '.github/workflows/*'
+      - '.github/workflows/sharpy*'
   pull_request:
     branches:
       - master

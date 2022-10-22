@@ -1,0 +1,19 @@
+name: Test build Docker image
+
+on:
+  pull_request:
+    branches:
+      - master
+      - develop
+      - 'rc*'
+  push:
+    paths:
+      - 'utils/*'
+      - 'Dockerfile'
+      - '.github/workflows/docker*'
+
+jobs:
+  test_image_build:
+    runs: 
+      using: 'docker'
+      image: 'Dockerfile'
