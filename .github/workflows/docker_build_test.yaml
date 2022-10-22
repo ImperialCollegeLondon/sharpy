@@ -18,4 +18,4 @@ jobs:
     name: Test Docker image build
     steps:
       - name: Build image
-        run: docker image build . --file Dockerfile
+        run: docker build .
