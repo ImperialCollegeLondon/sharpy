@@ -118,6 +118,7 @@ is:
 
 Master
 ![Build Status](https://github.com/ImperialCollegeLondon/sharpy/actions/workflows/sharpy_tests.yaml/badge.svg)
+![Docker Status](https://github.com/ImperialCollegeLondon/sharpy/actions/workflows/docker_build.yaml/badge.svg)
 
 Develop
 ![Build Status](https://github.com/ImperialCollegeLondon/sharpy/actions/workflows/sharpy_tests.yaml/badge.svg?branch=develop)
