@@ -5,7 +5,7 @@ import os
 this_directory = os.path.abspath(os.path.dirname(__file__))
 __version__ = re.findall(
     r"""__version__ = ["']+([0-9\.]*)["']+""",
-    open(os.path.join(this_directory, "sharpy/__init__.py").read(),
+    open(os.path.join(this_directory, "sharpy/version.py").read(),
 )[0]
 
 with open(os.path.join(this_directory, "README.md"), encoding="utf-8") as f:
