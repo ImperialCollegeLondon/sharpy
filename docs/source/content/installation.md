@@ -65,7 +65,7 @@ SHARPy uses the Anaconda package manager to provide the necessary Python package
 These are specified in an Anaconda environment that shall be activated prior to compiling the xbeam and UVLM libraries
 or running any SHARPy cases.
 
-1. If you do not have it, install the [Anaconda](https://conda.io/docs/) Python 3 distribution
+1. If you still do not have it in your system, install the [Anaconda](https://conda.io/docs/) Python 3 distribution
 
 2. Make sure your Python version is at least 3.7:
     ```bash
