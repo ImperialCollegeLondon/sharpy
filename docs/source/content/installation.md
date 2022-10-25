@@ -33,7 +33,7 @@ input file format.
 
 __GitHub Repository__
 
-+ [SHARPy](http://github.com/imperialcollegelondon/sharpy)
++ [SHARPy](https://github.com/imperialcollegelondon/sharpy/tree/master)
 
 SHARPy can be installed from the source code available on GitHub or you can get it packed in a Docker container.
 If what you want is to give it a go and run some static or simple dynamic cases (and are familiar with Docker),
