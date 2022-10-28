@@ -138,8 +138,7 @@ class Aerogrid(Grid):
         super().calculate_dimensions()
 
         self.dimensions_star = self.dimensions.copy()
-        for i_surf in range(self.n_surf):
-            self.dimensions_star[i_surf, 0] = self.aero_settings['mstar']
+        self.dimensions_star[:, 0] = self.aero_settings['mstar']
 
     def generate_zeta_timestep_info(self, structure_tstep, aero_tstep, beam, settings, it=None, dt=None):
         if it is None:

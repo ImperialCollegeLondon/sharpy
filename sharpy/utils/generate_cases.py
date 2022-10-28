@@ -251,7 +251,7 @@ def get_ielem_inode(connectivities, inode):
 
 def get_aoacl0_from_camber(x, y):
     """
-    This section provies the angle of attach of zero lift for a thin
+    This section provies the angle of attack of zero lift for a thin
     airfoil which camber line is defined by 'x' and 'y' coordinates
 
     Check Theory of wing sections. Abbott. pg 69

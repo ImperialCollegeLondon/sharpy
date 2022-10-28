@@ -54,7 +54,7 @@ class StaticTrim(BaseSolver):
     settings_default['m_tolerance'] = 0.01
     settings_description['m_tolerance'] = 'Tolerance in pitching moment'
 
-    settings_types['tail_cs_index'] = 'int'
+    settings_types['tail_cs_index'] = ['int', 'list(int)']
     settings_default['tail_cs_index'] = 0
     settings_description['tail_cs_index'] = 'Index of control surfaces that move to achieve trim'
 

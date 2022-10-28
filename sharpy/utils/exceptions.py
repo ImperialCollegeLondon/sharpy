@@ -70,6 +70,17 @@ class NotValidSetting(DefaultValueBaseException):
         message = 'The setting %s with entry %s is not one of the valid options: %s' % (setting, variable, options)
         super().__init__(variable, value, message=message)
         self.output_message(message, color_id = 4)
+        
+    
+class NotValidSettingType(DefaultValueBaseException):
+    """
+    Raised when a user gives a setting with an invalid type
+    """
+
+    def __init__(self, setting, variable,  data_types, value=None, message=''):
+        message = 'The setting %s with entry %s is not one of the valid types: %s' % (setting, variable, data_types)
+        super().__init__(variable, value, message=message)
+        self.output_message(message, color_id = 4)
 
 
 class SolverNotFound(Exception):

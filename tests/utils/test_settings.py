@@ -4,6 +4,8 @@ import sharpy.utils.cout_utils as cout
 from copy import deepcopy
 import numpy as np
 import unittest
+import tests.coupled.static.pazy.generate_pazy as gp
+import os
 
 
 class TestSettings(unittest.TestCase):
@@ -11,6 +13,8 @@ class TestSettings(unittest.TestCase):
     Tests the settings utilities module
     """
 
+    route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+    
     def setUp(self):
         cout.start_writer()
 
@@ -146,3 +150,29 @@ class TestSettings(unittest.TestCase):
             temp_in_dict = deepcopy(original_dict)
             del temp_in_dict['float_list_var']
             result = settings.to_custom_types(temp_in_dict, types_dict, temp_default_dict)
+
+    def test_multiple_setting_option(self):
+        u_inf = 50
+        alpha = 7
+        case_name = 'pazy_uinf{:04g}_alpha{:04g}'.format(u_inf * 10, alpha * 10)
+
+        M = 16
+        N = 64
+        Msf = 1
+
+        cases_folder = self.route_test_dir + '/pazy/cases/'
+        output_folder = self.route_test_dir + '/pazy/cases/'
+        # run case
+        gp.generate_pazy(u_inf, case_name, output_folder, cases_folder,
+                         alpha=alpha,
+                         M=M,
+                         N=N,
+                         Msf=Msf,
+                         test_multiple_inputs=True)
+
+    def tearDown(self):
+        cases_folder = self.route_test_dir + '/pazy/cases/'
+
+        if os.path.isdir(cases_folder):
+            import shutil
+            shutil.rmtree(cases_folder)

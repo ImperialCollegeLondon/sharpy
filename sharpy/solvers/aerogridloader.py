@@ -63,7 +63,7 @@ class AerogridLoader(GridLoader):
     settings_default['freestream_dir'] = [1.0, 0.0, 0.0]
     settings_description['freestream_dir'] = 'Free stream flow direction'
 
-    settings_types['mstar'] = 'int'
+    settings_types['mstar'] = ['int', 'list(int)']
     settings_default['mstar'] = 10
     settings_description['mstar'] = 'Number of chordwise wake panels'
 
