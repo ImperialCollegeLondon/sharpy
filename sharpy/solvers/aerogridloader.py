@@ -97,11 +97,6 @@ class AerogridLoader(GridLoader):
 
     def initialise(self, data):
         super().initialise(data)
-        
-        self.settings = data.settings[self.solver_id]
-        settings_utils.to_custom_types(self.settings,
-                                       self.settings_types,
-                                       self.settings_default, options=self.settings_options)
 
         wake_shape_generator_type = gen_interface.generator_from_string(
             self.settings['wake_shape_generator'])
