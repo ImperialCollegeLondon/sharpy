@@ -314,7 +314,7 @@ class DynamicCoupled(BaseSolver):
                                               'FoR_vel(x)', 'FoR_vel(z)'])
 
         # Define the function to correct aerodynamic forces
-        if self.settings['correct_forces_method'] is not '':
+        if self.settings['correct_forces_method'] != '':
             self.correct_forces = True
             self.correct_forces_generator = gen_interface.generator_from_string(self.settings['correct_forces_method'])()
             self.correct_forces_generator.initialise(in_dict=self.settings['correct_forces_settings'],

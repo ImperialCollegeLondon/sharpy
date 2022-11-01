@@ -1024,7 +1024,7 @@ def modred(SSb, N, method='residualisation'):
     C11 = SSb.C[:, :N]
     D = SSb.D
 
-    if method is 'truncation':
+    if method == 'truncation':
         SSrom = libss.StateSpace(A11, B11, C11, D, dt=SSb.dt)
     else:
         Nb = SSb.A.shape[0]
