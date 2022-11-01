@@ -23,3 +23,4 @@ dependencies:
   - xlrd>=1.2.0            
   - python=3.10
   - openpyxl>=3.0.10
+  - cmake=3.14.0
