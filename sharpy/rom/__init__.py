@@ -13,8 +13,4 @@ if import_path[0] == "/": import_path = import_path[1:]
 import_path = import_path.replace("/", ".")
 
 for file in files:
-    try:
-        ss_interface.systems_dict_import[file] = importlib.import_module(import_path + "." + file)
-    except ModuleNotFoundError:
-        ss_interface.systems_dict_import[file] = importlib.import_module('sharpy.' + import_path + "." + file)
-
+    ss_interface.systems_dict_import[file] = importlib.import_module(import_path + "." + file)
