@@ -21,8 +21,4 @@ if import_path[0] == "/":
 import_path = import_path.replace("/", ".")
 
 for file in files:
-    try:
-        generator_interface.generators[file] = importlib.import_module(import_path + "." + file)
-    except ModuleNotFoundError:
-        generator_interface.generators[file] = importlib.import_module('sharpy.' + import_path + "." + file)
-
+    generator_interface.generators[file] = importlib.import_module(import_path + "." + file)
