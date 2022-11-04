@@ -35,7 +35,11 @@ class _BaseStructural(BaseSolver):
 
     settings_types['min_delta'] = 'float'
     settings_default['min_delta'] = 1e-5
-    settings_description['min_delta'] = 'Structural solver tolerance'
+    settings_description['min_delta'] = 'Structural solver relative tolerance'
+
+    settings_types['abs_threshold'] = 'float'
+    settings_default['abs_threshold'] = 1e-13
+    settings_description['abs_threshold'] = 'Structural solver absolute tolerance'
 
     settings_types['newmark_damp'] = 'float'
     settings_default['newmark_damp'] = 1e-4

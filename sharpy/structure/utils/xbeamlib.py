@@ -38,6 +38,7 @@ class Xbopts(ct.Structure):
                 ("Solution", ct.c_int),
                 ("DeltaCurved", ct.c_double),
                 ("MinDelta", ct.c_double),
+                ("abs_threshold", ct.c_double),
                 ("NewmarkDamp", ct.c_double),
                 ("gravity_on", ct.c_bool),
                 ("gravity", ct.c_double),
@@ -62,6 +63,7 @@ class Xbopts(ct.Structure):
         self.Solution = ct.c_int(111)
         self.DeltaCurved = ct.c_double(1.0e-2)
         self.MinDelta = ct.c_double(1.0e-8)
+        self.abs_threshold = ct.c_double(1.0e-13)
         self.NewmarkDamp = ct.c_double(0.0)
         self.gravity_on = ct.c_bool(False)
         self.gravity = ct.c_double(0.0)
@@ -91,6 +93,7 @@ def cbeam3_solv_nlnstatic(beam, settings, ts):
     xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'])
     xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
     xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.abs_threshold = ct.c_double(settings['abs_threshold'])
     xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
     xbopts.gravity = ct.c_double(settings['gravity'])
     gravity_vector = np.dot(beam.timestep_info[ts].cag(), settings['gravity_dir'])
@@ -202,6 +205,7 @@ def cbeam3_solv_nlndyn(beam, settings):
     xbopts.NumGauss = ct.c_int(0)
     xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
     xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.abs_threshold = ct.c_double(settings['abs_threshold'])
     xbopts.NewmarkDamp = ct.c_double(settings['newmark_damp'])
     xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
     xbopts.gravity = ct.c_double(settings['gravity'])
@@ -279,6 +283,7 @@ def cbeam3_step_nlndyn(beam, settings, ts, tstep=None, dt=None):
     xbopts.NumGauss = ct.c_int(0)
     xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
     xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.abs_threshold = ct.c_double(settings['abs_threshold'])
     xbopts.NewmarkDamp = ct.c_double(settings['newmark_damp'])
     xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
     xbopts.gravity = ct.c_double(settings['gravity'])
@@ -373,6 +378,7 @@ def xbeam_solv_couplednlndyn(beam, settings):
     # xbopts.NumGauss = ct.c_int(0)
     xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
     xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.abs_threshold = ct.c_double(settings['abs_threshold'])
     xbopts.NewmarkDamp = ct.c_double(settings['newmark_damp'])
     xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
     xbopts.gravity = ct.c_double(settings['gravity'])
@@ -483,6 +489,7 @@ def xbeam_step_couplednlndyn(beam, settings, ts, tstep=None, dt=None):
     xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'])
     xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
     xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.abs_threshold = ct.c_double(settings['abs_threshold'])
     xbopts.NewmarkDamp = ct.c_double(settings['newmark_damp'])
     xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
     xbopts.gravity = ct.c_double(settings['gravity'])
@@ -558,6 +565,7 @@ def xbeam_init_couplednlndyn(beam, settings, ts, dt=None):
     xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'])
     xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
     xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.abs_threshold = ct.c_double(settings['abs_threshold'])
     xbopts.NewmarkDamp = ct.c_double(settings['newmark_damp'])
     xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
     xbopts.gravity = ct.c_double(settings['gravity'])
@@ -891,6 +899,7 @@ def cbeam3_asbly_dynamic(beam, tstep, settings):
     xbopts.NumGauss = ct.c_int(0)
     xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
     xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.abs_threshold = ct.c_double(settings['abs_threshold'])
     xbopts.NewmarkDamp = ct.c_double(settings['newmark_damp'])
     xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
     xbopts.gravity = ct.c_double(settings['gravity'])
@@ -994,6 +1003,7 @@ def xbeam3_asbly_dynamic(beam, tstep, settings):
     xbopts.NumGauss = ct.c_int(0)
     xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
     xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.abs_threshold = ct.c_double(settings['abs_threshold'])
     xbopts.NewmarkDamp = ct.c_double(settings['newmark_damp'])
     xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
     xbopts.gravity = ct.c_double(settings['gravity'])
@@ -1206,6 +1216,7 @@ def xbeam_step_coupledrigid(beam, settings, ts, tstep=None, dt=None):
     xbopts.NumLoadSteps = ct.c_int(settings['num_load_steps'])
     xbopts.DeltaCurved = ct.c_double(settings['delta_curved'])
     xbopts.MinDelta = ct.c_double(settings['min_delta'])
+    xbopts.abs_threshold = ct.c_double(settings['abs_threshold'])
     xbopts.NewmarkDamp = ct.c_double(settings['newmark_damp'])
     xbopts.gravity_on = ct.c_bool(settings['gravity_on'])
     xbopts.gravity = ct.c_double(settings['gravity'])
