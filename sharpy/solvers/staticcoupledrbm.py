@@ -114,7 +114,8 @@ class StaticCoupledRBM(BaseSolver):
                                                      aero=self.data.aero,
                                                      structure=self.data.structure,
                                                      rho=self.settings['aero_solver_settings']['rho'],
-                                                     vortex_radius=self.settings['aero_solver_settings']['vortex_radius'])
+                                                     vortex_radius=self.settings['aero_solver_settings']['vortex_radius'],
+                                                     output_folder = self.data.output_folder)
 
     def increase_ts(self):
         self.data.ts += 1
@@ -177,7 +178,8 @@ class StaticCoupledRBM(BaseSolver):
                     struct_forces = \
                         self.correct_forces_generator.generate(aero_kstep=self.data.aero.timestep_info[self.data.ts],
                                                                structural_kstep=self.data.structure.timestep_info[self.data.ts],
-                                                               struct_forces=struct_forces)
+                                                               struct_forces=struct_forces,
+                                                               ts=0)
 
                 self.data.aero.timestep_info[self.data.ts].postproc_node['aero_steady_forces'] = struct_forces
 
