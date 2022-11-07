@@ -2,7 +2,6 @@ import numpy as np
 # import sharpy.utils.algebra as algebra
 from sharpy.utils.constants import deg2rad
 from scipy.interpolate import interp1d
-import warnings
 
 
 class Polar:
