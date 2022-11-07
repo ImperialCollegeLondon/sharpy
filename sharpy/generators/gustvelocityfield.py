@@ -249,9 +249,9 @@ class time_varying_global(BaseGust):
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.file_info = np.loadtxt(self.settings['file'])
-        self.initialise_inteprolation_functions()
+        self.initialise_interpolation_functions()
     
-    def initialise_inteprolation_functions(self):
+    def initialise_interpolation_functions(self):
         for idim in self.settings['gust_component']:
             self.list_interpolated_velocity_field_functions.append(interp1d(self.file_info[:, 0], self.file_info[:, idim+1], 
                                                                             bounds_error=False,fill_value="extrapolate"))
@@ -274,7 +274,7 @@ class time_varying(time_varying_global):
     """
     gust_id = 'time varying'
     
-    def initialise_inteprolation_functions(self):
+    def initialise_interpolation_functions(self):
         for idim in self.settings['gust_component']:
             self.list_interpolated_velocity_field_functions.append(interp1d(-self.file_info[::-1, 0] * self.u_inf, self.file_info[::-1, idim+1], 
                                                                             bounds_error=False,fill_value="extrapolate"))
