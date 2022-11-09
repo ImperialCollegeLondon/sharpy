@@ -5,8 +5,7 @@ import scipy.signal as scsig
 import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 from abc import ABCMeta, abstractmethod
-from scipy.signal import (TransferFunction, TransferFunctionDiscrete)
-
+from scipy import signal
 dict_of_linear_gusts = {}
 
 
@@ -505,9 +504,9 @@ def campbell(sigma_w, length_scale, velocity, dt=None):
     den_tf = np.array([935/216, 561/12, 102, 60])
     if dt is not None:
         num_tf, den_tf, dt = scsig.cont2discrete((num_tf, den_tf), dt, method='bilinear')
-        camp_tf = TransferFunctionDiscrete(num_tf, den_tf, dt=dt)
+        camp_tf = signal.TransferFunction(num_tf, den_tf, dt=dt)
     else:
-        camp_tf = TransferFunction(num_tf, den_tf)
+        camp_tf = signal.TransferFunction(num_tf, den_tf)
     ss_turb = libss.StateSpace.from_scipy(camp_tf.to_ss())
 
     ss_turb.initialise_variables(({'name': 'noise_in', 'size': 1}), var_type='in')
