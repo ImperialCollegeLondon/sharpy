@@ -44,7 +44,7 @@ jobs:
           export PATH="$HOME/miniconda/bin:$PATH"
           hash -r
           conda config --set always_yes yes --set changeps1 no
-          conda config --append channels conda-forge
+          # conda config --append channels conda-forge
           conda update --name base conda
           conda list --name base conda
           conda init bash
