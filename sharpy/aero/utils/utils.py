@@ -146,7 +146,7 @@ def find_aerodynamic_solver_settings(settings):
         if solver_name in flow:
             aero_solver_settings = settings[solver_name]
             if 'aero_solver' in settings[solver_name].keys():
-                aero_solver_settings = aero_solver_settings['aero_solver']
+                aero_solver_settings = aero_solver_settings['aero_solver_settings']
                 
             return aero_solver_settings
 
