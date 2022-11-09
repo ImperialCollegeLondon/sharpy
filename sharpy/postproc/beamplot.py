@@ -5,7 +5,7 @@ from tvtk.api import tvtk, write_data
 
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.utils.algebra as algebra
 
 
@@ -45,7 +45,7 @@ class BeamPlot(BaseSolver):
     settings_default['output_rbm'] = True
     settings_description['output_rbm'] = 'Write ``csv`` file with rigid body motion data'
 
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -58,13 +58,13 @@ class BeamPlot(BaseSolver):
         self.filename_for = ''
         self.caller = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
         # create folder for containing files if necessary
         self.folder = data.output_folder + '/beam/'
         if not os.path.exists(self.folder):
@@ -79,7 +79,10 @@ class BeamPlot(BaseSolver):
                              self.data.settings['SHARPy']['case'])
         self.caller = caller
 
-    def run(self, online=False):
+    def run(self, **kwargs):
+
+        online = su.set_value_or_default(kwargs, 'online', False)
+
         self.plot(online)
         if not online:
             self.write()
@@ -112,7 +115,8 @@ class BeamPlot(BaseSolver):
 
     def write_beam(self, it):
         it_filename = (self.filename +
-                       '%06u' % it)
+                       ('%06u' % it) +
+                       '.vtu')
         num_nodes = self.data.structure.num_node
         num_elem = self.data.structure.num_elem
 

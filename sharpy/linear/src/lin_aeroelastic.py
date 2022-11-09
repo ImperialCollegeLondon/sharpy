@@ -56,7 +56,8 @@ class LinAeroEla():
 
         sharpy.utils.settings.to_custom_types(settings_here,
                                               linuvlm.settings_types_dynamic,
-                                              linuvlm.settings_default_dynamic)
+                                              linuvlm.settings_default_dynamic,
+                                              no_ctype=True)
 
         if chosen_ts is None:
             self.chosen_ts = self.data.ts
@@ -68,6 +69,8 @@ class LinAeroEla():
             self.rigid_body_motions = settings_here['rigid_body_motion']
         except KeyError:
             self.rigid_body_motions = False
+
+        print("rbm:", self.rigid_body_motions)
 
         try:
             self.use_euler = settings_here['use_euler']
@@ -102,7 +105,7 @@ class LinAeroEla():
             if type(rho) == str:
                 rho = np.float(rho)
             if hasattr(rho, 'value'):
-                rho = rho.value
+                rho = rho
         self.tsaero.rho = rho
         # --- backward compatibility
 

@@ -3,7 +3,7 @@ import numpy as np
 
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.aero.models.aerogrid as aerogrid
-import sharpy.utils.settings as settings_utils
+import sharpy.utils.settings as su
 import sharpy.utils.h5utils as h5utils
 import sharpy.utils.generator_interface as gen_interface
 
@@ -84,7 +84,7 @@ class AerogridLoader(BaseSolver):
     settings_default['wake_shape_generator_input'] = dict()
     settings_description['wake_shape_generator_input'] = 'Dictionary of inputs needed by the wake shape generator'
 
-    settings_table = settings_utils.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
                                        settings_options=settings_options)
 
@@ -100,14 +100,14 @@ class AerogridLoader(BaseSolver):
 
         self.wake_shape_generator = None
 
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
 
         # init settings
-        settings_utils.to_custom_types(self.settings,
-                                       self.settings_types,
-                                       self.settings_default, options=self.settings_options)
+        su.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default, options=self.settings_options)
 
         # read input file (aero)
         self.read_files()
@@ -116,7 +116,8 @@ class AerogridLoader(BaseSolver):
             self.settings['wake_shape_generator'])
         self.wake_shape_generator = wake_shape_generator_type()
         self.wake_shape_generator.initialise(data,
-                                             self.settings['wake_shape_generator_input'])
+                                             self.settings['wake_shape_generator_input'],
+                                             restart=restart)
 
     def read_files(self):
         # open aero file
@@ -134,7 +135,7 @@ class AerogridLoader(BaseSolver):
             # store files in dictionary
             self.aero_data_dict = h5utils.load_h5_in_dict(aero_file_handle)
 
-    def run(self):
+    def run(self, **kwargs):
         self.data.aero = aerogrid.Aerogrid()
         self.data.aero.generate(self.aero_data_dict,
                                 self.data.structure,

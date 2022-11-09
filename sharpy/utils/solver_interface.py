@@ -46,12 +46,12 @@ class BaseSolver(metaclass=ABCMeta):
 
     # The input is a ProblemData class structure
     @abstractmethod
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         pass
 
     # This executes the solver
     @abstractmethod
-    def run(self):
+    def run(self, **kwargs):
         pass
 
     # @property
@@ -61,6 +61,9 @@ class BaseSolver(metaclass=ABCMeta):
         _doc = inspect.getdoc(self)
         _doc += settings_table.generate(settings_types, settings_default, settings_description)
         return _doc
+
+    def teardown(self):
+        pass
 
 
 def solver_from_string(string):

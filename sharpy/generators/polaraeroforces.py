@@ -72,6 +72,18 @@ class PolarCorrection(generator_interface.BaseGenerator):
                                                 'Else, it will add the polar Cm to the moment already computed by ' \
                                                 'SHARPy.'    
 
+    settings_types['add_rotation'] = 'bool'
+    settings_default['add_rotation'] = False
+    settings_description['add_rotation'] = 'Add rotation velocity. Probably needed in steady computations'
+
+    settings_types['rot_vel_g'] = 'list(float)'
+    settings_default['rot_vel_g'] = [0., 0., 0.] 
+    settings_description['rot_vel_g'] = 'Rotation velocity in G FoR. Only used if add_rotation = True'
+
+    settings_types['centre_rot_g'] = 'list(float)'
+    settings_default['centre_rot_g'] = [0., 0., 0.] 
+    settings_description['centre_rot_g'] = 'Centre of rotation in G FoR. Only used if add_rotation = True'
+
     settings_types['skip_surfaces'] = 'list(int)'
     settings_default['skip_surfaces'] = []
     settings_description['skip_surfaces'] = 'Surfaces on which force correction is skipped.'
@@ -180,8 +192,10 @@ class PolarCorrection(generator_interface.BaseGenerator):
                                                                                 structural_kstep.pos_dot[inode, :],
                                                                                 structural_kstep.for_vel[:],
                                                                                 cga,
-                                                                                aero_kstep.u_ext[isurf][:, :, i_n])
-
+                                                                                aero_kstep.u_ext[isurf][:, :, i_n],
+                                                                                self.settings['add_rotation'],
+                                                                                self.settings['rot_vel_g'],
+                                                                                self.settings['centre_rot_g'],)
                     # Coefficient to change from aerodynamic coefficients to forces (and viceversa)
                     coef = 0.5 * rho * np.linalg.norm(urel) ** 2 * area
                     # Stability axes - projects forces in B onto S
@@ -233,6 +247,22 @@ class PolarCorrection(generator_interface.BaseGenerator):
                     arm = cgb.T.dot(ref_point - pos_g[inode])  # in B frame
                     moment_polar_drag = algebra.cross3(c_bs.T.dot(arm), cd * dir_urel * coef)  # in S frame
                     moment_s += moment_polar_drag
+
+                    # Pitching moment
+                    if moment_from_polar:
+                        # The panels are shifted by 0.25 of a panel aft from the leading edge
+                        panel_shift = 0.25 * (aero_kstep.zeta[isurf][:, 1, i_n] - aero_kstep.zeta[isurf][:, 0, i_n])
+                        ref_point = aero_kstep.zeta[isurf][:, 0, i_n] + 0.25 * chord * dir_chord - panel_shift
+                        new_struct_forces[inode, 3:6] = c_bs.dot(moment_s)
+
+                        # viscous contribution (pure moment)
+                        moment_s[1] += cm * coef * chord
+
+
+                        # moment due to drag
+                        arm = cgb.T.dot(ref_point - pos_g[inode])  # in B frame
+                        moment_polar_drag = algebra.cross3(c_bs.T.dot(arm), cd * dir_urel * coef)  # in S frame
+                        moment_s += moment_polar_drag
 
                     # moment due to lift (if corrected)
                     if correct_lift and moment_from_polar:
