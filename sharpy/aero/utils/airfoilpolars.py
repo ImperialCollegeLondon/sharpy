@@ -59,6 +59,26 @@ class Polar:
 
         return cl, cd, cm
 
+    def get_derivatives_at_aoa(self, aoa):
+        """
+        Get Derivatives at angle of attack
+
+        Args:
+            aoa (float): Angle of attack in radians
+
+        Returns:
+            tuple: Containing ``cl_a``, ``cd_a``, ``cm_a``
+        """
+
+        delta_aoa = 1e-5
+        p1 = np.array(self.get_coefs(aoa + delta_aoa))
+        p = np.array(self.get_coefs(aoa))
+        m1 = np.array(self.get_coefs(aoa - delta_aoa))
+
+        der = (p1 - m1) / 2 / delta_aoa
+
+        return der
+
     def get_aoa_deg_from_cl_2pi(self, cl):
 
         return cl/2/np.pi/deg2rad + self.aoa_cl0_deg

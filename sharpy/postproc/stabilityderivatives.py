@@ -10,7 +10,16 @@ from sharpy.linear.utils.derivatives import Derivatives, DerivativeSet
 @solver_interface.solver
 class StabilityDerivatives(solver_interface.BaseSolver):
     """
-    Outputs the stability derivatives of a free-flying aircraft
+    Outputs the stability derivatives of a free-flying aircraft.
+
+    The simulation set-up to obtain the stability derivatives is not standard, and requires specific settings
+    in the solvers ran prior to this post-processor. Please see the tutorial at:
+    https://github.com/ngoiz/hale-ders/blob/main/Delivery/01_StabilityDerivatives/01_StabilityDerivatives.ipynb
+
+    In the future, a routine will be available where these required solvers' settings are pre-populated
+
+    Note:
+        Requires the AeroForcesCalculator post-processor to have been run before.
 
     """
     solver_id = 'StabilityDerivatives'
@@ -132,6 +141,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
             self.data.linear.linear_system.update(self.settings['u_inf'])
 
         for target_system in ['aerodynamic', 'aeroelastic']:
+            cout.cout_wrap('-------- {:s} SYSTEM DERIVATIVES ---------'.format(target_system.upper()))
             state_space = self.get_state_space(target_system)
             target_system_derivatives = derivatives[target_system]
 
@@ -199,6 +209,15 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         return v0
 
     def get_state_space(self, target_system):
+        """
+        Returns the target state-space ``target_system`` either ``aeroelastic`` or ``aerodynamic``
+
+        Returns:
+            libss.StateSpace: relevant state-space
+
+        Raises:
+            NameError: if the target system is not ``aeroelastic`` or ``aerodynamic``
+        """
         if target_system == 'aerodynamic':
             ss = self.data.linear.linear_system.uvlm.ss
         elif target_system == 'aeroelastic':
@@ -209,13 +228,10 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         return ss
 
     def steady_aero_forces(self):
-        fx = np.sum(self.data.aero.timestep_info[0].inertial_steady_forces[:, 0], 0) + \
-             np.sum(self.data.aero.timestep_info[0].inertial_unsteady_forces[:, 0], 0)
+        """Retrieve steady aerodynamic forces and moments at the linearisation reference at the
 
-        fy = np.sum(self.data.aero.timestep_info[0].inertial_steady_forces[:, 1], 0) + \
-             np.sum(self.data.aero.timestep_info[0].inertial_unsteady_forces[:, 1], 0)
+        Returns:
+            tuple: (fx, fy, fz, mx, my, mz) in the inertial G frame
+        """
 
-        fz = np.sum(self.data.aero.timestep_info[0].inertial_steady_forces[:, 2], 0) + \
-             np.sum(self.data.aero.timestep_info[0].inertial_unsteady_forces[:, 2], 0)
-
-        return fx, fy, fz
+        return self.data.linear.tsaero0.total_steady_inertial_forces

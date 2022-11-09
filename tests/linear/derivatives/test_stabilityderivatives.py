@@ -145,7 +145,8 @@ class TestLinearDerivatives(unittest.TestCase):
                                      'minus_m_star': 0}
 
         ws.config['AeroForcesCalculator'] = {'write_text_file': 'on',
-                                             'screen_output': 'on'}
+                                             'screen_output': 'on',
+                                             }
 
         ws.config['BeamPlot'] = {'include_rbm': 'off',
                                  'include_applied_forces': 'on'}
@@ -300,7 +301,7 @@ class TestLinearDerivatives(unittest.TestCase):
             NameError('Unrecognised system')
 
         case_name_db = []
-        not_run = False # for debugging
+        not_run = False  # for debugging
         # Reference Case at 4 degrees
         # Run nonlinear simulation and save linerised ROM
         alpha_deg_ref = 0
@@ -324,7 +325,7 @@ class TestLinearDerivatives(unittest.TestCase):
         qS = 0.5 * ref.rho * u_inf ** 2 * ref.c_ref * ref.wing_span
         if self.print_info:
             print(f'Reference span: {ref.wing_span} m')
-            print(f'Reference chord: {ref.main_chord} m')
+            print(f'Reference chord: {ref.c_ref} m')
             print(f'Aspect ratio: {ref.aspect_ratio}')
 
         # Run nonlinear cases in the vicinity
@@ -336,6 +337,7 @@ class TestLinearDerivatives(unittest.TestCase):
         alpha_vec = np.linspace(alpha_deg_min, alpha_deg_max, n_evals)
         nlin_forces_g = np.zeros((n_evals, 3))
         nlin_forces_a = np.zeros((n_evals, 3))
+        nlin_moments_g = np.zeros((n_evals, 3))
         for ith, alpha in enumerate(alpha_vec):
             if alpha == alpha_deg_ref:
                 case_name = ref_case_name
@@ -348,19 +350,38 @@ class TestLinearDerivatives(unittest.TestCase):
                                      '/output/{:s}/forces/forces_aeroforces.txt'.format(case_name),
                                      skiprows=1,
                                      delimiter=',')
+            nlin_moments = np.loadtxt(self.route_test_dir +
+                                      '/output/{:s}/forces/moments_aeroforces.txt'.format(case_name),
+                                      skiprows=1,
+                                      delimiter=',')
             nlin_forces_g[ith, :3] = nlin_forces[1:4]
             nlin_forces_a[ith, :3] = nlin_forces[7:10]
+            nlin_moments_g[ith, :3] = nlin_moments[1:4]
+
+        if self.print_info:
+            np.savetxt(self.route_test_dir + '/output/summary.txt',
+                       np.column_stack((alpha_vec, nlin_forces_g, nlin_moments_g)))
         nlin_forces_g /= qS
         nlin_forces_a /= qS
+        nlin_moments_g /= (qS * ref.c_ref)
+
+        if self.print_info:
+            np.savetxt(self.route_test_dir + '/output/summary_coeff.txt',
+                       np.column_stack((alpha_vec, nlin_forces_g, nlin_moments_g)))
 
         lift_poly = np.polyfit(alpha_vec * np.pi/180, nlin_forces_g[:, 2], deg=1)
         nonlin_cla = lift_poly[0]
         drag_poly = np.polyfit(alpha_vec * np.pi/180, nlin_forces_g[:, 0], deg=2)
         nonlin_cda = 2 * drag_poly[0] * alpha0 + drag_poly[1]
+
+        moment_poly = np.polyfit(alpha_vec * np.pi/180, nlin_moments_g[:, 1], deg=1)
+        nonlin_cma = moment_poly[0]
+
         if self.print_info:
             print('Nonlinear coefficients')
             print('CLa', nonlin_cla)
             print('CDa', nonlin_cda)
+            print('CMa', nonlin_cma)
 
         lift_poly = np.polyfit(alpha_vec * np.pi/180, nlin_forces_a[:, 2], deg=1)
         nonlin_cza = lift_poly[0]

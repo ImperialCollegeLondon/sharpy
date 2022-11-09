@@ -7,6 +7,9 @@ import numpy as np
 
 from sharpy.aero.utils.utils import local_stability_axes
 import sharpy.utils.algebra as algebra
+import h5py
+import sharpy.utils.h5utils as h5utils
+import sharpy.aero.utils.airfoilpolars as airfoilpolars
 
 
 class InfiniteWing:
@@ -24,6 +27,12 @@ class TestAirfoilPolars(unittest.TestCase):
     route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
     polar_data = np.loadtxt(route_test_dir + '/xf-naca0018-il-50000.txt', skiprows=12)
+
+    polar = airfoilpolars.Polar()
+    polar.initialise(np.column_stack((polar_data[:, 0] * np.pi / 180, polar_data[:, 1], polar_data[:, 2],
+                                      polar_data[:, 4])))
+
+    print_info = True
 
     def test_infinite_wing(self):
         """
@@ -67,6 +76,62 @@ class TestAirfoilPolars(unittest.TestCase):
         with self.subTest('moment'):
             cm_polar = np.interp(results[:, 0], self.polar_data[:, 0], self.polar_data[:, 4])
             np.testing.assert_array_almost_equal(cm_polar, results[:, 3], decimal=3)
+
+    def test_linear_infinite_wing(self):
+
+        cases_route = self.route_test_dir + '/cases/'
+        output_route = self.route_test_dir + '/output/'
+
+        wing = InfiniteWing()
+
+        # put inside function and test diff alpha
+        for alpha in [0, 2.5, 5]:
+            with self.subTest(alpha):
+                self.run_linear_test(alpha, cases_route, output_route)
+
+    def run_linear_test(self, alpha, cases_route, output_route):
+        case_name = 'linear_alpha{:04g}'.format(alpha * 100).replace('-', 'M')
+
+        flow = ['BeamLoader',
+                'AerogridLoader',
+                'StaticCoupled',
+                'AeroForcesCalculator',
+                'Modal',
+                'LinearAssembler',
+                'StabilityDerivatives',
+                'SaveParametricCase']
+
+        gw.generate_infinite_wing(case_name,
+                                  alpha=alpha,
+                                  flow=flow,
+                                  case_route=cases_route,
+                                  polar_file=self.route_test_dir + '/xf-naca0018-il-50000.txt',
+                                  aspect_ratio=1e7,
+                                  main_ea=0.25,
+                                  output_route=output_route,
+                                  write_screen=self.print_info)
+
+        derivatives = self.postprocess_linear(case_name)
+
+        with self.subTest(msg='CL_alpha at {:f}'.format(alpha)):
+            # Corrections are only implemented in the lift
+            cla_sharpy = derivatives['force_angle_velocity'][2, 1]
+            cla_polar = self.polar.get_derivatives_at_aoa(alpha * np.pi / 180)[0]
+            delta = np.abs(cla_sharpy - cla_polar) / cla_polar
+            if self.print_info:
+                print(f'Alpha = {alpha}')
+                print(f'Polar CL_alpha =  {cla_polar:0.3f}')
+                print(f'SHARPy CL_alpha = {cla_sharpy:0.3f}')
+                print(f'Relative difference =  ({delta * 100:0.3f} %)')
+            np.testing.assert_array_less(delta, 0.15, f'Difference in polar {cla_polar:0.3f} and '
+                                                      f'SHARPy CL_alpha {cla_sharpy:0.3f} '
+                                                      f'greater than 15% ({delta * 100:0.3f} %)')
+
+    def postprocess_linear(self, case_name):
+        with h5py.File(self.route_test_dir + '/output/' + case_name +
+                       '/derivatives/aerodynamic_stability_derivatives.h5', 'r') as f:
+            aerodynamic_ders = h5utils.load_h5_in_dict(f)
+        return aerodynamic_ders
 
     def tearDown(self):
         import shutil
