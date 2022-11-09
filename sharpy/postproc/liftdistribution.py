@@ -5,9 +5,8 @@ import numpy as np
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 from sharpy.utils.datastructures import init_matrix_structure, standalone_ctypes_pointer
-import sharpy.aero.utils.uvlmlib as uvlmlib
 import sharpy.aero.utils.mapping as mapping
 import sharpy.aero.utils.utils as aeroutils
 
@@ -38,7 +37,7 @@ class LiftDistribution(BaseSolver):
     settings_default['rho'] = 1.225
     settings_description['rho'] = 'Reference freestream density [kg/m³]'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -53,7 +52,7 @@ class LiftDistribution(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.ts_max = len(self.data.structure.timestep_info)
         self.caller = caller
         self.folder = data.output_folder
@@ -62,7 +61,7 @@ class LiftDistribution(BaseSolver):
 
     def run(self, **kwargs):
 
-        online = su.set_value_or_default(kwargs, 'online', False)
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
 
         if not online:
             for self.ts in range(self.ts_max):

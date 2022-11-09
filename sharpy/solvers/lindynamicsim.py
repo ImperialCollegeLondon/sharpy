@@ -2,7 +2,7 @@ import numpy as np
 import os
 import h5py as h5
 from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 import sharpy.linear.src.libss as libss
 import scipy.linalg as sclalg
 import sharpy.utils.h5utils as h5utils
@@ -73,7 +73,7 @@ class LinDynamicSim(BaseSolver):
     settings_types['postprocessors_settings'] = 'dict'
     settings_default['postprocessors_settings'] = dict()
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -95,7 +95,7 @@ class LinDynamicSim(BaseSolver):
             self.settings = custom_settings
         else:
             self.settings = data.settings[self.solver_id]
-        su.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
 
         # Read initial state and input data and store in dictionary
         self.read_files()

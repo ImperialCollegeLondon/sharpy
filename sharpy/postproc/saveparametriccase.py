@@ -1,5 +1,5 @@
 from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 import configobj
 import os
 import sharpy.utils.cout_utils as cout
@@ -71,7 +71,7 @@ class SaveParametricCase(BaseSolver):
                                                    'the M, C, K matrices. The setting ``save_pmor_items`` ' \
                                                    'should be set to `on`'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -88,7 +88,7 @@ class SaveParametricCase(BaseSolver):
         else:
             self.settings = custom_settings
 
-        su.to_custom_types(self.settings,
+        settings_utils.to_custom_types(self.settings,
                            self.settings_types,
                            self.settings_default)
 
@@ -97,8 +97,8 @@ class SaveParametricCase(BaseSolver):
 
     def run(self, **kwargs):
         
-        online = su.set_value_or_default(kwargs, 'online', False)
-        restart = su.set_value_or_default(kwargs, 'restart', False)
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
+        restart = settings_utils.set_value_or_default(kwargs, 'restart', False)
 
         config = configobj.ConfigObj()
         file_name = self.folder + '/' + self.data.settings['SHARPy']['case'] + '.pmor.sharpy'

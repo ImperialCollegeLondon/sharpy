@@ -1,10 +1,6 @@
-import ctypes as ct
-import numpy as np
 
-import sharpy.utils.algebra as algebra
 import sharpy.aero.utils.uvlmlib as uvlmlib
-import sharpy.utils.cout_utils as cout
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.generator_interface as gen_interface
 from sharpy.utils.constants import vortex_radius_def
@@ -115,7 +111,7 @@ class StaticUvlm(BaseSolver):
     settings_default['map_forces_on_struct'] = False
     settings_description['map_forces_on_struct'] = 'Maps the forces on the structure at the end of the timestep. Only usefull if the solver is used outside StaticCoupled'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -130,7 +126,7 @@ class StaticUvlm(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        su.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
 
         self.update_step()
 
@@ -158,10 +154,10 @@ class StaticUvlm(BaseSolver):
 
     def run(self, **kwargs):
 
-        aero_tstep = su.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[-1])
-        structure_tstep = su.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
-        dt = su.set_value_or_default(kwargs, 'dt', self.settings['rollup_dt'])
-        t = su.set_value_or_default(kwargs, 't', self.data.ts*dt)
+        aero_tstep = settings_utils.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[-1])
+        structure_tstep = settings_utils.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
+        dt = settings_utils.set_value_or_default(kwargs, 'dt', self.settings['rollup_dt'])
+        t = settings_utils.set_value_or_default(kwargs, 't', self.data.ts*dt)
 
         unsteady_contribution = False
         convect_wake = False

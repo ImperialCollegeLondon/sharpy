@@ -4,10 +4,8 @@ import pickle
 import h5py
 
 import sharpy
-import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as su
-import sharpy.utils.h5utils as h5utils
+import sharpy.utils.settings as settings_utils
 
 
 # Define basic numerical types
@@ -35,7 +33,7 @@ class PickleData(BaseSolver):
     settings_default['stride'] = 1
     settings_description['stride'] = 'Number of steps between the execution calls when run online'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -53,7 +51,7 @@ class PickleData(BaseSolver):
         else:
             self.settings = custom_settings
 
-        su.to_custom_types(self.settings,
+        settings_utils.to_custom_types(self.settings,
                            self.settings_types,
                            self.settings_default)
 
@@ -64,8 +62,8 @@ class PickleData(BaseSolver):
 
     def run(self, **kwargs):
         
-        online = su.set_value_or_default(kwargs, 'online', False)
-        solvers = su.set_value_or_default(kwargs, 'solvers', None)
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
+        solvers = settings_utils.set_value_or_default(kwargs, 'solvers', None)
         
         if ((online and (self.data.ts % self.settings['stride'] == 0)) or (not online)):
             with open(self.filename, 'wb') as f:

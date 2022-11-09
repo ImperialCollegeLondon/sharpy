@@ -5,7 +5,7 @@ from tvtk.api import tvtk, write_data
 
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.algebra as algebra
 
 
@@ -45,7 +45,7 @@ class BeamPlot(BaseSolver):
     settings_default['output_rbm'] = True
     settings_description['output_rbm'] = 'Write ``csv`` file with rigid body motion data'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -64,7 +64,7 @@ class BeamPlot(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
         # create folder for containing files if necessary
         self.folder = data.output_folder + '/beam/'
         if not os.path.exists(self.folder):
@@ -81,7 +81,7 @@ class BeamPlot(BaseSolver):
 
     def run(self, **kwargs):
 
-        online = su.set_value_or_default(kwargs, 'online', False)
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
 
         self.plot(online)
         if not online:

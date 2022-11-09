@@ -3,7 +3,7 @@ import os
 
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.algebra as algebra
 import sharpy.aero.utils.mapping as mapping
 
@@ -54,7 +54,7 @@ class AeroForcesCalculator(BaseSolver):
     settings_default['c_ref'] = 1
     settings_description['c_ref'] = 'Reference chord'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -72,7 +72,7 @@ class AeroForcesCalculator(BaseSolver):
         self.data = data
         self.settings = data.settings[self.solver_id]
         self.ts_max = len(self.data.structure.timestep_info)
-        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.caller = caller
 
         self.folder = data.output_folder + '/forces/'
@@ -89,7 +89,7 @@ class AeroForcesCalculator(BaseSolver):
 
     def run(self, **kwargs):
 
-        online = su.set_value_or_default(kwargs, 'online', False)
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
 
         if online:
             self.ts_max = len(self.data.structure.timestep_info)

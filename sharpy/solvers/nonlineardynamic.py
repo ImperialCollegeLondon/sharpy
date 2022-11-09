@@ -2,13 +2,10 @@
 @modified   Alfonso del Carre
 """
 
-import ctypes as ct
-import numpy as np
-
 import sharpy.structure.utils.xbeamlib as xbeamlib
 from sharpy.utils.settings import str2bool
-from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
-import sharpy.utils.settings as su
+from sharpy.utils.solver_interface import solver, solver_from_string
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.cout_utils as cout
 
 _BaseStructural = solver_from_string('_BaseStructural')
@@ -38,7 +35,7 @@ class NonLinearDynamic(_BaseStructural):
     settings_types['gravity_dir'] = 'list(float)'
     settings_default['gravity_dir'] = [0, 0, 1]
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -48,7 +45,7 @@ class NonLinearDynamic(_BaseStructural):
     def initialise(self, data, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
-        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'])

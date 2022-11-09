@@ -2,7 +2,7 @@ import os
 import numpy as np
 import os
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 import sharpy.structure.utils.xbeamlib as xbeamlib
 
 
@@ -27,7 +27,7 @@ class BeamLoads(BaseSolver):
     settings_default['output_file_name'] = 'beam_loads'
     settings_description['output_file_name'] = 'Output file name'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -44,7 +44,7 @@ class BeamLoads(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.caller = caller
 
         self.folder = data.output_folder + '/beam/'
@@ -53,7 +53,7 @@ class BeamLoads(BaseSolver):
 
     def run(self, **kwargs):
 
-        online = su.set_value_or_default(kwargs, 'online', False)
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
 
         self.calculate_loads(online)
         if self.settings['csv_output']:

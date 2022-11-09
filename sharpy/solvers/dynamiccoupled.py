@@ -13,7 +13,7 @@ import sharpy.utils.cout_utils as cout
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.controller_interface as controller_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.algebra as algebra
 import sharpy.utils.exceptions as exc
 import sharpy.io.network_interface as network_interface
@@ -178,7 +178,7 @@ class DynamicCoupled(BaseSolver):
                                                  'The dictionary values are dictionaries with the settings ' \
                                                  'needed by each generator.'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
@@ -254,7 +254,7 @@ class DynamicCoupled(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        su.to_custom_types(self.settings,
+        settings_utils.to_custom_types(self.settings,
                            self.settings_types,
                            self.settings_default,
                            options=self.settings_options)
@@ -443,7 +443,7 @@ class DynamicCoupled(BaseSolver):
         Run the time stepping procedure with controllers and postprocessors
         included.
         """
-        solvers = su.set_value_or_default(kwargs, 'solvers', None)
+        solvers = settings_utils.set_value_or_default(kwargs, 'solvers', None)
         if self.network_loader is not None:
             self.set_of_variables = self.network_loader.get_inout_variables()
 

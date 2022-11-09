@@ -1,12 +1,11 @@
-import ctypes as ct
 import sys
 import numpy as np
 
 import sharpy.aero.utils.mapping as mapping
 import sharpy.utils.cout_utils as cout
-import sharpy.utils.solver_interface as solver_interface
-from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as su
+from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
+
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.algebra as algebra
 import sharpy.utils.generator_interface as gen_interface
 
@@ -76,7 +75,7 @@ class StaticCoupled(BaseSolver):
                                                  'The dictionary values are dictionaries with the settings ' \
                                                  'needed by each generator.'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
@@ -102,7 +101,7 @@ class StaticCoupled(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = input_dict
-        su.to_custom_types(self.settings,
+        settings_utils.to_custom_types(self.settings,
                            self.settings_types,
                            self.settings_default,
                            options=self.settings_options,
@@ -110,9 +109,9 @@ class StaticCoupled(BaseSolver):
 
         self.print_info = self.settings['print_info']
 
-        self.structural_solver = solver_interface.initialise_solver(self.settings['structural_solver'])
+        self.structural_solver = initialise_solver(self.settings['structural_solver'])
         self.structural_solver.initialise(self.data, self.settings['structural_solver_settings'], restart=restart)
-        self.aero_solver = solver_interface.initialise_solver(self.settings['aero_solver'])
+        self.aero_solver = initialise_solver(self.settings['aero_solver'])
         self.aero_solver.initialise(self.structural_solver.data, self.settings['aero_solver_settings'], restart=restart)
         self.data = self.aero_solver.data
 

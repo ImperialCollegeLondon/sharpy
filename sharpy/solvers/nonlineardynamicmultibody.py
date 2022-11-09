@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.solver_interface as solver_interface
 
 import sharpy.utils.cout_utils as cout
@@ -62,7 +62,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
     settings_default['zero_ini_dot_ddot'] = False
     settings_description['zero_ini_dot_ddot'] = 'Set to zero the position and crv derivatives at the first time step'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -93,7 +93,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        su.to_custom_types(self.settings,
+        settings_utils.to_custom_types(self.settings,
                            self.settings_types,
                            self.settings_default,
                            self.settings_options,
@@ -350,8 +350,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
 
     def run(self, **kwargs):
-        structural_step = su.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
-        dt= su.set_value_or_default(kwargs, 'dt', self.settings['dt'])
+        structural_step = settings_utils.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
+        dt= settings_utils.set_value_or_default(kwargs, 'dt', self.settings['dt'])
 
         if structural_step.mb_dict is not None:
             MBdict = structural_step.mb_dict

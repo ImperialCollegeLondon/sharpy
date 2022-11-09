@@ -4,7 +4,7 @@ import copy
 import sharpy
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.h5utils as h5utils
 from sharpy.presharpy.presharpy import PreSharpy
 
@@ -94,7 +94,7 @@ class SaveData(BaseSolver):
     settings_default['stride'] = 1
     settings_description['stride'] = 'Number of steps between the execution calls when run online'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
                                        settings_options=settings_options)
 
@@ -120,7 +120,7 @@ class SaveData(BaseSolver):
         else:
             self.settings = custom_settings
 
-        su.to_custom_types(self.settings,
+        settings_utils.to_custom_types(self.settings,
                            self.settings_types,
                            self.settings_default,
                            options=self.settings_options)
@@ -197,7 +197,7 @@ class SaveData(BaseSolver):
 
     def run(self, **kwargs):
 
-        online = su.set_value_or_default(kwargs, 'online', False)
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
 
         # Use the following statement in case the ct types are not defined and
         # you need them on uvlm3d

@@ -1,9 +1,8 @@
 import h5py as h5
-import numpy as np
 
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.structure.models.beam as beam
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.h5utils as h5utils
 import os
 
@@ -60,7 +59,7 @@ class BeamLoader(BaseSolver):
     settings_default['for_pos'] = [0., 0, 0]
     settings_description['for_pos'] = 'Initial position of the A FoR.'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -81,7 +80,7 @@ class BeamLoader(BaseSolver):
         self.settings = data.settings[self.solver_id]
 
         # init settings
-        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # read input files (fem and dyn)
         self.read_files()

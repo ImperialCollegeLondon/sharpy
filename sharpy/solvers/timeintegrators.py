@@ -1,7 +1,7 @@
 import numpy as np
 import ctypes as ct
 
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 from sharpy.utils.solver_interface import solver
 
 
@@ -81,7 +81,7 @@ class NewmarkBeta(_BaseTimeIntegrator):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        su.to_custom_types(self.settings,
+        settings_utils.to_custom_types(self.settings,
                            self.settings_types,
                            self.settings_default,
                            no_ctype=True)
@@ -180,7 +180,7 @@ class GeneralisedAlpha(_BaseTimeIntegrator):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        su.to_custom_types(self.settings,
+        settings_utils.to_custom_types(self.settings,
                                  self.settings_types,
                                  self.settings_default,
                                  no_ctype=True)
