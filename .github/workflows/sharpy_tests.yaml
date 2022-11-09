@@ -62,7 +62,8 @@ jobs:
           pip install .
           pip install coverage
           coverage run -m unittest discover
+          coverage report
       - name: Upload Coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           verbose: true
