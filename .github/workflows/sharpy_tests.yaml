@@ -34,7 +34,7 @@ jobs:
       - name: Setup conda
         uses: s-weigand/setup-conda@v1
         with:
-          python-version: 3.10.8
+          python-version: 3.9
       - name: Pre-Install dependencies
         run: |
           gfortran --version
