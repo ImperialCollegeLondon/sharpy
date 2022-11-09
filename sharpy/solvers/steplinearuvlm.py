@@ -5,7 +5,7 @@ Nov 18
 """
 from sharpy.utils.solver_interface import BaseSolver, solver
 import numpy as np
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.utils.generator_interface as gen_interface
 import sharpy.utils.algebra as algebra
 import sharpy.linear.src.linuvlm as linuvlm
@@ -113,7 +113,7 @@ class StepLinearUVLM(BaseSolver):
     settings_default['cfl1'] = True
     settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
     
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     scaling_settings_types = dict()
@@ -143,7 +143,7 @@ class StepLinearUVLM(BaseSolver):
         self.lin_uvlm_system = None
         self.velocity_generator = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
         r"""
         Initialises the Linear UVLM aerodynamic solver and the chosen velocity generator.
 
@@ -171,14 +171,14 @@ class StepLinearUVLM(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
-        settings.to_custom_types(self.settings['ScalingDict'], self.scaling_settings_types,
+        su.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
+        su.to_custom_types(self.settings['ScalingDict'], self.scaling_settings_types,
                                  self.scaling_settings_default, no_ctype=True)
 
         # Initialise velocity generator
         velocity_generator_type = gen_interface.generator_from_string(self.settings['velocity_field_generator'])
         self.velocity_generator = velocity_generator_type()
-        self.velocity_generator.initialise(self.settings['velocity_field_input'])
+        self.velocity_generator.initialise(self.settings['velocity_field_input'], restart=restart)
 
         # Check whether linear UVLM has been initialised
         try:
@@ -268,13 +268,7 @@ class StepLinearUVLM(BaseSolver):
             # aero_tstep.linear.u = u_0
             # aero_tstep.linear.y = f_0
 
-    def run(self,
-            aero_tstep,
-            structure_tstep,
-            convect_wake=False,
-            dt=None,
-            t=None,
-            unsteady_contribution=False):
+    def run(self, **kwargs):
         r"""
         Solve the linear aerodynamic UVLM model at the current time step ``n``. The step increment is solved as:
 
@@ -328,14 +322,12 @@ class StepLinearUVLM(BaseSolver):
 
         """
 
-        if aero_tstep is None:
-            aero_tstep = self.data.aero.timestep_info[-1]
-        if structure_tstep is None:
-            structure_tstep = self.data.structure.timestep_info[-1]
-        if dt is None:
-            dt = self.settings['dt']
-        if t is None:
-            t = self.data.ts*dt
+        aero_tstep = su.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[-1])
+        structure_tstep = su.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
+        convect_wake = su.set_value_or_default(kwargs, 'convect_wake', False)
+        dt= su.set_value_or_default(kwargs, 'dt', self.settings['dt'])                                                                                                    
+        t = su.set_value_or_default(kwargs, 't', self.data.ts*dt)
+        unsteady_contribution = su.set_value_or_default(kwargs, 'unsteady_contribution', False)
 
         integr_order = self.settings['integr_order']
 

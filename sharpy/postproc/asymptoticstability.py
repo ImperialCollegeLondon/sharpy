@@ -2,7 +2,7 @@ import os
 import warnings
 import numpy as np
 import scipy.linalg as sclalg
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
@@ -89,9 +89,8 @@ class AsymptoticStability(BaseSolver):
     settings_description['modes_to_plot'] = 'List of mode numbers to plot. Plots the 0, 45, 90 and 135' \
                                             'degree phases.'
 
-    settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
-                                       settings_options=settings_options)
+    settings_table = su.SettingsTable()
+    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
         self.settings = None
@@ -106,7 +105,7 @@ class AsymptoticStability(BaseSolver):
         self.with_postprocessors = False
         self.caller = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
 
         if custom_settings is None:
@@ -114,9 +113,8 @@ class AsymptoticStability(BaseSolver):
         else:
             self.settings = custom_settings
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
-                                 options=self.settings_options,
-                                 no_ctype=True)
+        su.to_custom_types(self.settings, self.settings_types, self.settings_default, 
+                           options=self.settings_options, no_ctype=True)
 
         self.num_evals = self.settings['num_evals']
 
@@ -139,7 +137,7 @@ class AsymptoticStability(BaseSolver):
 
         self.caller = caller
 
-    def run(self, online=False):
+    def run(self, **kwargs):
         """
         Computes the eigenvalues and eigenvectors
 
@@ -148,6 +146,7 @@ class AsymptoticStability(BaseSolver):
             eigenvectors (np.ndarray): Corresponding mode shapes
 
         """
+        online = su.set_value_or_default(kwargs, 'online', False)
 
         # if the system is scaled, only one system can be analysed
         if self.settings['reference_velocity'] != 1. and self.data.linear.linear_system.uvlm.scaled:

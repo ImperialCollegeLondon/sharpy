@@ -1,5 +1,5 @@
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.io.network_interface as network_interface
 import sharpy.utils.cout_utils as cout
 
@@ -33,7 +33,7 @@ class UDPout(BaseSolver):
     del settings_default['send_output_to_all_clients']
     del settings_description['send_output_to_all_clients']
 
-    table = settings.SettingsTable()
+    table = su.SettingsTable()
     __doc__ += table.generate(settings_types, settings_default, settings_description,
                               header_line='This post-processor takes in the following settings, for a more '
                                           'detailed description see '
@@ -51,7 +51,7 @@ class UDPout(BaseSolver):
 
         self.caller = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
@@ -69,7 +69,9 @@ class UDPout(BaseSolver):
 
         self.caller = caller
 
-    def run(self, online=False):
+    def run(self, **kwargs):
+        
+        online = su.set_value_or_default(kwargs, 'online', False)
 
         if online:
             self.set_of_variables.get_value(self.data)

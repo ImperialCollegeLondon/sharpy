@@ -9,7 +9,7 @@ import numpy as np
 
 import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.utils.cout_utils as cout
 
 @solver
@@ -74,7 +74,7 @@ class DynamicUVLM(BaseSolver):
     settings_default['postprocessors_settings'] = dict()
     settings_description['postprocessors_settings'] = 'Dictionary with the applicable settings for every ``psotprocessor``. Every ``postprocessor`` needs its entry, even if empty'
 
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
 
@@ -90,7 +90,7 @@ class DynamicUVLM(BaseSolver):
         self.postprocessors = dict()
         self.with_postprocessors = False
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
         self.data = data
 
         if custom_settings is None:
@@ -98,12 +98,12 @@ class DynamicUVLM(BaseSolver):
         else:
             self.settings = custom_settings
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.dt = self.settings['dt']
         self.print_info = self.settings['print_info']
 
         self.aero_solver = solver_interface.initialise_solver(self.settings['aero_solver'])
-        self.aero_solver.initialise(self.data, self.settings['aero_solver_settings'])
+        self.aero_solver.initialise(self.data, self.settings['aero_solver_settings'], restart=False)
         self.data = self.aero_solver.data
 
         # initialise postprocessors
@@ -113,13 +113,13 @@ class DynamicUVLM(BaseSolver):
         for postproc in self.settings['postprocessors']:
             self.postprocessors[postproc] = solver_interface.initialise_solver(postproc)
             self.postprocessors[postproc].initialise(
-                self.data, self.settings['postprocessors_settings'][postproc], caller=self)
+                self.data, self.settings['postprocessors_settings'][postproc], caller=self, restart=False)
 
         if self.print_info:
             self.residual_table = cout.TablePrinter(2, 14, ['g', 'f'])
             self.residual_table.print_header(['ts', 't'])
 
-    def run(self):
+    def run(self, **kwargs):
 
         # struct info - only for orientation, no structural solution is performed
         struct_ini_step = self.data.structure.timestep_info[-1]

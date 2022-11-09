@@ -7,7 +7,7 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.aero.utils.uvlmlib as uvlmlib
 from sharpy.utils.constants import vortex_radius_def
 
@@ -73,7 +73,15 @@ class AerogridPlot(BaseSolver):
     settings_default['vortex_radius'] = vortex_radius_def
     settings_description['vortex_radius'] = 'Distance below which inductions are not computed'
 
-    table = settings.SettingsTable()
+    settings_types['stride'] = 'int'
+    settings_default['stride'] = 1
+    settings_description['stride'] = 'Number of steps between the execution calls when run online'
+    
+    settings_types['save_wake'] = 'bool'
+    settings_default['save_wake'] = True
+    settings_description['save_wake'] = 'Plot the wake'
+    
+    table = su.SettingsTable()
     __doc__ += table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -86,13 +94,13 @@ class AerogridPlot(BaseSolver):
         self.ts_max = 0
         self.caller = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.ts_max = self.data.ts + 1
         # create folder for containing files if necessary
         self.folder = data.output_folder + '/aero/'
@@ -108,20 +116,25 @@ class AerogridPlot(BaseSolver):
                               self.data.settings['SHARPy']['case'])
         self.caller = caller
 
-    def run(self, online=False):
+    def run(self, **kwargs):
+    
+        online = su.set_value_or_default(kwargs, 'online', False)
+
         # TODO: Create a dictionary to plot any variable as in beamplot
         if not online:
             for self.ts in range(self.ts_max):
                 if self.data.structure.timestep_info[self.ts] is not None:
                     self.plot_body()
-                    self.plot_wake()
+                    if self.settings['save_wake']:
+                        self.plot_wake()
             cout.cout_wrap('...Finished', 1)
-        else:
+        elif (self.data.ts % self.settings['stride'] == 0):
             aero_tsteps = len(self.data.aero.timestep_info) - 1
             struct_tsteps = len(self.data.structure.timestep_info) - 1
             self.ts = np.max((aero_tsteps, struct_tsteps))
             self.plot_body()
-            self.plot_wake()
+            if self.settings['save_wake']:
+                self.plot_wake()
         return self.data
 
     def plot_body(self):
@@ -141,8 +154,9 @@ class AerogridPlot(BaseSolver):
         for i_surf in range(aero_tstep.n_surf):
             filename = (self.body_filename +
                         '_' +
-                        '%02u_' % i_surf +
-                        '%06u' % self.ts)
+                        ('%02u_' % i_surf) +
+                        ('%06u' % self.ts) +
+                        '.vtu')
 
             dims = aero_tstep.dimensions[i_surf, :]
             point_data_dim = (dims[0]+1)*(dims[1]+1)  # + (dims_star[0]+1)*(dims_star[1]+1)
@@ -261,8 +275,9 @@ class AerogridPlot(BaseSolver):
         for i_surf in range(self.data.aero.timestep_info[self.ts].n_surf):
             filename = (self.wake_filename +
                         '_' +
-                        '%02u_' % i_surf +
-                        '%06u' % self.ts)
+                        ('%02u_' % i_surf) +
+                        ('%06u' % self.ts) +
+                        '.vtu')
 
             dims_star = self.data.aero.timestep_info[self.ts].dimensions_star[i_surf, :].copy()
             dims_star[0] -= self.settings['minus_m_star']
