@@ -86,9 +86,6 @@ class StraightWake(generator_interface.BaseGenerator):
             elif 'StaticCoupled' in data.settings:
                 aero_solver_name = data.settings['StaticCoupled']['aero_solver']
                 aero_solver_settings = data.settings['StaticCoupled']['aero_solver_settings']
-            elif 'StaticCoupled' in data.settings:
-                aero_solver_name = data.settings['StaticCoupled']['aero_solver']
-                aero_solver_settings = data.settings['StaticCoupled']['aero_solver_settings']
             elif 'DynamicCoupled' in data.settings:
                 aero_solver_name = data.settings['DynamicCoupled']['aero_solver']
                 aero_solver_settings = data.settings['DynamicCoupled']['aero_solver_settings']
