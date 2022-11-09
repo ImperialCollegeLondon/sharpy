@@ -35,6 +35,7 @@ To Do:
 import warnings
 import numpy as np
 import scipy.sparse as sparse
+from scipy.sparse._sputils import upcast_char
 import scipy.sparse.linalg as spalg
 
 # --------------------------------------------------------------------- Classes
@@ -64,7 +65,7 @@ class csc_matrix(sparse.csc_matrix):
 	def _add_dense(self, other):
 		if other.shape != self.shape:
 		    raise ValueError('Incompatible shapes.')
-		dtype = sparse.upcast_char(self.dtype.char, other.dtype.char)
+		dtype = upcast_char(self.dtype.char, other.dtype.char)
 		order = self._swap('CF')[0]
 		result = np.array(other, dtype=dtype, order=order, copy=True)
 		M, N = self._swap(self.shape)
