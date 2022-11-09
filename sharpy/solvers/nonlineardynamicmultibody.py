@@ -399,7 +399,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
         old_Dq = 1.0
         LM_old_Dq = 1.0
 
-        converged = False
         skip_step = False
         for iteration in range(self.settings['max_iterations']):
             # Check if the maximum of iterations has been reached
@@ -467,7 +466,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
             # Evaluate convergence
             res = np.max(np.abs(Dq[0:self.sys_size]))/old_Dq
             if np.isnan(res):
-                print(old_Dq)
                 if self.settings['allow_skip_step']:
                     skip_step = True
                     cout.cout_wrap("Skipping step", 3)
@@ -480,8 +478,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 LM_res = 0.0
 
             if (res < self.settings['min_delta']) and (LM_res < self.settings['min_delta']):
-            # if (res < self.settings['min_delta']):
-                converged = True
                 break
 
         Lambda, Lambda_dot = mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, num_LM_eq)
