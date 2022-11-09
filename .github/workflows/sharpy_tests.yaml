@@ -1,6 +1,5 @@
 name: Python package
 
-
 on:
   push:
     paths:
