@@ -64,6 +64,6 @@ jobs:
           coverage run -m unittest discover
           coverage json
       - name: Upload Coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           verbose: true
