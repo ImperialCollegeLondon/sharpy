@@ -62,6 +62,7 @@ jobs:
           pip install .
           pip install coverage
           coverage run -m unittest discover
+          coverage json
       - name: Upload Coverage to Codecov
         uses: codecov/codecov-action@v2
         with:
