@@ -38,7 +38,11 @@ class LinearGust(metaclass=ABCMeta):
     settings_default = {}
     settings_description = {}
 
-    print_info = True  # for debugging
+    settings_types['ScalingDict'] = 'dict'
+    settings_default['ScalingDict'] = dict()
+    settings_description['ScalingDict'] = 'Dictionary of scaling factors to achieve normalised UVLM realisation.'
+
+    print_info = False # for debugging
 
     def __init__(self):
         self.aero = None  #: aerogrid
@@ -85,12 +89,11 @@ class LinearGust(metaclass=ABCMeta):
         self.u_ext_direction = u_ext / self.u_inf
 
         if scaled:
-            self.u_inf = 1.
-            self.tsaero0.zeta /= self.settings['gust_assembler_inputs']['ScalingDict']['length']
-            self.dt *= self.settings['gust_assembler_inputs']['ScalingDict']['length'] / self.settings['gust_assembler_inputs']['ScalingDict']['speed']
-        else:
-            self.u_inf = np.linalg.norm(u_ext)
-
+            self.u_inf /= self.settings['ScalingDict']['speed']
+            for i_surf in range(self.aero.n_surf):
+                self.tsaero0.zeta[i_surf] /= self.settings['ScalingDict']['length']
+            self.dt *= self.settings['ScalingDict']['speed'] / self.settings['ScalingDict']['length'] 
+        
 
     def get_x_max(self):
         """
