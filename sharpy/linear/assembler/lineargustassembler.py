@@ -58,7 +58,7 @@ class LinearGust(metaclass=ABCMeta):
         self.u_ext_direction = None  # np.ndarray Unit external velocity vector in G frame
         self.u_inf = None  # float Free stream velocity magnitude
 
-    def initialise(self, aero, linuvlm, tsaero0, u_ext, custom_settings=None):
+    def initialise(self, aero, linuvlm, tsaero0, u_ext, custom_settings=None, scaled = False):
         """
         Initialise gust class
 
@@ -83,6 +83,14 @@ class LinearGust(metaclass=ABCMeta):
         # find free stream velocity
         self.u_inf = np.linalg.norm(u_ext)
         self.u_ext_direction = u_ext / self.u_inf
+
+        if scaled:
+            self.u_inf = 1.
+            self.tsaero0.zeta /= self.settings['gust_assembler_inputs']['ScalingDict']['length']
+            self.dt *= self.settings['gust_assembler_inputs']['ScalingDict']['length'] / self.settings['gust_assembler_inputs']['ScalingDict']['speed']
+        else:
+            self.u_inf = np.linalg.norm(u_ext)
+
 
     def get_x_max(self):
         """
