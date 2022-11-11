@@ -50,26 +50,8 @@ class BaseRom(metaclass=ABCMeta):
     def save(self, filename):
         raise NotImplementedError('Save method for the currently chosen ROM is not yet supported')
 
-
 def rom_from_string(string):
     return dict_of_roms[string]
-
-
-def rom_list_from_path(cwd):
-    onlyfiles = [f for f in os.listdir(cwd) if os.path.isfile(os.path.join(cwd, f))]
-
-    for i_file in range(len(onlyfiles)):
-        if ".py" in onlyfiles[i_file]:
-            if onlyfiles[i_file] == "__init__.py":
-                onlyfiles[i_file] = ""
-                continue
-            onlyfiles[i_file] = onlyfiles[i_file].replace('.py', '')
-        else:
-            onlyfiles[i_file] = ""
-
-    files = [file for file in onlyfiles if not file == ""]
-    return files
-
 
 def initialise_rom(rom_name):
     cout.cout_wrap('Generating an instance of %s' % rom_name, 2)
