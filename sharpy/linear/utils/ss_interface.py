@@ -475,7 +475,8 @@ class LinearVector:
             raise KeyError(f'Unknown variable type {variable_type}. Must be either InputVariable, OutputVariable '
                            f'or StateVariable')
         for ith_variable in range(n_variables):
-            name = variables_data['names'][ith_variable].astype('U13')  # decode to unicode
+            # name = variables_data['names'][ith_variable].astype('U13')  # decode to unicode
+            name = str(variables_data['names'][ith_variable], 'utf8')  # decode to unicode
             list_of_variables.append(var_class(name,
                                                size=variables_data['sizes'][ith_variable],
                                                index=variables_data['indices'][ith_variable]),

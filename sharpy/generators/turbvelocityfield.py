@@ -113,9 +113,9 @@ class TurbVelocityField(generator_interface.BaseGenerator):
 
         _, self.extension = os.path.splitext(self.settings['turbulent_field'])
 
-        if self.extension is '.h5':
+        if self.extension == '.h5':
             self.read_btl(self.settings['turbulent_field'])
-        if self.extension in '.xdmf':
+        if self.extension == '.xdmf':
             self.read_xdmf(self.settings['turbulent_field'])
 
         if 'z' in self.settings['periodicity']:
