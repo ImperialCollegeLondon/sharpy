@@ -161,7 +161,13 @@ def read_group(Grp):
             Hinst = list(Grp['_as_array'][()])
         else:
             N = len(MainLev) - 1
-            for nn in range(N):
+            list_ts = MainLev.copy()
+            list_ts.remove('_read_as')
+            list_ts = np.sort(np.unique(np.array(list_ts, dtype=np.int)))
+            if len(list_ts > 0):
+                for nn in range(list_ts[0] - 1):
+                    Hinst.append('NoneType')
+            for nn in list_ts:
                 name = '%.5d' % nn
                 ### extract value
                 if type(Grp[name]) is h5._hl.group.Group:

@@ -5,7 +5,7 @@ from tvtk.api import tvtk, write_data
 
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.utils.algebra as algebra
 import sharpy.structure.utils.xbeamlib as xbeamlib
 
@@ -34,7 +34,7 @@ class Cleanup(BaseSolver):
     settings_default['remaining_steps'] = 10
     settings_description['remaining_steps'] = 'The last `remaining_steps` are not cleaned up'
 
-    table = settings.SettingsTable()
+    table = su.SettingsTable()
     __doc__ += table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -42,18 +42,21 @@ class Cleanup(BaseSolver):
         self.data = None
         self.caller = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings,
-                                 self.settings_types,
-                                 self.settings_default)
+        su.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default)
         self.caller = caller
 
-    def run(self, online=False):
+    def run(self, **kwargs):
+        
+        online = su.set_value_or_default(kwargs, 'online', False)
+
         if self.settings['clean_structure']:
             self.clean(self.data.structure.timestep_info, self.settings['remaining_steps'])
         if self.settings['clean_aero']:

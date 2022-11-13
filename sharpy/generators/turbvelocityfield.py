@@ -106,7 +106,7 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         self.vel_holder0 = 3*[None]
         self.vel_holder1 = 3*[None]
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
         self.settings = self.in_dict

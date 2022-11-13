@@ -1,5 +1,4 @@
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 
 @solver
@@ -68,8 +67,8 @@ class _BaseStructural(BaseSolver):
     settings_types['num_steps'] = 'int'
     settings_default['num_steps'] = 500
 
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         pass
 
-    def run(self):
+    def run(self, **kwargs):
         pass

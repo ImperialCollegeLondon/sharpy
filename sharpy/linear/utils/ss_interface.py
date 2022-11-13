@@ -56,7 +56,7 @@ def sys_list_from_path(cwd):
     onlyfiles = [f for f in os.listdir(cwd) if os.path.isfile(os.path.join(cwd, f))]
 
     for i_file in range(len(onlyfiles)):
-        if ".py" in onlyfiles[i_file]:
+        if onlyfiles[i_file].split('.')[-1] == 'py': # support autosaved files in the folder
             if onlyfiles[i_file] == "__init__.py":
                 onlyfiles[i_file] = ""
                 continue
