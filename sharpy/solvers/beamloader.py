@@ -121,8 +121,8 @@ class BeamLoader(BaseSolver):
             # Need to redefine strings to remove the "b" at the beginning
             for iconstraint in range(self.mb_data_dict['num_constraints']):
                 self.mb_data_dict["constraint_%02d" % iconstraint]['behaviour'] = self.mb_data_dict["constraint_%02d" % iconstraint]['behaviour'].decode()
-            #for ibody in range(self.mb_data_dict['num_bodies']):
-            #    self.mb_data_dict["body_%02d" % ibody]['FoR_movement'] = self.mb_data_dict["body_%02d" % ibody]['FoR_movement'].decode()
+            for ibody in range(self.mb_data_dict['num_bodies']):
+                self.mb_data_dict["body_%02d" % ibody]['FoR_movement'] = self.mb_data_dict["body_%02d" % ibody]['FoR_movement'].decode()
 
     def validate_fem_file(self):
         raise NotImplementedError('validation of the fem file in beamloader is not yet implemented!')

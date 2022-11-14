@@ -417,3 +417,6 @@ class TestDoublePendulum(unittest.TestCase):
                 os.remove(solver_path + f)
 
         shutil.rmtree(solver_path + 'output/')
+
+if __name__ == '__main__':
+    unittest.main()
