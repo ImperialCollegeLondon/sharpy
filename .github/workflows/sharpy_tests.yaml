@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7]
+        python-version: [3.10.8]
 
     steps:
       - uses: actions/checkout@v2
@@ -34,33 +34,36 @@ jobs:
       - name: Setup conda
         uses: s-weigand/setup-conda@v1
         with:
-          python-version: 3.7
+          python-version: 3.9
       - name: Pre-Install dependencies
         run: |
           gfortran --version
           wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+          # wget https://repo.anaconda.com/archive/Anaconda3-2022.10-Linux-x86_64.sh -O miniconda.sh;
           bash miniconda.sh -b -p $HOME/miniconda
           export PATH="$HOME/miniconda/bin:$PATH"
           hash -r
           conda config --set always_yes yes --set changeps1 no
+          # conda config --append channels conda-forge
           conda update --name base conda
           conda list --name base conda
           conda init bash
           hash -r
           export QT_QPA_PLATFORM='offscreen'
           sudo apt install libeigen3-dev
-          conda env create -f utils/environment_minimal.yml
+          conda env create -f utils/environment_new.yml
           conda init bash
-          source activate sharpy_minimal
+          source activate sharpy
           git submodule init
           git submodule update
-          git fetch -t
+          git fetch --tags -f
           mkdir build && cd build
           cmake .. && make install -j 4 && cd ..
           pip install .
           pip install coverage
           coverage run -m unittest discover
+          coverage json
       - name: Upload Coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           verbose: true

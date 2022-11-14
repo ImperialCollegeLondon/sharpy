@@ -22,7 +22,8 @@ def alpha_beta_to_direction(alpha, beta):
     return direction
 
 
-def magnitude_and_direction_of_relative_velocity(displacement, displacement_vel, for_vel, cga, uext):
+def magnitude_and_direction_of_relative_velocity(displacement, displacement_vel, for_vel, cga, uext,
+                                                 add_rotation=False, rot_vel_g=np.zeros((3)), centre_rot_g=np.zeros((3))):
     r"""
     Calculates the magnitude and direction of the relative velocity ``u_rel`` at a local section of the wing.
 
@@ -39,6 +40,9 @@ def magnitude_and_direction_of_relative_velocity(displacement, displacement_vel,
         for_vel (np.array): ``A`` frame of reference (FoR) velocity. Expressed in A FoR
         cga (np.array): Rotation vector from FoR ``G`` to FoR ``A``
         uext (np.array): Background flow velocity on solid grid nodes
+        add_rotation (bool): Adds rotation velocity. Probalby needed in steady computations
+        rot_vel_g (np.array): Rotation velocity. Only used if add_rotation = True
+        centre_rot_g (np.array): Centre of rotation. Only used if add_rotation = True
 
     Returns:
         tuple: ``u_rel``, ``dir_u_rel`` expressed in the inertial, ``G`` frame.
@@ -49,6 +53,9 @@ def magnitude_and_direction_of_relative_velocity(displacement, displacement_vel,
     urel = -np.dot(cga, urel)
     urel += np.average(uext, axis=1)
 
+    if add_rotation:
+        urel -= algebra.cross3(rot_vel_g,
+                               np.dot(cga, displacement) - centre_rot_g)
     dir_urel = algebra.unit_vector(urel)
 
     return urel, dir_urel

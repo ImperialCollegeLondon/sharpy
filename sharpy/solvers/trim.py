@@ -7,7 +7,7 @@ import sharpy.aero.utils.mapping as mapping
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.utils.algebra as algebra
 
 
@@ -86,7 +86,7 @@ class Trim(BaseSolver):
     settings_default['refine_solution'] = False
     settings_description['refine_solution'] = 'If ``True`` and the optimiser routine allows for it, the optimiser will try to improve the solution with hybrid methods'
 
-    settings_table = settings.SettingsTable()
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -99,13 +99,13 @@ class Trim(BaseSolver):
 
         self.with_special_case = False
 
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.solver = solver_interface.initialise_solver(self.settings['solver'])
-        self.solver.initialise(self.data, self.settings['solver_settings'])
+        self.solver.initialise(self.data, self.settings['solver_settings'], restart=restart)
 
         # generate x_info (which elements of the x array are what)
         counter = 0

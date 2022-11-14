@@ -122,3 +122,7 @@ figs/*
 
 # sharpy extension
 *.sharpy
+
+# Exceptions
+# !tests/coupled/multibody/floating_wind_turbine/oc3_cs_v07.floating.h5 
+!tests/coupled/multibody/floating_wind_turbine/oc3_cs_v07.floating.h*

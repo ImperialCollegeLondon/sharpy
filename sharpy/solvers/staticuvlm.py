@@ -4,10 +4,11 @@ import numpy as np
 import sharpy.utils.algebra as algebra
 import sharpy.aero.utils.uvlmlib as uvlmlib
 import sharpy.utils.cout_utils as cout
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.generator_interface as gen_interface
 from sharpy.utils.constants import vortex_radius_def
+import sharpy.aero.utils.mapping as mapping
 
 
 @solver
@@ -51,7 +52,7 @@ class StaticUvlm(BaseSolver):
     settings_description['num_cores'] = 'Number of cores to use in the VLM lib'
 
     settings_types['n_rollup'] = 'int'
-    settings_default['n_rollup'] = 1
+    settings_default['n_rollup'] = 0
     settings_description['n_rollup'] = 'Number of rollup iterations for free wake. Use at least ``n_rollup > 1.1*m_star``'
 
     settings_types['rollup_dt'] = 'float'
@@ -114,7 +115,11 @@ class StaticUvlm(BaseSolver):
     settings_default['mach_number'] = 0.
     settings_description['mach_number'] = 'Scale results with Mach number'
 
-    settings_table = settings.SettingsTable()
+    settings_types['map_forces_on_struct'] = 'bool'
+    settings_default['map_forces_on_struct'] = False
+    settings_description['map_forces_on_struct'] = 'Maps the forces on the structure at the end of the timestep. Only usefull if the solver is used outside StaticCoupled'
+
+    settings_table = su.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -125,13 +130,13 @@ class StaticUvlm(BaseSolver):
         self.M_inf = None
         self.beta_inf = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        su.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
 
         self.update_step()
 
@@ -139,7 +144,16 @@ class StaticUvlm(BaseSolver):
         velocity_generator_type = gen_interface.generator_from_string(
             self.settings['velocity_field_generator'])
         self.velocity_generator = velocity_generator_type()
-        self.velocity_generator.initialise(self.settings['velocity_field_input'])
+        self.velocity_generator.initialise(self.settings['velocity_field_input'], restart=restart)
+
+    def add_step(self):
+        self.data.aero.add_timestep()
+
+    def update_grid(self, beam):
+        self.data.aero.generate_zeta(beam,
+                                     self.data.aero.aero_settings,
+                                     -1,
+                                     beam_ts=-1)
 
         self.M_inf = self.settings['mach_number']
         if self.M_inf == 0.:
@@ -147,12 +161,27 @@ class StaticUvlm(BaseSolver):
         else:
             self.beta_inf = np.sqrt(1. - self.M_inf**2)
 
-    def run(self):
-        if not self.data.aero.timestep_info[self.data.ts].zeta:
+    def update_custom_grid(self, structure_tstep, aero_tstep):
+        self.data.aero.generate_zeta_timestep_info(structure_tstep,
+                                                   aero_tstep,
+                                                   self.data.structure,
+                                                   self.data.aero.aero_settings,
+                                                   dt=self.settings['rollup_dt'])
+
+    def run(self, **kwargs):
+
+        aero_tstep = su.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[-1])
+        structure_tstep = su.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
+        dt = su.set_value_or_default(kwargs, 'dt', self.settings['rollup_dt'])
+        t = su.set_value_or_default(kwargs, 't', self.data.ts*dt)
+
+        unsteady_contribution = False
+        convect_wake = False
+
+        if not aero_tstep.zeta:
             return self.data
 
         # generate the wake because the solid shape might change
-        aero_tstep = self.data.aero.timestep_info[self.data.ts]
         self.data.aero.wake_shape_generator.generate({'zeta': aero_tstep.zeta,
                                             'zeta_star': aero_tstep.zeta_star,
                                             'gamma': aero_tstep.gamma,
@@ -160,16 +189,29 @@ class StaticUvlm(BaseSolver):
                                             'dist_to_orig': aero_tstep.dist_to_orig})
 
         # generate uext
-        self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
+        self.velocity_generator.generate({'zeta': aero_tstep.zeta,
                                           'override': True,
-                                          'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
-                                         self.data.aero.timestep_info[self.data.ts].u_ext)
+                                          'for_pos': structure_tstep.for_pos[0:3]},
+                                          aero_tstep.u_ext)
         # grid orientation
-        uvlmlib.vlm_solver(self.data.aero.timestep_info[self.data.ts],
+        uvlmlib.vlm_solver(aero_tstep,
                            self.settings)
-        
+
         if self.beta_inf != 1.:
             self.data.aero.timestep_info[self.data.ts].forces /= (self.beta_inf)
+
+        if self.settings['map_forces_on_struct']:
+            structure_tstep.steady_applied_forces[:] = mapping.aero2struct_force_mapping(
+                    aero_tstep.forces,
+                    self.data.aero.struct2aero_mapping,
+                    self.data.aero.timestep_info[self.data.ts].zeta,
+                    structure_tstep.pos,
+                    structure_tstep.psi,
+                    self.data.structure.node_master_elem,
+                    self.data.structure.connectivities,
+                    structure_tstep.cag(),
+                    self.data.aero.aero_dict)
+
         return self.data
 
     def next_step(self):
