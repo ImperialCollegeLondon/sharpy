@@ -2,7 +2,7 @@ import numpy as np
 import time
 import os
 import sharpy.utils.solver_interface as solver_interface
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.cout_utils as cout
 import warnings
 import sharpy.linear.src.libss as libss
@@ -92,10 +92,10 @@ class FrequencyResponse(solver_interface.BaseSolver):
     settings_default['quick_plot'] = False
     settings_description['quick_plot'] = 'Produce array of ``.png`` plots showing response. Requires matplotlib.'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
-    scaling_table = su.SettingsTable()
+    scaling_table = settings_utils.SettingsTable()
     __doc__ += scaling_table.generate(scaling_types, scaling_default, scaling_description,
                                       header_line='The scaling dictionary takes the following entries:')
 
@@ -119,7 +119,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
             self.settings = self.data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        su.to_custom_types(self.settings,
+        settings_utils.to_custom_types(self.settings,
                            self.settings_types,
                            self.settings_default,
                            self.settings_options,
@@ -133,7 +133,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
                 scaling = self.data.linear.linear_system.uvlm.sys.ScalingFacts
             else:
                 scaling = self.settings['frequency_scaling']
-                su.to_custom_types(scaling, self.scaling_types, self.scaling_default,
+                settings_utils.to_custom_types(scaling, self.scaling_types, self.scaling_default,
                                                no_ctype=True)
             self.w_to_k = scaling['length'] / scaling['speed']
         else:
@@ -166,8 +166,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
               If not given, the response for the previously assembled systems and specified in ``target_system`` will
               be performed.
         """
-        online = su.set_value_or_default(kwargs, 'online', False)
-        ss = su.set_value_or_default(kwargs, 'ss', None)
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
+        ss = settings_utils.set_value_or_default(kwargs, 'ss', None)
 
         if ss is None:
             ss_list = [find_target_system(self.data, system_name) for system_name in self.settings['target_system']]

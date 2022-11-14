@@ -3,13 +3,9 @@ Time Domain Aerodynamic Solver
 
 N Goizueta Jan 19
 """
-
-import ctypes as ct
-import numpy as np
-
 import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.cout_utils as cout
 
 @solver
@@ -74,7 +70,7 @@ class DynamicUVLM(BaseSolver):
     settings_default['postprocessors_settings'] = dict()
     settings_description['postprocessors_settings'] = 'Dictionary with the applicable settings for every ``psotprocessor``. Every ``postprocessor`` needs its entry, even if empty'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
 
@@ -98,7 +94,7 @@ class DynamicUVLM(BaseSolver):
         else:
             self.settings = custom_settings
 
-        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.dt = self.settings['dt']
         self.print_info = self.settings['print_info']
 

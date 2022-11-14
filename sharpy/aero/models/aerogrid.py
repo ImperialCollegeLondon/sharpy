@@ -188,13 +188,11 @@ class Aerogrid(object):
                     nodes_in_surface[i_surf].append(i_global_node)
                 if self.aero_dict['aero_node'][i_global_node]:
                     self.aero_dimensions[i_surf, 1] += 1
-
         # accounting for N+1 nodes -> N panels
-        self.aero_dimensions[:, 1] -= 1
-
+        self.aero_dimensions[:,1] -= 1
+        
         self.aero_dimensions_star = self.aero_dimensions.copy()
-        for i_surf in range(self.n_surf):
-            self.aero_dimensions_star[i_surf, 0] = self.aero_settings['mstar']
+        self.aero_dimensions_star[:, 0] = self.aero_settings['mstar']
 
     def add_timestep(self):
         try:

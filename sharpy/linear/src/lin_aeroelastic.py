@@ -70,8 +70,6 @@ class LinAeroEla():
         except KeyError:
             self.rigid_body_motions = False
 
-        print("rbm:", self.rigid_body_motions)
-
         try:
             self.use_euler = settings_here['use_euler']
         except KeyError:
@@ -104,8 +102,7 @@ class LinAeroEla():
             rho = data.settings['StaticCoupled']['aero_solver_settings']['rho']
             if type(rho) == str:
                 rho = np.float(rho)
-            if hasattr(rho, 'value'):
-                rho = rho
+ 
         self.tsaero.rho = rho
         # --- backward compatibility
 

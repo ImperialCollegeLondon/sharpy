@@ -2,15 +2,12 @@
 @modified   Alfonso del Carre
 """
 
-import ctypes as ct
 import numpy as np
 
 import sharpy.structure.utils.xbeamlib as xbeamlib
 from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
-import sharpy.utils.settings as su
-import sharpy.utils.algebra as algebra
-import sharpy.utils.cout_utils as cout
+import sharpy.utils.settings as settings_utils
 
 
 _BaseStructural = solver_from_string('_BaseStructural')
@@ -50,7 +47,7 @@ class NonLinearDynamicCoupledStep(_BaseStructural):
     settings_default['relaxation_factor'] = 0.3
     settings_description['relaxation factor'] = 'Relaxation factor'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -63,7 +60,7 @@ class NonLinearDynamicCoupledStep(_BaseStructural):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'])
@@ -79,10 +76,10 @@ class NonLinearDynamicCoupledStep(_BaseStructural):
 
     def run(self, **kwargs):
 
-        structural_step = su.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
+        structural_step = settings_utils.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
         # TODO: previous_structural_step never used
-        previous_structural_step = su.set_value_or_default(kwargs, 'previous_structural_step', self.data.structure.timestep_info[-1])
-        dt= su.set_value_or_default(kwargs, 'dt', self.settings['dt'])
+        previous_structural_step = settings_utils.set_value_or_default(kwargs, 'previous_structural_step', self.data.structure.timestep_info[-1])
+        dt= settings_utils.set_value_or_default(kwargs, 'dt', self.settings['dt'])
 
         xbeamlib.xbeam_step_couplednlndyn(self.data.structure,
                                           self.settings,

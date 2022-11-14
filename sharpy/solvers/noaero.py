@@ -1,4 +1,4 @@
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 from sharpy.utils.solver_interface import solver, BaseSolver
 
 
@@ -28,7 +28,7 @@ class NoAero(BaseSolver):
     settings_default['update_grid'] = True
     settings_description['update_grid'] = 'Update aerodynamic grid as the structure deforms.'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -41,7 +41,7 @@ class NoAero(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        su.to_custom_types(self.settings,
+        settings_utils.to_custom_types(self.settings,
                            self.settings_types,
                            self.settings_default,
                            no_ctype=True)
@@ -51,12 +51,12 @@ class NoAero(BaseSolver):
 
     def run(self, **kwargs):
 
-        aero_tstep = su.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[-1])
-        structure_tstep = su.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
-        convect_wake = su.set_value_or_default(kwargs, 'convect_wake', True)
-        dt= su.set_value_or_default(kwargs, 'dt', self.settings['dt'])                                                                                                                             
-        t = su.set_value_or_default(kwargs, 't', self.data.ts*dt)
-        unsteady_contribution = su.set_value_or_default(kwargs, 'unsteady_contribution', False)
+        aero_tstep = settings_utils.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[-1])
+        structure_tstep = settings_utils.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
+        convect_wake = settings_utils.set_value_or_default(kwargs, 'convect_wake', True)
+        dt= settings_utils.set_value_or_default(kwargs, 'dt', self.settings['dt'])                                                                                                                             
+        t = settings_utils.set_value_or_default(kwargs, 't', self.data.ts*dt)
+        unsteady_contribution = settings_utils.set_value_or_default(kwargs, 'unsteady_contribution', False)
 
         # generate the wake because the solid shape might change
         self.data.aero.wake_shape_generator.generate({'zeta': aero_tstep.zeta,

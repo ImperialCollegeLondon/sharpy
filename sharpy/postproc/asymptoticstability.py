@@ -2,7 +2,7 @@ import os
 import warnings
 import numpy as np
 import scipy.linalg as sclalg
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
@@ -89,7 +89,7 @@ class AsymptoticStability(BaseSolver):
     settings_description['modes_to_plot'] = 'List of mode numbers to plot. Plots the 0, 45, 90 and 135' \
                                             'degree phases.'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -113,7 +113,7 @@ class AsymptoticStability(BaseSolver):
         else:
             self.settings = custom_settings
 
-        su.to_custom_types(self.settings, self.settings_types, self.settings_default, 
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default, 
                            options=self.settings_options, no_ctype=True)
 
         self.num_evals = self.settings['num_evals']
@@ -146,7 +146,7 @@ class AsymptoticStability(BaseSolver):
             eigenvectors (np.ndarray): Corresponding mode shapes
 
         """
-        online = su.set_value_or_default(kwargs, 'online', False)
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
 
         # if the system is scaled, only one system can be analysed
         if self.settings['reference_velocity'] != 1. and self.data.linear.linear_system.uvlm.scaled:

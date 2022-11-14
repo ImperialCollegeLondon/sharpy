@@ -3,7 +3,7 @@ import numpy as np
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 import os
 
 
@@ -54,7 +54,7 @@ class StaticTrim(BaseSolver):
     settings_default['m_tolerance'] = 0.01
     settings_description['m_tolerance'] = 'Tolerance in pitching moment'
 
-    settings_types['tail_cs_index'] = 'int'
+    settings_types['tail_cs_index'] = ['int', 'list(int)']
     settings_default['tail_cs_index'] = 0
     settings_description['tail_cs_index'] = 'Index of control surfaces that move to achieve trim'
 
@@ -90,7 +90,7 @@ class StaticTrim(BaseSolver):
     settings_default['save_info'] = False
     settings_description['save_info'] = 'Save trim results to text file'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -117,7 +117,7 @@ class StaticTrim(BaseSolver):
     def initialise(self, data, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
-        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.solver = solver_interface.initialise_solver(self.settings['solver'])
         self.solver.initialise(self.data, self.settings['solver_settings'], restart=restart)

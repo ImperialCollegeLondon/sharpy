@@ -5,7 +5,7 @@ Nov 18
 """
 from sharpy.utils.solver_interface import BaseSolver, solver
 import numpy as np
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.generator_interface as gen_interface
 import sharpy.utils.algebra as algebra
 import sharpy.linear.src.linuvlm as linuvlm
@@ -113,7 +113,7 @@ class StepLinearUVLM(BaseSolver):
     settings_default['cfl1'] = True
     settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
     
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     scaling_settings_types = dict()
@@ -171,8 +171,8 @@ class StepLinearUVLM(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        su.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
-        su.to_custom_types(self.settings['ScalingDict'], self.scaling_settings_types,
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
+        settings_utils.to_custom_types(self.settings['ScalingDict'], self.scaling_settings_types,
                                  self.scaling_settings_default, no_ctype=True)
 
         # Initialise velocity generator
@@ -322,12 +322,12 @@ class StepLinearUVLM(BaseSolver):
 
         """
 
-        aero_tstep = su.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[-1])
-        structure_tstep = su.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
-        convect_wake = su.set_value_or_default(kwargs, 'convect_wake', False)
-        dt= su.set_value_or_default(kwargs, 'dt', self.settings['dt'])                                                                                                    
-        t = su.set_value_or_default(kwargs, 't', self.data.ts*dt)
-        unsteady_contribution = su.set_value_or_default(kwargs, 'unsteady_contribution', False)
+        aero_tstep = settings_utils.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[-1])
+        structure_tstep = settings_utils.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
+        convect_wake = settings_utils.set_value_or_default(kwargs, 'convect_wake', False)
+        dt= settings_utils.set_value_or_default(kwargs, 'dt', self.settings['dt'])                                                                                                    
+        t = settings_utils.set_value_or_default(kwargs, 't', self.data.ts*dt)
+        unsteady_contribution = settings_utils.set_value_or_default(kwargs, 'unsteady_contribution', False)
 
         integr_order = self.settings['integr_order']
 

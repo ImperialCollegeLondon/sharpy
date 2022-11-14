@@ -1,8 +1,4 @@
-import ctypes as ct
-import numpy as np
-
-import sharpy.utils.algebra as algebra
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.cout_utils as cout
@@ -70,7 +66,7 @@ class PrescribedUvlm(BaseSolver):
     settings_default['vortex_radius_wake_ind'] = vortex_radius_def
     settings_description['vortex_radius_wake_ind'] = 'Distance between points below which induction is not computed in the wake convection'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -88,7 +84,7 @@ class PrescribedUvlm(BaseSolver):
     def initialise(self, data, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
-        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.dt = self.settings['dt']
 
         self.aero_solver = solver_interface.initialise_solver(self.settings['aero_solver'])

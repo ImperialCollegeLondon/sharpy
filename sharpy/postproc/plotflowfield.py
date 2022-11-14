@@ -3,7 +3,7 @@ import numpy as np
 from tvtk.api import tvtk, write_data
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.generator_interface as gen_interface
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 import sharpy.aero.utils.uvlmlib as uvlmlib
 import ctypes as ct
 from sharpy.utils.constants import vortex_radius_def
@@ -63,7 +63,7 @@ class PlotFlowField(BaseSolver):
     settings_default['vortex_radius'] = vortex_radius_def
     settings_description['vortex_radius'] = 'Distance below which inductions are not computed.'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
@@ -78,7 +78,7 @@ class PlotFlowField(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        su.to_custom_types(self.settings,
+        settings_utils.to_custom_types(self.settings,
                            self.settings_types,
                            self.settings_default,
                            self.settings_options)
@@ -184,7 +184,7 @@ class PlotFlowField(BaseSolver):
 
     def run(self, **kwargs):
 
-        online = su.set_value_or_default(kwargs, 'online', False)
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
 
         if online:
             if divmod(self.data.ts, self.settings['stride'])[1] == 0:

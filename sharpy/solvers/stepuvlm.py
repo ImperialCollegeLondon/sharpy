@@ -1,11 +1,9 @@
-import ctypes as ct
 import numpy as np
 import scipy.optimize
 import scipy.signal
 
-import sharpy.utils.algebra as algebra
 import sharpy.aero.utils.uvlmlib as uvlmlib
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.generator_interface as gen_interface
 import sharpy.utils.cout_utils as cout
@@ -133,7 +131,7 @@ class StepUvlm(BaseSolver):
     settings_default['quasi_steady'] = False
     settings_description['quasi_steady'] = 'Use quasi-steady approximation in UVLM'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
@@ -150,7 +148,7 @@ class StepUvlm(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        su.to_custom_types(self.settings,
+        settings_utils.to_custom_types(self.settings,
                            self.settings_types,
                            self.settings_default,
                            self.settings_options)
@@ -190,12 +188,12 @@ class StepUvlm(BaseSolver):
         """
 
         # Default values
-        aero_tstep = su.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[-1])
-        structure_tstep = su.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
-        convect_wake = su.set_value_or_default(kwargs, 'convect_wake', True)
-        dt= su.set_value_or_default(kwargs, 'dt', self.settings['dt'])
-        t = su.set_value_or_default(kwargs, 't', self.data.ts*dt)
-        unsteady_contribution = su.set_value_or_default(kwargs, 'unsteady_contribution', False)
+        aero_tstep = settings_utils.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[-1])
+        structure_tstep = settings_utils.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
+        convect_wake = settings_utils.set_value_or_default(kwargs, 'convect_wake', True)
+        dt= settings_utils.set_value_or_default(kwargs, 'dt', self.settings['dt'])
+        t = settings_utils.set_value_or_default(kwargs, 't', self.data.ts*dt)
+        unsteady_contribution = settings_utils.set_value_or_default(kwargs, 'unsteady_contribution', False)
 
         if not aero_tstep.zeta:
             return self.data

@@ -3,7 +3,7 @@ import numpy as np
 
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.aero.models.aerogrid as aerogrid
-import sharpy.utils.settings as su
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.h5utils as h5utils
 import sharpy.utils.generator_interface as gen_interface
 
@@ -62,7 +62,7 @@ class AerogridLoader(BaseSolver):
     settings_default['freestream_dir'] = [1.0, 0.0, 0.0]
     settings_description['freestream_dir'] = 'Free stream flow direction'
 
-    settings_types['mstar'] = 'int'
+    settings_types['mstar'] = ['int', 'list(int)']
     settings_default['mstar'] = 10
     settings_description['mstar'] = 'Number of chordwise wake panels'
 
@@ -84,7 +84,7 @@ class AerogridLoader(BaseSolver):
     settings_default['wake_shape_generator_input'] = dict()
     settings_description['wake_shape_generator_input'] = 'Dictionary of inputs needed by the wake shape generator'
 
-    settings_table = su.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
                                        settings_options=settings_options)
 
@@ -105,7 +105,7 @@ class AerogridLoader(BaseSolver):
         self.settings = data.settings[self.solver_id]
 
         # init settings
-        su.to_custom_types(self.settings,
+        settings_utils.to_custom_types(self.settings,
                            self.settings_types,
                            self.settings_default, options=self.settings_options)
 
