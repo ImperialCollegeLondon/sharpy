@@ -48,6 +48,11 @@ class GustVanes(generator_interface.BaseGenerator):
     settings_default['vertical'] = False
     settings_description['vertical'] = 'If ``True``, gust vanes are oriented vertically.'
 
+    settings_types['1-cosine_discretisation'] = 'bool'
+    settings_default['1-cosine_discretisation'] = False
+    settings_description['1-cosine_discretisation'] = 'If ``True``, gust vanes are discretised in a 1-cosine shape in spanwise direction.'
+
+
 
     def __init__(self):
         self.settings = None
@@ -70,13 +75,20 @@ class GustVanes(generator_interface.BaseGenerator):
         self.get_y_coordinates()
 
     def get_y_coordinates(self):
+
         for ivane in range(self.n_vanes):
-            # Starts at y = 0 if symmetry condition is enforced
-            self.y_coord.append(np.linspace(self.vane_info[ivane]['span']/2,
-                -self.vane_info[ivane]['span']/2*int(not self.settings["symmetry_condition"]),
-                self.vane_info[ivane]['N']+1))
-            print(self.y_coord[-1])
-            print(np.shape(self.y_coord[-1]))
+            if self.settings['1-cosine_discretisation']:
+                domain = np.linspace(0, 1, self.vane_info[ivane]['N']+1)
+                y_coord = 0.5*(1.0 - np.cos(domain*np.pi))
+                y_coord = (y_coord * self.vane_info[ivane]['span']) \
+                    - self.vane_info[ivane]['span']/2*int(not self.settings["symmetry_condition"])
+                self.y_coord.append(y_coord)
+            else:
+                # Starts at y = 0 if symmetry condition is enforced
+                self.y_coord.append(np.linspace(self.vane_info[ivane]['span']/2,
+                    -self.vane_info[ivane]['span']/2*int(not self.settings["symmetry_condition"]),
+                    self.vane_info[ivane]['N']+1))
+            
 
     def set_default_vane_settings(self):
         # TODO: Find better solution, especially for beam_psi
