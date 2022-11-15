@@ -53,89 +53,119 @@ class StepLinearUVLM(BaseSolver):
         Aerodynamics with Arbitrary Kinematics. AIAA Journal, 57(6), 1–14. 2019. https://doi.org/10.2514/1.J058153
 
     """
-    solver_id = 'StepLinearUVLM'
-    solver_classification = 'aero'
+    solver_id = "StepLinearUVLM"
+    solver_classification = "aero"
 
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['dt'] = 'float'
-    settings_default['dt'] = 0.1
-    settings_description['dt'] = 'Time step'
+    settings_types["dt"] = "float"
+    settings_default["dt"] = 0.1
+    settings_description["dt"] = "Time step"
 
-    settings_types['integr_order'] = 'int'
-    settings_default['integr_order'] = 2
-    settings_description['integr_order'] = 'Integration order of the circulation derivative. Either ``1`` or ``2``.'
+    settings_types["integr_order"] = "int"
+    settings_default["integr_order"] = 2
+    settings_description[
+        "integr_order"
+    ] = "Integration order of the circulation derivative. Either ``1`` or ``2``."
 
-    settings_types['ScalingDict'] = 'dict'
-    settings_default['ScalingDict'] = dict()
-    settings_description['ScalingDict'] = 'Dictionary of scaling factors to achieve normalised UVLM realisation.'
+    settings_types["ScalingDict"] = "dict"
+    settings_default["ScalingDict"] = dict()
+    settings_description[
+        "ScalingDict"
+    ] = "Dictionary of scaling factors to achieve normalised UVLM realisation."
 
-    settings_types['remove_predictor'] = 'bool'
-    settings_default['remove_predictor'] = True
-    settings_description['remove_predictor'] = 'Remove the predictor term from the UVLM equations'
+    settings_types["remove_predictor"] = "bool"
+    settings_default["remove_predictor"] = True
+    settings_description[
+        "remove_predictor"
+    ] = "Remove the predictor term from the UVLM equations"
 
-    settings_types['use_sparse'] = 'bool'
-    settings_default['use_sparse'] = True
-    settings_description['use_sparse'] = 'Assemble UVLM plant matrix in sparse format'
+    settings_types["use_sparse"] = "bool"
+    settings_default["use_sparse"] = True
+    settings_description["use_sparse"] = "Assemble UVLM plant matrix in sparse format"
 
-    settings_types['density'] = 'float'
-    settings_default['density'] = 1.225
-    settings_description['density'] = 'Air density'
+    settings_types["density"] = "float"
+    settings_default["density"] = 1.225
+    settings_description["density"] = "Air density"
 
-    settings_types['track_body'] = 'bool'
-    settings_default['track_body'] = True
-    settings_description['track_body'] = 'UVLM inputs and outputs projected to coincide with lattice at linearisation'
+    settings_types["track_body"] = "bool"
+    settings_default["track_body"] = True
+    settings_description[
+        "track_body"
+    ] = "UVLM inputs and outputs projected to coincide with lattice at linearisation"
 
-    settings_types['track_body_number'] = 'int'
-    settings_default['track_body_number'] = -1
-    settings_description['track_body_number'] = 'Frame of reference number to follow. If ``-1`` track ``A`` frame.'
+    settings_types["track_body_number"] = "int"
+    settings_default["track_body_number"] = -1
+    settings_description[
+        "track_body_number"
+    ] = "Frame of reference number to follow. If ``-1`` track ``A`` frame."
 
-    settings_types['velocity_field_generator'] = 'str'
-    settings_default['velocity_field_generator'] = 'SteadyVelocityField'
-    settings_description['velocity_field_generator'] = 'Name of the velocity field generator to be used in the ' \
-                                                       'simulation'
+    settings_types["velocity_field_generator"] = "str"
+    settings_default["velocity_field_generator"] = "SteadyVelocityField"
+    settings_description[
+        "velocity_field_generator"
+    ] = "Name of the velocity field generator to be used in the simulation"
 
-    settings_types['velocity_field_input'] = 'dict'
-    settings_default['velocity_field_input'] = {}
-    settings_description['velocity_field_input'] = 'Dictionary of settings for the velocity field generator'
+    settings_types["velocity_field_input"] = "dict"
+    settings_default["velocity_field_input"] = {}
+    settings_description[
+        "velocity_field_input"
+    ] = "Dictionary of settings for the velocity field generator"
 
-    settings_types['vortex_radius'] = 'float'
-    settings_default['vortex_radius'] = vortex_radius_def
-    settings_description['vortex_radius'] = 'Distance between points below which induction is not computed'
+    settings_types["vortex_radius"] = "float"
+    settings_default["vortex_radius"] = vortex_radius_def
+    settings_description[
+        "vortex_radius"
+    ] = "Distance between points below which induction is not computed"
 
-    settings_types['vortex_radius_wake_ind'] = 'float'
-    settings_default['vortex_radius_wake_ind'] = vortex_radius_def
-    settings_description['vortex_radius_wake_ind'] = 'Distance between points below which induction is not computed in the wake convection'
+    settings_types["vortex_radius_wake_ind"] = "float"
+    settings_default["vortex_radius_wake_ind"] = vortex_radius_def
+    settings_description["vortex_radius_wake_ind"] = (
+        "Distance between points below which induction is not computed in the wake"
+        " convection"
+    )
 
-    settings_types['cfl1'] = 'bool'
-    settings_default['cfl1'] = True
-    settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
-    
+    settings_types["cfl1"] = "bool"
+    settings_default["cfl1"] = True
+    settings_description[
+        "cfl1"
+    ] = "If it is ``True``, it assumes that the discretisation complies with CFL=1"
+
     settings_table = settings_utils.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(
+        settings_types, settings_default, settings_description
+    )
 
     scaling_settings_types = dict()
     scaling_settings_default = dict()
     scaling_settings_description = dict()
 
-    scaling_settings_types['length'] = 'float'
-    scaling_settings_default['length'] = 1.0
-    scaling_settings_description['length'] = 'Reference length to be used for UVLM scaling'
+    scaling_settings_types["length"] = "float"
+    scaling_settings_default["length"] = 1.0
+    scaling_settings_description[
+        "length"
+    ] = "Reference length to be used for UVLM scaling"
 
-    scaling_settings_types['speed'] = 'float'
-    scaling_settings_default['speed'] = 1.0
-    scaling_settings_description['speed'] = 'Reference speed to be used for UVLM scaling'
+    scaling_settings_types["speed"] = "float"
+    scaling_settings_default["speed"] = 1.0
+    scaling_settings_description[
+        "speed"
+    ] = "Reference speed to be used for UVLM scaling"
 
-    scaling_settings_types['density'] = 'float'
-    scaling_settings_default['density'] = 1.0
-    scaling_settings_description['density'] = 'Reference density to be used for UVLM scaling'
+    scaling_settings_types["density"] = "float"
+    scaling_settings_default["density"] = 1.0
+    scaling_settings_description[
+        "density"
+    ] = "Reference density to be used for UVLM scaling"
 
-    __doc__ += settings_table.generate(scaling_settings_types,
-                                       scaling_settings_default,
-                                       scaling_settings_description, header_line='The settings that ``ScalingDict`` '
-                                                                                 'accepts are the following:')
+    __doc__ += settings_table.generate(
+        scaling_settings_types,
+        scaling_settings_default,
+        scaling_settings_description,
+        header_line="The settings that ``ScalingDict`` accepts are the following:",
+    )
 
     def __init__(self):
         self.data = None
@@ -171,14 +201,24 @@ class StepLinearUVLM(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
-        settings_utils.to_custom_types(self.settings['ScalingDict'], self.scaling_settings_types,
-                                 self.scaling_settings_default, no_ctype=True)
+        settings_utils.to_custom_types(
+            self.settings, self.settings_types, self.settings_default, no_ctype=True
+        )
+        settings_utils.to_custom_types(
+            self.settings["ScalingDict"],
+            self.scaling_settings_types,
+            self.scaling_settings_default,
+            no_ctype=True,
+        )
 
         # Initialise velocity generator
-        velocity_generator_type = gen_interface.generator_from_string(self.settings['velocity_field_generator'])
+        velocity_generator_type = gen_interface.generator_from_string(
+            self.settings["velocity_field_generator"]
+        )
         self.velocity_generator = velocity_generator_type()
-        self.velocity_generator.initialise(self.settings['velocity_field_input'], restart=restart)
+        self.velocity_generator.initialise(
+            self.settings["velocity_field_input"], restart=restart
+        )
 
         # Check whether linear UVLM has been initialised
         try:
@@ -190,19 +230,24 @@ class StepLinearUVLM(BaseSolver):
             ### Record body orientation/velocities at time 0
             # This option allows to rotate the linearised UVLM with the A frame
             # or a specific body (multi-body solution)
-            if self.settings['track_body']:
-
-                self.num_body_track = self.settings['track_body_number']
+            if self.settings["track_body"]:
+                self.num_body_track = self.settings["track_body_number"]
 
                 # track A frame
                 if self.num_body_track == -1:
                     self.quat0 = self.data.structure.timestep_info[-1].quat.copy()
                     self.for_vel0 = self.data.structure.timestep_info[-1].for_vel.copy()
-                else: # track a specific body
-                    self.quat0 = \
-                        self.data.structure.timestep_info[-1].mb_quat[self.num_body_track,:].copy()
-                    self.for_vel0 = \
-                        self.data.structure.timestep_info[-1].mb_FoR_vel[self.num_body_track ,:].copy()
+                else:  # track a specific body
+                    self.quat0 = (
+                        self.data.structure.timestep_info[-1]
+                        .mb_quat[self.num_body_track, :]
+                        .copy()
+                    )
+                    self.for_vel0 = (
+                        self.data.structure.timestep_info[-1]
+                        .mb_FoR_vel[self.num_body_track, :]
+                        .copy()
+                    )
 
                 # convert to G frame
                 self.Cga0 = algebra.quat2rotation(self.quat0)
@@ -210,7 +255,7 @@ class StepLinearUVLM(BaseSolver):
                 self.for_vel0[:3] = self.Cga0.dot(self.for_vel0[:3])
                 self.for_vel0[3:] = self.Cga0.dot(self.for_vel0[3:])
 
-            else: # check/record initial rotation speed
+            else:  # check/record initial rotation speed
                 self.num_body_track = None
                 self.quat0 = None
                 self.Cag0 = None
@@ -218,17 +263,19 @@ class StepLinearUVLM(BaseSolver):
                 self.for_vel0 = np.zeros((6,))
 
             # TODO: verify of a better way to implement rho
-            aero_tstep.rho = self.settings['density']
+            aero_tstep.rho = self.settings["density"]
 
             # Generate instance of linuvlm.Dynamic()
-            lin_uvlm_system = linuvlm.DynamicBlock(aero_tstep,
-                                                   dynamic_settings=self.settings,
-                                              # dt=self.settings['dt'],
-                                              # integr_order=self.settings['integr_order'],
-                                              # ScalingDict=self.settings['ScalingDict'],
-                                              # RemovePredictor=self.settings['remove_predictor'],
-                                              # UseSparse=self.settings['use_sparse'],
-                                              for_vel=self.for_vel0)
+            lin_uvlm_system = linuvlm.DynamicBlock(
+                aero_tstep,
+                dynamic_settings=self.settings,
+                # dt=self.settings['dt'],
+                # integr_order=self.settings['integr_order'],
+                # ScalingDict=self.settings['ScalingDict'],
+                # RemovePredictor=self.settings['remove_predictor'],
+                # UseSparse=self.settings['use_sparse'],
+                for_vel=self.for_vel0,
+            )
 
             # add rotational speed
             for ii in range(lin_uvlm_system.MS.n_surf):
@@ -239,26 +286,34 @@ class StepLinearUVLM(BaseSolver):
             u_0 = self.pack_input_vector()
 
             # Linearised state
-            dt = self.settings['dt']
-            x_0 = self.pack_state_vector(aero_tstep, None, dt, self.settings['integr_order'])
+            dt = self.settings["dt"]
+            x_0 = self.pack_state_vector(
+                aero_tstep, None, dt, self.settings["integr_order"]
+            )
 
             # Reference forces
-            f_0 = np.concatenate([aero_tstep.forces[ss][0:3].reshape(-1, order='C')
-                                  for ss in range(aero_tstep.n_surf)])
+            f_0 = np.concatenate(
+                [
+                    aero_tstep.forces[ss][0:3].reshape(-1, order="C")
+                    for ss in range(aero_tstep.n_surf)
+                ]
+            )
 
             # Assemble the state space system
-            wake_prop_settings = {'dt': self.settings['dt'],
-                                  'ts': self.data.ts,
-                                  't': self.data.ts*self.settings['dt'],
-                                  'for_pos':self.data.structure.timestep_info[-1].for_pos,
-                                  'cfl1': self.settings['cfl1'],
-                                  'vel_gen': self.velocity_generator}
+            wake_prop_settings = {
+                "dt": self.settings["dt"],
+                "ts": self.data.ts,
+                "t": self.data.ts * self.settings["dt"],
+                "for_pos": self.data.structure.timestep_info[-1].for_pos,
+                "cfl1": self.settings["cfl1"],
+                "vel_gen": self.velocity_generator,
+            }
             lin_uvlm_system.assemble_ss(wake_prop_settings=wake_prop_settings)
-            self.data.aero.linear['System'] = lin_uvlm_system
-            self.data.aero.linear['SS'] = lin_uvlm_system.SS
-            self.data.aero.linear['x_0'] = x_0
-            self.data.aero.linear['u_0'] = u_0
-            self.data.aero.linear['y_0'] = f_0
+            self.data.aero.linear["System"] = lin_uvlm_system
+            self.data.aero.linear["SS"] = lin_uvlm_system.SS
+            self.data.aero.linear["x_0"] = x_0
+            self.data.aero.linear["u_0"] = u_0
+            self.data.aero.linear["y_0"] = f_0
             # self.data.aero.linear['gamma_0'] = gamma
             # self.data.aero.linear['gamma_star_0'] = gamma_star
             # self.data.aero.linear['gamma_dot_0'] = gamma_dot
@@ -322,45 +377,58 @@ class StepLinearUVLM(BaseSolver):
 
         """
 
-        aero_tstep = settings_utils.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[-1])
-        structure_tstep = settings_utils.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
-        convect_wake = settings_utils.set_value_or_default(kwargs, 'convect_wake', False)
-        dt= settings_utils.set_value_or_default(kwargs, 'dt', self.settings['dt'])                                                                                                    
-        t = settings_utils.set_value_or_default(kwargs, 't', self.data.ts*dt)
-        unsteady_contribution = settings_utils.set_value_or_default(kwargs, 'unsteady_contribution', False)
+        aero_tstep = settings_utils.set_value_or_default(
+            kwargs, "aero_step", self.data.aero.timestep_info[-1]
+        )
+        structure_tstep = settings_utils.set_value_or_default(
+            kwargs, "structural_step", self.data.structure.timestep_info[-1]
+        )
+        convect_wake = settings_utils.set_value_or_default(
+            kwargs, "convect_wake", False
+        )
+        dt = settings_utils.set_value_or_default(kwargs, "dt", self.settings["dt"])
+        t = settings_utils.set_value_or_default(kwargs, "t", self.data.ts * dt)
+        unsteady_contribution = settings_utils.set_value_or_default(
+            kwargs, "unsteady_contribution", False
+        )
 
-        integr_order = self.settings['integr_order']
+        integr_order = self.settings["integr_order"]
 
         ### Define Input
 
         # Generate external velocity field u_ext
-        self.velocity_generator.generate({'zeta': aero_tstep.zeta,
-                                          'override': True,
-                                          't': t,
-                                          'ts': self.data.ts,
-                                          'dt': dt,
-                                          'for_pos': structure_tstep.for_pos},
-                                         aero_tstep.u_ext)
+        self.velocity_generator.generate(
+            {
+                "zeta": aero_tstep.zeta,
+                "override": True,
+                "t": t,
+                "ts": self.data.ts,
+                "dt": dt,
+                "for_pos": structure_tstep.for_pos,
+            },
+            aero_tstep.u_ext,
+        )
 
         ### Proj from FoR G to linearisation frame
         # - proj happens in self.pack_input_vector and unpack_ss_vectors
-        if self.settings['track_body']:
+        if self.settings["track_body"]:
             # track A frame
-            if self.num_body_track  == -1:
-                self.Cga = algebra.quat2rotation( structure_tstep.quat )
-            else: # track a specific body
+            if self.num_body_track == -1:
+                self.Cga = algebra.quat2rotation(structure_tstep.quat)
+            else:  # track a specific body
                 self.Cga = algebra.quat2rotation(
-                                structure_tstep.mb_quat[self.num_body_track,:] )
+                    structure_tstep.mb_quat[self.num_body_track, :]
+                )
 
         # Column vector that will be the input to the linearised UVLM system
         # Input is at time step n, since it is updated in the aeroelastic solver prior to aerodynamic solver
         u_n = self.pack_input_vector()
 
-        du_n = u_n - self.data.aero.linear['u_0']
+        du_n = u_n - self.data.aero.linear["u_0"]
 
-        if self.settings['remove_predictor']:
+        if self.settings["remove_predictor"]:
             u_m1 = self.pack_input_vector()
-            du_m1 = u_m1 - self.data.aero.linear['u_0']
+            du_m1 = u_m1 - self.data.aero.linear["u_0"]
         else:
             du_m1 = None
 
@@ -368,19 +436,25 @@ class StepLinearUVLM(BaseSolver):
         if len(self.data.aero.timestep_info) < 2:
             x_m1 = self.pack_state_vector(aero_tstep, None, dt, integr_order)
         else:
-            x_m1 = self.pack_state_vector(aero_tstep, self.data.aero.timestep_info[-2], dt, integr_order)
+            x_m1 = self.pack_state_vector(
+                aero_tstep, self.data.aero.timestep_info[-2], dt, integr_order
+            )
 
         # dx is at timestep n-1
-        dx_m1 = x_m1 - self.data.aero.linear['x_0']
+        dx_m1 = x_m1 - self.data.aero.linear["x_0"]
 
         ### Solve system - output is the variation in force
-        dx_n, dy_n = self.data.aero.linear['System'].solve_step(dx_m1, du_m1, du_n, transform_state=True)
+        dx_n, dy_n = self.data.aero.linear["System"].solve_step(
+            dx_m1, du_m1, du_n, transform_state=True
+        )
 
-        x_n = self.data.aero.linear['x_0'] + dx_n
-        y_n = self.data.aero.linear['y_0'] + dy_n
+        x_n = self.data.aero.linear["x_0"] + dx_n
+        y_n = self.data.aero.linear["y_0"] + dy_n
 
         # if self.settings['physical_model']:
-        forces, gamma, gamma_dot, gamma_star = self.unpack_ss_vectors(y_n, x_n, u_n, aero_tstep)
+        forces, gamma, gamma_dot, gamma_star = self.unpack_ss_vectors(
+            y_n, x_n, u_n, aero_tstep
+        )
         aero_tstep.forces = forces
         aero_tstep.gamma = gamma
         aero_tstep.gamma_dot = gamma_dot
@@ -395,7 +469,12 @@ class StepLinearUVLM(BaseSolver):
         self.data.aero.generate_zeta(beam, self.data.aero.aero_settings, -1, beam_ts=-1)
 
     def update_custom_grid(self, structure_tstep, aero_tstep):
-        self.data.aero.generate_zeta_timestep_info(structure_tstep, aero_tstep, self.data.structure, self.data.aero.aero_settings)
+        self.data.aero.generate_zeta_timestep_info(
+            structure_tstep,
+            aero_tstep,
+            self.data.structure,
+            self.data.aero.aero_settings,
+        )
 
     def unpack_ss_vectors(self, y_n, x_n, u_n, aero_tstep):
         r"""
@@ -448,12 +527,14 @@ class StepLinearUVLM(BaseSolver):
         """
 
         ### project forces from uvlm FoR to FoR G
-        if self.settings['track_body']:
-            Cg_uvlm = np.dot( self.Cga, self.Cga0.T )
+        if self.settings["track_body"]:
+            Cg_uvlm = np.dot(self.Cga, self.Cga0.T)
 
         f_aero = y_n
 
-        gamma_vec, gamma_star_vec, gamma_dot_vec = self.data.aero.linear['System'].unpack_state(x_n)
+        gamma_vec, gamma_star_vec, gamma_dot_vec = self.data.aero.linear[
+            "System"
+        ].unpack_state(x_n)
 
         # Reshape output into forces[i_surface] where forces[i_surface] is a (6,M+1,N+1) matrix and circulation terms
         # where gamma is a [i_surf](M+1, N+1) matrix
@@ -478,35 +559,49 @@ class StepLinearUVLM(BaseSolver):
             panels_in_wake = aero_tstep.gamma_star[i_surf].size
 
             # Append reshaped forces to each entry in list (one for each surface)
-            forces.append(f_aero[worked_points:worked_points+points_in_surface].reshape(dimensions, order='C'))
+            forces.append(
+                f_aero[worked_points : worked_points + points_in_surface].reshape(
+                    dimensions, order="C"
+                )
+            )
 
             ### project forces.
             # - forces are in UVLM linearisation frame. Hence, these  are projected
             # into FoR (using rotation matrix Cag0 time 0) A and back to FoR G
-            if self.settings['track_body']:
+            if self.settings["track_body"]:
                 for mm in range(dimensions[1]):
                     for nn in range(dimensions[2]):
-                        forces[i_surf][:,mm,nn] = np.dot(Cg_uvlm, forces[i_surf][:,mm,nn])
+                        forces[i_surf][:, mm, nn] = np.dot(
+                            Cg_uvlm, forces[i_surf][:, mm, nn]
+                        )
 
             # Add the null bottom 3 rows to to the forces entry
             forces[i_surf] = np.concatenate((forces[i_surf], np.zeros(dimensions)))
 
             # Reshape bound circulation terms
-            gamma.append(gamma_vec[worked_panels:worked_panels+panels_in_surface].reshape(
-                dimensions_gamma, order='C'))
-            gamma_dot.append(gamma_dot_vec[worked_panels:worked_panels+panels_in_surface].reshape(
-                dimensions_gamma, order='C'))
+            gamma.append(
+                gamma_vec[worked_panels : worked_panels + panels_in_surface].reshape(
+                    dimensions_gamma, order="C"
+                )
+            )
+            gamma_dot.append(
+                gamma_dot_vec[
+                    worked_panels : worked_panels + panels_in_surface
+                ].reshape(dimensions_gamma, order="C")
+            )
 
             # Reshape wake circulation terms
-            gamma_star.append(gamma_star_vec[worked_wake_panels:worked_wake_panels+panels_in_wake].reshape(
-                dimensions_wake, order='C'))
+            gamma_star.append(
+                gamma_star_vec[
+                    worked_wake_panels : worked_wake_panels + panels_in_wake
+                ].reshape(dimensions_wake, order="C")
+            )
 
             worked_points += points_in_surface
             worked_panels += panels_in_surface
             worked_wake_panels += panels_in_wake
 
         return forces, gamma, gamma_dot, gamma_star
-
 
     def pack_input_vector(self):
         r"""
@@ -529,43 +624,67 @@ class StepLinearUVLM(BaseSolver):
         ### re-compute projection in G frame as if A was not rotating
         # - u_n is in FoR G. Hence, this is project in FoR A and back to FoR G
         # using rotation matrix aat time 0 (as if FoR A was not rotating).
-        if self.settings['track_body']:
-
-            Cuvlm_g = np.dot( self.Cga0, self.Cga.T )
+        if self.settings["track_body"]:
+            Cuvlm_g = np.dot(self.Cga0, self.Cga.T)
             zeta_uvlm, zeta_dot_uvlm, u_ext_uvlm = [], [], []
 
             for i_surf in range(aero_tstep.n_surf):
-
                 Mp1, Np1 = aero_tstep.dimensions[i_surf] + 1
 
-                zeta_uvlm.append( np.empty((3,Mp1,Np1)) )
-                zeta_dot_uvlm.append( np.empty((3,Mp1,Np1)) )
-                u_ext_uvlm.append( np.empty((3,Mp1,Np1)) )
+                zeta_uvlm.append(np.empty((3, Mp1, Np1)))
+                zeta_dot_uvlm.append(np.empty((3, Mp1, Np1)))
+                u_ext_uvlm.append(np.empty((3, Mp1, Np1)))
 
                 for mm in range(Mp1):
                     for nn in range(Np1):
-                        zeta_uvlm[i_surf][:,mm,nn] = \
-                            np.dot(Cuvlm_g, aero_tstep.zeta[i_surf][:,mm,nn])
-                        zeta_dot_uvlm[i_surf][:,mm,nn] = \
-                            np.dot(Cuvlm_g, aero_tstep.zeta_dot[i_surf][:,mm,nn])
-                        u_ext_uvlm[i_surf][:,mm,nn] = \
-                            np.dot(Cuvlm_g, aero_tstep.u_ext[i_surf][:,mm,nn])
+                        zeta_uvlm[i_surf][:, mm, nn] = np.dot(
+                            Cuvlm_g, aero_tstep.zeta[i_surf][:, mm, nn]
+                        )
+                        zeta_dot_uvlm[i_surf][:, mm, nn] = np.dot(
+                            Cuvlm_g, aero_tstep.zeta_dot[i_surf][:, mm, nn]
+                        )
+                        u_ext_uvlm[i_surf][:, mm, nn] = np.dot(
+                            Cuvlm_g, aero_tstep.u_ext[i_surf][:, mm, nn]
+                        )
 
-            zeta = np.concatenate([zeta_uvlm[i_surf].reshape(-1, order='C')
-                                   for i_surf in range(aero_tstep.n_surf)])
-            zeta_dot = np.concatenate([zeta_dot_uvlm[i_surf].reshape(-1, order='C')
-                                       for i_surf in range(aero_tstep.n_surf)])
-            u_ext = np.concatenate([u_ext_uvlm[i_surf].reshape(-1, order='C')
-                                    for i_surf in range(aero_tstep.n_surf)])
+            zeta = np.concatenate(
+                [
+                    zeta_uvlm[i_surf].reshape(-1, order="C")
+                    for i_surf in range(aero_tstep.n_surf)
+                ]
+            )
+            zeta_dot = np.concatenate(
+                [
+                    zeta_dot_uvlm[i_surf].reshape(-1, order="C")
+                    for i_surf in range(aero_tstep.n_surf)
+                ]
+            )
+            u_ext = np.concatenate(
+                [
+                    u_ext_uvlm[i_surf].reshape(-1, order="C")
+                    for i_surf in range(aero_tstep.n_surf)
+                ]
+            )
 
         else:
-
-            zeta = np.concatenate([aero_tstep.zeta[i_surf].reshape(-1, order='C')
-                                   for i_surf in range(aero_tstep.n_surf)])
-            zeta_dot = np.concatenate([aero_tstep.zeta_dot[i_surf].reshape(-1, order='C')
-                                       for i_surf in range(aero_tstep.n_surf)])
-            u_ext = np.concatenate([aero_tstep.u_ext[i_surf].reshape(-1, order='C')
-                                   for i_surf in range(aero_tstep.n_surf)])
+            zeta = np.concatenate(
+                [
+                    aero_tstep.zeta[i_surf].reshape(-1, order="C")
+                    for i_surf in range(aero_tstep.n_surf)
+                ]
+            )
+            zeta_dot = np.concatenate(
+                [
+                    aero_tstep.zeta_dot[i_surf].reshape(-1, order="C")
+                    for i_surf in range(aero_tstep.n_surf)
+                ]
+            )
+            u_ext = np.concatenate(
+                [
+                    aero_tstep.u_ext[i_surf].reshape(-1, order="C")
+                    for i_surf in range(aero_tstep.n_surf)
+                ]
+            )
 
         u = np.concatenate((zeta, zeta_dot, u_ext))
 
@@ -610,20 +729,36 @@ class StepLinearUVLM(BaseSolver):
         """
 
         # Extract current state...
-        gamma = np.concatenate([aero_tstep.gamma[ss].reshape(-1, order='C')
-                                for ss in range(aero_tstep.n_surf)])
-        gamma_star = np.concatenate([aero_tstep.gamma_star[ss].reshape(-1, order='C')
-                                    for ss in range(aero_tstep.n_surf)])
-        gamma_dot = np.concatenate([aero_tstep.gamma_dot[ss].reshape(-1, order='C')
-                                    for ss in range(aero_tstep.n_surf)])
+        gamma = np.concatenate(
+            [
+                aero_tstep.gamma[ss].reshape(-1, order="C")
+                for ss in range(aero_tstep.n_surf)
+            ]
+        )
+        gamma_star = np.concatenate(
+            [
+                aero_tstep.gamma_star[ss].reshape(-1, order="C")
+                for ss in range(aero_tstep.n_surf)
+            ]
+        )
+        gamma_dot = np.concatenate(
+            [
+                aero_tstep.gamma_dot[ss].reshape(-1, order="C")
+                for ss in range(aero_tstep.n_surf)
+            ]
+        )
 
         if integr_order == 1:
             gamma_m1 = []
 
         else:
             if aero_tstep_m1:
-                gamma_m1 = np.concatenate([aero_tstep_m1.gamma[ss].reshape(-1, order='C')
-                                    for ss in range(aero_tstep.n_surf)])
+                gamma_m1 = np.concatenate(
+                    [
+                        aero_tstep_m1.gamma[ss].reshape(-1, order="C")
+                        for ss in range(aero_tstep.n_surf)
+                    ]
+                )
             else:
                 gamma_m1 = gamma - dt * gamma_dot
 

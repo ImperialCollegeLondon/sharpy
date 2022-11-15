@@ -13,31 +13,38 @@ class UDPout(BaseSolver):
     where only an output network adapter is created.
 
     """
-    solver_id = 'UDPout'
-    solver_classification = 'post-processor'
+
+    solver_id = "UDPout"
+    solver_classification = "post-processor"
 
     settings_types = network_interface.NetworkLoader.settings_types.copy()
     settings_default = network_interface.NetworkLoader.settings_default.copy()
     settings_description = network_interface.NetworkLoader.settings_description.copy()
 
     # Remove unnecessary settings from NetworkLoader (all related to the inputs)
-    del settings_default['input_network_settings']
-    del settings_types['input_network_settings']
-    del settings_description['input_network_settings']
+    del settings_default["input_network_settings"]
+    del settings_types["input_network_settings"]
+    del settings_description["input_network_settings"]
 
-    del settings_default['received_data_filename']
-    del settings_types['received_data_filename']
-    del settings_description['received_data_filename']
+    del settings_default["received_data_filename"]
+    del settings_types["received_data_filename"]
+    del settings_description["received_data_filename"]
 
-    del settings_types['send_output_to_all_clients']
-    del settings_default['send_output_to_all_clients']
-    del settings_description['send_output_to_all_clients']
+    del settings_types["send_output_to_all_clients"]
+    del settings_default["send_output_to_all_clients"]
+    del settings_description["send_output_to_all_clients"]
 
     table = settings_utils.SettingsTable()
-    __doc__ += table.generate(settings_types, settings_default, settings_description,
-                              header_line='This post-processor takes in the following settings, for a more '
-                                          'detailed description see '
-                                          ':class:`~sharpy.io.network_interface.NetworkLoader`')
+    __doc__ += table.generate(
+        settings_types,
+        settings_default,
+        settings_description,
+        header_line=(
+            "This post-processor takes in the following settings, for a more "
+            "detailed description see "
+            ":class:`~sharpy.io.network_interface.NetworkLoader`"
+        ),
+    )
 
     def __init__(self):
         self.settings = None
@@ -63,15 +70,14 @@ class UDPout(BaseSolver):
 
         self.set_of_variables = self.network_loader.get_inout_variables()
 
-        self.out_network = self.network_loader.get_networks(networks='out')
+        self.out_network = self.network_loader.get_networks(networks="out")
 
         self.ts_max = self.data.ts + 1
 
         self.caller = caller
 
     def run(self, **kwargs):
-        
-        online = settings_utils.set_value_or_default(kwargs, 'online', False)
+        online = settings_utils.set_value_or_default(kwargs, "online", False)
 
         if online:
             self.set_of_variables.get_value(self.data)
@@ -83,7 +89,7 @@ class UDPout(BaseSolver):
                 msg = self.set_of_variables.encode()
                 self.out_network.send(msg, self.out_network.clients)
 
-            cout.cout_wrap('...Finished', 1)
+            cout.cout_wrap("...Finished", 1)
             self.shutdown()
 
         return self.data

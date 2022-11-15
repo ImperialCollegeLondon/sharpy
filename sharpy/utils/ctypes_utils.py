@@ -5,12 +5,14 @@ import os
 
 def import_ctypes_lib(route, libname):
     lib_path = os.path.join(route, libname)
-    if platform.system() == 'Darwin':
-        ext = '.dylib'
-    elif platform.system() == 'Linux':
-        ext = '.so'
+    if platform.system() == "Darwin":
+        ext = ".dylib"
+    elif platform.system() == "Linux":
+        ext = ".so"
     else:
-        raise NotImplementedError('The platform ' + platform.system() + 'is not supported')
+        raise NotImplementedError(
+            "The platform " + platform.system() + "is not supported"
+        )
 
     lib_path += ext
     lib_path = os.path.abspath(lib_path)

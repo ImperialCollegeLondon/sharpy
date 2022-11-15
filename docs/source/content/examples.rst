@@ -25,7 +25,7 @@ Downloadable files
 * :download:`./example_notebooks/cantilever_wing.ipynb`
 * :download:`./example_notebooks/cantilever/static_cantilever.ipynb`
 
-Input data for wind turbine: 
+Input data for wind turbine:
 
 * :download:`./example_notebooks/source/type02_db_NREL5MW_v02.xlsx`
 
@@ -35,4 +35,3 @@ Input data for static cantilever:
 
 
 Note: some of these examples may need additional files which would be located in the ``./example_notebooks/`` directory. It is recommended that you run these cases directly from there rather than downloading. If you download, make sure you replicate the folder structure such that the examples are capable of finding the required files.
-

@@ -5,20 +5,27 @@ import os
 
 
 class TestCoupledStatic(unittest.TestCase):
-    """
-    """
+    """ """
 
     @classmethod
     def setUpClass(cls):
         # run all the cases generators
-        case = 'smith_nog_2deg'
-        mod = importlib.import_module('tests.coupled.static.' + case + '.generate_' + case)
-        case = 'smith_g_2deg'
-        mod2 = importlib.import_module('tests.coupled.static.' + case + '.generate_' + case)
-        case = 'smith_g_4deg'
-        mod3 = importlib.import_module('tests.coupled.static.' + case + '.generate_' + case)
-        case = 'smith_nog_4deg'
-        mod4 = importlib.import_module('tests.coupled.static.' + case + '.generate_' + case)
+        case = "smith_nog_2deg"
+        mod = importlib.import_module(
+            "tests.coupled.static." + case + ".generate_" + case
+        )
+        case = "smith_g_2deg"
+        mod2 = importlib.import_module(
+            "tests.coupled.static." + case + ".generate_" + case
+        )
+        case = "smith_g_4deg"
+        mod3 = importlib.import_module(
+            "tests.coupled.static." + case + ".generate_" + case
+        )
+        case = "smith_nog_4deg"
+        mod4 = importlib.import_module(
+            "tests.coupled.static." + case + ".generate_" + case
+        )
 
     @classmethod
     def tearDownClass(cls):
@@ -35,15 +42,20 @@ class TestCoupledStatic(unittest.TestCase):
         :return:
         """
         import sharpy.sharpy_main
-        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
-                                      '/smith_nog_2deg/smith_nog_2deg.sharpy')
-        sharpy.sharpy_main.main(['', solver_path])
+
+        solver_path = os.path.abspath(
+            os.path.dirname(os.path.realpath(__file__))
+            + "/smith_nog_2deg/smith_nog_2deg.sharpy"
+        )
+        sharpy.sharpy_main.main(["", solver_path])
 
         # read output and compare
-        output_path = os.path.dirname(solver_path) + '/output/smith_nog_2deg/WriteVariablesTime/'
-        pos_data = np.genfromtxt(output_path + 'struct_pos_node20.dat')
-        self.assertAlmostEqual((pos_data[2] - 15.599)/15.599, 0.00, 2)
-        self.assertAlmostEqual((pos_data[3] - 3.32600)/3.32600, 0.00, 2)
+        output_path = (
+            os.path.dirname(solver_path) + "/output/smith_nog_2deg/WriteVariablesTime/"
+        )
+        pos_data = np.genfromtxt(output_path + "struct_pos_node20.dat")
+        self.assertAlmostEqual((pos_data[2] - 15.599) / 15.599, 0.00, 2)
+        self.assertAlmostEqual((pos_data[3] - 3.32600) / 3.32600, 0.00, 2)
 
         # results:
         # N = 10 elements
@@ -57,19 +69,23 @@ class TestCoupledStatic(unittest.TestCase):
         #     0 | 1.464e+00 | -4.480e-03 | 2.389e+02
         # 521 seconds
 
-
     def test_smith2deg_g(self):
         import sharpy.sharpy_main
-        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
-                                      '/smith_g_2deg/smith_g_2deg.sharpy')
-        sharpy.sharpy_main.main(['', solver_path])
+
+        solver_path = os.path.abspath(
+            os.path.dirname(os.path.realpath(__file__))
+            + "/smith_g_2deg/smith_g_2deg.sharpy"
+        )
+        sharpy.sharpy_main.main(["", solver_path])
 
         # read output and compare
-        output_path = os.path.dirname(solver_path) + '/output/smith_g_2deg/WriteVariablesTime/'
-        pos_data = np.genfromtxt(output_path + 'struct_pos_node20.dat')
+        output_path = (
+            os.path.dirname(solver_path) + "/output/smith_g_2deg/WriteVariablesTime/"
+        )
+        pos_data = np.genfromtxt(output_path + "struct_pos_node20.dat")
 
-        self.assertAlmostEqual((pos_data[2] - 15.98295)/15.98295, 0.00, 2)
-        self.assertAlmostEqual((pos_data[3] - 0.682268)/0.682268, 0.00, 2)
+        self.assertAlmostEqual((pos_data[2] - 15.98295) / 15.98295, 0.00, 2)
+        self.assertAlmostEqual((pos_data[3] - 0.682268) / 0.682268, 0.00, 2)
 
     def test_smith4deg_g(self):
         """
@@ -80,15 +96,20 @@ class TestCoupledStatic(unittest.TestCase):
         :return:
         """
         import sharpy.sharpy_main
-        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
-                                      '/smith_g_4deg/smith_g_4deg.sharpy')
-        sharpy.sharpy_main.main(['', solver_path])
+
+        solver_path = os.path.abspath(
+            os.path.dirname(os.path.realpath(__file__))
+            + "/smith_g_4deg/smith_g_4deg.sharpy"
+        )
+        sharpy.sharpy_main.main(["", solver_path])
 
         # read output and compare
-        output_path = os.path.dirname(solver_path) + '/output/smith_g_4deg/WriteVariablesTime/'
-        pos_data = np.genfromtxt(output_path + 'struct_pos_node20.dat')
-        self.assertAlmostEqual((pos_data[2] - 15.55)/15.55, 0.00, 2)
-        self.assertAlmostEqual((pos_data[3] - 3.671)/3.671, 0.00, 2)
+        output_path = (
+            os.path.dirname(solver_path) + "/output/smith_g_4deg/WriteVariablesTime/"
+        )
+        pos_data = np.genfromtxt(output_path + "struct_pos_node20.dat")
+        self.assertAlmostEqual((pos_data[2] - 15.55) / 15.55, 0.00, 2)
+        self.assertAlmostEqual((pos_data[3] - 3.671) / 3.671, 0.00, 2)
 
         # results:
         # N = 10 elements
@@ -110,15 +131,20 @@ class TestCoupledStatic(unittest.TestCase):
         :return:
         """
         import sharpy.sharpy_main
-        solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
-                                      '/smith_nog_4deg/smith_nog_4deg.sharpy')
-        sharpy.sharpy_main.main(['', solver_path])
+
+        solver_path = os.path.abspath(
+            os.path.dirname(os.path.realpath(__file__))
+            + "/smith_nog_4deg/smith_nog_4deg.sharpy"
+        )
+        sharpy.sharpy_main.main(["", solver_path])
 
         # read output and compare
-        output_path = os.path.dirname(solver_path) + '/output/smith_nog_4deg/WriteVariablesTime/'
-        pos_data = np.genfromtxt(output_path + 'struct_pos_node20.dat')
-        self.assertAlmostEqual((pos_data[2] - 14.87)/14.87, 0.00, 2)
-        self.assertAlmostEqual((pos_data[3] - 5.5078)/5.5078, 0.00, 2)
+        output_path = (
+            os.path.dirname(solver_path) + "/output/smith_nog_4deg/WriteVariablesTime/"
+        )
+        pos_data = np.genfromtxt(output_path + "struct_pos_node20.dat")
+        self.assertAlmostEqual((pos_data[2] - 14.87) / 14.87, 0.00, 2)
+        self.assertAlmostEqual((pos_data[3] - 5.5078) / 5.5078, 0.00, 2)
 
         # results:
         # N = 10 elements

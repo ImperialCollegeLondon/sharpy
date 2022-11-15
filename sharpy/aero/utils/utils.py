@@ -5,13 +5,13 @@ from sharpy.utils import algebra as algebra
 
 
 def flightcon_file_parser(fc_dict):
-    fc = fc_dict['FlightCon']
-    fc['u_inf'] = float(fc['u_inf'])
-    fc['alpha'] = float(fc['alpha'])*np.pi/180.0
-    fc['beta'] = float(fc['beta'])*np.pi/180.0
-    fc['rho_inf'] = float(fc['rho_inf'])
-    fc['c_ref'] = float(fc['c_ref'])
-    fc['b_ref'] = float(fc['b_ref'])
+    fc = fc_dict["FlightCon"]
+    fc["u_inf"] = float(fc["u_inf"])
+    fc["alpha"] = float(fc["alpha"]) * np.pi / 180.0
+    fc["beta"] = float(fc["beta"]) * np.pi / 180.0
+    fc["rho_inf"] = float(fc["rho_inf"])
+    fc["c_ref"] = float(fc["c_ref"])
+    fc["b_ref"] = float(fc["b_ref"])
 
 
 def alpha_beta_to_direction(alpha, beta):
@@ -22,8 +22,16 @@ def alpha_beta_to_direction(alpha, beta):
     return direction
 
 
-def magnitude_and_direction_of_relative_velocity(displacement, displacement_vel, for_vel, cga, uext,
-                                                 add_rotation=False, rot_vel_g=np.zeros((3)), centre_rot_g=np.zeros((3))):
+def magnitude_and_direction_of_relative_velocity(
+    displacement,
+    displacement_vel,
+    for_vel,
+    cga,
+    uext,
+    add_rotation=False,
+    rot_vel_g=np.zeros((3)),
+    centre_rot_g=np.zeros((3)),
+):
     r"""
     Calculates the magnitude and direction of the relative velocity ``u_rel`` at a local section of the wing.
 
@@ -47,15 +55,12 @@ def magnitude_and_direction_of_relative_velocity(displacement, displacement_vel,
     Returns:
         tuple: ``u_rel``, ``dir_u_rel`` expressed in the inertial, ``G`` frame.
     """
-    urel = (displacement_vel +
-            for_vel[0:3] +
-            algebra.cross3(for_vel[3:6], displacement))
+    urel = displacement_vel + for_vel[0:3] + algebra.cross3(for_vel[3:6], displacement)
     urel = -np.dot(cga, urel)
     urel += np.average(uext, axis=1)
 
     if add_rotation:
-        urel -= algebra.cross3(rot_vel_g,
-                               np.dot(cga, displacement) - centre_rot_g)
+        urel -= algebra.cross3(rot_vel_g, np.dot(cga, displacement) - centre_rot_g)
     dir_urel = algebra.unit_vector(urel)
 
     return urel, dir_urel
@@ -84,7 +89,7 @@ def local_stability_axes(dir_urel, dir_chord):
     """
     xs = dir_urel
 
-    zb = np.array([0, 0, 1.])
+    zb = np.array([0, 0, 1.0])
     zs = algebra.cross3(algebra.cross3(dir_chord, zb), dir_urel)
 
     ys = -algebra.cross3(xs, zs)
@@ -103,7 +108,7 @@ def span_chord(i_node_surf, zeta):
     Returns:
         tuple: ``dir_span``, ``span``, ``dir_chord``, ``chord``
     """
-    N = zeta.shape[2] - 1 # spanwise vertices in surface (-1 for index)
+    N = zeta.shape[2] - 1  # spanwise vertices in surface (-1 for index)
 
     # Deal with the extremes
     if i_node_surf == 0:
@@ -141,16 +146,17 @@ def find_aerodynamic_solver_settings(settings):
     Returns:
         tuple: Aerodynamic solver settings
     """
-    flow = settings['SHARPy']['flow']
-    for solver_name in ['StaticUvlm', 'StaticCoupled', 'DynamicCoupled', 'StepUvlm']:
+    flow = settings["SHARPy"]["flow"]
+    for solver_name in ["StaticUvlm", "StaticCoupled", "DynamicCoupled", "StepUvlm"]:
         if solver_name in flow:
             aero_solver_settings = settings[solver_name]
-            if 'aero_solver' in settings[solver_name].keys():
-                aero_solver_settings = aero_solver_settings['aero_solver_settings']
-                
+            if "aero_solver" in settings[solver_name].keys():
+                aero_solver_settings = aero_solver_settings["aero_solver_settings"]
+
             return aero_solver_settings
 
     raise KeyError("ERROR: Aerodynamic solver not found.")
+
 
 def find_velocity_generator(settings):
     """
@@ -165,7 +171,7 @@ def find_velocity_generator(settings):
     """
     aero_solver_settings = find_aerodynamic_solver_settings(settings)
 
-    vel_gen_name = aero_solver_settings['velocity_field_generator']
-    vel_gen_settings = aero_solver_settings['velocity_field_input']
+    vel_gen_name = aero_solver_settings["velocity_field_generator"]
+    vel_gen_settings = aero_solver_settings["velocity_field_input"]
 
     return vel_gen_name, vel_gen_settings

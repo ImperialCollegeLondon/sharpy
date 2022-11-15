@@ -8,10 +8,9 @@ import os
 import sharpy.utils.cout_utils as cout
 
 
-@unittest.skip('Placeholder - No test yet to run')
+@unittest.skip("Placeholder - No test yet to run")
 class TestCoupledPrescribed(unittest.TestCase):
-    """
-    """
+    """ """
 
     @classmethod
     def setUpClass(cls):
@@ -40,7 +39,7 @@ class TestCoupledPrescribed(unittest.TestCase):
     def test_rotating_wing(self):
         # import sharpy.sharpy_main
         # solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)) +
-                                      # '/rotating_wing/rotating_wing.sharpy')
+        # '/rotating_wing/rotating_wing.sharpy')
         # sharpy.sharpy_main.main(['', solver_path])
-        print('No tests for prescribed dynamic configurations (yet)!', 1)
+        print("No tests for prescribed dynamic configurations (yet)!", 1)
         pass

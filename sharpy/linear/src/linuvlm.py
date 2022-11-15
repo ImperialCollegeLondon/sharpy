@@ -35,53 +35,55 @@ import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.exceptions as exceptions
 from sharpy.utils.constants import vortex_radius_def
-from sharpy.linear.utils.ss_interface import LinearVector, StateVariable, InputVariable, OutputVariable
+from sharpy.linear.utils.ss_interface import (
+    LinearVector,
+    StateVariable,
+    InputVariable,
+    OutputVariable,
+)
 
 settings_types_static = dict()
 settings_default_static = dict()
 
-settings_types_static['vortex_radius'] = 'float'
-settings_default_static['vortex_radius'] = vortex_radius_def
+settings_types_static["vortex_radius"] = "float"
+settings_default_static["vortex_radius"] = vortex_radius_def
 
-settings_types_static['cfl1'] = 'bool'
-settings_default_static['cfl1'] = True
+settings_types_static["cfl1"] = "bool"
+settings_default_static["cfl1"] = True
 
 settings_types_dynamic = dict()
 settings_default_dynamic = dict()
 
-settings_types_dynamic['dt'] = 'float'
-settings_default_dynamic['dt'] = 0.1
+settings_types_dynamic["dt"] = "float"
+settings_default_dynamic["dt"] = 0.1
 
-settings_types_dynamic['integr_order'] = 'int'
-settings_default_dynamic['integr_order'] = 2
+settings_types_dynamic["integr_order"] = "int"
+settings_default_dynamic["integr_order"] = 2
 
-settings_types_dynamic['density'] = 'float'
-settings_default_dynamic['density'] = 1.225
+settings_types_dynamic["density"] = "float"
+settings_default_dynamic["density"] = 1.225
 
-settings_types_dynamic['ScalingDict'] = 'dict'
-settings_default_dynamic['ScalingDict'] = {'length': 1.0,
-                                           'speed': 1.0,
-                                           'density': 1.0}
+settings_types_dynamic["ScalingDict"] = "dict"
+settings_default_dynamic["ScalingDict"] = {"length": 1.0, "speed": 1.0, "density": 1.0}
 
-settings_types_dynamic['remove_predictor'] = 'bool'
-settings_default_dynamic['remove_predictor'] = True
+settings_types_dynamic["remove_predictor"] = "bool"
+settings_default_dynamic["remove_predictor"] = True
 
-settings_types_dynamic['use_sparse'] = 'bool'
-settings_default_dynamic['use_sparse'] = True
+settings_types_dynamic["use_sparse"] = "bool"
+settings_default_dynamic["use_sparse"] = True
 
-settings_types_dynamic['vortex_radius'] = 'float'
-settings_default_dynamic['vortex_radius'] = vortex_radius_def
+settings_types_dynamic["vortex_radius"] = "float"
+settings_default_dynamic["vortex_radius"] = vortex_radius_def
 
-settings_types_dynamic['cfl1'] = 'bool'
-settings_default_dynamic['cfl1'] = True
+settings_types_dynamic["cfl1"] = "bool"
+settings_default_dynamic["cfl1"] = True
 
 
-class Static():
-    """	Static linear solver """
+class Static:
+    """Static linear solver"""
 
     def __init__(self, tsdata, custom_settings=None, for_vel=np.zeros((6,))):
-
-        cout.cout_wrap('Initialising Static linear UVLM solver class...')
+        cout.cout_wrap("Initialising Static linear UVLM solver class...")
         t0 = time.time()
 
         if custom_settings is None:
@@ -89,16 +91,15 @@ class Static():
         else:
             settings_here = custom_settings
 
-        settings.to_custom_types(settings_here,
-                                 settings_types_static,
-                                 settings_default_static,
-                                 no_ctype=True)
+        settings.to_custom_types(
+            settings_here, settings_types_static, settings_default_static, no_ctype=True
+        )
 
-        self.vortex_radius = settings_here['vortex_radius']
-        self.cfl1 = settings_here['cfl1']
-        MS = multisurfaces.MultiAeroGridSurfaces(tsdata,
-                                                 self.vortex_radius,
-                                                 for_vel=for_vel)
+        self.vortex_radius = settings_here["vortex_radius"]
+        self.cfl1 = settings_here["cfl1"]
+        MS = multisurfaces.MultiAeroGridSurfaces(
+            tsdata, self.vortex_radius, for_vel=for_vel
+        )
         MS.get_ind_velocities_at_collocation_points()
         MS.get_input_velocities_at_collocation_points()
         MS.get_ind_velocities_at_segments()
@@ -116,21 +117,27 @@ class Static():
         self.zeta_dot = np.zeros((3 * self.Kzeta))
         self.u_ext = np.zeros((3 * self.Kzeta))
 
-        self.input_variables_list = [InputVariable('zeta', size=3 * self.Kzeta, index=0),
-                                     InputVariable('zeta_dot', size=3 * self.Kzeta, index=1),
-                                     InputVariable('u_gust', size=3 * self.Kzeta, index=2)]
+        self.input_variables_list = [
+            InputVariable("zeta", size=3 * self.Kzeta, index=0),
+            InputVariable("zeta_dot", size=3 * self.Kzeta, index=1),
+            InputVariable("u_gust", size=3 * self.Kzeta, index=2),
+        ]
 
-        self.state_variables_list = [StateVariable('gamma', size=self.K, index=0),
-                                     StateVariable('gamma_w', size=self.K_star, index=1),
-                                     StateVariable('gamma_m1', size=self.K, index=2)]
+        self.state_variables_list = [
+            StateVariable("gamma", size=self.K, index=0),
+            StateVariable("gamma_w", size=self.K_star, index=1),
+            StateVariable("gamma_m1", size=self.K, index=2),
+        ]
 
-        self.output_variables_list = [OutputVariable('forces_v', size=3 * self.Kzeta, index=0)]
+        self.output_variables_list = [
+            OutputVariable("forces_v", size=3 * self.Kzeta, index=0)
+        ]
 
         # profiling output
-        self.prof_out = './asbly.prof'
+        self.prof_out = "./asbly.prof"
 
         self.time_init_sta = time.time() - t0
-        cout.cout_wrap('\t\t\t...done in %.2f sec' % self.time_init_sta)
+        cout.cout_wrap("\t\t\t...done in %.2f sec" % self.time_init_sta)
 
     def assemble_profiling(self):
         """
@@ -142,27 +149,30 @@ class Static():
         """
 
         import cProfile
-        cProfile.runctx('self.assemble()', globals(), locals(), filename=self.prof_out)
+
+        cProfile.runctx("self.assemble()", globals(), locals(), filename=self.prof_out)
 
     def assemble(self):
         """
         Assemble global matrices
         """
-        cout.cout_wrap('\tAssembly of static linear UVLM equations started...', 1)
+        cout.cout_wrap("\tAssembly of static linear UVLM equations started...", 1)
         MS = self.MS
         t0 = time.time()
 
         # ----------------------------------------------------------- state eq.
         List_uc_dncdzeta = ass.uc_dncdzeta(MS.Surfs)
-        List_nc_dqcdzeta_coll, List_nc_dqcdzeta_vert = \
-            ass.nc_dqcdzeta(MS.Surfs, MS.Surfs_star)
-        List_AICs, List_AICs_star = ass.AICs(MS.Surfs, MS.Surfs_star,
-                                             target='collocation', Project=True)
+        List_nc_dqcdzeta_coll, List_nc_dqcdzeta_vert = ass.nc_dqcdzeta(
+            MS.Surfs, MS.Surfs_star
+        )
+        List_AICs, List_AICs_star = ass.AICs(
+            MS.Surfs, MS.Surfs_star, target="collocation", Project=True
+        )
         List_Wnv = []
         for ss in range(MS.n_surf):
             List_Wnv.append(
-                interp.get_Wnv_vector(MS.Surfs[ss],
-                                      MS.Surfs[ss].aM, MS.Surfs[ss].aN))
+                interp.get_Wnv_vector(MS.Surfs[ss], MS.Surfs[ss].aM, MS.Surfs[ss].aN)
+            )
 
         ### zeta derivatives
         self.Ducdzeta = np.block(List_nc_dqcdzeta_vert)
@@ -200,8 +210,7 @@ class Static():
 
         ### Zeta derivatives
         # ... at constant relative velocity
-        self.Dfqsdzeta = scalg.block_diag(
-            *ass.dfqsdzeta_vrel0(MS.Surfs, MS.Surfs_star))
+        self.Dfqsdzeta = scalg.block_diag(*ass.dfqsdzeta_vrel0(MS.Surfs, MS.Surfs_star))
         # ... induced velocity contrib.
         List_coll, List_vert = ass.dfqsdvind_zeta(MS.Surfs, MS.Surfs_star)
         for ss in range(MS.n_surf):
@@ -210,25 +219,26 @@ class Static():
         del List_vert, List_coll
 
         ### Input velocities
-        self.Dfqsdu_ext = scalg.block_diag(
-            *ass.dfqsduinput(MS.Surfs, MS.Surfs_star))
+        self.Dfqsdu_ext = scalg.block_diag(*ass.dfqsduinput(MS.Surfs, MS.Surfs_star))
 
         ### Gamma derivatives
         # ... at constant relative velocity
-        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = \
-            ass.dfqsdgamma_vrel0(MS.Surfs, MS.Surfs_star)
+        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = ass.dfqsdgamma_vrel0(
+            MS.Surfs, MS.Surfs_star
+        )
         self.Dfqsdgamma = scalg.block_diag(*List_dfqsdgamma_vrel0)
         self.Dfqsdgamma_star = scalg.block_diag(*List_dfqsdgamma_star_vrel0)
         del List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0
         # ... induced velocity contrib.
-        List_dfqsdvind_gamma, List_dfqsdvind_gamma_star = \
-            ass.dfqsdvind_gamma(MS.Surfs, MS.Surfs_star)
+        List_dfqsdvind_gamma, List_dfqsdvind_gamma_star = ass.dfqsdvind_gamma(
+            MS.Surfs, MS.Surfs_star
+        )
         self.Dfqsdgamma += np.block(List_dfqsdvind_gamma)
         self.Dfqsdgamma_star += np.block(List_dfqsdvind_gamma_star)
         del List_dfqsdvind_gamma, List_dfqsdvind_gamma_star
 
         self.time_asbly = time.time() - t0
-        cout.cout_wrap('\t\t\t...done in %.2f sec' % self.time_asbly, 1)
+        cout.cout_wrap("\t\t\t...done in %.2f sec" % self.time_asbly, 1)
 
     def solve(self):
         r"""
@@ -246,8 +256,9 @@ class Static():
         t0 = time.time()
 
         ### state
-        bv = np.dot(self.Ducdu_ext, self.u_ext - self.zeta_dot) + \
-             np.dot(self.Ducdzeta, self.zeta)
+        bv = np.dot(self.Ducdu_ext, self.u_ext - self.zeta_dot) + np.dot(
+            self.Ducdzeta, self.zeta
+        )
         self.gamma = np.linalg.solve(self.AIC, -bv)
 
         ### retrieve gamma over wake
@@ -257,17 +268,19 @@ class Static():
             Ktot += MS.Surfs[ss].maps.K
             N = MS.Surfs[ss].maps.N
             Mstar = MS.Surfs_star[ss].maps.M
-            gamma_star.append(np.concatenate(Mstar * [self.gamma[Ktot - N:Ktot]]))
+            gamma_star.append(np.concatenate(Mstar * [self.gamma[Ktot - N : Ktot]]))
         gamma_star = np.concatenate(gamma_star)
 
         ### compute steady force
-        self.fqs = np.dot(self.Dfqsdgamma, self.gamma) + \
-                   np.dot(self.Dfqsdgamma_star, gamma_star) + \
-                   np.dot(self.Dfqsdzeta, self.zeta) + \
-                   np.dot(self.Dfqsdu_ext, self.u_ext - self.zeta_dot)
+        self.fqs = (
+            np.dot(self.Dfqsdgamma, self.gamma)
+            + np.dot(self.Dfqsdgamma_star, gamma_star)
+            + np.dot(self.Dfqsdzeta, self.zeta)
+            + np.dot(self.Dfqsdu_ext, self.u_ext - self.zeta_dot)
+        )
 
         self.time_sol = time.time() - t0
-        cout.cout_wrap('\tSolution done in %.2f sec' % self.time_sol, 1)
+        cout.cout_wrap("\tSolution done in %.2f sec" % self.time_sol, 1)
 
     def reshape(self):
         """
@@ -275,8 +288,8 @@ class Static():
         """
 
         MS = self.MS
-        if not hasattr(self, 'gamma') or not hasattr(self, 'fqs'):
-            raise NameError('State and output not found')
+        if not hasattr(self, "gamma") or not hasattr(self, "fqs"):
+            raise NameError("State and output not found")
 
         self.Gamma = []
         self.Fqs = []
@@ -300,7 +313,7 @@ class Static():
         Calculates total force (Ftot) and moment (Mtot) (about pole zeta_pole).
         """
 
-        if not hasattr(self, 'Gamma') or not hasattr(self, 'Fqs'):
+        if not hasattr(self, "Gamma") or not hasattr(self, "Fqs"):
             self.reshape()
 
         self.Ftot = np.zeros((3,))
@@ -336,19 +349,23 @@ class Static():
 
         Kzeta_start = 0
         for ss in range(self.MS.n_surf):
-
             M, N = self.MS.Surfs[ss].maps.M, self.MS.Surfs[ss].maps.N
 
             for nn in range(N + 1):
                 for mm in range(M + 1):
-                    jjvec = [Kzeta_start + np.ravel_multi_index((cc, mm, nn),
-                                                                (3, M + 1, N + 1)) for cc in range(3)]
+                    jjvec = [
+                        Kzeta_start
+                        + np.ravel_multi_index((cc, mm, nn), (3, M + 1, N + 1))
+                        for cc in range(3)
+                    ]
 
-                    self.Kftot[[0, 1, 2], jjvec] = 1.
+                    self.Kftot[[0, 1, 2], jjvec] = 1.0
                     self.Kmtot[np.ix_([0, 1, 2], jjvec)] = algebra.skew(
-                        self.MS.Surfs[ss].zeta[:, mm, nn] - zeta_pole)
+                        self.MS.Surfs[ss].zeta[:, mm, nn] - zeta_pole
+                    )
                     self.Kmtot_disp[np.ix_([0, 1, 2], jjvec)] = algebra.skew(
-                        -self.MS.Surfs[ss].fqs[:, mm, nn])
+                        -self.MS.Surfs[ss].fqs[:, mm, nn]
+                    )
 
             Kzeta_start += 3 * self.MS.KKzeta[ss]
 
@@ -373,24 +390,29 @@ class Static():
                 zeta_sec = self.MS.Surfs[ss].zeta[:, :, nn]
 
                 # section indices
-                iivec = [II_start + np.ravel_multi_index((cc, nn),
-                                                         (3, N + 1)) for cc in range(3)]
+                iivec = [
+                    II_start + np.ravel_multi_index((cc, nn), (3, N + 1))
+                    for cc in range(3)
+                ]
                 # iivec = [II_start + cc+6*nn for cc in range(6)]
                 # iivec = [II_start + cc*(N+1) + nn for cc in range(6)]
 
                 for mm in range(M + 1):
                     # vertex indices
-                    jjvec = [Kzeta_start + np.ravel_multi_index((cc, mm, nn),
-                                                                (3, M + 1, N + 1)) for cc in range(3)]
+                    jjvec = [
+                        Kzeta_start
+                        + np.ravel_multi_index((cc, mm, nn), (3, M + 1, N + 1))
+                        for cc in range(3)
+                    ]
 
                     # sectional force
                     self.Kfsec[iivec, jjvec] = 1.0
 
                     # sectional moment
                     dx, dy, dz = zeta_sec[:, mm] - zeta_sec[:, M // 2]
-                    self.Kmsec[np.ix_(iivec, jjvec)] = np.array([[0, -dz, dy],
-                                                                 [dz, 0, -dx],
-                                                                 [-dy, dx, 0]])
+                    self.Kmsec[np.ix_(iivec, jjvec)] = np.array(
+                        [[0, -dz, dy], [dz, 0, -dx], [-dy, dx, 0]]
+                    )
             Kzeta_start += 3 * self.MS.KKzeta[ss]
             II_start += 3 * (N + 1)
 
@@ -424,11 +446,14 @@ class Static():
             for nn in range(N + 1):
                 for mm in range(M + 1):
                     # vertex indices
-                    iivec = [Kzeta_start + np.ravel_multi_index((cc, mm, nn),
-                                                                (3, M + 1, N + 1)) for cc in range(3)]
+                    iivec = [
+                        Kzeta_start
+                        + np.ravel_multi_index((cc, mm, nn), (3, M + 1, N + 1))
+                        for cc in range(3)
+                    ]
 
-                    self.Ktra[iivec, [0, 1, 2]] += 1.
-                    self.Ktra_dot[iivec, [0, 1, 2]] += 1.
+                    self.Ktra[iivec, [0, 1, 2]] += 1.0
+                    self.Ktra_dot[iivec, [0, 1, 2]] += 1.0
 
                     # sectional moment
                     dx, dy, dz = zeta[:, mm, nn] - zeta_rotation
@@ -568,39 +593,56 @@ class Dynamic(Static):
     Upgrade to linearise around unsteady snapshot (adjoint)
     """
 
-    def __init__(self, tsdata, dt=None, dynamic_settings=None, integr_order=2,
-                 RemovePredictor=True, ScalingDict=None, UseSparse=True, for_vel=np.zeros((6,))):
-
+    def __init__(
+        self,
+        tsdata,
+        dt=None,
+        dynamic_settings=None,
+        integr_order=2,
+        RemovePredictor=True,
+        ScalingDict=None,
+        UseSparse=True,
+        for_vel=np.zeros((6,)),
+    ):
         # Transform settings dictionary - in the future remove remaining inputs
         self.settings = dict()
         if dynamic_settings:
             self.settings = dynamic_settings
-            settings.to_custom_types(self.settings,
-                                     settings_types_dynamic,
-                                     settings_default_dynamic,
-                                     no_ctype=True)
+            settings.to_custom_types(
+                self.settings,
+                settings_types_dynamic,
+                settings_default_dynamic,
+                no_ctype=True,
+            )
         else:
-            warnings.warn('No settings dictionary found. Using default. Individual parsing of settings is deprecated',
-                          DeprecationWarning)
+            warnings.warn(
+                "No settings dictionary found. Using default. Individual parsing of"
+                " settings is deprecated",
+                DeprecationWarning,
+            )
             # Future: remove deprecation warning and make settings the only argument
-            settings.to_custom_types(self.settings,
-                                     settings_types_dynamic,
-                                     settings_default_dynamic,
-                                     no_ctype=True)
-            self.settings['dt'] = dt
-            self.settings['integr_order'] = integr_order
-            self.settings['remove_predictor'] = RemovePredictor
-            self.settings['use_sparse'] = UseSparse
-            self.settings['ScalingDict'] = ScalingDict
+            settings.to_custom_types(
+                self.settings,
+                settings_types_dynamic,
+                settings_default_dynamic,
+                no_ctype=True,
+            )
+            self.settings["dt"] = dt
+            self.settings["integr_order"] = integr_order
+            self.settings["remove_predictor"] = RemovePredictor
+            self.settings["use_sparse"] = UseSparse
+            self.settings["ScalingDict"] = ScalingDict
 
-        static_dict = {'vortex_radius': self.settings['vortex_radius'],
-                       'cfl1': self.settings['cfl1']}
+        static_dict = {
+            "vortex_radius": self.settings["vortex_radius"],
+            "cfl1": self.settings["cfl1"],
+        }
         super().__init__(tsdata, custom_settings=static_dict, for_vel=for_vel)
 
-        self.dt = self.settings['dt']
-        self.integr_order = self.settings['integr_order']
-        self.vortex_radius = self.settings['vortex_radius']
-        self.cfl1 = self.settings['cfl1']
+        self.dt = self.settings["dt"]
+        self.integr_order = self.settings["integr_order"]
+        self.vortex_radius = self.settings["vortex_radius"]
+        self.cfl1 = self.settings["cfl1"]
 
         if self.integr_order == 1:
             Nx = 2 * self.K + self.K_star
@@ -608,46 +650,54 @@ class Dynamic(Static):
             Nx = 3 * self.K + self.K_star
             # b0, bm1, bp1 = -2., 0.5, 1.5
         else:
-            raise NameError('Only integration orders 1 and 2 are supported')
+            raise NameError("Only integration orders 1 and 2 are supported")
         Ny = 3 * self.Kzeta
         Nu = 3 * Ny
         self.Nx = Nx
         self.Nu = Nu
         self.Ny = Ny
 
-        self.remove_predictor = self.settings['remove_predictor']
+        self.remove_predictor = self.settings["remove_predictor"]
         # Stores original B matrix for state recovery later
         self.B_predictor = None
         self.D_predictor = None
 
         self.include_added_mass = True
-        self.use_sparse = self.settings['use_sparse']
+        self.use_sparse = self.settings["use_sparse"]
 
-        ScalingFacts = self.settings['ScalingDict']
-        ScalingFacts['time'] = ScalingFacts['length'] / ScalingFacts['speed']
-        ScalingFacts['circulation'] = ScalingFacts['speed'] * ScalingFacts['length']
-        ScalingFacts['dyn_pressure'] = 0.5 * ScalingFacts['density'] * ScalingFacts['speed'] ** 2
-        ScalingFacts['force'] = ScalingFacts['dyn_pressure'] * ScalingFacts['length'] ** 2
+        ScalingFacts = self.settings["ScalingDict"]
+        ScalingFacts["time"] = ScalingFacts["length"] / ScalingFacts["speed"]
+        ScalingFacts["circulation"] = ScalingFacts["speed"] * ScalingFacts["length"]
+        ScalingFacts["dyn_pressure"] = (
+            0.5 * ScalingFacts["density"] * ScalingFacts["speed"] ** 2
+        )
+        ScalingFacts["force"] = (
+            ScalingFacts["dyn_pressure"] * ScalingFacts["length"] ** 2
+        )
         self.ScalingFacts = ScalingFacts
 
-        self.input_variables_list = [InputVariable('zeta', size=3 * self.Kzeta, index=0),
-                                     InputVariable('zeta_dot', size=3 * self.Kzeta, index=1),
-                                     InputVariable('u_gust', size=3 * self.Kzeta, index=2)]
+        self.input_variables_list = [
+            InputVariable("zeta", size=3 * self.Kzeta, index=0),
+            InputVariable("zeta_dot", size=3 * self.Kzeta, index=1),
+            InputVariable("u_gust", size=3 * self.Kzeta, index=2),
+        ]
 
-        self.state_variables_list = [StateVariable('gamma', size=self.K, index=0),
-                                     StateVariable('gamma_w', size=self.K_star, index=1),
-                                     StateVariable('dtgamma_dot', size=self.K, index=2),
-                                     StateVariable('gamma_m1', size=self.K, index=3)]
+        self.state_variables_list = [
+            StateVariable("gamma", size=self.K, index=0),
+            StateVariable("gamma_w", size=self.K_star, index=1),
+            StateVariable("dtgamma_dot", size=self.K, index=2),
+            StateVariable("gamma_m1", size=self.K, index=3),
+        ]
 
-        self.output_variables_list = [OutputVariable('forces_v', size=3 * self.Kzeta, index=0)]
+        self.output_variables_list = [
+            OutputVariable("forces_v", size=3 * self.Kzeta, index=0)
+        ]
 
         if self.integr_order == 1:
-            self.state_variables_list.pop(2) # remove time derivative state
+            self.state_variables_list.pop(2)  # remove time derivative state
 
         ### collect statistics
-        self.cpu_summary = {'dim': 0.,
-                            'nondim': 0.,
-                            'assemble': 0.}
+        self.cpu_summary = {"dim": 0.0, "nondim": 0.0, "assemble": 0.0}
 
         # Initialise State Space
         self.SS = None
@@ -693,52 +743,85 @@ class Dynamic(Static):
         Scale state-space model based of self.ScalingFacts
         """
 
-        cout.cout_wrap('Scaling UVLM system with reference time %fs' % self.ScalingFacts['time'])
+        cout.cout_wrap(
+            "Scaling UVLM system with reference time %fs" % self.ScalingFacts["time"]
+        )
         t0 = time.time()
         Kzeta = self.Kzeta
 
-        self.SS.B[:, :3 * Kzeta] *= (self.ScalingFacts['length'] / self.ScalingFacts['circulation'])
-        self.SS.B[:, 3 * Kzeta:] *= (self.ScalingFacts['speed'] / self.ScalingFacts['circulation'])
+        self.SS.B[:, : 3 * Kzeta] *= (
+            self.ScalingFacts["length"] / self.ScalingFacts["circulation"]
+        )
+        self.SS.B[:, 3 * Kzeta :] *= (
+            self.ScalingFacts["speed"] / self.ScalingFacts["circulation"]
+        )
         if self.remove_predictor:
-            self.B_predictor[:, :3 * Kzeta] *= (self.ScalingFacts['length'] / self.ScalingFacts['circulation'])
-            self.B_predictor[:, 3 * Kzeta:] *= (self.ScalingFacts['speed'] / self.ScalingFacts['circulation'])
+            self.B_predictor[:, : 3 * Kzeta] *= (
+                self.ScalingFacts["length"] / self.ScalingFacts["circulation"]
+            )
+            self.B_predictor[:, 3 * Kzeta :] *= (
+                self.ScalingFacts["speed"] / self.ScalingFacts["circulation"]
+            )
 
-        self.SS.C *= (self.ScalingFacts['circulation'] / self.ScalingFacts['force'])
+        self.SS.C *= self.ScalingFacts["circulation"] / self.ScalingFacts["force"]
 
-        self.SS.D[:, :3 * Kzeta] *= (self.ScalingFacts['length'] / self.ScalingFacts['force'])
-        self.SS.D[:, 3 * Kzeta:] *= (self.ScalingFacts['speed'] / self.ScalingFacts['force'])
+        self.SS.D[:, : 3 * Kzeta] *= (
+            self.ScalingFacts["length"] / self.ScalingFacts["force"]
+        )
+        self.SS.D[:, 3 * Kzeta :] *= (
+            self.ScalingFacts["speed"] / self.ScalingFacts["force"]
+        )
         if self.remove_predictor:
-            self.D_predictor[:, :3 * Kzeta] *= (self.ScalingFacts['length'] / self.ScalingFacts['force'])
-            self.D_predictor[:, 3 * Kzeta:] *= (self.ScalingFacts['speed'] / self.ScalingFacts['force'])
+            self.D_predictor[:, : 3 * Kzeta] *= (
+                self.ScalingFacts["length"] / self.ScalingFacts["force"]
+            )
+            self.D_predictor[:, 3 * Kzeta :] *= (
+                self.ScalingFacts["speed"] / self.ScalingFacts["force"]
+            )
 
-        self.SS.dt = self.SS.dt / self.ScalingFacts['time']
+        self.SS.dt = self.SS.dt / self.ScalingFacts["time"]
 
-        self.cpu_summary['nondim'] = time.time() - t0
-        cout.cout_wrap('Non-dimensional time step set (%f)' % self.SS.dt, 1)
-        cout.cout_wrap('System scaled in %fs' % self.cpu_summary['nondim'])
+        self.cpu_summary["nondim"] = time.time() - t0
+        cout.cout_wrap("Non-dimensional time step set (%f)" % self.SS.dt, 1)
+        cout.cout_wrap("System scaled in %fs" % self.cpu_summary["nondim"])
 
     def dimss(self):
-
         t0 = time.time()
         Kzeta = self.Kzeta
 
-        self.SS.B[:, :3 * Kzeta] /= (self.ScalingFacts['length'] / self.ScalingFacts['circulation'])
-        self.SS.B[:, 3 * Kzeta:] /= (self.ScalingFacts['speed'] / self.ScalingFacts['circulation'])
+        self.SS.B[:, : 3 * Kzeta] /= (
+            self.ScalingFacts["length"] / self.ScalingFacts["circulation"]
+        )
+        self.SS.B[:, 3 * Kzeta :] /= (
+            self.ScalingFacts["speed"] / self.ScalingFacts["circulation"]
+        )
         if self.remove_predictor:
-            self.B_predictor[:, :3 * Kzeta] /= (self.ScalingFacts['length'] / self.ScalingFacts['circulation'])
-            self.B_predictor[:, 3 * Kzeta:] /= (self.ScalingFacts['speed'] / self.ScalingFacts['circulation'])
+            self.B_predictor[:, : 3 * Kzeta] /= (
+                self.ScalingFacts["length"] / self.ScalingFacts["circulation"]
+            )
+            self.B_predictor[:, 3 * Kzeta :] /= (
+                self.ScalingFacts["speed"] / self.ScalingFacts["circulation"]
+            )
 
-        self.SS.C /= (self.ScalingFacts['circulation'] / self.ScalingFacts['force'])
+        self.SS.C /= self.ScalingFacts["circulation"] / self.ScalingFacts["force"]
 
-        self.SS.D[:, :3 * Kzeta] /= (self.ScalingFacts['length'] / self.ScalingFacts['force'])
-        self.SS.D[:, 3 * Kzeta:] /= (self.ScalingFacts['speed'] / self.ScalingFacts['force'])
+        self.SS.D[:, : 3 * Kzeta] /= (
+            self.ScalingFacts["length"] / self.ScalingFacts["force"]
+        )
+        self.SS.D[:, 3 * Kzeta :] /= (
+            self.ScalingFacts["speed"] / self.ScalingFacts["force"]
+        )
         if self.remove_predictor:
-            self.D_predictor[:, :3 * Kzeta] /= (self.ScalingFacts['length'] / self.ScalingFacts['force'])
-            self.D_predictor[:, 3 * Kzeta:] /= (self.ScalingFacts['speed'] / self.ScalingFacts['force'])
+            self.D_predictor[:, : 3 * Kzeta] /= (
+                self.ScalingFacts["length"] / self.ScalingFacts["force"]
+            )
+            self.D_predictor[:, 3 * Kzeta :] /= (
+                self.ScalingFacts["speed"] / self.ScalingFacts["force"]
+            )
 
-        self.SS.dt = self.SS.dt * self.ScalingFacts['time']
+        self.SS.dt = self.SS.dt * self.ScalingFacts["time"]
 
-        self.cpu_summary['dim'] = time.time() - t0
+        self.cpu_summary["dim"] = time.time() - t0
 
     def assemble_ss(self, wake_prop_settings=None):
         r"""
@@ -787,7 +870,7 @@ class Dynamic(Static):
         - remove all calls to scipy.linalg.block_diag
         """
 
-        cout.cout_wrap('State-space realisation of UVLM equations started...')
+        cout.cout_wrap("State-space realisation of UVLM equations started...")
         t0 = time.time()
         MS = self.MS
         K, K_star = self.K, self.K_star
@@ -800,7 +883,7 @@ class Dynamic(Static):
         Ny = self.Ny
         if self.integr_order == 2:
             # Second order differencing scheme coefficients
-            b0, bm1, bp1 = -2., 0.5, 1.5
+            b0, bm1, bp1 = -2.0, 0.5, 1.5
 
         # ----------------------------------------------------------- state eq.
 
@@ -808,8 +891,9 @@ class Dynamic(Static):
         # - choice of sparse matrices format is optimised to reduce memory load
 
         # Aero influence coeffs
-        List_AICs, List_AICs_star = ass.AICs(MS.Surfs, MS.Surfs_star,
-                                             target='collocation', Project=True)
+        List_AICs, List_AICs_star = ass.AICs(
+            MS.Surfs, MS.Surfs_star, target="collocation", Project=True
+        )
         A0 = np.block(List_AICs)
         A0W = np.block(List_AICs_star)
         List_AICs, List_AICs_star = None, None
@@ -820,12 +904,12 @@ class Dynamic(Static):
 
         ### propagation of circ
         # fast and memory efficient with both dense and sparse matrices
-        List_C, List_Cstar = ass.wake_prop(MS,
-                                           self.use_sparse, sparse_format='csc',
-                                           settings=wake_prop_settings)
+        List_C, List_Cstar = ass.wake_prop(
+            MS, self.use_sparse, sparse_format="csc", settings=wake_prop_settings
+        )
         if self.use_sparse:
-            Cgamma = libsp.csc_matrix(sparse.block_diag(List_C, format='csc'))
-            CgammaW = libsp.csc_matrix(sparse.block_diag(List_Cstar, format='csc'))
+            Cgamma = libsp.csc_matrix(sparse.block_diag(List_C, format="csc"))
+            CgammaW = libsp.csc_matrix(sparse.block_diag(List_Cstar, format="csc"))
         else:
             Cgamma = scalg.block_diag(*List_C)
             CgammaW = scalg.block_diag(*List_Cstar)
@@ -842,9 +926,9 @@ class Dynamic(Static):
         else:
             Ass = np.zeros((Nx, Nx))
         Ass[:K, :K] = AinvAWCgamma
-        Ass[:K, K:K + K_star] = AinvAWCgammaW
-        Ass[K:K + K_star, :K] = Cgamma
-        Ass[K:K + K_star, K:K + K_star] = CgammaW
+        Ass[:K, K : K + K_star] = AinvAWCgammaW
+        Ass[K : K + K_star, :K] = Cgamma
+        Ass[K : K + K_star, K : K + K_star] = CgammaW
         Cgamma, CgammaW = None, None
 
         # delta eq.
@@ -853,12 +937,12 @@ class Dynamic(Static):
         if self.integr_order == 1:
             Ass[iivec, :K] = AinvAWCgamma
             Ass[iivec, range(K)] -= ones
-            Ass[iivec, K:K + K_star] = AinvAWCgammaW
+            Ass[iivec, K : K + K_star] = AinvAWCgammaW
         if self.integr_order == 2:
             Ass[iivec, :K] = bp1 * AinvAWCgamma
             AinvAWCgamma = None
             Ass[iivec, range(K)] += b0 * ones
-            Ass[iivec, K:K + K_star] = bp1 * AinvAWCgammaW
+            Ass[iivec, K : K + K_star] = bp1 * AinvAWCgammaW
             AinvAWCgammaW = None
             Ass[iivec, range(2 * K + K_star, 3 * K + K_star)] = bm1 * ones
             # identity eq.
@@ -873,8 +957,9 @@ class Dynamic(Static):
         List_uc_dncdzeta = ass.uc_dncdzeta(MS.Surfs)
         List_nc_domegazetadzeta_vert = ass.nc_domegazetadzeta(MS.Surfs, MS.Surfs_star)
         for ss in range(MS.n_surf):
-            List_nc_dqcdzeta[ss][ss] += \
-                (List_uc_dncdzeta[ss] + List_nc_domegazetadzeta_vert[ss])
+            List_nc_dqcdzeta[ss][ss] += (
+                List_uc_dncdzeta[ss] + List_nc_domegazetadzeta_vert[ss]
+            )
         Ducdzeta = np.block(List_nc_dqcdzeta)  # dense matrix
         List_nc_dqcdzeta = None
         List_uc_dncdzeta = None
@@ -884,8 +969,8 @@ class Dynamic(Static):
         List_Wnv = []
         for ss in range(MS.n_surf):
             List_Wnv.append(
-                interp.get_Wnv_vector(MS.Surfs[ss],
-                                      MS.Surfs[ss].aM, MS.Surfs[ss].aN))
+                interp.get_Wnv_vector(MS.Surfs[ss], MS.Surfs[ss].aM, MS.Surfs[ss].aN)
+            )
         AinvWnv0 = scalg.lu_solve((LU, P), scalg.block_diag(*List_Wnv))
         List_Wnv = None
 
@@ -899,9 +984,9 @@ class Dynamic(Static):
         AinvWnv0 = None
         Bss[:K, :] = Bup
         if self.integr_order == 1:
-            Bss[K + K_star:2 * K + K_star, :] = Bup
+            Bss[K + K_star : 2 * K + K_star, :] = Bup
         if self.integr_order == 2:
-            Bss[K + K_star:2 * K + K_star, :] = bp1 * Bup
+            Bss[K + K_star : 2 * K + K_star, :] = bp1 * Bup
         Bup = None
 
         if self.use_sparse:
@@ -912,12 +997,14 @@ class Dynamic(Static):
         ### state terms (C matrix)
 
         # gamma (induced velocity contrib.)
-        List_dfqsdvind_gamma, List_dfqsdvind_gamma_star = \
-            ass.dfqsdvind_gamma(MS.Surfs, MS.Surfs_star)
+        List_dfqsdvind_gamma, List_dfqsdvind_gamma_star = ass.dfqsdvind_gamma(
+            MS.Surfs, MS.Surfs_star
+        )
 
         # gamma (at constant relative velocity)
-        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = \
-            ass.dfqsdgamma_vrel0(MS.Surfs, MS.Surfs_star)
+        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = ass.dfqsdgamma_vrel0(
+            MS.Surfs, MS.Surfs_star
+        )
         for ss in range(MS.n_surf):
             List_dfqsdvind_gamma[ss][ss] += List_dfqsdgamma_vrel0[ss]
             List_dfqsdvind_gamma_star[ss][ss] += List_dfqsdgamma_star_vrel0[ss]
@@ -932,55 +1019,62 @@ class Dynamic(Static):
         # C matrix assembly
         Css = np.zeros((Ny, Nx))
         Css[:, :K] = Dfqsdgamma
-        Css[:, K:K + K_star] = Dfqsdgamma_star
+        Css[:, K : K + K_star] = Dfqsdgamma_star
         if self.include_added_mass:
-            Css[:, K + K_star:2 * K + K_star] = Dfunstdgamma_dot / self.dt
+            Css[:, K + K_star : 2 * K + K_star] = Dfunstdgamma_dot / self.dt
 
         ### input terms (D matrix)
         Dss = np.zeros((Ny, Nu))
 
         # zeta (at constant relative velocity)
-        Dss[:, :3 * Kzeta] = scalg.block_diag(
-            *ass.dfqsdzeta_vrel0(MS.Surfs, MS.Surfs_star))
+        Dss[:, : 3 * Kzeta] = scalg.block_diag(
+            *ass.dfqsdzeta_vrel0(MS.Surfs, MS.Surfs_star)
+        )
         # zeta (induced velocity contrib)
         List_coll, List_vert = ass.dfqsdvind_zeta(MS.Surfs, MS.Surfs_star)
         for ss in range(MS.n_surf):
             List_vert[ss][ss] += List_coll[ss]
-        Dss[:, :3 * Kzeta] += np.block(List_vert)
+        Dss[:, : 3 * Kzeta] += np.block(List_vert)
         del List_vert, List_coll
 
         # input velocities (external)
-        Dss[:, 6 * Kzeta:9 * Kzeta] = scalg.block_diag(
-            *ass.dfqsduinput(MS.Surfs, MS.Surfs_star))
+        Dss[:, 6 * Kzeta : 9 * Kzeta] = scalg.block_diag(
+            *ass.dfqsduinput(MS.Surfs, MS.Surfs_star)
+        )
 
         # input velocities (body movement)
         if self.include_added_mass:
-            Dss[:, 3 * Kzeta:6 * Kzeta] = -Dss[:, 6 * Kzeta:9 * Kzeta]
+            Dss[:, 3 * Kzeta : 6 * Kzeta] = -Dss[:, 6 * Kzeta : 9 * Kzeta]
 
         if self.remove_predictor:
-            Ass, Bmod, Css, Dmod = \
-                libss.SSconv(Ass, None, Bss, Css, Dss, Bm1=None)
+            Ass, Bmod, Css, Dmod = libss.SSconv(Ass, None, Bss, Css, Dss, Bm1=None)
             self.SS = libss.StateSpace(Ass, Bmod, Css, Dmod, dt=self.dt)
 
             # Store original B matrix for state unpacking
             self.B_predictor = Bss
             self.D_predictor = Dss
 
-            cout.cout_wrap('\tstate-space model produced in form:\n\t' \
-                           '\t\th_{n+1} = A h_{n} + B u_{n}\n\t' \
-                           '\t\twith:\n\tx_n = h_n + Bp u_n', 1)
+            cout.cout_wrap(
+                "\tstate-space model produced in form:\n\t"
+                "\t\th_{n+1} = A h_{n} + B u_{n}\n\t"
+                "\t\twith:\n\tx_n = h_n + Bp u_n",
+                1,
+            )
         else:
             self.SS = libss.StateSpace(Ass, Bss, Css, Dss, dt=self.dt)
-            cout.cout_wrap('\tstate-space model produced in form:\n\t' \
-                           'x_{n+1} = A x_{n} + Bp u_{n+1}', 1)
+            cout.cout_wrap(
+                "\tstate-space model produced in form:\n\t"
+                "x_{n+1} = A x_{n} + Bp u_{n+1}",
+                1,
+            )
 
         # add variable tracker
         self.SS.input_variables = LinearVector(self.input_variables_list)
         self.SS.state_variables = LinearVector(self.state_variables_list)
         self.SS.output_variables = LinearVector(self.output_variables_list)
 
-        self.cpu_summary['assemble'] = time.time() - t0
-        cout.cout_wrap('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'])
+        self.cpu_summary["assemble"] = time.time() - t0
+        cout.cout_wrap("\t\t\t...done in %.2f sec" % self.cpu_summary["assemble"])
 
     def freqresp(self, kv, wake_prop_settings=None):
         """
@@ -1000,12 +1094,14 @@ class Dynamic(Static):
             # raise NameError('Option "remove_predictor=True" not implemented yet. '+
             #     'Refer to Frequency class implementation.')
 
-            assert self.B_predictor.shape == self.SS.B.shape, \
-                ('In order to use "freqresp" with "remove_predictor=True", project ' +
-                 '"self.B_predictor" as per "self.SS.B"!')
-            assert self.D_predictor.shape == self.SS.D.shape, \
-                ('In order to use "freqresp" with "remove_predictor=True", project ' +
-                 '"self.D_predictor" as per "self.SS.D"!')
+            assert self.B_predictor.shape == self.SS.B.shape, (
+                'In order to use "freqresp" with "remove_predictor=True", project '
+                + '"self.B_predictor" as per "self.SS.B"!'
+            )
+            assert self.D_predictor.shape == self.SS.D.shape, (
+                'In order to use "freqresp" with "remove_predictor=True", project '
+                + '"self.D_predictor" as per "self.SS.D"!'
+            )
 
         MS = self.MS
         K = self.K
@@ -1021,53 +1117,64 @@ class Dynamic(Static):
             # warning: behaviour may change in future numpy release.
             # Ensure P,Pw,Bup are np.ndarray
             P = np.array(self.SS.A[:K, :K].todense())
-            Pw = np.array(self.SS.A[:K, K:K + K_star].todense())
+            Pw = np.array(self.SS.A[:K, K : K + K_star].todense())
             if type(Bup) not in [np.ndarray, libsp.csc_matrix]:
                 Bup = Bup.toarray()
         else:
             P = self.SS.A[:K, :K]
-            Pw = self.SS.A[:K, K:K + K_star]
+            Pw = self.SS.A[:K, K : K + K_star]
 
         Nk = len(kv)
         kvdt = kv * self.SS.dt
-        zv = np.cos(kvdt) + 1.j * np.sin(kvdt)
-        Yfreq = np.empty((self.SS.outputs, self.SS.inputs, Nk,), dtype=np.complex_)
+        zv = np.cos(kvdt) + 1.0j * np.sin(kvdt)
+        Yfreq = np.empty(
+            (
+                self.SS.outputs,
+                self.SS.inputs,
+                Nk,
+            ),
+            dtype=np.complex_,
+        )
 
         for kk in range(Nk):
-
             ###  build Cw complex
             Cw_cpx = self.get_Cw_cpx(zv[kk], settings=wake_prop_settings)
 
             if self.remove_predictor:
-                Ygamma = zv[kk] * \
-                         libsp.solve(zv[kk] * Eye - P -
-                                     libsp.dot(Pw, Cw_cpx, type_out=libsp.csc_matrix),
-                                     Bup)
+                Ygamma = zv[kk] * libsp.solve(
+                    zv[kk] * Eye - P - libsp.dot(Pw, Cw_cpx, type_out=libsp.csc_matrix),
+                    Bup,
+                )
             else:
-                Ygamma = libsp.solve(zv[kk] * Eye - P -
-                                     libsp.dot(Pw, Cw_cpx, type_out=libsp.csc_matrix),
-                                     Bup)
+                Ygamma = libsp.solve(
+                    zv[kk] * Eye - P - libsp.dot(Pw, Cw_cpx, type_out=libsp.csc_matrix),
+                    Bup,
+                )
 
             Ygamma_star = Cw_cpx.dot(Ygamma)
 
             if self.integr_order == 1:
-                dfact = (1. - 1. / zv[kk])
+                dfact = 1.0 - 1.0 / zv[kk]
             elif self.integr_order == 2:
-                dfact = .5 * (3. - 4. / zv[kk] + 1. / zv[kk] ** 2)
+                dfact = 0.5 * (3.0 - 4.0 / zv[kk] + 1.0 / zv[kk] ** 2)
             else:
-                raise NameError('Specify valid integration order')
+                raise NameError("Specify valid integration order")
 
             # calculate solution
             if self.remove_predictor:
-                Yfreq[:, :, kk] = np.dot(self.SS.C[:, :K], Ygamma) + \
-                                  np.dot(self.SS.C[:, K:K + K_star], Ygamma_star) + \
-                                  np.dot(self.SS.C[:, K + K_star:2 * K + K_star], dfact * Ygamma) + \
-                                  self.D_predictor
+                Yfreq[:, :, kk] = (
+                    np.dot(self.SS.C[:, :K], Ygamma)
+                    + np.dot(self.SS.C[:, K : K + K_star], Ygamma_star)
+                    + np.dot(self.SS.C[:, K + K_star : 2 * K + K_star], dfact * Ygamma)
+                    + self.D_predictor
+                )
             else:
-                Yfreq[:, :, kk] = np.dot(self.SS.C[:, :K], Ygamma) + \
-                                  np.dot(self.SS.C[:, K:K + K_star], Ygamma_star) + \
-                                  np.dot(self.SS.C[:, K + K_star:2 * K + K_star], dfact * Ygamma) + \
-                                  self.SS.D
+                Yfreq[:, :, kk] = (
+                    np.dot(self.SS.C[:, :K], Ygamma)
+                    + np.dot(self.SS.C[:, K : K + K_star], Ygamma_star)
+                    + np.dot(self.SS.C[:, K + K_star : 2 * K + K_star], dfact * Ygamma)
+                    + self.SS.D
+                )
 
         return Yfreq
 
@@ -1088,7 +1195,6 @@ class Dynamic(Static):
         """
 
         return get_Cw_cpx(self.MS, self.K, self.K_star, zval, settings=settings)
-
 
     def balfreq(self, DictBalFreq, wake_prop_settings=None):
         """
@@ -1196,54 +1302,60 @@ class Dynamic(Static):
         """
 
         ### check input dictionary
-        if 'frequency' not in DictBalFreq:
+        if "frequency" not in DictBalFreq:
             raise NameError('Solution dictionary must include the "frequency" key')
 
-        if 'method_low' not in DictBalFreq:
-            warnings.warn('Setting default options for low-frequency integration')
-            DictBalFreq['method_low'] = 'trapz'
-            DictBalFreq['options_low'] = {'points': 12}
+        if "method_low" not in DictBalFreq:
+            warnings.warn("Setting default options for low-frequency integration")
+            DictBalFreq["method_low"] = "trapz"
+            DictBalFreq["options_low"] = {"points": 12}
 
-        if 'method_high' not in DictBalFreq:
-            warnings.warn('Setting default options for high-frequency integration')
-            DictBalFreq['method_high'] = 'gauss'
-            DictBalFreq['options_high'] = {'partitions': 2, 'order': 8}
+        if "method_high" not in DictBalFreq:
+            warnings.warn("Setting default options for high-frequency integration")
+            DictBalFreq["method_high"] = "gauss"
+            DictBalFreq["options_high"] = {"partitions": 2, "order": 8}
 
-        if 'check_stability' not in DictBalFreq:
-            DictBalFreq['check_stability'] = True
+        if "check_stability" not in DictBalFreq:
+            DictBalFreq["check_stability"] = True
 
-        if 'output_modes' not in DictBalFreq:
-            DictBalFreq['output_modes'] = True
+        if "output_modes" not in DictBalFreq:
+            DictBalFreq["output_modes"] = True
 
-        if 'get_frequency_response' not in DictBalFreq:
-            DictBalFreq['get_frequency_response'] = False
+        if "get_frequency_response" not in DictBalFreq:
+            DictBalFreq["get_frequency_response"] = False
 
         ### get integration points and weights
 
         # Nyquist frequency
         kn = np.pi / self.SS.dt
 
-        Opt = DictBalFreq['options_low']
-        if DictBalFreq['method_low'] == 'trapz':
-            kv_low, wv_low = librom.get_trapz_weights(0., DictBalFreq['frequency'],
-                                                      Opt['points'], False)
-        elif DictBalFreq['method_low'] == 'gauss':
-            kv_low, wv_low = librom.get_gauss_weights(0., DictBalFreq['frequency'],
-                                                      Opt['partitions'], Opt['order'])
+        Opt = DictBalFreq["options_low"]
+        if DictBalFreq["method_low"] == "trapz":
+            kv_low, wv_low = librom.get_trapz_weights(
+                0.0, DictBalFreq["frequency"], Opt["points"], False
+            )
+        elif DictBalFreq["method_low"] == "gauss":
+            kv_low, wv_low = librom.get_gauss_weights(
+                0.0, DictBalFreq["frequency"], Opt["partitions"], Opt["order"]
+            )
         else:
             raise NameError(
-                'Invalid value %s for key "method_low"' % DictBalFreq['method_low'])
+                'Invalid value %s for key "method_low"' % DictBalFreq["method_low"]
+            )
 
-        Opt = DictBalFreq['options_high']
-        if DictBalFreq['method_high'] == 'trapz':
-            kv_high, wv_high = librom.get_trapz_weights(DictBalFreq['frequency'], kn,
-                                                        Opt['points'], True)
-        elif DictBalFreq['method_high'] == 'gauss':
-            kv_high, wv_high = librom.get_gauss_weights(DictBalFreq['frequency'], kn,
-                                                        Opt['partitions'], Opt['order'])
+        Opt = DictBalFreq["options_high"]
+        if DictBalFreq["method_high"] == "trapz":
+            kv_high, wv_high = librom.get_trapz_weights(
+                DictBalFreq["frequency"], kn, Opt["points"], True
+            )
+        elif DictBalFreq["method_high"] == "gauss":
+            kv_high, wv_high = librom.get_gauss_weights(
+                DictBalFreq["frequency"], kn, Opt["partitions"], Opt["order"]
+            )
         else:
             raise NameError(
-                'Invalid value %s for key "method_high"' % DictBalFreq['method_high'])
+                'Invalid value %s for key "method_high"' % DictBalFreq["method_high"]
+            )
 
         ### get useful terms
         K = self.K
@@ -1260,12 +1372,12 @@ class Dynamic(Static):
             # warning: behaviour may change in future numpy release.
             # Ensure P,Pw,Bup are np.ndarray
             P = np.array(self.SS.A[:K, :K].todense())
-            Pw = np.array(self.SS.A[:K, K:K + K_star].todense())
+            Pw = np.array(self.SS.A[:K, K : K + K_star].todense())
             if type(Bup) not in [np.ndarray, libsp.csc_matrix]:
                 Bup = Bup.toarray()
         else:
             P = self.SS.A[:K, :K]
-            Pw = self.SS.A[:K, K:K + K_star]
+            Pw = self.SS.A[:K, K : K + K_star]
 
         # indices to manipulate obs solution
         ii00 = range(0, self.K)
@@ -1275,10 +1387,10 @@ class Dynamic(Static):
 
         # integration factors
         if self.integr_order == 2:
-            b0, bm1, bp1 = -2., 0.5, 1.5
+            b0, bm1, bp1 = -2.0, 0.5, 1.5
         else:
-            b0, bp1 = -1., 1.
-            raise NameError('Method not implemented for integration order 1')
+            b0, bp1 = -1.0, 1.0
+            raise NameError("Method not implemented for integration order 1")
 
         ### -------------------------------------------------- loop frequencies
 
@@ -1286,18 +1398,28 @@ class Dynamic(Static):
         Nk_low = len(kv_low)
         kvdt = np.concatenate((kv_low, kv_high)) * self.SS.dt
         wv = np.concatenate((wv_low, wv_high)) * self.SS.dt
-        zv = np.cos(kvdt) + 1.j * np.sin(kvdt)
+        zv = np.cos(kvdt) + 1.0j * np.sin(kvdt)
 
         Qobs = np.zeros((self.SS.states, self.SS.outputs), dtype=np.complex_)
-        Zc = np.zeros((self.SS.states, 2 * self.SS.inputs * len(kvdt)), )
-        Zo = np.zeros((self.SS.states, 2 * self.SS.outputs * Nk_low), )
+        Zc = np.zeros(
+            (self.SS.states, 2 * self.SS.inputs * len(kvdt)),
+        )
+        Zo = np.zeros(
+            (self.SS.states, 2 * self.SS.outputs * Nk_low),
+        )
 
-        if DictBalFreq['get_frequency_response']:
-            self.Yfreq = np.empty((self.SS.outputs, self.SS.inputs, Nk_low,), dtype=np.complex_)
+        if DictBalFreq["get_frequency_response"]:
+            self.Yfreq = np.empty(
+                (
+                    self.SS.outputs,
+                    self.SS.inputs,
+                    Nk_low,
+                ),
+                dtype=np.complex_,
+            )
             self.kv = kv_low
 
         for kk in range(len(kvdt)):
-
             zval = zv[kk]
             Intfact = wv[kk]  # integration factor
 
@@ -1313,25 +1435,26 @@ class Dynamic(Static):
             Ygamma_star = Cw_cpx.dot(Ygamma)
 
             if self.integr_order == 1:
-                dfact = (bp1 + b0 / zval)
+                dfact = bp1 + b0 / zval
                 Qctrl = np.vstack([Ygamma, Ygamma_star, dfact * Ygamma])
             elif self.integr_order == 2:
-                dfact = bp1 + b0 / zval + bm1 / zval ** 2
+                dfact = bp1 + b0 / zval + bm1 / zval**2
                 Qctrl = np.vstack(
-                    [Ygamma, Ygamma_star, dfact * Ygamma, (1. / zval) * Ygamma])
+                    [Ygamma, Ygamma_star, dfact * Ygamma, (1.0 / zval) * Ygamma]
+                )
             else:
-                raise NameError('Specify valid integration order')
+                raise NameError("Specify valid integration order")
 
             kkvec = range(2 * kk * self.SS.inputs, 2 * (kk + 1) * self.SS.inputs)
-            Zc[:, kkvec[:self.SS.inputs]] = Qctrl.real  # *Intfact
-            Zc[:, kkvec[self.SS.inputs:]] = Qctrl.imag  # *Intfact
+            Zc[:, kkvec[: self.SS.inputs]] = Qctrl.real  # *Intfact
+            Zc[:, kkvec[self.SS.inputs :]] = Qctrl.imag  # *Intfact
 
             ### ----- frequency response
-            if DictBalFreq['get_frequency_response'] and kk < Nk_low:
+            if DictBalFreq["get_frequency_response"] and kk < Nk_low:
                 self.Yfreq[:, :, kk] = np.dot(self.SS.C, Qctrl) / Intfact + self.SS.D
 
             ### ----- frequency response
-            if DictBalFreq['get_frequency_response'] and kk < Nk_low:
+            if DictBalFreq["get_frequency_response"] and kk < Nk_low:
                 self.Yfreq[:, :, kk] = np.dot(self.SS.C, Qctrl) / Intfact + self.SS.D
 
             ### ----- observability
@@ -1339,33 +1462,39 @@ class Dynamic(Static):
             if kk >= Nk_low:
                 continue
 
-            zinv = 1. / zval
+            zinv = 1.0 / zval
             Cw_cpx_H = Cw_cpx.conjugate().T
 
             Qobs[ii02, :] = zval * self.SS.C[:, ii02].T
             if self.integr_order == 2:
-                Qobs[ii03, :] = bm1 * zval ** 2 * self.SS.C[:, ii02].T
+                Qobs[ii03, :] = bm1 * zval**2 * self.SS.C[:, ii02].T
 
-            rhs = self.SS.C[:, ii00].T + \
-                  Cw_cpx_H.dot(self.SS.C[:, ii01].T) + \
-                  libsp.dot(
-                      (bp1 * zval) * (PwCw_T.conj() + P.T) + \
-                      (b0 * zval + bm1 * zval ** 2) * Eye, self.SS.C[:, ii02].T)
+            rhs = (
+                self.SS.C[:, ii00].T
+                + Cw_cpx_H.dot(self.SS.C[:, ii01].T)
+                + libsp.dot(
+                    (bp1 * zval) * (PwCw_T.conj() + P.T)
+                    + (b0 * zval + bm1 * zval**2) * Eye,
+                    self.SS.C[:, ii02].T,
+                )
+            )
 
             Qobs[ii00, :] = np.dot(Kernel.conj().T, rhs)
 
             Eye_star = libsp.csc_matrix(
                 (zinv * np.ones((K_star,)), (range(K_star), range(K_star))),
-                shape=(K_star, K_star), dtype=np.complex_)
+                shape=(K_star, K_star),
+                dtype=np.complex_,
+            )
             Qobs[ii01, :] = libsp.solve(
-                Eye_star - self.SS.A[K:K + K_star, K:K + K_star].T,
-                np.dot(Pw.T, Qobs[ii00, :] + \
-                       (bp1 * zval) * self.SS.C[:, ii02].T) + \
-                self.SS.C[:, ii01].T)
+                Eye_star - self.SS.A[K : K + K_star, K : K + K_star].T,
+                np.dot(Pw.T, Qobs[ii00, :] + (bp1 * zval) * self.SS.C[:, ii02].T)
+                + self.SS.C[:, ii01].T,
+            )
 
             kkvec = range(2 * kk * self.SS.outputs, 2 * (kk + 1) * self.SS.outputs)
-            Zo[:, kkvec[:self.SS.outputs]] = Intfact * Qobs.real
-            Zo[:, kkvec[self.SS.outputs:]] = Intfact * Qobs.imag
+            Zo[:, kkvec[: self.SS.outputs]] = Intfact * Qobs.real
+            Zo[:, kkvec[self.SS.outputs :]] = Intfact * Qobs.imag
 
         # delete full matrices
         Kernel = None
@@ -1389,20 +1518,20 @@ class Dynamic(Static):
         SSb = libss.StateSpace(Ab, Bb, Cb, self.SS.D, dt=self.SS.dt)
 
         ### Eliminate unstable modes - if any:
-        if DictBalFreq['check_stability']:
+        if DictBalFreq["check_stability"]:
             for nn in range(1, len(hsv) + 1):
                 eigs_trunc = scalg.eigvals(SSb.A[:nn, :nn])
                 eigs_trunc_max = np.max(np.abs(eigs_trunc))
-                if eigs_trunc_max > 1. - 1e-16:
+                if eigs_trunc_max > 1.0 - 1e-16:
                     SSb.truncate(nn - 1)
-                    hsv = hsv[:nn - 1]
-                    T = T[:, :nn - 1]
-                    Ti = Ti[:nn - 1, :]
+                    hsv = hsv[: nn - 1]
+                    T = T[:, : nn - 1]
+                    Ti = Ti[: nn - 1, :]
                     break
 
         self.SSb = SSb
         self.hsv = hsv
-        if DictBalFreq['output_modes']:
+        if DictBalFreq["output_modes"]:
             self.T = T
             self.Ti = Ti
             self.Zc = Zc
@@ -1422,15 +1551,16 @@ class Dynamic(Static):
         """
         import pstats
         import cProfile
+
         def wrap():
-            DictBalFreq = {'frequency': 0.5, 'check_stability': False}
+            DictBalFreq = {"frequency": 0.5, "check_stability": False}
             self.balfreq(DictBalFreq, wake_prop_settings=wake_prop_settings)
 
-        cProfile.runctx('wrap()', globals(), locals(), filename=self.prof_out)
+        cProfile.runctx("wrap()", globals(), locals(), filename=self.prof_out)
 
-        cProfile.runctx('wrap()', globals(), locals(), filename=self.prof_out)
+        cProfile.runctx("wrap()", globals(), locals(), filename=self.prof_out)
 
-        return pstats.Stats(self.prof_out).sort_stats('cumtime')
+        return pstats.Stats(self.prof_out).sort_stats("cumtime")
 
     def assemble_ss_profiling(self):
         """
@@ -1442,9 +1572,12 @@ class Dynamic(Static):
         """
 
         import cProfile
-        cProfile.runctx('self.assemble_ss()', globals(), locals(), filename=self.prof_out)
 
-    def solve_steady(self, usta, method='direct'):
+        cProfile.runctx(
+            "self.assemble_ss()", globals(), locals(), filename=self.prof_out
+        )
+
+    def solve_steady(self, usta, method="direct"):
         """
         Steady state solution from state-space model.
 
@@ -1454,23 +1587,27 @@ class Dynamic(Static):
         matrix only, similarly to what is done in Static.solve.
         """
 
-        if self.remove_predictor is True and method != 'direct':
-            raise NameError('Only direct solution is available if predictor ' \
-                            'term has been removed from the state-space equations (see assembly_ss)')
+        if self.remove_predictor is True and method != "direct":
+            raise NameError(
+                "Only direct solution is available if predictor "
+                "term has been removed from the state-space equations (see assembly_ss)"
+            )
 
-        if self.use_sparse is True and method != 'direct':
-            raise NameError('Only direct solution is available if use_sparse is True. ' \
-                            '(see assembly_ss)')
+        if self.use_sparse is True and method != "direct":
+            raise NameError(
+                "Only direct solution is available if use_sparse is True. "
+                "(see assembly_ss)"
+            )
 
         Ass, Bss, Css, Dss = self.SS.A, self.SS.B, self.SS.C, self.SS.D
 
-        if method == 'minsize':
+        if method == "minsize":
             # as opposed to linuvlm.Static, this solves for the bound circulation
             # starting from
-            #	Gamma   = [P, Pw] * {Gamma,Gamma_w} + B u_
+            # 	Gamma   = [P, Pw] * {Gamma,Gamma_w} + B u_
             #   Gamma_w = [C, Cw] * {Gamma,Gamma_w}		  			(eq. 1a,1b)
             # where time indices have been dropped. Transforming into
-            #	Gamma 	= [P+PwC, PwCw] * {Gamma,Gamma_w} + B u 	(eq. 2)
+            # 	Gamma 	= [P+PwC, PwCw] * {Gamma,Gamma_w} + B u 	(eq. 2)
             # and enforcing Gamma_w = Gamma_TE, this reduces to the KxK system:
             # 	AIC Gamma = B u 									(eq. 3)
             MS = self.MS
@@ -1479,9 +1616,9 @@ class Dynamic(Static):
 
             ### build eq. 2:
             P = Ass[:K, :K]
-            Pw = Ass[:K, K:K + K_star]
-            C = Ass[K:K + K_star, :K]
-            Cw = Ass[K:K + K_star, K:K + K_star]
+            Pw = Ass[:K, K : K + K_star]
+            C = Ass[K : K + K_star, :K]
+            Cw = Ass[K : K + K_star, K : K + K_star]
             PwCw = np.dot(Pw, Cw)
 
             ### build eq. 3
@@ -1499,8 +1636,10 @@ class Dynamic(Static):
                     Kin_star = MS.KK_star[ss_in]
 
                     # link to sub-matrices
-                    aic = AIC[K0out:K0out + Kout, K0in:K0in + Kin]
-                    aic_star = PwCw[K0out:K0out + Kout, K0in_star:K0in_star + Kin_star]
+                    aic = AIC[K0out : K0out + Kout, K0in : K0in + Kin]
+                    aic_star = PwCw[
+                        K0out : K0out + Kout, K0in_star : K0in_star + Kin_star
+                    ]
 
                     # fold aic_star: sum along chord at each span-coordinate
                     N_star = MS.NN_star[ss_in]
@@ -1524,19 +1663,18 @@ class Dynamic(Static):
                 Ktot += MS.Surfs[ss].maps.K
                 N = MS.Surfs[ss].maps.N
                 Mstar = MS.Surfs_star[ss].maps.M
-                gamma_star.append(np.concatenate(Mstar * [gamma[Ktot - N:Ktot]]))
+                gamma_star.append(np.concatenate(Mstar * [gamma[Ktot - N : Ktot]]))
             gamma_star = np.concatenate(gamma_star)
 
             if self.integr_order == 1:
                 xsta = np.concatenate((gamma, gamma_star, np.zeros_like(gamma)))
             if self.integr_order == 2:
-                xsta = np.concatenate((gamma, gamma_star, np.zeros_like(gamma),
-                                       gamma))
+                xsta = np.concatenate((gamma, gamma_star, np.zeros_like(gamma), gamma))
 
             ysta = np.dot(Css, xsta) + np.dot(Dss, usta)
 
-        elif method == 'direct':
-            """ Solves (I - A) x = B u with direct method"""
+        elif method == "direct":
+            """Solves (I - A) x = B u with direct method"""
             # if self.use_sparse:
             #     xsta=libsp.solve(libsp.eye_as(Ass)-Ass,Bss.dot(usta))
             # else:
@@ -1545,8 +1683,8 @@ class Dynamic(Static):
             xsta = libsp.solve(libsp.eye_as(Ass) - Ass, Bss.dot(usta))
             ysta = np.dot(Css, xsta) + np.dot(Dss, usta)
 
-        elif method == 'recursive':
-            """ Provides steady-state solution solving for impulsive response """
+        elif method == "recursive":
+            """Provides steady-state solution solving for impulsive response"""
             tol, er = 1e-4, 1.0
             Ftot0 = np.zeros((3,))
             nn = 0
@@ -1555,18 +1693,23 @@ class Dynamic(Static):
                 xsta = np.dot(Ass, xsta) + np.dot(Bss, usta)
                 ysta = np.dot(Css, xsta) + np.dot(Dss, usta)
                 Ftot = np.array(
-                    [np.sum(ysta[cc * self.Kzeta:(cc + 1) * self.Kzeta])
-                     for cc in range(3)])
+                    [
+                        np.sum(ysta[cc * self.Kzeta : (cc + 1) * self.Kzeta])
+                        for cc in range(3)
+                    ]
+                )
                 er = np.linalg.norm(Ftot - Ftot0)
                 Ftot0 = Ftot.copy()
                 nn += 1
             if er < tol:
                 pass  # print('Recursive solution found in %.3d iterations'%nn)
             else:
-                raise exceptions.NotConvergedSolver('Solution not found! Max. iterations reached with error: %.3e' % er)
+                raise exceptions.NotConvergedSolver(
+                    "Solution not found! Max. iterations reached with error: %.3e" % er
+                )
 
-        elif method == 'subsystem':
-            """ Solves sub-system related to Gamma, Gamma_w states only """
+        elif method == "subsystem":
+            """Solves sub-system related to Gamma, Gamma_w states only"""
 
             Nxsub = self.K + self.K_star
             Asub_steady = np.eye(Nxsub) - Ass[:Nxsub, :Nxsub]
@@ -1578,7 +1721,7 @@ class Dynamic(Static):
             ysta = np.dot(Css, xsta) + np.dot(Dss, usta)
 
         else:
-            raise NameError('Method %s not recognised!' % method)
+            raise NameError("Method %s not recognised!" % method)
 
         return xsta, ysta
 
@@ -1636,7 +1779,6 @@ class Dynamic(Static):
             u_n1 = u_n.copy()
 
         if self.remove_predictor:
-
             # Transform state vector
             # TODO: Agree on a way to do this. Either always transform here or transform prior to using the method.
             if transform_state:
@@ -1682,8 +1824,8 @@ class Dynamic(Static):
 
         K, K_star = self.K, self.K_star
         gamma_vec = xvec[:K]
-        gamma_star_vec = xvec[K:K + K_star]
-        gamma_dot_vec = xvec[K + K_star:2 * K + K_star] / self.dt
+        gamma_star_vec = xvec[K : K + K_star]
+        gamma_dot_vec = xvec[K + K_star : 2 * K + K_star] / self.dt
 
         return gamma_vec, gamma_star_vec, gamma_dot_vec
 
@@ -1691,6 +1833,7 @@ class Dynamic(Static):
 ################################################################################
 
 ################################################################################
+
 
 class DynamicBlock(Dynamic):
     """
@@ -1747,22 +1890,36 @@ class DynamicBlock(Dynamic):
     To do: upgrade to linearise around unsteady snapshot (adjoint)
     """
 
-    def __init__(self, tsdata, dt=None,
-                 dynamic_settings=None,
-                 integr_order=2,
-                 RemovePredictor=True, ScalingDict=None, UseSparse=True, for_vel=np.zeros((6), )):
-
+    def __init__(
+        self,
+        tsdata,
+        dt=None,
+        dynamic_settings=None,
+        integr_order=2,
+        RemovePredictor=True,
+        ScalingDict=None,
+        UseSparse=True,
+        for_vel=np.zeros(
+            (6),
+        ),
+    ):
         if dynamic_settings is None:
-            warnings.warn('Individual parsing of settings is deprecated. Please use the settings dictionary',
-                          DeprecationWarning)
+            warnings.warn(
+                "Individual parsing of settings is deprecated. Please use the settings"
+                " dictionary",
+                DeprecationWarning,
+            )
 
-        super().__init__(tsdata, dt,
-                         dynamic_settings=dynamic_settings,
-                         integr_order=integr_order,
-                         RemovePredictor=RemovePredictor,
-                         ScalingDict=ScalingDict,
-                         UseSparse=UseSparse,
-                         for_vel=for_vel)
+        super().__init__(
+            tsdata,
+            dt,
+            dynamic_settings=dynamic_settings,
+            integr_order=integr_order,
+            RemovePredictor=RemovePredictor,
+            ScalingDict=ScalingDict,
+            UseSparse=UseSparse,
+            for_vel=for_vel,
+        )
 
         # number of blocks
         self.nblock_x = self.integr_order + 2
@@ -1771,7 +1928,8 @@ class DynamicBlock(Dynamic):
 
         # sizes in blocks
         self.S_x = [self.K, self.K_star, self.K]
-        if self.integr_order == 2: self.S_x += [self.K]
+        if self.integr_order == 2:
+            self.S_x += [self.K]
         self.S_u = 3 * [3 * self.Kzeta]
         self.S_y = [3 * self.Kzeta]
 
@@ -1782,16 +1940,21 @@ class DynamicBlock(Dynamic):
 
         t0 = time.time()
 
-        B_facts = [self.ScalingFacts['length'] / self.ScalingFacts['circulation'],
-                   self.ScalingFacts['speed'] / self.ScalingFacts['circulation'],
-                   self.ScalingFacts['speed'] / self.ScalingFacts['circulation']]
+        B_facts = [
+            self.ScalingFacts["length"] / self.ScalingFacts["circulation"],
+            self.ScalingFacts["speed"] / self.ScalingFacts["circulation"],
+            self.ScalingFacts["speed"] / self.ScalingFacts["circulation"],
+        ]
 
-        D_facts = [self.ScalingFacts['length'] / self.ScalingFacts['force'],
-                   self.ScalingFacts['speed'] / self.ScalingFacts['force'],
-                   self.ScalingFacts['speed'] / self.ScalingFacts['force']]
+        D_facts = [
+            self.ScalingFacts["length"] / self.ScalingFacts["force"],
+            self.ScalingFacts["speed"] / self.ScalingFacts["force"],
+            self.ScalingFacts["speed"] / self.ScalingFacts["force"],
+        ]
 
-        C_facts = self.nblock_x * \
-                  [self.ScalingFacts['circulation'] / self.ScalingFacts['force']]
+        C_facts = self.nblock_x * [
+            self.ScalingFacts["circulation"] / self.ScalingFacts["force"]
+        ]
 
         for ii in range(self.nblock_x):
             for jj in range(self.nblock_u):
@@ -1808,27 +1971,33 @@ class DynamicBlock(Dynamic):
                 if self.SS.D[ii][jj] is not None:
                     self.SS.D[ii][jj] *= D_facts[jj]
 
-        self.SS.dt = self.SS.dt / self.ScalingFacts['time']
-        self.cpu_summary['nondim'] = time.time() - t0
+        self.SS.dt = self.SS.dt / self.ScalingFacts["time"]
+        self.cpu_summary["nondim"] = time.time() - t0
 
     def dimss(self):
-
         t0 = time.time()
 
-        B_facts = [self.ScalingFacts['length'] / self.ScalingFacts['circulation'],
-                   self.ScalingFacts['speed'] / self.ScalingFacts['circulation'],
-                   self.ScalingFacts['speed'] / self.ScalingFacts['circulation']]
+        B_facts = [
+            self.ScalingFacts["length"] / self.ScalingFacts["circulation"],
+            self.ScalingFacts["speed"] / self.ScalingFacts["circulation"],
+            self.ScalingFacts["speed"] / self.ScalingFacts["circulation"],
+        ]
 
-        D_facts = [self.ScalingFacts['length'] / self.ScalingFacts['force'],
-                   self.ScalingFacts['speed'] / self.ScalingFacts['force'],
-                   self.ScalingFacts['speed'] / self.ScalingFacts['force']]
+        D_facts = [
+            self.ScalingFacts["length"] / self.ScalingFacts["force"],
+            self.ScalingFacts["speed"] / self.ScalingFacts["force"],
+            self.ScalingFacts["speed"] / self.ScalingFacts["force"],
+        ]
 
-        D_facts = [self.ScalingFacts['length'] / self.ScalingFacts['force'],
-                   self.ScalingFacts['speed'] / self.ScalingFacts['force'],
-                   self.ScalingFacts['speed'] / self.ScalingFacts['force']]
+        D_facts = [
+            self.ScalingFacts["length"] / self.ScalingFacts["force"],
+            self.ScalingFacts["speed"] / self.ScalingFacts["force"],
+            self.ScalingFacts["speed"] / self.ScalingFacts["force"],
+        ]
 
-        C_facts = self.nblock_x * \
-                  [self.ScalingFacts['circulation'] / self.ScalingFacts['force']]
+        C_facts = self.nblock_x * [
+            self.ScalingFacts["circulation"] / self.ScalingFacts["force"]
+        ]
 
         for ii in range(self.nblock_x):
             for jj in range(self.nblock_u):
@@ -1845,8 +2014,8 @@ class DynamicBlock(Dynamic):
                 if self.SS.D[ii][jj] is not None:
                     self.SS.D[ii][jj] /= D_facts[jj]
 
-        self.SS.dt = self.SS.dt * self.ScalingFacts['time']
-        self.cpu_summary['dim'] = time.time() - t0
+        self.SS.dt = self.SS.dt * self.ScalingFacts["time"]
+        self.cpu_summary["dim"] = time.time() - t0
 
     def assemble_ss(self, wake_prop_settings=None):
         r"""
@@ -1895,7 +2064,9 @@ class DynamicBlock(Dynamic):
         - remove all calls to scipy.linalg.block_diag
         """
 
-        cout.cout_wrap('\tBlock form state-space realisation of UVLM equations started...', 1)
+        cout.cout_wrap(
+            "\tBlock form state-space realisation of UVLM equations started...", 1
+        )
         t0 = time.time()
         MS = self.MS
         K, K_star = self.K, self.K_star
@@ -1913,7 +2084,7 @@ class DynamicBlock(Dynamic):
 
         if self.integr_order == 2:
             # Second order differencing scheme coefficients
-            b0, bm1, bp1 = -2., 0.5, 1.5
+            b0, bm1, bp1 = -2.0, 0.5, 1.5
 
         # ----------------------------------------------------------- state eq.
 
@@ -1921,8 +2092,9 @@ class DynamicBlock(Dynamic):
         # - choice of sparse matrices format is optimised to reduce memory load
 
         # Aero influence coeffs
-        List_AICs, List_AICs_star = ass.AICs(MS.Surfs, MS.Surfs_star,
-                                             target='collocation', Project=True)
+        List_AICs, List_AICs_star = ass.AICs(
+            MS.Surfs, MS.Surfs_star, target="collocation", Project=True
+        )
         A0 = np.block(List_AICs)
         A0W = np.block(List_AICs_star)
         List_AICs, List_AICs_star = None, None
@@ -1932,12 +2104,12 @@ class DynamicBlock(Dynamic):
 
         ### propagation of circ
         # fast and memory efficient with both dense and sparse matrices
-        List_C, List_Cstar = ass.wake_prop(MS,
-                                           self.use_sparse, sparse_format='csc',
-                                           settings=wake_prop_settings)
+        List_C, List_Cstar = ass.wake_prop(
+            MS, self.use_sparse, sparse_format="csc", settings=wake_prop_settings
+        )
         if self.use_sparse:
-            Cgamma = libsp.csc_matrix(sparse.block_diag(List_C, format='csc'))
-            CgammaW = libsp.csc_matrix(sparse.block_diag(List_Cstar, format='csc'))
+            Cgamma = libsp.csc_matrix(sparse.block_diag(List_C, format="csc"))
+            CgammaW = libsp.csc_matrix(sparse.block_diag(List_Cstar, format="csc"))
         else:
             Cgamma = scalg.block_diag(*List_C)
             CgammaW = scalg.block_diag(*List_Cstar)
@@ -1951,19 +2123,32 @@ class DynamicBlock(Dynamic):
         Ass = []
 
         # non-penetration condition
-        Ass.append([AinvAWCgamma, AinvAWCgammaW, None, ])
-        if self.integr_order == 2: Ass[0].append(None)
+        Ass.append(
+            [
+                AinvAWCgamma,
+                AinvAWCgammaW,
+                None,
+            ]
+        )
+        if self.integr_order == 2:
+            Ass[0].append(None)
         # circ. proparagation
-        Ass.append([Cgamma, CgammaW, None, ])
-        if self.integr_order == 2: Ass[1].append(None)
+        Ass.append(
+            [
+                Cgamma,
+                CgammaW,
+                None,
+            ]
+        )
+        if self.integr_order == 2:
+            Ass[1].append(None)
 
         Cgamma = None
         CgammaW = None
 
         # delta eq.
         if self.use_sparse:
-            ones = libsp.csc_matrix(
-                (np.ones((K,)), (range(K), range(K))), shape=(K, K))
+            ones = libsp.csc_matrix((np.ones((K,)), (range(K), range(K))), shape=(K, K))
         else:
             ones = np.eye(K)
 
@@ -1971,7 +2156,9 @@ class DynamicBlock(Dynamic):
             Ass.append([AinvAWCgamma - ones, AinvAWCgammaW.copy(), None])
 
         elif self.integr_order == 2:
-            Ass.append([bp1 * AinvAWCgamma + b0 * ones, bp1 * AinvAWCgammaW, None, bm1 * ones])
+            Ass.append(
+                [bp1 * AinvAWCgamma + b0 * ones, bp1 * AinvAWCgammaW, None, bm1 * ones]
+            )
             # identity eq.
             Ass.append([ones, None, None, None])
         AinvAWCgamma = None
@@ -1982,8 +2169,9 @@ class DynamicBlock(Dynamic):
         List_uc_dncdzeta = ass.uc_dncdzeta(MS.Surfs)
         List_nc_domegazetadzeta_vert = ass.nc_domegazetadzeta(MS.Surfs, MS.Surfs_star)
         for ss in range(MS.n_surf):
-            List_nc_dqcdzeta[ss][ss] += \
-                (List_uc_dncdzeta[ss] + List_nc_domegazetadzeta_vert[ss])
+            List_nc_dqcdzeta[ss][ss] += (
+                List_uc_dncdzeta[ss] + List_nc_domegazetadzeta_vert[ss]
+            )
         Ducdzeta = np.block(List_nc_dqcdzeta)  # dense matrix
         List_nc_dqcdzeta = None
         List_uc_dncdzeta = None
@@ -1993,8 +2181,8 @@ class DynamicBlock(Dynamic):
         List_Wnv = []
         for ss in range(MS.n_surf):
             List_Wnv.append(
-                interp.get_Wnv_vector(MS.Surfs[ss],
-                                      MS.Surfs[ss].aM, MS.Surfs[ss].aN))
+                interp.get_Wnv_vector(MS.Surfs[ss], MS.Surfs[ss].aM, MS.Surfs[ss].aN)
+            )
         AinvWnv0 = scalg.lu_solve((LU, P), scalg.block_diag(*List_Wnv))
         List_Wnv = None
 
@@ -2025,12 +2213,14 @@ class DynamicBlock(Dynamic):
         ### state terms (C matrix)
 
         # gamma (induced velocity contrib.)
-        List_dfqsdvind_gamma, List_dfqsdvind_gamma_star = \
-            ass.dfqsdvind_gamma(MS.Surfs, MS.Surfs_star)
+        List_dfqsdvind_gamma, List_dfqsdvind_gamma_star = ass.dfqsdvind_gamma(
+            MS.Surfs, MS.Surfs_star
+        )
 
         # gamma (at constant relative velocity)
-        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = \
-            ass.dfqsdgamma_vrel0(MS.Surfs, MS.Surfs_star)
+        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = ass.dfqsdgamma_vrel0(
+            MS.Surfs, MS.Surfs_star
+        )
         for ss in range(MS.n_surf):
             List_dfqsdvind_gamma[ss][ss] += List_dfqsdgamma_vrel0[ss]
             List_dfqsdvind_gamma_star[ss][ss] += List_dfqsdgamma_star_vrel0[ss]
@@ -2050,8 +2240,7 @@ class DynamicBlock(Dynamic):
 
         ### input terms (D matrix)
         Dss = []
-        Dss.append(
-            [scalg.block_diag(*ass.dfqsdzeta_vrel0(MS.Surfs, MS.Surfs_star))])
+        Dss.append([scalg.block_diag(*ass.dfqsdzeta_vrel0(MS.Surfs, MS.Surfs_star))])
 
         # zeta (induced velocity contrib)
         List_coll, List_vert = ass.dfqsdvind_zeta(MS.Surfs, MS.Surfs_star)
@@ -2064,21 +2253,27 @@ class DynamicBlock(Dynamic):
         Dss[0].append(-Dss[0][1])
 
         if self.remove_predictor:
-            cout.cout_wrap("\t\tPredictor not be removed! " +
-                           "(Though this is accounted for in all methods)", 1)
+            cout.cout_wrap(
+                "\t\tPredictor not be removed! "
+                + "(Though this is accounted for in all methods)",
+                1,
+            )
 
-        self.SS = libss.ss_block(Ass, Bss, Css, Dss,
-                                 self.S_x, self.S_u, self.S_y, dt=self.dt)
-        cout.cout_wrap('\tstate-space model produced in form:\n\t' \
-                       'x_{n+1} = A x_{n} + Bp u_{n+1}', 1)
+        self.SS = libss.ss_block(
+            Ass, Bss, Css, Dss, self.S_x, self.S_u, self.S_y, dt=self.dt
+        )
+        cout.cout_wrap(
+            "\tstate-space model produced in form:\n\tx_{n+1} = A x_{n} + Bp u_{n+1}",
+            1,
+        )
 
         # add variable tracker
         self.SS.input_variables = LinearVector(self.input_variables_list)
         self.SS.state_variables = LinearVector(self.state_variables_list)
         self.SS.output_variables = LinearVector(self.output_variables_list)
 
-        self.cpu_summary['assemble'] = time.time() - t0
-        cout.cout_wrap('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'], 1)
+        self.cpu_summary["assemble"] = time.time() - t0
+        cout.cout_wrap("\t\t\t...done in %.2f sec" % self.cpu_summary["assemble"], 1)
 
     def freqresp(self, kv, wake_prop_settings=None):
         """
@@ -2105,34 +2300,42 @@ class DynamicBlock(Dynamic):
 
         Nk = len(kv)
         kvdt = kv * self.SS.dt
-        zv = np.cos(kvdt) + 1.j * np.sin(kvdt)
-        Yfreq = np.empty((self.SS.outputs, self.SS.inputs, Nk,), dtype=np.complex_)
+        zv = np.cos(kvdt) + 1.0j * np.sin(kvdt)
+        Yfreq = np.empty(
+            (
+                self.SS.outputs,
+                self.SS.inputs,
+                Nk,
+            ),
+            dtype=np.complex_,
+        )
 
         for kk in range(Nk):
-
             ###  build Cw complex
             Cw_cpx = self.get_Cw_cpx(zv[kk], settings=wake_prop_settings)
 
-            Ygamma = libsp.solve(zv[kk] * Eye - P -
-                                 libsp.dot(Pw, Cw_cpx, type_out=libsp.csc_matrix),
-                                 Bup)
+            Ygamma = libsp.solve(
+                zv[kk] * Eye - P - libsp.dot(Pw, Cw_cpx, type_out=libsp.csc_matrix), Bup
+            )
             if self.remove_predictor:
                 Ygamma *= zv[kk]
 
             Ygamma_star = Cw_cpx.dot(Ygamma)
 
             if self.integr_order == 1:
-                dfact = (1. - 1. / zv[kk])
+                dfact = 1.0 - 1.0 / zv[kk]
             elif self.integr_order == 2:
-                dfact = .5 * (3. - 4. / zv[kk] + 1. / zv[kk] ** 2)
+                dfact = 0.5 * (3.0 - 4.0 / zv[kk] + 1.0 / zv[kk] ** 2)
             else:
-                raise NameError('Specify valid integration order')
+                raise NameError("Specify valid integration order")
 
             # calculate solution
-            Yfreq[:, :, kk] = np.dot(self.SS.C[0][0], Ygamma) + \
-                              np.dot(self.SS.C[0][1], Ygamma_star) + \
-                              np.dot(self.SS.C[0][2], dfact * Ygamma) + \
-                              np.hstack(self.SS.D[0])
+            Yfreq[:, :, kk] = (
+                np.dot(self.SS.C[0][0], Ygamma)
+                + np.dot(self.SS.C[0][1], Ygamma_star)
+                + np.dot(self.SS.C[0][2], dfact * Ygamma)
+                + np.hstack(self.SS.D[0])
+            )
 
         return Yfreq
 
@@ -2234,62 +2437,68 @@ class DynamicBlock(Dynamic):
         """
 
         ### check input dictionary
-        if 'frequency' not in DictBalFreq:
+        if "frequency" not in DictBalFreq:
             raise NameError('Solution dictionary must include the "frequency" key')
 
-        if 'method_low' not in DictBalFreq:
-            warnings.warn('Setting default options for low-frequency integration')
-            DictBalFreq['method_low'] = 'trapz'
-            DictBalFreq['options_low'] = {'points': 12}
+        if "method_low" not in DictBalFreq:
+            warnings.warn("Setting default options for low-frequency integration")
+            DictBalFreq["method_low"] = "trapz"
+            DictBalFreq["options_low"] = {"points": 12}
 
-        if 'method_high' not in DictBalFreq:
-            warnings.warn('Setting default options for high-frequency integration')
-            DictBalFreq['method_high'] = 'gauss'
-            DictBalFreq['options_high'] = {'partitions': 2, 'order': 8}
+        if "method_high" not in DictBalFreq:
+            warnings.warn("Setting default options for high-frequency integration")
+            DictBalFreq["method_high"] = "gauss"
+            DictBalFreq["options_high"] = {"partitions": 2, "order": 8}
 
-        if 'check_stability' not in DictBalFreq:
-            DictBalFreq['check_stability'] = True
+        if "check_stability" not in DictBalFreq:
+            DictBalFreq["check_stability"] = True
 
-        if 'output_modes' not in DictBalFreq:
-            DictBalFreq['output_modes'] = True
+        if "output_modes" not in DictBalFreq:
+            DictBalFreq["output_modes"] = True
 
-        if 'get_frequency_response' not in DictBalFreq:
-            DictBalFreq['get_frequency_response'] = False
+        if "get_frequency_response" not in DictBalFreq:
+            DictBalFreq["get_frequency_response"] = False
 
         ### get integration points and weights
 
         # Nyquist frequency
         kn = np.pi / self.SS.dt
 
-        Opt = DictBalFreq['options_low']
-        if DictBalFreq['method_low'] == 'trapz':
-            kv_low, wv_low = librom.get_trapz_weights(0., DictBalFreq['frequency'],
-                                                      Opt['points'], False)
-        elif DictBalFreq['method_low'] == 'gauss':
-            kv_low, wv_low = librom.get_gauss_weights(0., DictBalFreq['frequency'],
-                                                      Opt['partitions'], Opt['order'])
+        Opt = DictBalFreq["options_low"]
+        if DictBalFreq["method_low"] == "trapz":
+            kv_low, wv_low = librom.get_trapz_weights(
+                0.0, DictBalFreq["frequency"], Opt["points"], False
+            )
+        elif DictBalFreq["method_low"] == "gauss":
+            kv_low, wv_low = librom.get_gauss_weights(
+                0.0, DictBalFreq["frequency"], Opt["partitions"], Opt["order"]
+            )
         else:
             raise NameError(
-                'Invalid value %s for key "method_low"' % DictBalFreq['method_low'])
+                'Invalid value %s for key "method_low"' % DictBalFreq["method_low"]
+            )
 
-        Opt = DictBalFreq['options_high']
-        if DictBalFreq['method_high'] == 'trapz':
-            if Opt['points'] == 0:
-                warnings.warn('You have chosen no points in high frequency range!')
+        Opt = DictBalFreq["options_high"]
+        if DictBalFreq["method_high"] == "trapz":
+            if Opt["points"] == 0:
+                warnings.warn("You have chosen no points in high frequency range!")
                 kv_high, wv_high = [], []
             else:
-                kv_high, wv_high = librom.get_trapz_weights(DictBalFreq['frequency'], kn,
-                                                            Opt['points'], True)
-        elif DictBalFreq['method_high'] == 'gauss':
-            if Opt['order'] * Opt['partitions'] == 0:
-                warnings.warn('You have chosen no points in high frequency range!')
+                kv_high, wv_high = librom.get_trapz_weights(
+                    DictBalFreq["frequency"], kn, Opt["points"], True
+                )
+        elif DictBalFreq["method_high"] == "gauss":
+            if Opt["order"] * Opt["partitions"] == 0:
+                warnings.warn("You have chosen no points in high frequency range!")
                 kv_high, wv_high = [], []
             else:
-                kv_high, wv_high = librom.get_gauss_weights(DictBalFreq['frequency'], kn,
-                                                            Opt['partitions'], Opt['order'])
+                kv_high, wv_high = librom.get_gauss_weights(
+                    DictBalFreq["frequency"], kn, Opt["partitions"], Opt["order"]
+                )
         else:
             raise NameError(
-                'Invalid value %s for key "method_high"' % DictBalFreq['method_high'])
+                'Invalid value %s for key "method_high"' % DictBalFreq["method_high"]
+            )
 
         ### get useful terms
         K = self.K
@@ -2309,10 +2518,10 @@ class DynamicBlock(Dynamic):
 
         # integration factors
         if self.integr_order == 2:
-            b0, bm1, bp1 = -2., 0.5, 1.5
+            b0, bm1, bp1 = -2.0, 0.5, 1.5
         else:
-            b0, bp1 = -1., 1.
-            raise NameError('Method not implemented for integration order 1')
+            b0, bp1 = -1.0, 1.0
+            raise NameError("Method not implemented for integration order 1")
 
         ### -------------------------------------------------- loop frequencies
 
@@ -2320,18 +2529,28 @@ class DynamicBlock(Dynamic):
         Nk_low = len(kv_low)
         kvdt = np.concatenate((kv_low, kv_high)) * self.SS.dt
         wv = np.concatenate((wv_low, wv_high)) * self.SS.dt
-        zv = np.cos(kvdt) + 1.j * np.sin(kvdt)
+        zv = np.cos(kvdt) + 1.0j * np.sin(kvdt)
 
         Qobs = np.zeros((self.SS.states, self.SS.outputs), dtype=np.complex_)
-        Zc = np.zeros((self.SS.states, 2 * self.SS.inputs * len(kvdt)), )
-        Zo = np.zeros((self.SS.states, 2 * self.SS.outputs * Nk_low), )
+        Zc = np.zeros(
+            (self.SS.states, 2 * self.SS.inputs * len(kvdt)),
+        )
+        Zo = np.zeros(
+            (self.SS.states, 2 * self.SS.outputs * Nk_low),
+        )
 
-        if DictBalFreq['get_frequency_response']:
-            self.Yfreq = np.empty((self.SS.outputs, self.SS.inputs, Nk_low,), dtype=np.complex_)
+        if DictBalFreq["get_frequency_response"]:
+            self.Yfreq = np.empty(
+                (
+                    self.SS.outputs,
+                    self.SS.inputs,
+                    Nk_low,
+                ),
+                dtype=np.complex_,
+            )
             self.kv = kv_low
 
         for kk in range(len(kvdt)):
-
             zval = zv[kk]
             Intfact = wv[kk]  # integration factor
 
@@ -2347,64 +2566,71 @@ class DynamicBlock(Dynamic):
             Ygamma_star = Cw_cpx.dot(Ygamma)
 
             if self.integr_order == 1:
-                dfact = (bp1 + bp0 / zval)
+                dfact = bp1 + bp0 / zval
                 Qctrl = np.vstack([Ygamma, Ygamma_star, dfact * Ygamma])
             elif self.integr_order == 2:
-                dfact = bp1 + b0 / zval + bm1 / zval ** 2
+                dfact = bp1 + b0 / zval + bm1 / zval**2
                 Qctrl = np.vstack(
-                    [Ygamma, Ygamma_star, dfact * Ygamma, (1. / zval) * Ygamma])
+                    [Ygamma, Ygamma_star, dfact * Ygamma, (1.0 / zval) * Ygamma]
+                )
             else:
-                raise NameError('Specify valid integration order')
+                raise NameError("Specify valid integration order")
 
             kkvec = range(2 * kk * self.SS.inputs, 2 * (kk + 1) * self.SS.inputs)
-            Zc[:, kkvec[:self.SS.inputs]] = Qctrl.real  # *Intfact
-            Zc[:, kkvec[self.SS.inputs:]] = Qctrl.imag  # *Intfact
+            Zc[:, kkvec[: self.SS.inputs]] = Qctrl.real  # *Intfact
+            Zc[:, kkvec[self.SS.inputs :]] = Qctrl.imag  # *Intfact
 
             ### ----- frequency response
-            if DictBalFreq['get_frequency_response'] and kk < Nk_low:
-                self.Yfreq[:, :, kk] = (1. / Intfact) * \
-                                       (np.dot(self.SS.C[0][0], Ygamma) + \
-                                        np.dot(self.SS.C[0][1], Ygamma_star) + \
-                                        dfact * np.dot(self.SS.C[0][2], Ygamma)) + \
-                                       np.hstack(self.SS.D[0])
+            if DictBalFreq["get_frequency_response"] and kk < Nk_low:
+                self.Yfreq[:, :, kk] = (1.0 / Intfact) * (
+                    np.dot(self.SS.C[0][0], Ygamma)
+                    + np.dot(self.SS.C[0][1], Ygamma_star)
+                    + dfact * np.dot(self.SS.C[0][2], Ygamma)
+                ) + np.hstack(self.SS.D[0])
 
             ### ----- frequency response
-            if DictBalFreq['get_frequency_response'] and kk < Nk_low:
-                self.Yfreq[:, :, kk] = (1. / Intfact) * \
-                                       (np.dot(self.SS.C[0][0], Ygamma) + \
-                                        np.dot(self.SS.C[0][1], Ygamma_star) + \
-                                        dfact * np.dot(self.SS.C[0][2], Ygamma)) + \
-                                       np.hstack(self.SS.D[0])
+            if DictBalFreq["get_frequency_response"] and kk < Nk_low:
+                self.Yfreq[:, :, kk] = (1.0 / Intfact) * (
+                    np.dot(self.SS.C[0][0], Ygamma)
+                    + np.dot(self.SS.C[0][1], Ygamma_star)
+                    + dfact * np.dot(self.SS.C[0][2], Ygamma)
+                ) + np.hstack(self.SS.D[0])
 
             ### ----- observability
             # solve (1./zval*I - A.T)^{-1} C^T (in low-frequency only)
             if kk >= Nk_low:
                 continue
 
-            zinv = 1. / zval
+            zinv = 1.0 / zval
             Qobs[ii02, :] = zinv * self.SS.C[0][2].T
             if self.integr_order == 1:
-                raise NameError('Obs Gramian Integr not implemented')
+                raise NameError("Obs Gramian Integr not implemented")
             elif self.integr_order == 2:
                 Qobs[ii03, :] = (bm1 * zinv) * Qobs[ii02, :]
 
             # solve bound circulation
-            rhs = Cw_cpx.T.dot(self.SS.C[0][1].T) + self.SS.C[0][0].T + \
-                  Qobs[ii02, :] * (b0 + zinv * bm1) + \
-                  np.dot(P_PwCw.T, bp1 * Qobs[ii02, :])
+            rhs = (
+                Cw_cpx.T.dot(self.SS.C[0][1].T)
+                + self.SS.C[0][0].T
+                + Qobs[ii02, :] * (b0 + zinv * bm1)
+                + np.dot(P_PwCw.T, bp1 * Qobs[ii02, :])
+            )
             Qobs[ii00, :] = np.dot(Kernel.T, rhs)
 
             # solve wake
             Eye_star = libsp.csc_matrix(
                 (zval * np.ones((K_star,)), (range(K_star), range(K_star))),
-                shape=(K_star, K_star), dtype=np.complex_)
+                shape=(K_star, K_star),
+                dtype=np.complex_,
+            )
             Qobs[ii01, :] = libsp.solve(
                 Eye_star - self.SS.A[1][1].T,
-                self.SS.C[0][1].T + np.dot(Pw.T, Qobs[ii00, :] + bp1 * Qobs[ii02, :]))
+                self.SS.C[0][1].T + np.dot(Pw.T, Qobs[ii00, :] + bp1 * Qobs[ii02, :]),
+            )
 
             kkvec = range(2 * kk * self.SS.outputs, 2 * (kk + 1) * self.SS.outputs)
-            Zo[:, kkvec[:self.SS.outputs]] = Intfact * Qobs.real
-            Zo[:, kkvec[self.SS.outputs:]] = Intfact * Qobs.imag
+            Zo[:, kkvec[: self.SS.outputs]] = Intfact * Qobs.real
+            Zo[:, kkvec[self.SS.outputs :]] = Intfact * Qobs.imag
 
         # delete full matrices
         Kernel = None
@@ -2421,34 +2647,44 @@ class DynamicBlock(Dynamic):
         Ab, Bb, Cb = self.SS.project(Ti, T, by_arrays=True, overwrite=False)
 
         if self.remove_predictor:
-            Ab, Bb, Cb, Db = \
-                libss.SSconv(np.block(Ab), None, np.block(Bb),
-                             np.block(Cb), np.block(self.SS.D), Bm1=None)
+            Ab, Bb, Cb, Db = libss.SSconv(
+                np.block(Ab),
+                None,
+                np.block(Bb),
+                np.block(Cb),
+                np.block(self.SS.D),
+                Bm1=None,
+            )
             SSb = libss.StateSpace(Ab, Bb, Cb, Db, dt=self.dt)
         else:
-            SSb = libss.StateSpace(np.block(Ab), np.block(Bb),
-                                   np.block(Cb), np.block(self.SS.D), dt=self.SS.dt)
+            SSb = libss.StateSpace(
+                np.block(Ab),
+                np.block(Bb),
+                np.block(Cb),
+                np.block(self.SS.D),
+                dt=self.SS.dt,
+            )
 
         ### Eliminate unstable modes - if any:
-        if DictBalFreq['check_stability']:
+        if DictBalFreq["check_stability"]:
             for nn in range(1, len(hsv) + 1):
                 eigs_trunc = scalg.eigvals(SSb.A[:nn, :nn])
                 eigs_trunc_max = np.max(np.abs(eigs_trunc))
-                if eigs_trunc_max > 1. - 1e-16:
+                if eigs_trunc_max > 1.0 - 1e-16:
                     SSb.truncate(nn - 1)
-                    hsv = hsv[:nn - 1]
-                    T = T[:, :nn - 1]
-                    Ti = Ti[:nn - 1, :]
+                    hsv = hsv[: nn - 1]
+                    T = T[:, : nn - 1]
+                    Ti = Ti[: nn - 1, :]
                     break
 
         self.SSb = SSb
         self.hsv = hsv
-        if DictBalFreq['output_modes']:
+        if DictBalFreq["output_modes"]:
             self.T = T
             self.Ti = Ti
             self.Zc = Zc
             self.Zo = Zo
-            self.svd_res = {'U': U, 'hsv': hsv, 'Vh': Vh}
+            self.svd_res = {"U": U, "hsv": hsv, "Vh": Vh}
 
     def solve_step(self, x_n, u_n, u_n1=None, transform_state=False):
         r"""
@@ -2502,8 +2738,10 @@ class DynamicBlock(Dynamic):
         if u_n1 is None:
             u_n1 = u_n.copy()
 
-        if self.remove_predictor and not hasattr(self, 'CBplusD'):
-            self.CBplusD = libsp.block_sum(libsp.block_dot(self.SS.C, self.SS.B), self.SS.D)
+        if self.remove_predictor and not hasattr(self, "CBplusD"):
+            self.CBplusD = libsp.block_sum(
+                libsp.block_dot(self.SS.C, self.SS.B), self.SS.D
+            )
 
         ### transform input in block matrices
         X_n = []
@@ -2528,21 +2766,23 @@ class DynamicBlock(Dynamic):
                 II0 = IIend
 
         if self.remove_predictor:
-
             # Transform state vector
             # TODO: Agree on a way to do this. Either always transform here or transform prior to using the method.
             if transform_state:
                 H_n1 = libsp.block_dot(self.SS.A, X_n)
             else:
                 H_n = X_n
-                H_n1 = libsp.block_dot(self.SS.A,
-                                       libsp.block_sum(H_n, libsp.block_dot(self.SS.B, U_n)))
+                H_n1 = libsp.block_dot(
+                    self.SS.A, libsp.block_sum(H_n, libsp.block_dot(self.SS.B, U_n))
+                )
 
-            Y_n1 = libsp.block_sum(libsp.block_dot(self.SS.C, H_n1),
-                                   libsp.block_dot(self.CBplusD, U_n1))
+            Y_n1 = libsp.block_sum(
+                libsp.block_dot(self.SS.C, H_n1), libsp.block_dot(self.CBplusD, U_n1)
+            )
 
-            Y_n1 = libsp.block_sum(libsp.block_dot(self.SS.C, H_n1),
-                                   libsp.block_dot(self.CBplusD, U_n1))
+            Y_n1 = libsp.block_sum(
+                libsp.block_dot(self.SS.C, H_n1), libsp.block_dot(self.CBplusD, U_n1)
+            )
 
             # Recover state vector
             if transform_state:
@@ -2551,10 +2791,12 @@ class DynamicBlock(Dynamic):
                 X_n1 = H_n1
 
         else:
-            X_n1 = libsp.block_sum(libsp.block_dot(self.SS.A, X_n),
-                                   libsp.block_dot(self.SS.B, U_n1))
-            Y_n1 = libsp.block_sum(libsp.block_dot(self.SS.C, X_n1),
-                                   libsp.block_dot(self.SS.D, U_n1))
+            X_n1 = libsp.block_sum(
+                libsp.block_dot(self.SS.A, X_n), libsp.block_dot(self.SS.B, U_n1)
+            )
+            Y_n1 = libsp.block_sum(
+                libsp.block_dot(self.SS.C, X_n1), libsp.block_dot(self.SS.D, U_n1)
+            )
 
         x_n1 = np.concatenate([X_n1[ii][0] for ii in range(self.SS.blocks_x)])
 
@@ -2637,15 +2879,21 @@ class Frequency(Static):
         - solve_step: solves one time-step
     """
 
-    def __init__(self, tsdata, dt, integr_order=2,
-                 RemovePredictor=True, ScalingDict=None, UseSparse=True):
-
+    def __init__(
+        self,
+        tsdata,
+        dt,
+        integr_order=2,
+        RemovePredictor=True,
+        ScalingDict=None,
+        UseSparse=True,
+    ):
         super().__init__(tsdata)
 
         self.dt = dt
         self.integr_order = integr_order
 
-        assert self.integr_order in [1, 2, 0], 'integr_order must be in [0,1,2]'
+        assert self.integr_order in [1, 2, 0], "integr_order must be in [0,1,2]"
 
         self.inputs = 9 * self.Kzeta
         self.outputs = 3 * self.Kzeta
@@ -2655,25 +2903,25 @@ class Frequency(Static):
 
         # create scaling quantities
         if ScalingDict is None:
-            ScalingFacts = {'length': 1.,
-                            'speed': 1.,
-                            'density': 1.}
+            ScalingFacts = {"length": 1.0, "speed": 1.0, "density": 1.0}
         else:
             ScalingFacts = ScalingDict
 
         for key in ScalingFacts:
             ScalingFacts[key] = np.float(ScalingFacts[key])
 
-        ScalingFacts['time'] = ScalingFacts['length'] / ScalingFacts['speed']
-        ScalingFacts['circulation'] = ScalingFacts['speed'] * ScalingFacts['length']
-        ScalingFacts['dyn_pressure'] = 0.5 * ScalingFacts['density'] * ScalingFacts['speed'] ** 2
-        ScalingFacts['force'] = ScalingFacts['dyn_pressure'] * ScalingFacts['length'] ** 2
+        ScalingFacts["time"] = ScalingFacts["length"] / ScalingFacts["speed"]
+        ScalingFacts["circulation"] = ScalingFacts["speed"] * ScalingFacts["length"]
+        ScalingFacts["dyn_pressure"] = (
+            0.5 * ScalingFacts["density"] * ScalingFacts["speed"] ** 2
+        )
+        ScalingFacts["force"] = (
+            ScalingFacts["dyn_pressure"] * ScalingFacts["length"] ** 2
+        )
         self.ScalingFacts = ScalingFacts
 
         ### collect statistics
-        self.cpu_summary = {'dim': 0.,
-                            'nondim': 0.,
-                            'assemble': 0.}
+        self.cpu_summary = {"dim": 0.0, "nondim": 0.0, "assemble": 0.0}
 
     def nondimss(self):
         """
@@ -2683,34 +2931,49 @@ class Frequency(Static):
         t0 = time.time()
         Kzeta = self.Kzeta
 
-        self.Bss[:, :3 * Kzeta] *= (self.ScalingFacts['length'] / self.ScalingFacts['circulation'])
-        self.Bss[:, 3 * Kzeta:] *= (self.ScalingFacts['speed'] / self.ScalingFacts['circulation'])
+        self.Bss[:, : 3 * Kzeta] *= (
+            self.ScalingFacts["length"] / self.ScalingFacts["circulation"]
+        )
+        self.Bss[:, 3 * Kzeta :] *= (
+            self.ScalingFacts["speed"] / self.ScalingFacts["circulation"]
+        )
 
-        self.Css *= (self.ScalingFacts['circulation'] / self.ScalingFacts['force'])
+        self.Css *= self.ScalingFacts["circulation"] / self.ScalingFacts["force"]
 
-        self.Dss[:, :3 * Kzeta] *= (self.ScalingFacts['length'] / self.ScalingFacts['force'])
-        self.Dss[:, 3 * Kzeta:] *= (self.ScalingFacts['speed'] / self.ScalingFacts['force'])
+        self.Dss[:, : 3 * Kzeta] *= (
+            self.ScalingFacts["length"] / self.ScalingFacts["force"]
+        )
+        self.Dss[:, 3 * Kzeta :] *= (
+            self.ScalingFacts["speed"] / self.ScalingFacts["force"]
+        )
 
-        self.dt = self.dt / self.ScalingFacts['time']
+        self.dt = self.dt / self.ScalingFacts["time"]
 
-        self.cpu_summary['nondim'] = time.time() - t0
+        self.cpu_summary["nondim"] = time.time() - t0
 
     def dimss(self):
-
         t0 = time.time()
         Kzeta = self.Kzeta
 
-        self.Bss[:, :3 * Kzeta] /= (self.ScalingFacts['length'] / self.ScalingFacts['circulation'])
-        self.Bss[:, 3 * Kzeta:] /= (self.ScalingFacts['speed'] / self.ScalingFacts['circulation'])
+        self.Bss[:, : 3 * Kzeta] /= (
+            self.ScalingFacts["length"] / self.ScalingFacts["circulation"]
+        )
+        self.Bss[:, 3 * Kzeta :] /= (
+            self.ScalingFacts["speed"] / self.ScalingFacts["circulation"]
+        )
 
-        self.Css /= (self.ScalingFacts['circulation'] / self.ScalingFacts['force'])
+        self.Css /= self.ScalingFacts["circulation"] / self.ScalingFacts["force"]
 
-        self.Dss[:, :3 * Kzeta] /= (self.ScalingFacts['length'] / self.ScalingFacts['force'])
-        self.Dss[:, 3 * Kzeta:] /= (self.ScalingFacts['speed'] / self.ScalingFacts['force'])
+        self.Dss[:, : 3 * Kzeta] /= (
+            self.ScalingFacts["length"] / self.ScalingFacts["force"]
+        )
+        self.Dss[:, 3 * Kzeta :] /= (
+            self.ScalingFacts["speed"] / self.ScalingFacts["force"]
+        )
 
-        self.dt = self.dt * self.ScalingFacts['time']
+        self.dt = self.dt * self.ScalingFacts["time"]
 
-        self.cpu_summary['dim'] = time.time() - t0
+        self.cpu_summary["dim"] = time.time() - t0
 
     def assemble(self):
         r"""
@@ -2735,7 +2998,7 @@ class Frequency(Static):
         are not required for frequency response analysis.
         """
 
-        cout.cout_wrap('\tAssembly of frequency description of UVLM started...', 1)
+        cout.cout_wrap("\tAssembly of frequency description of UVLM started...", 1)
         t0 = time.time()
         MS = self.MS
         K, K_star = self.K, self.K_star
@@ -2747,8 +3010,9 @@ class Frequency(Static):
         # ----------------------------------------------------------- state eq.
 
         # Aero influence coeffs
-        List_AICs, List_AICs_star = ass.AICs(MS.Surfs, MS.Surfs_star,
-                                             target='collocation', Project=True)
+        List_AICs, List_AICs_star = ass.AICs(
+            MS.Surfs, MS.Surfs_star, target="collocation", Project=True
+        )
         A0 = np.block(List_AICs)
         A0W = np.block(List_AICs_star)
         List_AICs, List_AICs_star = None, None
@@ -2758,8 +3022,9 @@ class Frequency(Static):
         List_uc_dncdzeta = ass.uc_dncdzeta(MS.Surfs)
         List_nc_domegazetadzeta_vert = ass.nc_domegazetadzeta(MS.Surfs, MS.Surfs_star)
         for ss in range(MS.n_surf):
-            List_nc_dqcdzeta[ss][ss] += \
-                (List_uc_dncdzeta[ss] + List_nc_domegazetadzeta_vert[ss])
+            List_nc_dqcdzeta[ss][ss] += (
+                List_uc_dncdzeta[ss] + List_nc_domegazetadzeta_vert[ss]
+            )
         Ducdzeta = np.block(List_nc_dqcdzeta)  # dense matrix
         List_nc_dqcdzeta = None
         List_uc_dncdzeta = None
@@ -2769,8 +3034,8 @@ class Frequency(Static):
         List_Wnv = []
         for ss in range(MS.n_surf):
             List_Wnv.append(
-                interp.get_Wnv_vector(MS.Surfs[ss],
-                                      MS.Surfs[ss].aM, MS.Surfs[ss].aN))
+                interp.get_Wnv_vector(MS.Surfs[ss], MS.Surfs[ss].aM, MS.Surfs[ss].aN)
+            )
         Wnv0 = scalg.block_diag(*List_Wnv)
         List_Wnv = None
 
@@ -2783,12 +3048,14 @@ class Frequency(Static):
         ### state terms (C matrix)
 
         # gamma (induced velocity contrib.)
-        List_dfqsdvind_gamma, List_dfqsdvind_gamma_star = \
-            ass.dfqsdvind_gamma(MS.Surfs, MS.Surfs_star)
+        List_dfqsdvind_gamma, List_dfqsdvind_gamma_star = ass.dfqsdvind_gamma(
+            MS.Surfs, MS.Surfs_star
+        )
 
         # gamma (at constant relative velocity)
-        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = \
-            ass.dfqsdgamma_vrel0(MS.Surfs, MS.Surfs_star)
+        List_dfqsdgamma_vrel0, List_dfqsdgamma_star_vrel0 = ass.dfqsdgamma_vrel0(
+            MS.Surfs, MS.Surfs_star
+        )
         for ss in range(MS.n_surf):
             List_dfqsdvind_gamma[ss][ss] += List_dfqsdgamma_vrel0[ss]
             List_dfqsdvind_gamma_star[ss][ss] += List_dfqsdgamma_star_vrel0[ss]
@@ -2803,29 +3070,31 @@ class Frequency(Static):
         # C matrix assembly
         Css = np.zeros((Ny, 2 * K + K_star))
         Css[:, :K] = Dfqsdgamma
-        Css[:, K:K + K_star] = Dfqsdgamma_star
+        Css[:, K : K + K_star] = Dfqsdgamma_star
         # added mass
-        Css[:, K + K_star:2 * K + K_star] = Dfunstdgamma_dot / self.dt
+        Css[:, K + K_star : 2 * K + K_star] = Dfunstdgamma_dot / self.dt
 
         ### input terms (D matrix)
         Dss = np.zeros((Ny, Nu))
 
         # zeta (at constant relative velocity)
-        Dss[:, :3 * Kzeta] = scalg.block_diag(
-            *ass.dfqsdzeta_vrel0(MS.Surfs, MS.Surfs_star))
+        Dss[:, : 3 * Kzeta] = scalg.block_diag(
+            *ass.dfqsdzeta_vrel0(MS.Surfs, MS.Surfs_star)
+        )
         # zeta (induced velocity contrib)
         List_coll, List_vert = ass.dfqsdvind_zeta(MS.Surfs, MS.Surfs_star)
         for ss in range(MS.n_surf):
             List_vert[ss][ss] += List_coll[ss]
-        Dss[:, :3 * Kzeta] += np.block(List_vert)
+        Dss[:, : 3 * Kzeta] += np.block(List_vert)
         del List_vert, List_coll
 
         # input velocities (external)
-        Dss[:, 6 * Kzeta:9 * Kzeta] = scalg.block_diag(
-            *ass.dfqsduinput(MS.Surfs, MS.Surfs_star))
+        Dss[:, 6 * Kzeta : 9 * Kzeta] = scalg.block_diag(
+            *ass.dfqsduinput(MS.Surfs, MS.Surfs_star)
+        )
 
         # input velocities (body movement)
-        Dss[:, 3 * Kzeta:6 * Kzeta] = -Dss[:, 6 * Kzeta:9 * Kzeta]
+        Dss[:, 3 * Kzeta : 6 * Kzeta] = -Dss[:, 6 * Kzeta : 9 * Kzeta]
 
         ### store matrices
         self.A0 = A0
@@ -2836,25 +3105,26 @@ class Frequency(Static):
         self.inputs = 9 * Kzeta
         self.outputs = 3 * Kzeta
 
-        self.cpu_summary['assemble'] = time.time() - t0
-        cout.cout_wrap('\t\t\t...done in %.2f sec' % self.cpu_summary['assemble'], 1)
+        self.cpu_summary["assemble"] = time.time() - t0
+        cout.cout_wrap("\t\t\t...done in %.2f sec" % self.cpu_summary["assemble"], 1)
 
     def addGain(self, K, where):
+        assert where in [
+            "in",
+            "out",
+        ], "Specify whether gains are added to input or output"
 
-        assert where in ['in', 'out'], \
-            'Specify whether gains are added to input or output'
-
-        if where == 'in':
+        if where == "in":
             self.Bss = libsp.dot(self.Bss, K)
             self.Dss = libsp.dot(self.Dss, K)
             self.inputs = K.shape[1]
 
-        if where == 'out':
+        if where == "out":
             self.Css = libsp.dot(K, self.Css)
             self.Dss = libsp.dot(K, self.Dss)
             self.outputs = K.shape[0]
 
-        if where == 'out':
+        if where == "out":
             self.Css = libsp.dot(K, self.Css)
             self.Dss = libsp.dot(K, self.Dss)
             self.outputs = K.shape[0]
@@ -2873,41 +3143,50 @@ class Frequency(Static):
 
         Nk = len(kv)
         kvdt = kv * self.dt
-        zv = np.cos(kvdt) + 1.j * np.sin(kvdt)
-        Yfreq = np.empty((self.outputs, self.inputs, Nk,), dtype=np.complex_)
+        zv = np.cos(kvdt) + 1.0j * np.sin(kvdt)
+        Yfreq = np.empty(
+            (
+                self.outputs,
+                self.inputs,
+                Nk,
+            ),
+            dtype=np.complex_,
+        )
 
         ### loop frequencies
         for kk in range(Nk):
-
             ### build Cw complex
             Cw_cpx = self.get_Cw_cpx(zv[kk], settings=wake_prop_settings)
 
             # get bound state freq response
             if self.remove_predictor:
                 Ygamma = np.linalg.solve(
-                    self.A0 + libsp.dot(
-                        self.A0W, Cw_cpx, type_out=libsp.csc_matrix), self.Bss)
+                    self.A0 + libsp.dot(self.A0W, Cw_cpx, type_out=libsp.csc_matrix),
+                    self.Bss,
+                )
             else:
-                Ygamma = zv[kk] ** (-1) * \
-                         np.linalg.solve(
-                             self.A0 + libsp.dot(
-                                 self.A0W, Cw_cpx, type_out=libsp.csc_matrix), self.Bss)
+                Ygamma = zv[kk] ** (-1) * np.linalg.solve(
+                    self.A0 + libsp.dot(self.A0W, Cw_cpx, type_out=libsp.csc_matrix),
+                    self.Bss,
+                )
             Ygamma_star = Cw_cpx.dot(Ygamma)
 
             # determine factor for delta of bound circulation
             if self.integr_order == 0:
-                dfact = (1.j * kv[kk]) * self.dt
+                dfact = (1.0j * kv[kk]) * self.dt
             elif self.integr_order == 1:
-                dfact = (1. - 1. / zv[kk])
+                dfact = 1.0 - 1.0 / zv[kk]
             elif self.integr_order == 2:
-                dfact = .5 * (3. - 4. / zv[kk] + 1. / zv[kk] ** 2)
+                dfact = 0.5 * (3.0 - 4.0 / zv[kk] + 1.0 / zv[kk] ** 2)
             else:
-                raise NameError('Specify valid integration order')
+                raise NameError("Specify valid integration order")
 
-            Yfreq[:, :, kk] = np.dot(self.Css[:, :K], Ygamma) + \
-                              np.dot(self.Css[:, K:K + K_star], Ygamma_star) + \
-                              np.dot(self.Css[:, -K:], dfact * Ygamma) + \
-                              self.Dss
+            Yfreq[:, :, kk] = (
+                np.dot(self.Css[:, :K], Ygamma)
+                + np.dot(self.Css[:, K : K + K_star], Ygamma_star)
+                + np.dot(self.Css[:, -K:], dfact * Ygamma)
+                + self.Dss
+            )
 
         return Yfreq
 
@@ -2928,7 +3207,6 @@ class Frequency(Static):
         """
         return get_Cw_cpx(self.MS, self.K, self.K_star, zval, settings=settings)
 
-
     def assemble_profiling(self):
         """
         Generate profiling report for assembly and save it in self.prof_out.
@@ -2939,7 +3217,8 @@ class Frequency(Static):
         """
 
         import cProfile
-        cProfile.runctx('self.assemble()', globals(), locals(), filename=self.prof_out)
+
+        cProfile.runctx("self.assemble()", globals(), locals(), filename=self.prof_out)
 
 
 def get_Cw_cpx(MS, K, K_star, zval, settings=None):
@@ -2959,11 +3238,15 @@ def get_Cw_cpx(MS, K, K_star, zval, settings=None):
     """
 
     try:
-        cfl1 = settings['cfl1']
+        cfl1 = settings["cfl1"]
     except (KeyError, TypeError):
         # In case the key does not exist or settings=None
         cfl1 = True
-    cout.cout_wrap("Computing wake propagation solution matrix if frequency domain with CFL1=%s" % cfl1, 1)
+    cout.cout_wrap(
+        "Computing wake propagation solution matrix if frequency domain with CFL1=%s"
+        % cfl1,
+        1,
+    )
     # print("Computing wake propagation solution matrix if frequency domain with CFL1=%s" % cfl1)
 
     if cfl1:
@@ -2973,7 +3256,6 @@ def get_Cw_cpx(MS, K, K_star, zval, settings=None):
 
         K0tot, K0totstar = 0, 0
         for ss in range(MS.n_surf):
-
             M, N = MS.dimensions[ss]
             Mstar, N = MS.dimensions_star[ss]
 
@@ -2990,15 +3272,15 @@ def get_Cw_cpx(MS, K, K_star, zval, settings=None):
             # M, N = MS.dimensions[ss]
             Mstar, N = MS.dimensions_star[ss]
             # sum_m_n += M*N
-            sum_mstar_n += Mstar*N
+            sum_mstar_n += Mstar * N
 
             try:
                 MS.Surfs_star[ss].zetac
             except AttributeError:
                 MS.Surfs_star[ss].zetac.generate_collocations()
-        jjvec = [None]*sum_mstar_n
-        iivec = [None]*sum_mstar_n
-        valvec = [None]*sum_mstar_n
+        jjvec = [None] * sum_mstar_n
+        iivec = [None] * sum_mstar_n
+        valvec = [None] * sum_mstar_n
 
         K0tot, K0totstar = 0, 0
         ipoint = 0
@@ -3015,17 +3297,20 @@ def get_Cw_cpx(MS, K, K_star, zval, settings=None):
                     if mm == 0:
                         conv_vec = Surf_star.zetac[:, 0, iin] - Surf.zetac[:, -1, iin]
                         dist = np.linalg.norm(conv_vec)
-                        conv_dir_te = conv_vec/dist
+                        conv_dir_te = conv_vec / dist
                         vel = Surf.u_input_coll[:, -1, iin]
                         vel_value = np.dot(vel, conv_dir_te)
-                        cfl = settings['dt']*vel_value/dist
+                        cfl = settings["dt"] * vel_value / dist
                     else:
-                        conv_vec = Surf_star.zetac[:, mm, iin] - Surf_star.zetac[:, mm - 1, iin]
+                        conv_vec = (
+                            Surf_star.zetac[:, mm, iin]
+                            - Surf_star.zetac[:, mm - 1, iin]
+                        )
                         dist = np.linalg.norm(conv_vec)
-                        conv_dir = conv_vec/dist
+                        conv_dir = conv_vec / dist
                         vel = Surf.u_input_coll[:, -1, iin]
                         vel_value = np.dot(vel, conv_dir_te)
-                        cfl = settings['dt']*vel_value/dist
+                        cfl = settings["dt"] * vel_value / dist
                     # Compute coefficient
                     coef = get_Cw_cpx_coef_cfl_n1(cfl, zval)
                     # Assign values
@@ -3036,11 +3321,13 @@ def get_Cw_cpx(MS, K, K_star, zval, settings=None):
                         valvec[ipoint] = coef
                     else:
                         ipoint_prev = K0totstar + (mm - 1) * N + iin
-                        valvec[ipoint] = coef*valvec[ipoint_prev]
+                        valvec[ipoint] = coef * valvec[ipoint_prev]
             K0tot += MS.KK[ss]
             K0totstar += MS.KK_star[ss]
 
-    return libsp.csc_matrix((valvec, (iivec, jjvec)), shape=(K_star, K), dtype=np.complex_)
+    return libsp.csc_matrix(
+        (valvec, (iivec, jjvec)), shape=(K_star, K), dtype=np.complex_
+    )
 
 
 def get_Cw_cpx_coef_cfl_n1(cfl, zval):
@@ -3049,38 +3336,44 @@ def get_Cw_cpx_coef_cfl_n1(cfl, zval):
     rmax = 100
 
     # Initial values
-    coef = 0.
+    coef = 0.0
     r = 0
 
     # Loop
-    error = 2*tol
-    while ((error > tol) and (r < rmax)):
-        delta_coef = ((1 - cfl)**r)*cfl*(zval**(-r-1))
+    error = 2 * tol
+    while (error > tol) and (r < rmax):
+        delta_coef = ((1 - cfl) ** r) * cfl * (zval ** (-r - 1))
         coef += delta_coef
-        error = np.abs(delta_coef/coef)
+        error = np.abs(delta_coef / coef)
         r += 1
-    coef /= (1 - (1-cfl)**rmax*(zval**(-1)))
-    if (error > tol):
-        cout.cout_wrap(("WARNING computation of Cw_cpx did not reach desired accuracy. r: %d. error: %d" % (r, error)), 2)
+    coef /= 1 - (1 - cfl) ** rmax * (zval ** (-1))
+    if error > tol:
+        cout.cout_wrap(
+            "WARNING computation of Cw_cpx did not reach desired accuracy. r: %d."
+            " error: %d" % (r, error),
+            2,
+        )
 
     return coef
+
 
 ################################################################################
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     import unittest
     from sharpy.utils.sharpydir import SharpyDir
     import sharpy.utils.h5utils as h5
 
-
     class Test_linuvlm_Sta_vs_Dyn(unittest.TestCase):
-        """ Test methods into this module """
+        """Test methods into this module"""
 
         def setUp(self):
-            fname = SharpyDir + '/sharpy/linear/test/h5input/' + \
-                    'goland_mod_Nsurf02_M003_N004_a040.aero_state.h5'
+            fname = (
+                SharpyDir
+                + "/sharpy/linear/test/h5input/"
+                + "goland_mod_Nsurf02_M003_N004_a040.aero_state.h5"
+            )
             haero = h5.readh5(fname)
             tsdata = haero.ts00000
 
@@ -3107,7 +3400,9 @@ if __name__ == '__main__':
             """
             Sta = self.Sta
             Ftot02 = libsp.dot(Sta.Kftot, Sta.fqs)
-            assert np.max(np.abs(Ftot02 - Sta.Ftot)) < 1e-10, 'Total force gain matrix wrong!'
+            assert (
+                np.max(np.abs(Ftot02 - Sta.Ftot)) < 1e-10
+            ), "Total force gain matrix wrong!"
 
         def test_Dyn_steady_state(self):
             """
@@ -3122,44 +3417,49 @@ if __name__ == '__main__':
             for order in Order:
                 for rem_pred in RemPred:
                     for use_sparse in UseSparse:
-
                         # Dynamic solver
-                        Dyn = Dynamic(self.tsdata,
-                                      dt=0.05,
-                                      integr_order=order,
-                                      RemovePredictor=rem_pred,
-                                      UseSparse=use_sparse)
+                        Dyn = Dynamic(
+                            self.tsdata,
+                            dt=0.05,
+                            integr_order=order,
+                            RemovePredictor=rem_pred,
+                            UseSparse=use_sparse,
+                        )
                         Dyn.assemble_ss()
 
                         # steady state solution
                         usta = np.concatenate((Sta.zeta, Sta.zeta_dot, Sta.u_ext))
-                        xsta, ysta = Dyn.solve_steady(usta, method='direct')
+                        xsta, ysta = Dyn.solve_steady(usta, method="direct")
 
                         if use_sparse is False and rem_pred is False:
-                            xmin, ymin = Dyn.solve_steady(usta, method='minsize')
-                            xrec, yrec = Dyn.solve_steady(usta, method='recursive')
-                            xsub, ysub = Dyn.solve_steady(usta, method='subsystem')
+                            xmin, ymin = Dyn.solve_steady(usta, method="minsize")
+                            xrec, yrec = Dyn.solve_steady(usta, method="recursive")
+                            xsub, ysub = Dyn.solve_steady(usta, method="subsystem")
 
                             # assert all solutions are matching
-                            assert max(np.linalg.norm(xsta - xmin), np.linalg.norm(ysta - ymin)), \
-                                'Direct and min. size solutions not matching!'
-                            assert max(np.linalg.norm(xsta - xrec), np.linalg.norm(ysta - yrec)), \
-                                'Direct and recursive solutions not matching!'
-                            assert max(np.linalg.norm(xsta - xsub), np.linalg.norm(ysta - ysub)), \
-                                'Direct and sub-system solutions not matching!'
+                            assert max(
+                                np.linalg.norm(xsta - xmin), np.linalg.norm(ysta - ymin)
+                            ), "Direct and min. size solutions not matching!"
+                            assert max(
+                                np.linalg.norm(xsta - xrec), np.linalg.norm(ysta - yrec)
+                            ), "Direct and recursive solutions not matching!"
+                            assert max(
+                                np.linalg.norm(xsta - xsub), np.linalg.norm(ysta - ysub)
+                            ), "Direct and sub-system solutions not matching!"
 
                         # compare against Static solver solution
                         er = np.max(np.abs(ysta - Sta.fqs) / np.linalg.norm(Sta.Ftot))
-                        print('Error force distribution: %.3e' % er)
-                        assert er < 1e-12, \
-                            'Steady-state force not matching (error: %.2e)!' % er
+                        print("Error force distribution: %.3e" % er)
+                        assert er < 1e-12, (
+                            "Steady-state force not matching (error: %.2e)!" % er
+                        )
 
                         if rem_pred is False:  # compare state
-
-                            er = np.max(np.abs(xsta[:Dyn.K] - Sta.gamma))
-                            print('Error bound circulation: %.3e' % er)
-                            assert er < 1e-13, \
-                                'Steady-state gamma not matching (error: %.2e)!' % er
+                            er = np.max(np.abs(xsta[: Dyn.K] - Sta.gamma))
+                            print("Error bound circulation: %.3e" % er)
+                            assert er < 1e-13, (
+                                "Steady-state gamma not matching (error: %.2e)!" % er
+                            )
 
                             gammaw_ref = np.zeros((Dyn.K_star,))
                             kk = 0
@@ -3167,22 +3467,35 @@ if __name__ == '__main__':
                                 Mstar = Dyn.MS.MM_star[ss]
                                 Nstar = Dyn.MS.NN_star[ss]
                                 for mm in range(Mstar):
-                                    gammaw_ref[kk:kk + Nstar] = Sta.Gamma[ss][-1, :]
+                                    gammaw_ref[kk : kk + Nstar] = Sta.Gamma[ss][-1, :]
                                     kk += Nstar
 
-                            er = np.max(np.abs(xsta[Dyn.K:Dyn.K + Dyn.K_star] - gammaw_ref))
-                            print('Error wake circulation: %.3e' % er)
-                            assert er < 1e-13, 'Steady-state gamma_star not matching!'
+                            er = np.max(
+                                np.abs(xsta[Dyn.K : Dyn.K + Dyn.K_star] - gammaw_ref)
+                            )
+                            print("Error wake circulation: %.3e" % er)
+                            assert er < 1e-13, "Steady-state gamma_star not matching!"
 
-                            er = np.max(np.abs(xsta[Dyn.K + Dyn.K_star:2 * Dyn.K + Dyn.K_star]))
-                            print('Error bound derivative: %.3e' % er)
-                            assert er < 1e-13, 'Non-zero derivative of circulation at steady state!'
+                            er = np.max(
+                                np.abs(
+                                    xsta[Dyn.K + Dyn.K_star : 2 * Dyn.K + Dyn.K_star]
+                                )
+                            )
+                            print("Error bound derivative: %.3e" % er)
+                            assert (
+                                er < 1e-13
+                            ), "Non-zero derivative of circulation at steady state!"
 
                             if Dyn.integr_order == 2:
-                                er = np.max(np.abs(xsta[:Dyn.K] - xsta[-Dyn.K:]))
-                                print('Error bound circulation previous vs current time-step: %.3e' % er)
-                                assert er < 1e-13, \
-                                    'Circulation at previous and current time-step not matching'
+                                er = np.max(np.abs(xsta[: Dyn.K] - xsta[-Dyn.K :]))
+                                print(
+                                    "Error bound circulation previous vs current"
+                                    " time-step: %.3e" % er
+                                )
+                                assert er < 1e-13, (
+                                    "Circulation at previous and current time-step not"
+                                    " matching"
+                                )
 
                         ### Verify gains
                         Dyn.get_total_forces_gain()
@@ -3199,23 +3512,31 @@ if __name__ == '__main__':
                             for nn in range(N + 1):
                                 for mm in range(M + 1):
                                     Fsect_ref[ss, :, nn] += fnodes[ss, :, mm, nn]
-                                    arm = Dyn.MS.Surfs[ss].zeta[:, mm, nn] - Dyn.MS.Surfs[ss].zeta[:, M // 2, nn]
-                                    Msect_ref[ss, :, nn] += np.cross(arm, fnodes[ss, :, mm, nn])
+                                    arm = (
+                                        Dyn.MS.Surfs[ss].zeta[:, mm, nn]
+                                        - Dyn.MS.Surfs[ss].zeta[:, M // 2, nn]
+                                    )
+                                    Msect_ref[ss, :, nn] += np.cross(
+                                        arm, fnodes[ss, :, mm, nn]
+                                    )
 
                         Fsect = np.dot(Dyn.Kfsec, ysta).reshape((n_surf, 3, N + 1))
-                        assert np.max(np.abs(Fsect - Fsect_ref)) < 1e-12, \
-                            'Error in gains for cross-sectional forces'
+                        assert (
+                            np.max(np.abs(Fsect - Fsect_ref)) < 1e-12
+                        ), "Error in gains for cross-sectional forces"
                         Msect = np.dot(Dyn.Kmsec, ysta).reshape((n_surf, 3, N + 1))
-                        assert np.max(np.abs(Msect - Msect_ref)) < 1e-12, \
-                            'Error in gains for cross-sectional forces'
+                        assert (
+                            np.max(np.abs(Msect - Msect_ref)) < 1e-12
+                        ), "Error in gains for cross-sectional forces"
 
                         # total forces
                         Ftot_ref = np.zeros((3,))
                         for cc in range(3):
                             Ftot_ref[cc] = np.sum(Fsect_ref[:, cc, :])
                         Ftot = np.dot(Dyn.Kftot, ysta)
-                        assert np.max(np.abs(Ftot - Ftot_ref)) < 1e-11, \
-                            'Error in gains for total forces'
+                        assert (
+                            np.max(np.abs(Ftot - Ftot_ref)) < 1e-11
+                        ), "Error in gains for total forces"
 
         def test_nondimss_dimss(self):
             """
@@ -3226,100 +3547,119 @@ if __name__ == '__main__':
 
             # estimate reference quantities
             Uinf = np.linalg.norm(self.tsdata.u_ext[0][:, 0, 0])
-            chord = np.linalg.norm(self.tsdata.zeta[0][:, -1, 0] - self.tsdata.zeta[0][:, 0, 0])
+            chord = np.linalg.norm(
+                self.tsdata.zeta[0][:, -1, 0] - self.tsdata.zeta[0][:, 0, 0]
+            )
             rho = self.tsdata.rho
 
-            ScalingDict = {'length': .5 * chord,
-                           'speed': Uinf,
-                           'density': rho}
+            ScalingDict = {"length": 0.5 * chord, "speed": Uinf, "density": rho}
 
             # reference
-            Dyn0 = Dynamic(self.tsdata,
-                           dt=0.05,
-                           integr_order=2, RemovePredictor=True,
-                           UseSparse=True)
+            Dyn0 = Dynamic(
+                self.tsdata,
+                dt=0.05,
+                integr_order=2,
+                RemovePredictor=True,
+                UseSparse=True,
+            )
             Dyn0.assemble_ss()
 
             # scale/unscale
-            Dyn1 = Dynamic(self.tsdata,
-                           dt=0.05,
-                           integr_order=2, RemovePredictor=True,
-                           UseSparse=True, ScalingDict=ScalingDict)
+            Dyn1 = Dynamic(
+                self.tsdata,
+                dt=0.05,
+                integr_order=2,
+                RemovePredictor=True,
+                UseSparse=True,
+                ScalingDict=ScalingDict,
+            )
             Dyn1.assemble_ss()
             Dyn1.nondimss()
             Dyn1.dimss()
             libss.compare_ss(Dyn0.SS, Dyn1.SS, tol=1e-10)
-            assert np.max(np.abs(Dyn0.SS.dt - Dyn1.SS.dt)) < 1e-12 * Dyn0.SS.dt, \
-                'Scaling/unscaling of time-step not correct'
+            assert (
+                np.max(np.abs(Dyn0.SS.dt - Dyn1.SS.dt)) < 1e-12 * Dyn0.SS.dt
+            ), "Scaling/unscaling of time-step not correct"
 
         def test_freqresp(self):
-
             Sta = self.Sta
 
             # estimate reference quantities
             Uinf = np.linalg.norm(self.tsdata.u_ext[0][:, 0, 0])
             chord = np.linalg.norm(
-                self.tsdata.zeta[0][:, -1, 0] - self.tsdata.zeta[0][:, 0, 0])
+                self.tsdata.zeta[0][:, -1, 0] - self.tsdata.zeta[0][:, 0, 0]
+            )
             rho = self.tsdata.rho
 
-            ScalingDict = {'length': .5 * chord,
-                           'speed': Uinf,
-                           'density': rho}
+            ScalingDict = {"length": 0.5 * chord, "speed": Uinf, "density": rho}
 
-            kv = np.linspace(0, .5, 3)
+            kv = np.linspace(0, 0.5, 3)
 
             for use_sparse in [False, True]:
                 for remove_predictor in [True, False]:
                     ### ----- Dynamic class
-                    Dyn = Dynamic(self.tsdata,
-                                  dt=0.05, ScalingDict=ScalingDict,
-                                  integr_order=2, RemovePredictor=remove_predictor,
-                                  UseSparse=use_sparse)
+                    Dyn = Dynamic(
+                        self.tsdata,
+                        dt=0.05,
+                        ScalingDict=ScalingDict,
+                        integr_order=2,
+                        RemovePredictor=remove_predictor,
+                        UseSparse=use_sparse,
+                    )
                     Dyn.assemble_ss()
                     Dyn.nondimss()
                     Yref = libss.freqresp(Dyn.SS, kv)
                     Ydyn = Dyn.freqresp(kv)
                     ermax = np.max(np.abs(Ydyn - Yref))
-                    assert ermax < 1e-13, \
-                        'Dynamic.freqresp produces too large error (%.2e)!' % ermax
+                    assert ermax < 1e-13, (
+                        "Dynamic.freqresp produces too large error (%.2e)!" % ermax
+                    )
 
                     ### ----- BlockDynamic class
-                    BlockDyn = DynamicBlock(self.tsdata,
-                                            dt=0.05,
-                                            ScalingDict=ScalingDict,
-                                            integr_order=2, RemovePredictor=remove_predictor,
-                                            UseSparse=use_sparse)
+                    BlockDyn = DynamicBlock(
+                        self.tsdata,
+                        dt=0.05,
+                        ScalingDict=ScalingDict,
+                        integr_order=2,
+                        RemovePredictor=remove_predictor,
+                        UseSparse=use_sparse,
+                    )
                     BlockDyn.assemble_ss()
                     BlockDyn.nondimss()
                     Ydyn_block = BlockDyn.freqresp(kv)
                     ermax = np.max(np.abs(Ydyn_block - Yref))
-                    assert ermax < 1e-13, \
-                        'Dynamic.freqresp produces too large error (%.2e)!' % ermax
+                    assert ermax < 1e-13, (
+                        "Dynamic.freqresp produces too large error (%.2e)!" % ermax
+                    )
 
                     ### ----- Frequency class
-                    Freq = Frequency(self.tsdata, dt=0.05, ScalingDict=ScalingDict,
-                                     integr_order=2, RemovePredictor=remove_predictor,
-                                     UseSparse=use_sparse)
+                    Freq = Frequency(
+                        self.tsdata,
+                        dt=0.05,
+                        ScalingDict=ScalingDict,
+                        integr_order=2,
+                        RemovePredictor=remove_predictor,
+                        UseSparse=use_sparse,
+                    )
                     Freq.assemble()
                     Freq.nondimss()
                     Yfreq = Freq.freqresp(kv)
                     ermax = np.max(np.abs(Yfreq - Yref))
-                    assert ermax < 1e-13, \
-                        'Frequency.freqresp produces too large error (%.2e)!' % ermax
+                    assert ermax < 1e-13, (
+                        "Frequency.freqresp produces too large error (%.2e)!" % ermax
+                    )
 
         def test_solve_step(self):
-
             Sta = self.Sta
 
             # estimate reference quantities
             Uinf = np.linalg.norm(self.tsdata.u_ext[0][:, 0, 0])
             chord = np.linalg.norm(
-                self.tsdata.zeta[0][:, -1, 0] - self.tsdata.zeta[0][:, 0, 0])
+                self.tsdata.zeta[0][:, -1, 0] - self.tsdata.zeta[0][:, 0, 0]
+            )
             rho = self.tsdata.rho
 
-            ScalingDict = {'length': .5 * chord,
-                           'speed': Uinf,
-                           'density': rho}
+            ScalingDict = {"length": 0.5 * chord, "speed": Uinf, "density": rho}
 
             ### build an input time history
             NT = 5
@@ -3331,57 +3671,64 @@ if __name__ == '__main__':
             Yblock = np.zeros((Ny, NT))
 
             for integr_order in [1, 2]:
-
                 Nx = (1 + integr_order) * Sta.K + Sta.K_star
                 Xdyn = np.zeros((Nx, NT))
                 Xblock = np.zeros((Nx, NT))
 
                 for use_sparse in [True, False]:
                     for remove_predictor in [True, False]:
-
-                        Xdyn *= 0.
-                        Xblock *= 0.
-                        Ydyn *= 0.
-                        Yblock *= 0.
+                        Xdyn *= 0.0
+                        Xblock *= 0.0
+                        Ydyn *= 0.0
+                        Yblock *= 0.0
 
                         ### ----- Dynamic class
-                        Dyn = Dynamic(self.tsdata,
-                                      dt=0.05,
-                                      ScalingDict=ScalingDict,
-                                      integr_order=integr_order, Remove=remove_predictor,
-                                      UseSparse=use_sparse)
+                        Dyn = Dynamic(
+                            self.tsdata,
+                            dt=0.05,
+                            ScalingDict=ScalingDict,
+                            integr_order=integr_order,
+                            Remove=remove_predictor,
+                            UseSparse=use_sparse,
+                        )
                         Dyn.assemble_ss()
                         Dyn.nondimss()
 
                         for tt in range(1, NT):
-                            Xdyn[:, tt], Ydyn[:, tt] = \
-                                Dyn.solve_step(Xdyn[:, tt - 1], Uin[:, tt - 1],
-                                               transform_state=True)
+                            Xdyn[:, tt], Ydyn[:, tt] = Dyn.solve_step(
+                                Xdyn[:, tt - 1], Uin[:, tt - 1], transform_state=True
+                            )
 
                         ### ----- BlockDynamic class
-                        BlockDyn = DynamicBlock(self.tsdata,
-                                                dt=0.05,
-                                                ScalingDict=ScalingDict,
-                                                integr_order=integr_order, RemovePredictor=remove_predictor,
-                                                UseSparse=use_sparse)
+                        BlockDyn = DynamicBlock(
+                            self.tsdata,
+                            dt=0.05,
+                            ScalingDict=ScalingDict,
+                            integr_order=integr_order,
+                            RemovePredictor=remove_predictor,
+                            UseSparse=use_sparse,
+                        )
                         BlockDyn.assemble_ss()
                         BlockDyn.nondimss()
 
                         for tt in range(1, NT):
-                            Xblock[:, tt], Yblock[:, tt] = \
-                                BlockDyn.solve_step(Xdyn[:, tt - 1], Uin[:, tt - 1],
-                                                    transform_state=True)
+                            Xblock[:, tt], Yblock[:, tt] = BlockDyn.solve_step(
+                                Xdyn[:, tt - 1], Uin[:, tt - 1], transform_state=True
+                            )
 
                         ermax = np.max(np.abs(Xdyn - Xblock)) / np.max(np.abs(Xdyn))
 
-                        assert ermax < 1e-14, \
-                            ('solve_step methods in Dynamic and BlockDynamic not matching ' +
-                             ' (relative error %.2e)!' % ermax)
+                        assert ermax < 1e-14, (
+                            "solve_step methods in Dynamic and BlockDynamic not"
+                            " matching "
+                            + " (relative error %.2e)!" % ermax
+                        )
 
                         ermax = np.max(np.abs(Ydyn - Yblock)) / np.max(np.abs(Ydyn))
-                        assert ermax < 1e-14, \
-                            ('solve_step methods in Dynamic and BlockDynamic not matching ' +
-                             ' (relative error %.2e)!' % ermax)
-
+                        assert ermax < 1e-14, (
+                            "solve_step methods in Dynamic and BlockDynamic not"
+                            " matching "
+                            + " (relative error %.2e)!" % ermax
+                        )
 
     unittest.main()

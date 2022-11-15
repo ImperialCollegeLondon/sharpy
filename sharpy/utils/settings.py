@@ -14,7 +14,7 @@ class DictConfigParser(configparser.ConfigParser):
         d = dict(self._sections)
         for k in d:
             d[k] = dict(self._defaults, **d[k])
-            d[k].pop('__name__', None)
+            d[k].pop("__name__", None)
         return d
 
 
@@ -25,7 +25,13 @@ def cast(k, v, pytype, ctype, default):
         val = ctype(pytype(v))
     except KeyError:
         val = ctype(default)
-        cout.cout_wrap("--- The variable " + k + " has no given value, using the default " + default, 2)
+        cout.cout_wrap(
+            "--- The variable "
+            + k
+            + " has no given value, using the default "
+            + default,
+            2,
+        )
     except TypeError:
         raise exceptions.NoDefaultValueException(k)
     except ValueError:
@@ -44,7 +50,7 @@ def to_custom_types(dictionary, types, default, options=dict(), no_ctype=True):
                 # Choose first data type  in list for default value
                 data_type = v[0]
         dictionary[k] = get_custom_type(dictionary, data_type, k, default, no_ctype)
-      
+
     check_settings_in_options(dictionary, types, options)
 
     unrecognised_settings = []
@@ -61,8 +67,8 @@ def to_custom_types(dictionary, types, default, options=dict(), no_ctype=True):
 
 def get_data_type_for_several_options(dict_value, list_settings_types, setting_name):
     """
-    Checks the data type of the setting input in case of several data type options. 
-    Only a scalar or list can be the case for these cases.  
+    Checks the data type of the setting input in case of several data type options.
+    Only a scalar or list can be the case for these cases.
 
     Args:
         dict_values: Dictionary value of processed settings
@@ -72,26 +78,30 @@ def get_data_type_for_several_options(dict_value, list_settings_types, setting_n
         exception.NotValidSetting: if the setting is not allowed.
     """
     for data_type in list_settings_types:
-        if 'list' in data_type and (type(dict_value) == list or not np.isscalar(dict_value)):
-                return data_type
-        elif 'list' not in data_type and np.isscalar(dict_value):
-                return data_type
+        if "list" in data_type and (
+            type(dict_value) == list or not np.isscalar(dict_value)
+        ):
+            return data_type
+        elif "list" not in data_type and np.isscalar(dict_value):
+            return data_type
     exceptions.NotValidSettingType(setting_name, dict_value, list_settings_types)
 
-def get_default_value(default_value, k, v, data_type = None, py_type = None):
+
+def get_default_value(default_value, k, v, data_type=None, py_type=None):
     if default_value is None:
         raise exceptions.NoDefaultValueException(k)
-    if v in ['float', 'int', 'bool']:
+    if v in ["float", "int", "bool"]:
         converted_value = cast(k, default_value, py_type, data_type, default_value)
-    elif v == 'str':
+    elif v == "str":
         converted_value = cast(k, default_value, eval(v), eval(v), default_value)
     else:
         converted_value = default_value.copy()
     notify_default_value(k, converted_value)
     return converted_value
 
+
 def get_custom_type(dictionary, v, k, default, no_ctype):
-    if v == 'int':
+    if v == "int":
         if no_ctype:
             data_type = int
         else:
@@ -99,9 +109,11 @@ def get_custom_type(dictionary, v, k, default, no_ctype):
         try:
             dictionary[k] = cast(k, dictionary[k], int, data_type, default[k])
         except KeyError:
-            dictionary[k] = get_default_value(default[k], k, v, data_type=data_type, py_type=int)
+            dictionary[k] = get_default_value(
+                default[k], k, v, data_type=data_type, py_type=int
+            )
 
-    elif v == 'float':
+    elif v == "float":
         if no_ctype:
             data_type = float
         else:
@@ -109,15 +121,17 @@ def get_custom_type(dictionary, v, k, default, no_ctype):
         try:
             dictionary[k] = cast(k, dictionary[k], float, data_type, default[k])
         except KeyError:
-            dictionary[k] = get_default_value(default[k], k, v, data_type=data_type, py_type=float)
+            dictionary[k] = get_default_value(
+                default[k], k, v, data_type=data_type, py_type=float
+            )
 
-    elif v == 'str':
+    elif v == "str":
         try:
             dictionary[k] = cast(k, dictionary[k], str, str, default[k])
         except KeyError:
             dictionary[k] = get_default_value(default[k], k, v)
 
-    elif v == 'bool':
+    elif v == "bool":
         if no_ctype:
             data_type = bool
         else:
@@ -125,9 +139,11 @@ def get_custom_type(dictionary, v, k, default, no_ctype):
         try:
             dictionary[k] = cast(k, dictionary[k], str2bool, data_type, default[k])
         except KeyError:
-            dictionary[k] = get_default_value(default[k], k, v, data_type=data_type, py_type=str2bool)
+            dictionary[k] = get_default_value(
+                default[k], k, v, data_type=data_type, py_type=str2bool
+            )
 
-    elif v == 'list(str)':
+    elif v == "list(str)":
         try:
             # if isinstance(dictionary[k], list):
             #     continue
@@ -137,7 +153,7 @@ def get_custom_type(dictionary, v, k, default, no_ctype):
         except KeyError:
             dictionary[k] = get_default_value(default[k], k, v)
 
-    elif v == 'list(dict)':
+    elif v == "list(dict)":
         try:
             # if isinstance(dictionary[k], list):
             #     continue
@@ -148,7 +164,7 @@ def get_custom_type(dictionary, v, k, default, no_ctype):
         except KeyError:
             dictionary[k] = get_default_value(default[k], k, v)
 
-    elif v == 'list(float)':
+    elif v == "list(float)":
         try:
             dictionary[k]
         except KeyError:
@@ -164,12 +180,16 @@ def get_custom_type(dictionary, v, k, default, no_ctype):
         # dictionary[k] = dictionary[k].split(',')
         # # getting rid of leading and trailing spaces
         # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
-        if dictionary[k].find(',') < 0:
-            dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ', dtype=ct.c_double)
+        if dictionary[k].find(",") < 0:
+            dictionary[k] = np.fromstring(
+                dictionary[k].strip("[]"), sep=" ", dtype=ct.c_double
+            )
         else:
-            dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',', dtype=ct.c_double)
+            dictionary[k] = np.fromstring(
+                dictionary[k].strip("[]"), sep=",", dtype=ct.c_double
+            )
 
-    elif v == 'list(int)':
+    elif v == "list(int)":
         try:
             dictionary[k]
         except KeyError:
@@ -185,12 +205,16 @@ def get_custom_type(dictionary, v, k, default, no_ctype):
         # dictionary[k] = dictionary[k].split(',')
         # # getting rid of leading and trailing spaces
         # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
-        if dictionary[k].find(',') < 0:
-            dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ').astype(ct.c_int)
+        if dictionary[k].find(",") < 0:
+            dictionary[k] = np.fromstring(dictionary[k].strip("[]"), sep=" ").astype(
+                ct.c_int
+            )
         else:
-            dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',').astype(ct.c_int)
+            dictionary[k] = np.fromstring(dictionary[k].strip("[]"), sep=",").astype(
+                ct.c_int
+            )
 
-    elif v == 'list(complex)':
+    elif v == "list(complex)":
         try:
             dictionary[k]
         except KeyError:
@@ -206,20 +230,27 @@ def get_custom_type(dictionary, v, k, default, no_ctype):
         # dictionary[k] = dictionary[k].split(',')
         # # getting rid of leading and trailing spaces
         # dictionary[k] = list(map(lambda x: x.strip(), dictionary[k]))
-        if dictionary[k].find(',') < 0:
-            dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=' ').astype(complex)
+        if dictionary[k].find(",") < 0:
+            dictionary[k] = np.fromstring(dictionary[k].strip("[]"), sep=" ").astype(
+                complex
+            )
         else:
-            dictionary[k] = np.fromstring(dictionary[k].strip('[]'), sep=',').astype(complex)
+            dictionary[k] = np.fromstring(dictionary[k].strip("[]"), sep=",").astype(
+                complex
+            )
 
-    elif v == 'dict':
+    elif v == "dict":
         try:
             if not isinstance(dictionary[k], dict):
-                raise TypeError('Setting for {:s} is not a dictionary'.format(k))
+                raise TypeError("Setting for {:s} is not a dictionary".format(k))
         except KeyError:
             dictionary[k] = get_default_value(default[k], k, v)
     else:
-        raise TypeError('Variable %s has an unknown type (%s) that cannot be casted' % (k, v))
+        raise TypeError(
+            "Variable %s has an unknown type (%s) that cannot be casted" % (k, v)
+        )
     return dictionary[k]
+
 
 def check_settings_in_options(settings, settings_types, settings_options):
     """
@@ -234,7 +265,7 @@ def check_settings_in_options(settings, settings_types, settings_options):
         exception.NotValidSetting: if the setting is not allowed.
     """
     for k in settings_options:
-        if settings_types[k] == 'int':
+        if settings_types[k] == "int":
             try:
                 value = settings[k].value
             except AttributeError:
@@ -242,13 +273,13 @@ def check_settings_in_options(settings, settings_types, settings_options):
             if value not in settings_options[k]:
                 raise exceptions.NotValidSetting(k, value, settings_options[k])
 
-        elif settings_types[k] == 'str':
+        elif settings_types[k] == "str":
             value = settings[k]
             if value not in settings_options[k] and value:
                 # checks that the value is within the options and that it is not an empty string.
                 raise exceptions.NotValidSetting(k, value, settings_options[k])
 
-        elif settings_types[k] == 'list(str)':
+        elif settings_types[k] == "list(str)":
             for item in settings[k]:
                 if item not in settings_options[k] and item:
                     raise exceptions.NotValidSetting(k, item, settings_options[k])
@@ -271,12 +302,13 @@ def load_config_file(file_name: str) -> dict:
     # config.read(file_name)
     # dict_config = config.as_dict()
     import configobj
+
     dict_config = configobj.ConfigObj(file_name)
     return dict_config
 
 
 def str2bool(string):
-    false_list = ['false', 'off', '0', 'no']
+    false_list = ["false", "off", "0", "no"]
     if isinstance(string, bool):
         return string
     if isinstance(string, ct.c_bool):
@@ -291,8 +323,8 @@ def str2bool(string):
 
 
 def notify_default_value(k, v):
-    cout.cout_wrap('Variable ' + k + ' has no assigned value in the settings file.')
-    cout.cout_wrap('    will default to the value: ' + str(v), 1)
+    cout.cout_wrap("Variable " + k + " has no assigned value in the settings file.")
+    cout.cout_wrap("    will default to the value: " + str(v), 1)
 
 
 class SettingsTable:
@@ -324,11 +356,12 @@ class SettingsTable:
         to generate the settings table.
 
     """
+
     def __init__(self):
         self.n_fields = 4
         self.n_settings = 0
         self.field_length = [0] * self.n_fields
-        self.titles = ['Name', 'Type', 'Description', 'Default']
+        self.titles = ["Name", "Type", "Description", "Default"]
 
         self.settings_types = dict()
         self.settings_description = dict()
@@ -336,11 +369,18 @@ class SettingsTable:
         self.settings_options = dict()
         self.settings_options_strings = dict()
 
-        self.line_format = ''
+        self.line_format = ""
 
-        self.table_string = ''
+        self.table_string = ""
 
-    def generate(self, settings_types, settings_default, settings_description, settings_options=dict(), header_line=None):
+    def generate(
+        self,
+        settings_types,
+        settings_default,
+        settings_description,
+        settings_options=dict(),
+        header_line=None,
+    ):
         """
         Returns a rst-format table with the settings' names, types, description and default values
 
@@ -360,20 +400,24 @@ class SettingsTable:
         #
 
         if header_line is None:
-            header_line = 'The settings that this solver accepts are given by a dictionary, ' \
-                          'with the following key-value pairs:'
+            header_line = (
+                "The settings that this solver accepts are given by a dictionary, "
+                "with the following key-value pairs:"
+            )
         else:
-            assert type(header_line) == str, 'header_line not a string, verify order of arguments'
+            assert (
+                type(header_line) == str
+            ), "header_line not a string, verify order of arguments"
 
         if type(settings_options) != dict:
-            raise TypeError('settings_options is not a dictionary')
+            raise TypeError("settings_options is not a dictionary")
 
         if settings_options:
             # if settings_options are provided
             self.settings_options = settings_options
             self.n_fields += 1
             self.field_length.append(0)
-            self.titles.append('Options')
+            self.titles.append("Options")
             self.process_options()
 
         try:
@@ -384,13 +428,13 @@ class SettingsTable:
         self.set_field_length()
         self.line_format = self.setting_line_format()
 
-        table_string = '\n    ' + header_line + '\n'
-        table_string += '\n    ' + self.print_divider_line()
-        table_string += '    ' + self.print_header()
-        table_string += '    ' + self.print_divider_line()
+        table_string = "\n    " + header_line + "\n"
+        table_string += "\n    " + self.print_divider_line()
+        table_string += "    " + self.print_header()
+        table_string += "    " + self.print_divider_line()
         for setting in self.settings_types:
-            table_string += '    ' + self.print_setting(setting)
-        table_string += '    ' + self.print_divider_line()
+            table_string += "    " + self.print_setting(setting)
+        table_string += "    " + self.print_divider_line()
 
         self.table_string = table_string
 
@@ -399,58 +443,77 @@ class SettingsTable:
     def process_options(self):
         self.settings_options_strings = self.settings_options.copy()
         for k, v in self.settings_options.items():
-            opts = ''
+            opts = ""
             for option in v:
-                opts += ' ``%s``,' %str(option)
-            self.settings_options_strings[k] = opts[1:-1]  # removes the initial whitespace and final comma
+                opts += " ``%s``," % str(option)
+            self.settings_options_strings[k] = opts[
+                1:-1
+            ]  # removes the initial whitespace and final comma
 
     def set_field_length(self):
-
         field_lengths = [[] for i in range(self.n_fields)]
         for setting in self.settings_types:
-            stype = str(self.settings_types.get(setting, ''))
-            description = self.settings_description.get(setting, '')
-            default = str(self.settings_default.get(setting, ''))
-            option = str(self.settings_options_strings.get(setting, ''))
+            stype = str(self.settings_types.get(setting, ""))
+            description = self.settings_description.get(setting, "")
+            default = str(self.settings_default.get(setting, ""))
+            option = str(self.settings_options_strings.get(setting, ""))
 
             field_lengths[0].append(len(setting) + 4)  # length of name
-            field_lengths[1].append(len(stype) + 4)  # length of type + 4 for the rst ``X``
+            field_lengths[1].append(
+                len(stype) + 4
+            )  # length of type + 4 for the rst ``X``
             field_lengths[2].append(len(description))  # length of type
-            field_lengths[3].append(len(default) + 4)  # length of type + 4 for the rst ``X``
+            field_lengths[3].append(
+                len(default) + 4
+            )  # length of type + 4 for the rst ``X``
 
             if self.settings_options:
                 field_lengths[4].append(len(option))
 
         for i_field in range(self.n_fields):
             field_lengths[i_field].append(len(self.titles[i_field]))
-            self.field_length[i_field] = max(field_lengths[i_field]) + 2  # add the two spaces as column dividers
+            self.field_length[i_field] = (
+                max(field_lengths[i_field]) + 2
+            )  # add the two spaces as column dividers
 
     def print_divider_line(self):
-        divider = ''
+        divider = ""
         for i_field in range(self.n_fields):
-            divider += '='*(self.field_length[i_field]-2) + '  '
-        divider += '\n'
+            divider += "=" * (self.field_length[i_field] - 2) + "  "
+        divider += "\n"
         return divider
 
     def print_setting(self, setting):
-        type = '``' + str(self.settings_types.get(setting, '')) + '``'
-        description = self.settings_description.get(setting, '')
-        default = '``' + str(self.settings_default.get(setting, '')) + '``'
+        type = "``" + str(self.settings_types.get(setting, "")) + "``"
+        description = self.settings_description.get(setting, "")
+        default = "``" + str(self.settings_default.get(setting, "")) + "``"
         if self.settings_options:
-            option = self.settings_options_strings.get(setting, '')
-            line = self.line_format.format(['``' + str(setting) + '``', type, description, default, option]) + '\n'
+            option = self.settings_options_strings.get(setting, "")
+            line = (
+                self.line_format.format(
+                    ["``" + str(setting) + "``", type, description, default, option]
+                )
+                + "\n"
+            )
         else:
-            line = self.line_format.format(['``' + str(setting) + '``', type, description, default]) + '\n'
+            line = (
+                self.line_format.format(
+                    ["``" + str(setting) + "``", type, description, default]
+                )
+                + "\n"
+            )
         return line
 
     def print_header(self):
-        header = self.line_format.format(self.titles) + '\n'
+        header = self.line_format.format(self.titles) + "\n"
         return header
 
     def setting_line_format(self):
-        string = ''
+        string = ""
         for i_field in range(self.n_fields):
-            string += '{0[' + str(i_field) + ']:<' + str(self.field_length[i_field]) + '}'
+            string += (
+                "{0[" + str(i_field) + "]:<" + str(self.field_length[i_field]) + "}"
+            )
         return string
 
 
@@ -460,4 +523,3 @@ def set_value_or_default(dictionary, key, default_val):
     except KeyError:
         value = default_val
     return value
-

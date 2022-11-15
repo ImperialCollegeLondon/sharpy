@@ -16,7 +16,7 @@ previous_data:
 
 optimiser:
     numerics:
-        tolerance: 0.01 
+        tolerance: 0.01
         n_iter: 30
         batch_size: 4
         n_cores: 16
@@ -54,4 +54,3 @@ optimiser:
         incidence_angle:
             limit: 9.0
             base_aoa: 4.09
-

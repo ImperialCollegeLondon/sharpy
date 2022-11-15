@@ -9,26 +9,29 @@ class Element(object):
     This class stores all the required data for the definition of
     a linear or quadratic beam element.
     """
+
     ordering = [0, 2, 1]
     max_nodes_elem = 3
 
-    def __init__(self,
-                 ielem,
-                 n_nodes,
-                 global_connectivities,
-                 coordinates,
-                 frame_of_reference_delta,
-                 structural_twist,
-                 num_mem,
-                 stiff_index,
-                 mass_index):
+    def __init__(
+        self,
+        ielem,
+        n_nodes,
+        global_connectivities,
+        coordinates,
+        frame_of_reference_delta,
+        structural_twist,
+        num_mem,
+        stiff_index,
+        mass_index,
+    ):
         # store info in instance
         # global element number
         self.ielem = ielem
         # number of nodes per elem
         self.n_nodes = n_nodes
         if self.max_nodes_elem < self.n_nodes:
-            raise AttributeError('Elements with more than 3 nodes are not allowed')
+            raise AttributeError("Elements with more than 3 nodes are not allowed")
         # global connectivities (global node numbers)
         self.global_connectivities = global_connectivities
         self.reordered_global_connectivities = global_connectivities[self.ordering]
@@ -70,7 +73,9 @@ class Element(object):
 
     def calculate_length(self):
         # TODO implement length based on integration
-        self.length = np.linalg.norm(self.coordinates_def[0, :] - self.coordinates_def[1, :])
+        self.length = np.linalg.norm(
+            self.coordinates_def[0, :] - self.coordinates_def[1, :]
+        )
 
     def add_attributes(self, dictionary):
         for key, value in dictionary.items():
@@ -83,11 +88,15 @@ class Element(object):
             t = t_vec[i]
             for idim in range(3):
                 if defor:
-                    polyfit, _, _ = algebra.get_polyfit(self.coordinates_def, self.ordering)
+                    polyfit, _, _ = algebra.get_polyfit(
+                        self.coordinates_def, self.ordering
+                    )
                 else:
-                    polyfit, _, _ = algebra.get_polyfit(self.coordinates_ini, self.ordering)
+                    polyfit, _, _ = algebra.get_polyfit(
+                        self.coordinates_ini, self.ordering
+                    )
                 polyf = np.poly1d(polyfit[idim])
-                curve[i, idim] = (polyf(t))
+                curve[i, idim] = polyf(t)
         return curve
 
     def get_triad(self):
@@ -99,8 +108,8 @@ class Element(object):
         # now, calculate tangent vector (and coefficients of the polynomial
         # fit just in case)
         tangent, polyfit = algebra.tangent_vector(
-            self.coordinates_def,
-            Element.ordering)
+            self.coordinates_def, Element.ordering
+        )
         normal = np.zeros_like(tangent)
         binormal = np.zeros_like(tangent)
 
@@ -108,22 +117,19 @@ class Element(object):
         # equals frame_of_reference_delta
         for inode in range(self.n_nodes):
             v_vector = self.frame_of_reference_delta[inode, :]
-            normal[inode, :] = algebra.unit_vector(np.cross(
-                                                        tangent[inode, :],
-                                                        v_vector
-                                                        )
-                                                   )
-            binormal[inode, :] = -algebra.unit_vector(np.cross(
-                                                        tangent[inode, :],
-                                                        normal[inode, :]
-                                                                )
-                                                      )
+            normal[inode, :] = algebra.unit_vector(
+                np.cross(tangent[inode, :], v_vector)
+            )
+            binormal[inode, :] = -algebra.unit_vector(
+                np.cross(tangent[inode, :], normal[inode, :])
+            )
 
         # we apply twist now
         for inode in range(self.n_nodes):
             if not self.structural_twist[inode] == 0.0:
-                rotation_mat = algebra.rotation_matrix_around_axis(tangent[inode, :],
-                                                                   self.structural_twist[inode])
+                rotation_mat = algebra.rotation_matrix_around_axis(
+                    tangent[inode, :], self.structural_twist[inode]
+                )
                 normal[inode, :] = np.dot(rotation_mat, normal[inode, :])
                 binormal[inode, :] = np.dot(rotation_mat, binormal[inode, :])
 

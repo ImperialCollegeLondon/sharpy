@@ -61,14 +61,16 @@ def max_error_tensor(Pder_an, Pder_num):
 
 
 class Test_assembly(unittest.TestCase):
-    """ Test methods into assembly module """
+    """Test methods into assembly module"""
 
     print_info = False  # useful for debugging. Leave False to keep test log clean
 
     def setUp(self):
-
         # select test case
-        fname = os.path.dirname(os.path.abspath(__file__)) + '/h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5'
+        fname = (
+            os.path.dirname(os.path.abspath(__file__))
+            + "/h5input/goland_mod_Nsurf01_M003_N004_a040.aero_state.h5"
+        )
         haero = h5utils.readh5(fname)
         tsdata = haero.ts00000
 
@@ -96,7 +98,7 @@ class Test_assembly(unittest.TestCase):
         """
 
         if self.print_info:
-            print('----------------------------- Testing assembly.test_nc_dqcdzeta')
+            print("----------------------------- Testing assembly.test_nc_dqcdzeta")
 
         MS = self.MS
         n_surf = MS.n_surf
@@ -113,8 +115,10 @@ class Test_assembly(unittest.TestCase):
         # relative error at max abs error point
         iimax = np.unravel_index(np.argmax(ErAbs), ErAbs.shape)
         ermax_rel = ErRel[iimax]
-        assert ermax_rel < 1e-16, \
-            'option Merge=True not working correctly, relative error (%.3e) too high!' % ErRel
+        assert ermax_rel < 1e-16, (
+            "option Merge=True not working correctly, relative error (%.3e) too high!"
+            % ErRel
+        )
 
         # allocate numerical
         Derlist_num = []
@@ -133,13 +137,15 @@ class Test_assembly(unittest.TestCase):
         ZetaC0 = []
         for ss in range(n_surf):
             Zeta0.append(MS.Surfs[ss].zeta.copy())
-            ZetaC0.append(MS.Surfs[ss].zetac.copy('F'))
+            ZetaC0.append(MS.Surfs[ss].zetac.copy("F"))
             Zeta0_star.append(MS.Surfs_star[ss].zeta.copy())
             Vind0.append(MS.Surfs[ss].u_ind_coll_norm.copy())
             N0.append(MS.Surfs[ss].normals.copy())
 
         # calculate vis FDs
-        Steps = [1e-6, ]
+        Steps = [
+            1e-6,
+        ]
         step = Steps[0]
 
         ### loop input surfs
@@ -179,14 +185,14 @@ class Test_assembly(unittest.TestCase):
 
                 # restore
                 Surf_in.zeta = Zeta0[ss_in].copy()
-                Surf_in.zetac = ZetaC0[ss_in].copy('F')
+                Surf_in.zetac = ZetaC0[ss_in].copy("F")
                 Surf_star_in.zeta = Zeta0_star[ss_in].copy()
 
                 # estimate derivatives
                 for ss_out in range(n_surf):
                     Surf_out = MS.Surfs[ss_out]
                     dvind = (Surf_out.u_ind_coll_norm - Vind0[ss_out]) / step
-                    Derlist_num[ss_out][ss_in][:, kk] = dvind.reshape(-1, order='C')
+                    Derlist_num[ss_out][ss_in][:, kk] = dvind.reshape(-1, order="C")
 
         ### check error
         for ss_out in range(n_surf):
@@ -204,9 +210,13 @@ class Test_assembly(unittest.TestCase):
                 ermax_rel = ErRel[iimax]
 
                 if self.print_info:
-                    print('Bound%.2d->Bound%.2d\tFDstep\tErrAbs\tErrRel' % (ss_in, ss_out))
-                    print('\t\t\t%.1e\t%.1e\t%.1e' % (step, ermax, ermax_rel))
-                assert ermax < 50 * step and ermax_rel < 50 * step, embed()  # 'Test failed!'
+                    print(
+                        "Bound%.2d->Bound%.2d\tFDstep\tErrAbs\tErrRel" % (ss_in, ss_out)
+                    )
+                    print("\t\t\t%.1e\t%.1e\t%.1e" % (step, ermax, ermax_rel))
+                assert (
+                    ermax < 50 * step and ermax_rel < 50 * step
+                ), embed()  # 'Test failed!'
 
                 # fig=plt.figure('Spy Er vs coll derivs',figsize=(12,4))
 
@@ -225,9 +235,8 @@ class Test_assembly(unittest.TestCase):
                 # plt.close()
 
     def test_uc_dncdzeta(self, PlotFlag=False):
-
         if self.print_info:
-            print('---------------------------------- Testing assembly.uc_dncdzeta')
+            print("---------------------------------- Testing assembly.uc_dncdzeta")
 
         MS = self.MS
         n_surf = MS.n_surf
@@ -237,7 +246,7 @@ class Test_assembly(unittest.TestCase):
 
         for ss in range(n_surf):
             if self.print_info:
-                print('Surface %.2d:' % ss)
+                print("Surface %.2d:" % ss)
             Surf = MS.Surfs[ss]
 
             # generate non-zero field of external force
@@ -255,7 +264,7 @@ class Test_assembly(unittest.TestCase):
             # Surf.get_normal_input_velocities_at_collocation_points()
             u_tot0 = Surf.u_ind_coll + Surf.u_input_coll
             u_norm0 = Surf.project_coll_to_normal(u_tot0)
-            u_norm0_vec = u_norm0.reshape(-1, order='C')
+            u_norm0_vec = u_norm0.reshape(-1, order="C")
             zeta0 = Surf.zeta
             DerNum = np.zeros(Der.shape)
 
@@ -272,26 +281,31 @@ class Test_assembly(unittest.TestCase):
                     zeta_pert = zeta0.copy()
                     zeta_pert[cc_pert, mm_pert, nn_pert] += step
                     # calculate new normal velocity
-                    Surf_pert = surface.AeroGridSurface(Surf.maps, zeta=zeta_pert,
-                                                        u_ext=Surf.u_ext, gamma=Surf.gamma,
-                                                        vortex_radius=vortex_radius)
+                    Surf_pert = surface.AeroGridSurface(
+                        Surf.maps,
+                        zeta=zeta_pert,
+                        u_ext=Surf.u_ext,
+                        gamma=Surf.gamma,
+                        vortex_radius=vortex_radius,
+                    )
                     u_norm = Surf_pert.project_coll_to_normal(u_tot0)
-                    u_norm_vec = u_norm.reshape(-1, order='C')
+                    u_norm_vec = u_norm.reshape(-1, order="C")
                     # FD derivative
                     DerNum[:, jj] = (u_norm_vec - u_norm0_vec) / step
 
                 er_max = np.max(np.abs(Der - DerNum))
                 if self.print_info:
-                    print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
-                assert er_max < 5e1 * step, 'Error larger than 50 times step size'
+                    print("FD step: %.2e ---> Max error: %.2e" % (step, er_max))
+                assert er_max < 5e1 * step, "Error larger than 50 times step size"
                 Er_max[ss] = er_max
 
             # assert error decreases with step size
             for ss in range(1, len(Steps)):
-                assert Er_max[ss] < Er_max[ss - 1], \
-                    'Error not decreasing as FD step size is reduced'
+                assert (
+                    Er_max[ss] < Er_max[ss - 1]
+                ), "Error not decreasing as FD step size is reduced"
             if self.print_info:
-                print('------------------------------------------------------------ OK')
+                print("------------------------------------------------------------ OK")
 
             if PlotFlag:
                 pass
@@ -309,7 +323,9 @@ class Test_assembly(unittest.TestCase):
         """
 
         if self.print_info:
-            print('----------------------------- Testing assembly.test_nc_domegazetadzeta')
+            print(
+                "----------------------------- Testing assembly.test_nc_domegazetadzeta"
+            )
 
         MS = self.MS
         n_surf = MS.n_surf
@@ -332,7 +348,7 @@ class Test_assembly(unittest.TestCase):
         ZetaC0 = []
         for ss in range(n_surf):
             Zeta0.append(MS.Surfs[ss].zeta.copy())
-            ZetaC0.append(MS.Surfs[ss].zetac.copy('F'))
+            ZetaC0.append(MS.Surfs[ss].zetac.copy("F"))
             Zeta0_star.append(MS.Surfs_star[ss].zeta.copy())
             N0.append(MS.Surfs[ss].normals.copy())
 
@@ -374,28 +390,33 @@ class Test_assembly(unittest.TestCase):
                 skew_omega = algebra.skew(Surf.omega)
                 for mm in range(M):
                     for nn in range(N):
-                        Der_num[ipanel] = (np.dot(N0[ss][:, mm, nn], np.dot(skew_omega, ZetaC0[ss][:, mm, nn])) -
-                                           np.dot(N0[ss][:, mm, nn], np.dot(skew_omega, Surf.zetac[:, mm, nn])))
+                        Der_num[ipanel] = np.dot(
+                            N0[ss][:, mm, nn], np.dot(skew_omega, ZetaC0[ss][:, mm, nn])
+                        ) - np.dot(
+                            N0[ss][:, mm, nn], np.dot(skew_omega, Surf.zetac[:, mm, nn])
+                        )
                         ipanel += 1
 
                 # COMPUTE THE ERROR
-                error[istep] = np.maximum(error[istep], np.absolute(Der_num - Der_an).max())
+                error[istep] = np.maximum(
+                    error[istep], np.absolute(Der_num - Der_an).max()
+                )
 
             if self.print_info:
-                print('FD step: %.2e ---> Max error: %.2e' % (step, error[istep]))
-            assert error[istep] < 5e1 * step, 'Error larger than 50 times the step size'
+                print("FD step: %.2e ---> Max error: %.2e" % (step, error[istep]))
+            assert error[istep] < 5e1 * step, "Error larger than 50 times the step size"
 
             if istep > 0:
-                assert error[istep] <= error[istep - 1], \
-                    'Error not decreasing as FD step size is reduced'
+                assert (
+                    error[istep] <= error[istep - 1]
+                ), "Error not decreasing as FD step size is reduced"
 
         if self.print_info:
-            print('------------------------------------------------------------ OK')
+            print("------------------------------------------------------------ OK")
 
     def test_dfqsdgamma_vrel0(self):
-
         if self.print_info:
-            print('----------------------------- Testing assembly.dfqsdgamma_vrel0')
+            print("----------------------------- Testing assembly.dfqsdgamma_vrel0")
 
         MS = self.MS
         n_surf = MS.n_surf
@@ -404,10 +425,13 @@ class Test_assembly(unittest.TestCase):
         Er_max = []
         Er_max_star = []
 
-        Steps = [1e-2, 1e-4, 1e-6, ]
+        Steps = [
+            1e-2,
+            1e-4,
+            1e-6,
+        ]
 
         for ss in range(n_surf):
-
             Der_an = Der_list[ss]
             Der_star_an = Der_star_list[ss]
 
@@ -431,13 +455,13 @@ class Test_assembly(unittest.TestCase):
                     Surf.gamma[mm, nn] += step
                     Surf.get_joukovski_qs(gammaw_TE=Surf_star.gamma[0, :])
                     df = (Surf.fqs - fqs0) / step
-                    Der_num[:, pp] = df.reshape(-1, order='C')
+                    Der_num[:, pp] = df.reshape(-1, order="C")
 
                 er_max = np.max(np.abs(Der_an - Der_num))
                 if self.print_info:
-                    print('Surface %.2d - bound:' % ss)
-                    print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
-                assert er_max < 5e1 * step, 'Error larger than 50 times step size'
+                    print("Surface %.2d - bound:" % ss)
+                    print("FD step: %.2e ---> Max error: %.2e" % (step, er_max))
+                assert er_max < 5e1 * step, "Error larger than 50 times step size"
                 Er_max.append(er_max)
 
                 ### Wake
@@ -452,13 +476,13 @@ class Test_assembly(unittest.TestCase):
                     gammaw_TE[nn] += step
                     Surf.get_joukovski_qs(gammaw_TE=gammaw_TE)
                     df = (Surf.fqs - fqs0) / step
-                    Der_star_num[:, pp] = df.reshape(-1, order='C')
+                    Der_star_num[:, pp] = df.reshape(-1, order="C")
 
                 er_max = np.max(np.abs(Der_star_an - Der_star_num))
                 if self.print_info:
-                    print('Surface %.2d - wake:' % ss)
-                    print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
-                assert er_max < 5e1 * step, 'Error larger than 50 times step size'
+                    print("Surface %.2d - wake:" % ss)
+                    print("FD step: %.2e ---> Max error: %.2e" % (step, er_max))
+                assert er_max < 5e1 * step, "Error larger than 50 times step size"
                 Er_max_star.append(er_max)
             Surf.gamma = gamma0.copy()
 
@@ -481,7 +505,7 @@ class Test_assembly(unittest.TestCase):
         """
 
         if self.print_info:
-            print('------------------------------ Testing assembly.dfqsdzeta_vrel0')
+            print("------------------------------ Testing assembly.dfqsdzeta_vrel0")
 
         MS = self.MS
         n_surf = MS.n_surf
@@ -489,10 +513,13 @@ class Test_assembly(unittest.TestCase):
         Der_list = assembly.dfqsdzeta_vrel0(MS.Surfs, MS.Surfs_star)
         Er_max = []
 
-        Steps = [1e-2, 1e-4, 1e-6, ]
+        Steps = [
+            1e-2,
+            1e-4,
+            1e-6,
+        ]
 
         for ss in range(n_surf):
-
             Der_an = Der_list[ss]
 
             Surf = copy.deepcopy(MS.Surfs[ss])
@@ -513,13 +540,13 @@ class Test_assembly(unittest.TestCase):
                     Surf.zeta[ind_3d] += step
                     Surf.get_joukovski_qs(gammaw_TE=MS.Surfs_star[ss].gamma[0, :])
                     df = (Surf.fqs - fqs0) / step
-                    Der_num[:, kk] = df.reshape(-1, order='C')
+                    Der_num[:, kk] = df.reshape(-1, order="C")
 
                 er_max = np.max(np.abs(Der_an - Der_num))
                 if self.print_info:
-                    print('Surface %.2d - bound:' % ss)
-                    print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
-                assert er_max < 5e1 * step, 'Error larger than 50 times step size'
+                    print("Surface %.2d - bound:" % ss)
+                    print("FD step: %.2e ---> Max error: %.2e" % (step, er_max))
+                assert er_max < 5e1 * step, "Error larger than 50 times step size"
                 Er_max.append(er_max)
 
     def test_dfqsdzeta_omega(self):
@@ -531,7 +558,7 @@ class Test_assembly(unittest.TestCase):
         """
 
         if self.print_info:
-            print('------------------------------ Testing assembly.dfqsdzeta_omega')
+            print("------------------------------ Testing assembly.dfqsdzeta_omega")
 
         # rename
         MS = self.MS
@@ -544,7 +571,11 @@ class Test_assembly(unittest.TestCase):
         Er_max = []
 
         # Define steps to run
-        Steps = [1e-2, 1e-4, 1e-6, ]
+        Steps = [
+            1e-2,
+            1e-4,
+            1e-6,
+        ]
 
         for ss in range(n_surf):
             # Select the surface with the analytica derivatives
@@ -579,13 +610,13 @@ class Test_assembly(unittest.TestCase):
                     # Compute new forces
                     Surf.get_joukovski_qs(gammaw_TE=MS.Surfs_star[ss].gamma[0, :])
                     df = (Surf.fqs - fqs0) / step
-                    Der_num[:, kk] = df.reshape(-1, order='C')
+                    Der_num[:, kk] = df.reshape(-1, order="C")
 
                 er_max = np.max(np.abs(Der_an - Der_num))
                 if self.print_info:
-                    print('Surface %.2d - bound:' % ss)
-                    print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
-                assert er_max < 5e1 * step, 'Error larger than 50 times step size'
+                    print("Surface %.2d - bound:" % ss)
+                    print("FD step: %.2e ---> Max error: %.2e" % (step, er_max))
+                assert er_max < 5e1 * step, "Error larger than 50 times step size"
                 Er_max.append(er_max)
 
     def test_dfqsduinput(self):
@@ -594,7 +625,7 @@ class Test_assembly(unittest.TestCase):
         """
 
         if self.print_info:
-            print('---------------------------------- Testing assembly.dfqsduinput')
+            print("---------------------------------- Testing assembly.dfqsduinput")
 
         MS = self.MS
         n_surf = MS.n_surf
@@ -602,10 +633,13 @@ class Test_assembly(unittest.TestCase):
         Der_list = assembly.dfqsduinput(MS.Surfs, MS.Surfs_star)
         Er_max = []
 
-        Steps = [1e-2, 1e-4, 1e-6, ]
+        Steps = [
+            1e-2,
+            1e-4,
+            1e-6,
+        ]
 
         for ss in range(n_surf):
-
             Der_an = Der_list[ss]
 
             # Surf=copy.deepcopy(MS.Surfs[ss])
@@ -633,19 +667,18 @@ class Test_assembly(unittest.TestCase):
                     Surf.get_input_velocities_at_segments()
                     Surf.get_joukovski_qs(gammaw_TE=MS.Surfs_star[ss].gamma[0, :])
                     df = (Surf.fqs - fqs0) / step
-                    Der_num[:, kk] = df.reshape(-1, order='C')
+                    Der_num[:, kk] = df.reshape(-1, order="C")
 
                 er_max = np.max(np.abs(Der_an - Der_num))
                 if self.print_info:
-                    print('Surface %.2d - bound:' % ss)
-                    print('FD step: %.2e ---> Max error: %.2e' % (step, er_max))
-                assert er_max < 5e1 * step, 'Error larger than 50 times step size'
+                    print("Surface %.2d - bound:" % ss)
+                    print("FD step: %.2e ---> Max error: %.2e" % (step, er_max))
+                assert er_max < 5e1 * step, "Error larger than 50 times step size"
                 Er_max.append(er_max)
 
     def test_dfqsdvind_gamma(self):
-
         if self.print_info:
-            print('------------------------------ Testing assembly.dfqsdvind_gamma')
+            print("------------------------------ Testing assembly.dfqsdvind_gamma")
 
         MS = self.MS
         n_surf = MS.n_surf
@@ -676,7 +709,9 @@ class Test_assembly(unittest.TestCase):
 
         # calculate vis FDs
         # Steps=[1e-2,1e-4,1e-6,]
-        Steps = [1e-5, ]
+        Steps = [
+            1e-5,
+        ]
         step = Steps[0]
 
         ###### bound
@@ -700,9 +735,10 @@ class Test_assembly(unittest.TestCase):
                     Surf_out = MS.Surfs[ss_out]
                     fqs0 = Fqs0[ss_out].copy()
                     Surf_out.get_joukovski_qs(
-                        gammaw_TE=MS.Surfs_star[ss_out].gamma[0, :])
+                        gammaw_TE=MS.Surfs_star[ss_out].gamma[0, :]
+                    )
                     df = (Surf_out.fqs - fqs0) / step
-                    Der_list_num[ss_out][ss_in][:, pp] = df.reshape(-1, order='C')
+                    Der_list_num[ss_out][ss_in][:, pp] = df.reshape(-1, order="C")
 
         ###### wake
         for ss_in in range(n_surf):
@@ -725,9 +761,10 @@ class Test_assembly(unittest.TestCase):
                     Surf_out = MS.Surfs[ss_out]
                     fqs0 = Fqs0[ss_out].copy()
                     Surf_out.get_joukovski_qs(
-                        gammaw_TE=MS.Surfs_star[ss_out].gamma[0, :])  # <--- gammaw_0 needs to be used here!
+                        gammaw_TE=MS.Surfs_star[ss_out].gamma[0, :]
+                    )  # <--- gammaw_0 needs to be used here!
                     df = (Surf_out.fqs - fqs0) / step
-                    Der_star_list_num[ss_out][ss_in][:, pp] = df.reshape(-1, order='C')
+                    Der_star_list_num[ss_out][ss_in][:, pp] = df.reshape(-1, order="C")
 
         ### check error
         Er_max = []
@@ -739,18 +776,18 @@ class Test_assembly(unittest.TestCase):
                 ErMat = Der_an - Der_num
                 ermax = np.max(np.abs(ErMat))
                 if self.print_info:
-                    print('Bound%.2d->Bound%.2d\tFDstep\tError' % (ss_in, ss_out))
-                    print('\t\t\t%.1e\t%.1e' % (step, ermax))
-                assert ermax < 50 * step, 'Test failed!'
+                    print("Bound%.2d->Bound%.2d\tFDstep\tError" % (ss_in, ss_out))
+                    print("\t\t\t%.1e\t%.1e" % (step, ermax))
+                assert ermax < 50 * step, "Test failed!"
 
                 Der_an = Der_star_list[ss_out][ss_in]
                 Der_num = Der_star_list_num[ss_out][ss_in]
                 ErMat = Der_an - Der_num
                 ermax = np.max(np.abs(ErMat))
                 if self.print_info:
-                    print('Wake%.2d->Bound%.2d\tFDstep\tError' % (ss_in, ss_out))
-                    print('\t\t\t%.1e\t%.1e' % (step, ermax))
-                assert ermax < 50 * step, 'Test failed!'
+                    print("Wake%.2d->Bound%.2d\tFDstep\tError" % (ss_in, ss_out))
+                    print("\t\t\t%.1e\t%.1e" % (step, ermax))
+                assert ermax < 50 * step, "Test failed!"
 
                 # fig = plt.figure('Spy Der',figsize=(10,4))
                 # ax1 = fig.add_subplot(111)
@@ -775,18 +812,22 @@ class Test_assembly(unittest.TestCase):
             return V
 
         if self.print_info:
-            print('----------------------------------- Testing assembly.dvinddzeta')
+            print("----------------------------------- Testing assembly.dvinddzeta")
 
         MS = self.MS
         n_surf = MS.n_surf
-        zetac = .5 * (MS.Surfs[0].zeta[:, 1, 2] + MS.Surfs[0].zeta[:, 1, 3])
+        zetac = 0.5 * (MS.Surfs[0].zeta[:, 1, 2] + MS.Surfs[0].zeta[:, 1, 3])
 
         Dercoll = np.zeros((3, 3))
         Dervert_list = []
         for ss_in in range(n_surf):
             dcoll_b, dvert_b = assembly.dvinddzeta(zetac, MS.Surfs[ss_in], IsBound=True)
-            dcoll_w, dvert_w = assembly.dvinddzeta(zetac, MS.Surfs_star[ss_in],
-                                                   IsBound=False, M_in_bound=MS.Surfs[ss_in].maps.M)
+            dcoll_w, dvert_w = assembly.dvinddzeta(
+                zetac,
+                MS.Surfs_star[ss_in],
+                IsBound=False,
+                M_in_bound=MS.Surfs[ss_in].maps.M,
+            )
             Dercoll += dcoll_b + dcoll_w
             Dervert_list.append(dvert_b + dvert_w)
 
@@ -806,7 +847,9 @@ class Test_assembly(unittest.TestCase):
 
         # calculate vis FDs
         # Steps=[1e-2,1e-4,1e-6,]
-        Steps = [1e-6, ]
+        Steps = [
+            1e-6,
+        ]
         step = Steps[0]
 
         ### vertices
@@ -830,7 +873,7 @@ class Test_assembly(unittest.TestCase):
                 # recalculate induced velocity everywhere
                 Vnum = comp_vind(zetac, MS)
                 dv = (Vnum - V0) / step
-                Dervert_list_num[ss_in][:, kk] = dv.reshape(-1, order='C')
+                Dervert_list_num[ss_in][:, kk] = dv.reshape(-1, order="C")
 
                 # restore
                 Surf_in.zeta = Zeta0[ss_in].copy()
@@ -846,10 +889,10 @@ class Test_assembly(unittest.TestCase):
             Dercoll_num[:, cc] = (Vnum - V0) / step
         ercoll = np.max(np.abs(Dercoll - Dercoll_num))
         if self.print_info:
-            print('Error coll.\tFDstep\tErrAbs')
-            print('\t\t%.1e\t%.1e' % (step, ercoll))
+            print("Error coll.\tFDstep\tErrAbs")
+            print("\t\t%.1e\t%.1e" % (step, ercoll))
         # if ercoll>10*step: embed()
-        assert ercoll < 10 * step, 'Error at collocation point'
+        assert ercoll < 10 * step, "Error at collocation point"
 
         ### check error at vert
         for ss_in in range(n_surf):
@@ -863,9 +906,9 @@ class Test_assembly(unittest.TestCase):
             iimax = np.unravel_index(np.argmax(ErAbs), ErAbs.shape)
             ermax_rel = ErRel[iimax]
             if self.print_info:
-                print('Bound and wake%.2d\tFDstep\tErrAbs\tErrRel' % ss_in)
-                print('\t\t\t%.1e\t%.1e\t%.1e' % (step, ermax, ermax_rel))
-            assert ercoll < 10 * step, 'Error at vertices'
+                print("Bound and wake%.2d\tFDstep\tErrAbs\tErrRel" % ss_in)
+                print("\t\t\t%.1e\t%.1e\t%.1e" % (step, ermax, ermax_rel))
+            assert ercoll < 10 * step, "Error at vertices"
 
             # fig=plt.figure('Spy Er vs coll derivs',figsize=(12,4))
             # ax1=fig.add_subplot(121)
@@ -885,7 +928,7 @@ class Test_assembly(unittest.TestCase):
         """
 
         if self.print_info:
-            print('------------------------------- Testing assembly.dfqsdvind_zeta')
+            print("------------------------------- Testing assembly.dfqsdvind_zeta")
 
         MS = self.MS
         n_surf = MS.n_surf
@@ -912,7 +955,9 @@ class Test_assembly(unittest.TestCase):
 
         # calculate vis FDs
         # Steps=[1e-2,1e-4,1e-6,]
-        Steps = [1e-6, ]
+        Steps = [
+            1e-6,
+        ]
         step = Steps[0]
 
         ### loop input surfs
@@ -943,9 +988,10 @@ class Test_assembly(unittest.TestCase):
                     Surf_out = MS.Surfs[ss_out]
                     fqs0 = Fqs0[ss_out].copy()
                     Surf_out.get_joukovski_qs(
-                        gammaw_TE=MS.Surfs_star[ss_out].gamma[0, :])
+                        gammaw_TE=MS.Surfs_star[ss_out].gamma[0, :]
+                    )
                     df = (Surf_out.fqs - fqs0) / step
-                    Derlist_num[ss_out][ss_in][:, kk] = df.reshape(-1, order='C')
+                    Derlist_num[ss_out][ss_in][:, kk] = df.reshape(-1, order="C")
 
         ### check error
         for ss_out in range(n_surf):
@@ -963,9 +1009,11 @@ class Test_assembly(unittest.TestCase):
                 ermax_rel = ErRel[iimax]
 
                 if self.print_info:
-                    print('Bound%.2d->Bound%.2d\tFDstep\tErrAbs\tErrRel' % (ss_in, ss_out))
-                    print('\t\t\t%.1e\t%.1e\t%.1e' % (step, ermax, ermax_rel))
-                assert ermax < 5e2 * step and ermax_rel < 50 * step, 'Test failed!'
+                    print(
+                        "Bound%.2d->Bound%.2d\tFDstep\tErrAbs\tErrRel" % (ss_in, ss_out)
+                    )
+                    print("\t\t\t%.1e\t%.1e\t%.1e" % (step, ermax, ermax_rel))
+                assert ermax < 5e2 * step and ermax_rel < 50 * step, "Test failed!"
 
                 # fig=plt.figure('Spy Er vs coll derivs',figsize=(12,4))
 
@@ -999,7 +1047,6 @@ class Test_assembly(unittest.TestCase):
         Ders_num = []
         n_surf = len(MS.Surfs)
         for ss in range(n_surf):
-
             Surf = MS.Surfs[ss]
             Kzeta, K = Surf.maps.Kzeta, Surf.maps.K
             M, N = Surf.maps.M, Surf.maps.N
@@ -1034,12 +1081,11 @@ class Test_assembly(unittest.TestCase):
             ermax_rel = ErRel[iimax]
 
             if self.print_info:
-                print('Bound%.2d\t\t\tFDstep\tErrAbs\tErrRel' % (ss,))
-                print('\t\t\t%.1e\t%.1e\t%.1e' % (step, ermax, ermax_rel))
-            assert ermax < 5e2 * step and ermax_rel < 50 * step, 'Test failed!'
+                print("Bound%.2d\t\t\tFDstep\tErrAbs\tErrRel" % (ss,))
+                print("\t\t\t%.1e\t%.1e\t%.1e" % (step, ermax, ermax_rel))
+            assert ermax < 5e2 * step and ermax_rel < 50 * step, "Test failed!"
 
     def test_wake_prop(self):
-
         self.start_writer()
         MS = self.MS
         C_list, Cstar_list = assembly.wake_prop(MS)
@@ -1061,9 +1107,9 @@ class Test_assembly(unittest.TestCase):
 
             gvec_ref = np.concatenate((gamma[-1, :], gamma_star[:-1, :].reshape(-1)))
 
-            assert np.max(np.abs(gvec - gvec_ref)) < 1e-15, \
-                'Prop. from trailing edge not correct'
-
+            assert (
+                np.max(np.abs(gvec - gvec_ref)) < 1e-15
+            ), "Prop. from trailing edge not correct"
 
     def start_writer(self):
         # Over write writer with print_file False to avoid I/O errors
@@ -1073,10 +1119,9 @@ class Test_assembly(unittest.TestCase):
         cout_wrap.cout_quiet()
         sharpy.utils.cout_utils.cout_wrap = cout_wrap
 
-
     def tearDown(self):
         cout.finish_writer()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

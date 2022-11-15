@@ -47,8 +47,8 @@ def generate_naca_camber(M=0, P=0):
 
 def interpolate_naca_camber(eta, M00, P00, M01, P01):
     """
-    Interpolate aerofoil camber at non-dimensional coordinate eta in (0,1), 
-    where (M00,P00) and (M01,P01) define the camber properties at eta=0 and 
+    Interpolate aerofoil camber at non-dimensional coordinate eta in (0,1),
+    where (M00,P00) and (M01,P01) define the camber properties at eta=0 and
     eta=1 respectively.
 
     Notes:
@@ -58,17 +58,18 @@ def interpolate_naca_camber(eta, M00, P00, M01, P01):
 
     # define domain
     eta = np.abs(eta)
-    assert np.max(eta) < 1. + 1e-16, 'eta exceeding +/- 1!'
+    assert np.max(eta) < 1.0 + 1e-16, "eta exceeding +/- 1!"
 
     # define reference
     x00, y00 = generate_naca_camber(M00, P00)
     x01, y01 = generate_naca_camber(M01, P01)
 
     # interpolate
-    x_vec = x00 * (1. - eta) + x01 * eta
-    y_vec = y00 * (1. - eta) + y01 * eta
+    x_vec = x00 * (1.0 - eta) + x01 * eta
+    y_vec = y00 * (1.0 - eta) + y01 * eta
 
     return x_vec, y_vec
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     a = 1

@@ -6,32 +6,30 @@ import sharpy.linear.src.libsparse as libsp
 import sharpy.utils.cout_utils as cout
 
 
-def block_arnoldi_krylov(r, F, G, approx_type='Pade', side='controllability'):
-
+def block_arnoldi_krylov(r, F, G, approx_type="Pade", side="controllability"):
     n = G.shape[0]
     m = G.shape[1]
 
     Q0, R0, P0 = sclalg.qr(G, pivoting=True)
     Q0 = Q0[:, :m]
 
-    Q = np.zeros((n,m*r), dtype=complex)
-    V = np.zeros((n,m*r), dtype=complex)
+    Q = np.zeros((n, m * r), dtype=complex)
+    V = np.zeros((n, m * r), dtype=complex)
 
     for k in range(r):
-
         if k == 0:
             Q[:, 0:m] = F.dot(Q0)
         else:
-            Q[:, k*m: k*m + m] = F.dot(Q[:, (k-1)*m:(k-1)*m + m])
+            Q[:, k * m : k * m + m] = F.dot(Q[:, (k - 1) * m : (k - 1) * m + m])
 
-        Q[:, :k*m + m] = mgs_ortho(Q[:, :k*m+m])
+        Q[:, : k * m + m] = mgs_ortho(Q[:, : k * m + m])
 
-        Qf, R, P = sclalg.qr(Q[:, k*m: k*m + m], pivoting=True)
-        Q[:, k*m: k*m + m ] = Qf[:, :m]
-        if R[0,0] >= 1e-6:
-            V[:, k*m:k*m + m] = Q[:, k*m: k*m + m ]
+        Qf, R, P = sclalg.qr(Q[:, k * m : k * m + m], pivoting=True)
+        Q[:, k * m : k * m + m] = Qf[:, :m]
+        if R[0, 0] >= 1e-6:
+            V[:, k * m : k * m + m] = Q[:, k * m : k * m + m]
         else:
-            print('Deflating')
+            print("Deflating")
             k -= 1
 
     V = mgs_ortho(V)
@@ -72,7 +70,7 @@ def mgs_ortho(X):
     return Q
 
 
-def construct_krylov(r, lu_A, B, approx_type='Pade', side='b'):
+def construct_krylov(r, lu_A, B, approx_type="Pade", side="b"):
     r"""
     Contructs a Krylov subspace in an iterative manner following the methods of Gugercin [1].
 
@@ -128,7 +126,7 @@ def construct_krylov(r, lu_A, B, approx_type='Pade', side='b'):
     nx = B.shape[0]
 
     # Side indicates projection side. if using C then it needs to be transposed
-    if side == 'c':
+    if side == "c":
         transpose_mode = 1
         B.shape = (nx, 1)
     else:
@@ -136,16 +134,13 @@ def construct_krylov(r, lu_A, B, approx_type='Pade', side='b'):
         B.shape = (nx, 1)
 
     # Output projection matrices
-    V = np.zeros((nx, r),
-                 dtype=complex)
-    H = np.zeros((r, r),
-                 dtype=complex)
+    V = np.zeros((nx, r), dtype=complex)
+    H = np.zeros((r, r), dtype=complex)
 
     # Declare iterative variables
-    f = np.zeros((nx, r),
-                 dtype=complex)
+    f = np.zeros((nx, r), dtype=complex)
 
-    if approx_type == 'partial_realisation':
+    if approx_type == "partial_realisation":
         A = lu_A
         v_arb = B
         v = v_arb / np.linalg.norm(v_arb)
@@ -163,30 +158,28 @@ def construct_krylov(r, lu_A, B, approx_type='Pade', side='b'):
     V[:, :1] = v
     H[0, 0] = alpha
 
-    for j in range(0, r-1):
-
+    for j in range(0, r - 1):
         beta = np.linalg.norm(f[:, j])
         v = 1 / beta * f[:, j]
 
-        V[:, j+1] = v
-        H_hat = np.block([[H[:j+1, :j+1]],
-                          [beta * evec(j)]])
+        V[:, j + 1] = v
+        H_hat = np.block([[H[: j + 1, : j + 1]], [beta * evec(j)]])
 
-        if approx_type == 'partial_realisation':
+        if approx_type == "partial_realisation":
             w = A.dot(v)
         else:
             w = lu_solve(lu_A, v, trans=transpose_mode)
 
-        h = V[:, :j+2].T.dot(w)
-        f[:, j+1] = w - V[:, :j+2].dot(h)
+        h = V[:, : j + 2].T.dot(w)
+        f[:, j + 1] = w - V[:, : j + 2].dot(h)
 
         # Finite precision
-        s = V[:, :j+2].T.dot(f[:, j+1])
-        f[:, j+1] = f[:, j+1] - V[:, :j+2].dot(s)
+        s = V[:, : j + 2].T.dot(f[:, j + 1])
+        f[:, j + 1] = f[:, j + 1] - V[:, : j + 2].dot(s)
         h += s
 
-        h.shape = (j+2, 1)  # Enforce shape for concatenation
-        H[:j+2, :j+2] = np.block([H_hat, h])
+        h.shape = (j + 2, 1)  # Enforce shape for concatenation
+        H[: j + 2, : j + 2] = np.block([H_hat, h])
 
     return V
 
@@ -208,7 +201,9 @@ def lu_factor(sigma, A):
     """
     n = A.shape[0]
     if type(A) == libsp.csc_matrix:
-        return scsp.linalg.splu(sigma * scsp.identity(n, dtype=complex, format='csc') - A)
+        return scsp.linalg.splu(
+            sigma * scsp.identity(n, dtype=complex, format="csc") - A
+        )
     else:
         return sclalg.lu_factor(sigma * np.eye(n) - A)
 
@@ -239,21 +234,20 @@ def lu_solve(lu_A, b, trans=0):
         np.ndarray: Solution to the system.
 
     """
-    transpose_mode_dict = {0: 'N', 1: 'T'}
+    transpose_mode_dict = {0: "N", 1: "T"}
     if type(lu_A) == scsp.linalg.SuperLU:
         return lu_A.solve(b, trans=transpose_mode_dict[trans])
     else:
         return sclalg.lu_solve(lu_A, b, trans=trans)
 
 
-def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade', side='controllability'):
-
-    if side == 'controllability' or side == 'b':
+def construct_mimo_krylov(r, lu_A_input, B, approx_type="Pade", side="controllability"):
+    if side == "controllability" or side == "b":
         transpose_mode = 0
-    elif side == 'observability' or side == 'c':
+    elif side == "observability" or side == "c":
         transpose_mode = 1
     else:
-        raise NameError('Unknown option for side: %s', side)
+        raise NameError("Unknown option for side: %s", side)
 
     m = B.shape[1]  # Full system number of inputs/outputs
     n = B.shape[0]  # Full system number of states
@@ -265,11 +259,13 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade', side='controllab
 
     # Pre-allocate w, V
     V = np.zeros((n, m * r), dtype=complex)
-    w = np.zeros((n, m * r), dtype=complex)  # Initialise w, may be smaller than this due to deflation
+    w = np.zeros(
+        (n, m * r), dtype=complex
+    )  # Initialise w, may be smaller than this due to deflation
     # V = np.zeros((n, m * r))
     # w = np.zeros((n, m * r))  # Initialise w, may be smaller than this due to deflation
 
-    if approx_type == 'partial_realisation':
+    if approx_type == "partial_realisation":
         G = B
         F = lu_A_input
     else:
@@ -280,20 +276,19 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade', side='controllab
 
         ## Orthogonalise w_k to preceding w_j for j < k
         if k >= 1:
-            w[:, :k+1] = mgs_ortho(w[:, :k+1])[:, :k+1]
+            w[:, : k + 1] = mgs_ortho(w[:, : k + 1])[:, : k + 1]
         # from sharpy.rom.krylov import check_eye
         # try:
         #     check_eye(w[:, :k+1], w[:, :k+1].T)
         # except AssertionError:
         #     print('failing here - k = %g' % k)
 
-
-    V[:, :m+1] = w[:, :m+1]
+    V[:, : m + 1] = w[:, : m + 1]
     last_column += m
 
     mu = m  # Initialise controllability index
     mu_c = m  # Guess at controllability index with no deflation
-    t = m   # worked column index
+    t = m  # worked column index
 
     # from sharpy.rom.krylov import check_eye
     # try:
@@ -303,13 +298,13 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade', side='controllab
 
     for k in range(1, r):
         for j in range(mu_c):
-            if approx_type == 'partial_realisation':
-                w[:, t] = F.dot(w[:, t-mu])
+            if approx_type == "partial_realisation":
+                w[:, t] = F.dot(w[:, t - mu])
             else:
-                w[:, t] = lu_solve(lu_A_input, w[:, t-mu], transpose_mode)
+                w[:, t] = lu_solve(lu_A_input, w[:, t - mu], transpose_mode)
 
             # Orthogonalise w[:,t] against V_i -
-            w[:, :t+1] = mgs_ortho(w[:, :t+1])[:, :t+1]
+            w[:, : t + 1] = mgs_ortho(w[:, : t + 1])[:, : t + 1]
 
             # if np.linalg.norm(w[:, t]) < deflation_tolerance:
             #     # Deflate w_k
@@ -323,16 +318,18 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade', side='controllab
             #     # last_column += 1
             #     # t += 1
             try:
-                check_eye(w[:, :t+1], w[:, :t+1].T)
+                check_eye(w[:, : t + 1], w[:, : t + 1].T)
                 V[:, t] = w[:, t]
                 last_column += 1
                 t += 1
             except AssertionError:
-                cout.cout_wrap('\tMatrix lost orthogonality creating Krylov subspace:'
-                               ' \n\t\tKrylov order = %g\n\t\tInput vector = %g'
-                               % (k, j), 2)
-                w = np.hstack((w[:, 0:t], w[:, t+1:]))
-                cout.cout_wrap('\t\tVector deflated', 2)
+                cout.cout_wrap(
+                    "\tMatrix lost orthogonality creating Krylov subspace:"
+                    " \n\t\tKrylov order = %g\n\t\tInput vector = %g" % (k, j),
+                    2,
+                )
+                w = np.hstack((w[:, 0:t], w[:, t + 1 :]))
+                cout.cout_wrap("\t\tVector deflated", 2)
                 last_column -= 1
                 mu -= 1
         mu_c = mu
@@ -340,18 +337,19 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade', side='controllab
     try:
         check_eye(V[:, :t], V[:, :t].T)
     except AssertionError:
-        raise ValueError('Krylov space construction failed to create an orthogonal space')
+        raise ValueError(
+            "Krylov space construction failed to create an orthogonal space"
+        )
 
     return V[:, :t]
 
 
 def build_krylov_space(frequency, r, side, a, b):
-
     if frequency == np.inf or frequency.real == np.inf:
-        approx_type = 'partial_realisation'
+        approx_type = "partial_realisation"
         lu_a = a
     else:
-        approx_type = 'Pade'
+        approx_type = "Pade"
         lu_a = lu_factor(frequency, a)
 
     try:
@@ -385,7 +383,7 @@ def evec(j):
         np.array([0, 0, 1])
 
     """
-    e = np.zeros(j+1)
+    e = np.zeros(j + 1)
     e[j] = 1
     return e
 
@@ -411,9 +409,9 @@ def schur_ordered(A, ct=False):
 
     """
     if ct:
-        sort_eigvals = 'lhp'
+        sort_eigvals = "lhp"
     else:
-        sort_eigvals = 'iuc'
+        sort_eigvals = "iuc"
 
     # if A.dtype == complex:
     #     output_form = 'complex'
@@ -421,19 +419,23 @@ def schur_ordered(A, ct=False):
     #     output_form = 'real'
     # issues when not using the complex form of the Schur decomposition
 
-    output_form = 'complex'
+    output_form = "complex"
     As, Tt, n_stable1 = sclalg.schur(A, output=output_form, sort=sort_eigvals)
 
-    if sort_eigvals == 'lhp':
+    if sort_eigvals == "lhp":
         n_stable = np.sum(np.linalg.eigvals(A).real <= 0)
-    elif sort_eigvals == 'iuc':
-        n_stable = np.sum(np.abs(np.linalg.eigvals(A)) <= 1.)
+    elif sort_eigvals == "iuc":
+        n_stable = np.sum(np.abs(np.linalg.eigvals(A)) <= 1.0)
     else:
-        raise NameError('Unknown sorting of eigenvalues. Either iuc or lhp')
+        raise NameError("Unknown sorting of eigenvalues. Either iuc or lhp")
 
-    assert n_stable == n_stable1, 'Number of stable eigenvalues not equal in Schur output and manual calculation'
+    assert (
+        n_stable == n_stable1
+    ), "Number of stable eigenvalues not equal in Schur output and manual calculation"
 
-    assert (np.abs(As-np.conj(Tt.T).dot(A.dot(Tt))) < 1e-4).all(), 'Schur breakdown - A_schur != T^H A T'
+    assert (
+        np.abs(As - np.conj(Tt.T).dot(A.dot(Tt))) < 1e-4
+    ).all(), "Schur breakdown - A_schur != T^H A T"
     return As, Tt.T, n_stable
 
 
@@ -476,14 +478,19 @@ def remove_a12(As, n_stable):
 
     X = sclalg.solve_sylvester(A11, -A22, -A12)
 
-    T = np.block([[np.eye(n_stable), -X], [np.zeros((n-n_stable, n_stable)), np.eye(n-n_stable)]])
+    T = np.block(
+        [
+            [np.eye(n_stable), -X],
+            [np.zeros((n - n_stable, n_stable)), np.eye(n - n_stable)],
+        ]
+    )
 
     T2 = np.eye(n, n_stable)
     # App = T2.T.dot(T.dot(As.dot(np.linalg.inv(T).dot(T2))))
     return T, X
 
 
-def check_eye(T, Tinv, msg='', eps=-6):
+def check_eye(T, Tinv, msg="", eps=-6):
     r"""Simple utility to verify matrix inverses
 
     Asserts that
@@ -505,8 +512,9 @@ def check_eye(T, Tinv, msg='', eps=-6):
 
     try:
         log_error = np.log10(max_diff)
-        assert log_error < eps, 'Tinv.dot(T) not equal to identity, %s \nlog(error) = %.e' \
-                               % (msg, log_error)
+        assert (
+            log_error < eps
+        ), "Tinv.dot(T) not equal to identity, %s \nlog(error) = %.e" % (msg, log_error)
     except RuntimeWarning:
         # unlikely event that both matrices are identical and max_diff == 0
         pass

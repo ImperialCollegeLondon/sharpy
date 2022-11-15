@@ -25,19 +25,13 @@ setup(
     author_email="",
     url="https://github.com/ImperialCollegeLondon/sharpy",
     license="BSD 3-Clause License",
-    packages=find_packages(
-        where='./',
-        include=['sharpy*'],
-        exclude=['tests']
-        ),
-    install_requires=[
-    ],
+    packages=find_packages(where="./", include=["sharpy*"], exclude=["tests"]),
+    install_requires=[],
     classifiers=[
         "Operating System :: Linux, Mac OS",
         "Programming Language :: Python, C++",
-        ],
-
+    ],
     entry_points={
-        'console_scripts': ['sharpy=sharpy.sharpy_main:sharpy_run'],
-        }
+        "console_scripts": ["sharpy=sharpy.sharpy_main:sharpy_run"],
+    },
 )

@@ -17961,7 +17961,7 @@ P acf/_part_descrip/76 Fin Actuator
 P acf/_part_descrip/77 serpra e
 P acf/_part_descrip/78 serpra e
 P acf/_part_descrip/85 Front Wheel Fairing
-P acf/_part_descrip/86 hgiReG tW raleehnaP 
+P acf/_part_descrip/86 hgiReG tW raleehnaP
 P acf/_part_descrip/87 Left Wheel Fairing
 P acf/_part_descrip/88 nose landing gear fairing
 P acf/_part_descrip/89 esoNaeG iS rF edgnal
@@ -18479,7 +18479,7 @@ PROPERTIES_END
 PANEL_2D_BEGIN
 horiz_vac horizon_GA_vac.png
   POS 224.000000 307.000000
-  DATAREF 
+  DATAREF
   LIGHT_MODE MECHANICAL
   LIGHT_RHEOSTAT 0
   KEY_FRAME 0.000000 0.000000 1.000000
@@ -18489,7 +18489,7 @@ PANEL_2D_END
 PANEL_3D_BEGIN
 horiz_vac_adj horizon_GA_vac_adj.
   POS 294.000000 303.000000
-  DATAREF 
+  DATAREF
   LIGHT_MODE MECHANICAL
   LIGHT_RHEOSTAT 0
   KEY_FRAME 0.000000 0.000000 1.000000

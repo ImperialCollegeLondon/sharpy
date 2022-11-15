@@ -319,7 +319,7 @@ Item by item:
 
     This is an optional group to add if correcting the aerodynamic forces using airfoil polars is desired. A polar
     should be included for each airfoil defined. Each entry consists of a 4-column table. The first column corresponds
-    to the angle of attack (in radians) and then the ``C_L``, ``C_D`` and ``C_M``. 
+    to the angle of attack (in radians) and then the ``C_L``, ``C_D`` and ``C_M``.
 
 
 Time-varying force input file (``.dyn.h5``)
@@ -347,5 +347,5 @@ Appropriate data entries in the ``.dyn.h5`` include:
 * ``for_acc [num_t_steps, 6]``: Body frame of reference (A FoR) acceleration.
 
     Acceleration of the reference frame A in time.
-    
-    If a case is restarted from a pickle file, the .dyn.h5 file should include the dynamic information for the previous simulation (that will be discarded) and the information for the new simulation. 
+
+    If a case is restarted from a pickle file, the .dyn.h5 file should include the dynamic information for the previous simulation (that will be discarded) and the information for the new simulation.

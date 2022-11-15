@@ -16,19 +16,18 @@ def generator(arg):
     try:
         arg.generator_id
     except AttributeError:
-        raise AttributeError('Class defined as generator has no generator_id attribute')
+        raise AttributeError("Class defined as generator has no generator_id attribute")
     dict_of_generators[arg.generator_id] = arg
     return arg
 
 
 def print_available_generators():
-    cout.cout_wrap('The available generators on this session are:', 2)
+    cout.cout_wrap("The available generators on this session are:", 2)
     for name, i_generator in dict_of_generators.items():
-        cout.cout_wrap('%s ' % i_generator.generator_id, 2)
+        cout.cout_wrap("%s " % i_generator.generator_id, 2)
 
 
 class BaseGenerator(metaclass=ABCMeta):
-    
     def teardown(self):
         pass
 
@@ -41,11 +40,13 @@ def generator_list_from_path(cwd):
     onlyfiles = [f for f in os.listdir(cwd) if os.path.isfile(os.path.join(cwd, f))]
 
     for i_file in range(len(onlyfiles)):
-        if onlyfiles[i_file].split('.')[-1] == 'py': # support autosaved files in the folder
+        if (
+            onlyfiles[i_file].split(".")[-1] == "py"
+        ):  # support autosaved files in the folder
             if onlyfiles[i_file] == "__init__.py":
                 onlyfiles[i_file] = ""
                 continue
-            onlyfiles[i_file] = onlyfiles[i_file].replace('.py', '')
+            onlyfiles[i_file] = onlyfiles[i_file].replace(".py", "")
         else:
             onlyfiles[i_file] = ""
 
@@ -55,20 +56,22 @@ def generator_list_from_path(cwd):
 
 def initialise_generator(generator_name, print_info=True):
     if print_info:
-        cout.cout_wrap('Generating an instance of %s' % generator_name, 2)
+        cout.cout_wrap("Generating an instance of %s" % generator_name, 2)
     cls_type = generator_from_string(generator_name)
     gen = cls_type()
     return gen
 
-def dictionary_of_generators(print_info=True):
 
+def dictionary_of_generators(print_info=True):
     import sharpy.generators
+
     dictionary = dict()
     for gen in dict_of_generators:
         init_gen = initialise_generator(gen, print_info)
         dictionary[gen] = init_gen.settings_default
 
     return dictionary
+
 
 def output_documentation(route=None):
     """
@@ -79,22 +82,23 @@ def output_documentation(route=None):
 
     """
     import sharpy.utils.sharpydir as sharpydir
+
     if route is None:
-        route = sharpydir.SharpyDir + '/docs/source/includes/generators/'
+        route = sharpydir.SharpyDir + "/docs/source/includes/generators/"
         if os.path.exists(route):
-            print('Cleaning %s' %route)
+            print("Cleaning %s" % route)
             shutil.rmtree(route)
-    print('Creating documentation files for generators in %s' % route)
+    print("Creating documentation files for generators in %s" % route)
 
     created_generators = dict()
 
     for k, v in dict_of_generators.items():
-        if k[0] == '_':
+        if k[0] == "_":
             continue
         generator_class = v()
         created_generators[k] = generator_class
 
-        filename = k + '.rst'
+        filename = k + ".rst"
         # try:
         #     solver_folder = solver.solver_classification.lower()
         # except AttributeError:
@@ -103,14 +107,19 @@ def output_documentation(route=None):
         # if solver_folder not in solver_types:
         #     solver_types.append(solver_folder)
 
-        os.makedirs(route + '/', exist_ok=True)
-        title = k + '\n'
-        title += len(k)*'-' + 2*'\n'
+        os.makedirs(route + "/", exist_ok=True)
+        title = k + "\n"
+        title += len(k) * "-" + 2 * "\n"
         if generator_class.__doc__ is not None:
-
-            print('\tCreating %s' % (route + '/' + filename))
-            autodoc_string = '\n\n.. autoclass:: sharpy.generators.' + k.lower() + '.'+ k + '\n\t:members:'
-            with open(route + '/' + filename, "w") as out_file:
+            print("\tCreating %s" % (route + "/" + filename))
+            autodoc_string = (
+                "\n\n.. autoclass:: sharpy.generators."
+                + k.lower()
+                + "."
+                + k
+                + "\n\t:members:"
+            )
+            with open(route + "/" + filename, "w") as out_file:
                 out_file.write(title + autodoc_string)
 
     # # Creates index files depending on the type of solver

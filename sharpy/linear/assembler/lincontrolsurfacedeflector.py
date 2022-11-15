@@ -26,7 +26,8 @@ class LinControlSurfaceDeflector(object):
     physical actuators.
 
     """
-    sys_id = 'LinControlSurfaceDeflector'
+
+    sys_id = "LinControlSurfaceDeflector"
 
     def __init__(self):
         # Has the back bone structure for a future actuator model
@@ -88,23 +89,30 @@ class LinControlSurfaceDeflector(object):
 
         Kdisp = np.zeros((3 * linuvlm.Kzeta, n_control_surfaces))
         Kvel = np.zeros((3 * linuvlm.Kzeta, n_control_surfaces))
-        zeta0 = np.concatenate([tsaero0.zeta[i_surf].reshape(-1, order='C') for i_surf in range(n_surf)])
+        zeta0 = np.concatenate(
+            [tsaero0.zeta[i_surf].reshape(-1, order="C") for i_surf in range(n_surf)]
+        )
 
         Cga = algebra.quat2rotation(tsstruct0.quat).T
         Cag = Cga.T
 
         # Initialise these parameters
         hinge_axis = None  # Will be set once per control surface to the hinge axis
-        with_control_surface = False  # Will be set to true if the spanwise node contains a control surface
+        with_control_surface = (
+            False  # Will be set to true if the spanwise node contains a control surface
+        )
 
         for global_node in range(structure.num_node):
-
             # Retrieve elements and local nodes to which a single node is attached
             for i_elem in range(structure.num_elem):
                 if global_node in structure.connectivities[i_elem, :]:
-                    i_local_node = np.where(structure.connectivities[i_elem, :] == global_node)[0][0]
+                    i_local_node = np.where(
+                        structure.connectivities[i_elem, :] == global_node
+                    )[0][0]
 
-                    for_delta = structure.frame_of_reference_delta[i_elem, i_local_node, :]
+                    for_delta = structure.frame_of_reference_delta[
+                        i_elem, i_local_node, :
+                    ]
 
                     # CRV to transform from G to B frame
                     psi = tsstruct0.psi[i_elem, i_local_node]
@@ -116,11 +124,16 @@ class LinControlSurfaceDeflector(object):
                     # Map onto aerodynamic coordinates. Some nodes may be part of two aerodynamic surfaces.
                     for structure2aero_node in aero.struct2aero_mapping[global_node]:
                         # Retrieve surface and span-wise coordinate
-                        i_surf, i_node_span = structure2aero_node['i_surf'], structure2aero_node['i_n']
+                        i_surf, i_node_span = (
+                            structure2aero_node["i_surf"],
+                            structure2aero_node["i_n"],
+                        )
 
                         # Although a node may be part of 2 aerodynamic surfaces, we need to ensure that the current
                         # element for the given node is indeed part of that surface.
-                        elems_in_surf = np.where(aero_dict['surface_distribution'] == i_surf)[0]
+                        elems_in_surf = np.where(
+                            aero_dict["surface_distribution"] == i_surf
+                        )[0]
                         if i_elem not in elems_in_surf:
                             continue
 
@@ -131,32 +144,57 @@ class LinControlSurfaceDeflector(object):
                         K_zeta_start = 3 * sum(linuvlm.MS.KKzeta[:i_surf])
                         shape_zeta = (3, M + 1, N + 1)
 
-                        i_control_surface = aero_dict['control_surface'][i_elem, i_local_node]
+                        i_control_surface = aero_dict["control_surface"][
+                            i_elem, i_local_node
+                        ]
                         if i_control_surface >= 0:
                             if not with_control_surface:
                                 i_start_of_cs = i_node_span.copy()
                                 with_control_surface = True
 
-                            control_surface_chord = aero_dict['control_surface_chord'][i_control_surface]
+                            control_surface_chord = aero_dict["control_surface_chord"][
+                                i_control_surface
+                            ]
 
                             try:
-                                control_surface_hinge_coord = \
-                                    aero_dict['control_surface_hinge_coord'][i_control_surface] * \
-                                    aero_dict['chord'][i_elem, i_local_node]
+                                control_surface_hinge_coord = (
+                                    aero_dict["control_surface_hinge_coord"][
+                                        i_control_surface
+                                    ]
+                                    * aero_dict["chord"][i_elem, i_local_node]
+                                )
                             except KeyError:
                                 control_surface_hinge_coord = None
 
                             i_node_hinge = M - control_surface_chord
-                            i_vertex_hinge = [K_zeta_start +
-                                              np.ravel_multi_index((i_axis, i_node_hinge, i_node_span), shape_zeta)
-                                              for i_axis in range(3)]
-                            i_vertex_next_hinge = [K_zeta_start +
-                                                   np.ravel_multi_index((i_axis, i_node_hinge, i_start_of_cs + 1),
-                                                                        shape_zeta) for i_axis in range(3)]
+                            i_vertex_hinge = [
+                                K_zeta_start
+                                + np.ravel_multi_index(
+                                    (i_axis, i_node_hinge, i_node_span), shape_zeta
+                                )
+                                for i_axis in range(3)
+                            ]
+                            i_vertex_next_hinge = [
+                                K_zeta_start
+                                + np.ravel_multi_index(
+                                    (i_axis, i_node_hinge, i_start_of_cs + 1),
+                                    shape_zeta,
+                                )
+                                for i_axis in range(3)
+                            ]
 
-                            if control_surface_hinge_coord is not None and M == control_surface_chord:  # fully articulated control surface
-                                zeta_hinge = Cgb.dot(Cba.dot(tsstruct0.pos[global_node]) + for_delta * np.array([0, control_surface_hinge_coord, 0]))
-                                zeta_next_hinge = Cgb.dot(Cbg.dot(zeta_hinge) + np.array([1, 0, 0]))  # parallel to the x_b vector
+                            if (
+                                control_surface_hinge_coord is not None
+                                and M == control_surface_chord
+                            ):  # fully articulated control surface
+                                zeta_hinge = Cgb.dot(
+                                    Cba.dot(tsstruct0.pos[global_node])
+                                    + for_delta
+                                    * np.array([0, control_surface_hinge_coord, 0])
+                                )
+                                zeta_next_hinge = Cgb.dot(
+                                    Cbg.dot(zeta_hinge) + np.array([1, 0, 0])
+                                )  # parallel to the x_b vector
                             else:
                                 zeta_hinge = zeta0[i_vertex_hinge]
                                 zeta_next_hinge = zeta0[i_vertex_next_hinge]
@@ -167,37 +205,45 @@ class LinControlSurfaceDeflector(object):
                                 hinge_axis = zeta_next_hinge - zeta_hinge
                                 hinge_axis = hinge_axis / np.linalg.norm(hinge_axis)
                             for i_node_chord in range(M + 1):
-                                i_vertex = [K_zeta_start +
-                                            np.ravel_multi_index((i_axis, i_node_chord, i_node_span), shape_zeta)
-                                            for i_axis in range(3)]
+                                i_vertex = [
+                                    K_zeta_start
+                                    + np.ravel_multi_index(
+                                        (i_axis, i_node_chord, i_node_span), shape_zeta
+                                    )
+                                    for i_axis in range(3)
+                                ]
 
                                 if i_node_chord >= i_node_hinge:
                                     # Zeta in G frame
                                     zeta_node = zeta0[i_vertex]  # Gframe
-                                    chord_vec = (zeta_node - zeta_hinge)
+                                    chord_vec = zeta_node - zeta_hinge
 
                                     if self.print_info:
-                                        print(f'i_node = {global_node}')
-                                        print(f'i_node_chord = {i_node_chord}')
-                                        print(f'zeta_node = {zeta_node}')
-                                        print(f'chord_vec = {chord_vec}')
-                                        print(f'zeta_hinge = {zeta_hinge}')
-                                        print(f'zeta_next_hinge = {zeta_next_hinge}')
-                                        print(f'hinge_axis = {hinge_axis}')
+                                        print(f"i_node = {global_node}")
+                                        print(f"i_node_chord = {i_node_chord}")
+                                        print(f"zeta_node = {zeta_node}")
+                                        print(f"chord_vec = {chord_vec}")
+                                        print(f"zeta_hinge = {zeta_hinge}")
+                                        print(f"zeta_next_hinge = {zeta_next_hinge}")
+                                        print(f"hinge_axis = {hinge_axis}")
 
                                     # Flap displacement
-                                    Kdisp[i_vertex, i_control_surface] = \
-                                        der_R_arbitrary_axis_times_v(hinge_axis, 0, chord_vec)
+                                    Kdisp[
+                                        i_vertex, i_control_surface
+                                    ] = der_R_arbitrary_axis_times_v(
+                                        hinge_axis, 0, chord_vec
+                                    )
 
                                     # Flap velocity
-                                    Kvel[i_vertex, i_control_surface] = -algebra.skew(chord_vec).dot(
-                                        hinge_axis)
+                                    Kvel[i_vertex, i_control_surface] = -algebra.skew(
+                                        chord_vec
+                                    ).dot(hinge_axis)
 
                                     if self.print_info:
-                                        print('Matrix entries:')
-                                        print('Kdisp:')
+                                        print("Matrix entries:")
+                                        print("Kdisp:")
                                         print(Kdisp[i_vertex, i_control_surface])
-                                        print('Kvel:')
+                                        print("Kvel:")
                                         print(Kvel[i_vertex, i_control_surface])
 
                         else:
@@ -224,27 +270,34 @@ class LinControlSurfaceDeflector(object):
         n_zeta, n_ctrl_sfc = Kzeta_delta.shape
 
         if type(ss.A) is libsp.csc_matrix:
-            gain_cs = sp.eye(ss.inputs, ss.inputs + 2 * self.n_control_surfaces,
-                             format='lil')
-            gain_cs[:n_zeta, ss.inputs: ss.inputs + n_ctrl_sfc] = Kzeta_delta
-            gain_cs[n_zeta: 2*n_zeta, ss.inputs + n_ctrl_sfc: ss.inputs + 2 * n_ctrl_sfc] = Kdzeta_ddelta
+            gain_cs = sp.eye(
+                ss.inputs, ss.inputs + 2 * self.n_control_surfaces, format="lil"
+            )
+            gain_cs[:n_zeta, ss.inputs : ss.inputs + n_ctrl_sfc] = Kzeta_delta
+            gain_cs[
+                n_zeta : 2 * n_zeta, ss.inputs + n_ctrl_sfc : ss.inputs + 2 * n_ctrl_sfc
+            ] = Kdzeta_ddelta
             gain_cs = libsp.csc_matrix(gain_cs)
         else:
             gain_cs = np.eye(ss.inputs, ss.inputs + 2 * self.n_control_surfaces)
-            gain_cs[:n_zeta, ss.inputs: ss.inputs + n_ctrl_sfc] = Kzeta_delta
-            gain_cs[n_zeta: 2*n_zeta, ss.inputs + n_ctrl_sfc: ss.inputs + 2 * n_ctrl_sfc] = Kdzeta_ddelta
+            gain_cs[:n_zeta, ss.inputs : ss.inputs + n_ctrl_sfc] = Kzeta_delta
+            gain_cs[
+                n_zeta : 2 * n_zeta, ss.inputs + n_ctrl_sfc : ss.inputs + 2 * n_ctrl_sfc
+            ] = Kdzeta_ddelta
 
         control_surface_gain = libss.Gain(gain_cs)
         in_vars = ss.input_variables.copy()
-        in_vars.append('control_surface_deflection', size=n_ctrl_sfc)
-        in_vars.append('dot_control_surface_deflection', size=n_ctrl_sfc)
+        in_vars.append("control_surface_deflection", size=n_ctrl_sfc)
+        in_vars.append("dot_control_surface_deflection", size=n_ctrl_sfc)
         control_surface_gain.input_variables = in_vars
-        control_surface_gain.output_variables = ss_interface.LinearVector.transform(ss.input_variables,
-                                                                                    to_type=ss_interface.OutputVariable)
+        control_surface_gain.output_variables = ss_interface.LinearVector.transform(
+            ss.input_variables, to_type=ss_interface.OutputVariable
+        )
 
         self.gain_cs = control_surface_gain
 
         return ss
+
     # def generator():
     # future feature idea: instead of defining the inputs for the time domain simulations as the whole input vector
     # etc, we could add a generate() method to these systems that can be called from the LinDynamicSim to apply
@@ -258,12 +311,13 @@ def der_Cx_by_v(delta, v):
     v3 = v[2]
     return np.array([0, -v2 * sd - v3 * cd, v2 * cd - v3 * sd])
 
+
 def der_Cy_by_v(delta, v):
     s = np.sin(delta)
     c = np.cos(delta)
     v1 = v[0]
     v3 = v[2]
-    return np.array([-s*v1 + v*v3, 0, -c*v1 - s*v3])
+    return np.array([-s * v1 + v * v3, 0, -c * v1 - s * v3])
 
 
 def der_R_arbitrary_axis_times_v(u, theta, v):
@@ -330,22 +384,21 @@ def der_R_arbitrary_axis_times_v(u, theta, v):
     ux, uy, uz = u
     v1, v2, v3 = v
 
-    dR11 = -s + ux ** 2 * s
+    dR11 = -s + ux**2 * s
     dR12 = ux * uy * s - uz * c
     dR13 = ux * uz * s + uy * c
 
     dR21 = uy * ux * s + uz * c
-    dR22 = -s + uy ** 2 * s
+    dR22 = -s + uy**2 * s
     dR23 = uy * uz * s - ux * c
 
     dR31 = uz * ux * s - uy * c
     dR32 = uz * uy * s + ux * c
-    dR33 = -s + uz ** 2
+    dR33 = -s + uz**2
 
-    dRv = np.zeros((3, ))
+    dRv = np.zeros((3,))
     dRv[0] = dR11 * v1 + dR12 * v2 + dR13 * v3
     dRv[1] = dR21 * v1 + dR22 * v2 + dR23 * v3
     dRv[2] = dR31 * v1 + dR32 * v2 + dR33 * v3
 
     return dRv
-

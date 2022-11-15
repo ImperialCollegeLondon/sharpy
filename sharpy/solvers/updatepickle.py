@@ -5,17 +5,18 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 
 @solver
 class UpdatePickle(BaseSolver):
-    """
+    """ """
 
-    """
-    solver_id = 'UpdatePickle'
+    solver_id = "UpdatePickle"
 
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
 
     settings_table = settings_utils.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(
+        settings_types, settings_default, settings_description
+    )
 
     def __init__(self):
         self.data = None
@@ -27,13 +28,11 @@ class UpdatePickle(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings_utils.to_custom_types(self.settings,
-                           self.settings_types,
-                           self.settings_default,
-                           no_ctype=True)
+        settings_utils.to_custom_types(
+            self.settings, self.settings_types, self.settings_default, no_ctype=True
+        )
 
     def run(self, **kwargs):
-
         for sts in self.data.structure.timestep_info:
             if sts is not None:
                 sts.in_global_AFoR = True
@@ -44,4 +43,3 @@ class UpdatePickle(BaseSolver):
                 sts.mb_dquatdt = np.zeros_like(sts.mb_quat)
 
         return self.data
-

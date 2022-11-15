@@ -33,7 +33,7 @@ def biot_segment(zetaP, zetaA, zetaB, vortex_radius, gamma=1.0):
     Induced velocity of segment A_>B of circulation gamma over point P.
     """
 
-    vortex_radius_sq = vortex_radius*vortex_radius
+    vortex_radius_sq = vortex_radius * vortex_radius
     # differences
     ra = zetaP - zetaA
     rb = zetaP - zetaB
@@ -46,8 +46,10 @@ def biot_segment(zetaP, zetaA, zetaB, vortex_radius, gamma=1.0):
     if vcross_sq < (vortex_radius_sq * algebra.normsq3d(rab)):
         return np.zeros((3,))
 
-    q = ((cfact_biot * gamma / vcross_sq) * \
-         (np.dot(rab, ra) / ra_norm - np.dot(rab, rb) / rb_norm)) * vcross
+    q = (
+        (cfact_biot * gamma / vcross_sq)
+        * (np.dot(rab, ra) / ra_norm - np.dot(rab, rb) / rb_norm)
+    ) * vcross
 
     return q
 
@@ -61,8 +63,9 @@ def biot_panel(zetaC, ZetaPanel, vortex_radius, gamma=1.0):
 
     q = np.zeros((3,))
     for ss, aa, bb in zip(svec, avec, bvec):
-        q += biot_segment(zetaC, ZetaPanel[aa, :], ZetaPanel[bb, :],
-                          vortex_radius, gamma)
+        q += biot_segment(
+            zetaC, ZetaPanel[aa, :], ZetaPanel[bb, :], vortex_radius, gamma
+        )
 
     return q
 
@@ -74,7 +77,7 @@ def biot_panel_fast(zetaC, ZetaPanel, vortex_radius, gamma=1.0):
         ZetaPanel.shape=(4,3)=[vertex local number, (x,y,z) component]
     """
 
-    vortex_radius_sq = vortex_radius*vortex_radius
+    vortex_radius_sq = vortex_radius * vortex_radius
     Cfact = cfact_biot * gamma
     q = np.zeros((3,))
 
@@ -82,7 +85,6 @@ def biot_panel_fast(zetaC, ZetaPanel, vortex_radius, gamma=1.0):
     Runit_list = [R_list[ii] / algebra.norm3d(R_list[ii]) for ii in svec]
 
     for aa, bb in LoopPanel:
-
         RAB = ZetaPanel[bb, :] - ZetaPanel[aa, :]  # segment vector
         Vcr = algebra.cross3(R_list[aa], R_list[bb])
         vcr2 = np.dot(Vcr, Vcr)
@@ -134,17 +136,19 @@ def panel_area(ZetaPanel):
     d23 = algebra.norm3d(r23)
     d30 = algebra.norm3d(r30)
 
-    A = 0.25 * np.sqrt((4. * d02 ** 2 * d13 ** 2) - ((d12 ** 2 + d30 ** 2) - (d01 ** 2 + d23 ** 2)) ** 2)
+    A = 0.25 * np.sqrt(
+        (4.0 * d02**2 * d13**2)
+        - ((d12**2 + d30**2) - (d01**2 + d23**2)) ** 2
+    )
 
     return A
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     import cProfile
 
     ### verify consistency amongst models
-    gamma = 4.
+    gamma = 4.0
     zeta0 = np.array([1.0, 3.0, 0.9])
     zeta1 = np.array([5.0, 3.1, 1.9])
     zeta2 = np.array([4.8, 8.1, 2.5])
@@ -155,37 +159,33 @@ if __name__ == '__main__':
     zetaP = zeta2 * 0.3 + zeta3 * 0.7
 
     ### verify model consistency
-    qref = biot_panel(zetaP, ZetaPanel, 1e-6, gamma=gamma) # vortex_radius
-    qfast = biot_panel_fast(zetaP, ZetaPanel, 1e-6, gamma=gamma) # vortex_radius
-    qcpp = uvlmlib.biot_panel_cpp(zetaP, ZetaPanel, 1e-6, gamma=gamma) # vortex_radius
+    qref = biot_panel(zetaP, ZetaPanel, 1e-6, gamma=gamma)  # vortex_radius
+    qfast = biot_panel_fast(zetaP, ZetaPanel, 1e-6, gamma=gamma)  # vortex_radius
+    qcpp = uvlmlib.biot_panel_cpp(zetaP, ZetaPanel, 1e-6, gamma=gamma)  # vortex_radius
 
     ermax = np.max(np.abs(qref - qfast))
-    assert ermax < 1e-16, 'biot_panel_fast not matching with biot_panel'
+    assert ermax < 1e-16, "biot_panel_fast not matching with biot_panel"
     ermax = np.max(np.abs(qref - qcpp))
-    assert ermax < 1e-16, 'biot_panel_cpp not matching with biot_panel'
-
+    assert ermax < 1e-16, "biot_panel_cpp not matching with biot_panel"
 
     ### profiling
     def run_biot_panel_cpp():
         for ii in range(10000):
-            uvlmlib.biot_panel_cpp(zetaP, ZetaPanel, 1e-6, gamma=3.) # vortex_radius
-
+            uvlmlib.biot_panel_cpp(zetaP, ZetaPanel, 1e-6, gamma=3.0)  # vortex_radius
 
     def run_biot_panel_fast():
         for ii in range(10000):
-            biot_panel_fast(zetaP, ZetaPanel, 1e-6, gamma=3.) # vortex_radius
-
+            biot_panel_fast(zetaP, ZetaPanel, 1e-6, gamma=3.0)  # vortex_radius
 
     def run_biot_panel_ref():
         for ii in range(10000):
-            biot_panel(zetaP, ZetaPanel, 1e-6, gamma=3.) # vortex_radius
+            biot_panel(zetaP, ZetaPanel, 1e-6, gamma=3.0)  # vortex_radius
 
+    print("------------------------------------------ profiling biot_panel_cpp")
+    cProfile.runctx("run_biot_panel_cpp()", globals(), locals())
 
-    print('------------------------------------------ profiling biot_panel_cpp')
-    cProfile.runctx('run_biot_panel_cpp()', globals(), locals())
+    print("----------------------------------------- profiling biot_panel_fast")
+    cProfile.runctx("run_biot_panel_fast()", globals(), locals())
 
-    print('----------------------------------------- profiling biot_panel_fast')
-    cProfile.runctx('run_biot_panel_fast()', globals(), locals())
-
-    print('------------------------------------------ profiling biot_panel_ref')
-    cProfile.runctx('run_biot_panel_ref()', globals(), locals())
+    print("------------------------------------------ profiling biot_panel_ref")
+    cProfile.runctx("run_biot_panel_ref()", globals(), locals())

@@ -10,13 +10,13 @@ features different wake modelling fidelities while supporting large lifting surf
 
 Among the problems studied, a few interesting ones, in no particular order are:
 
-* Catapult take off of a very flexible aircraft analysis [\[Paper\]](https://arc.aiaa.org/doi/abs/10.2514/6.2019-2038). 
+* Catapult take off of a very flexible aircraft analysis [\[Paper\]](https://arc.aiaa.org/doi/abs/10.2514/6.2019-2038).
 In this type of simulations, a PID controller was used in order to enforce displacements and velocities in a number of
 structural nodes (the clamping points). Then, several take off strategies were studied in order to analyse the influence
 of the structural stiffness in this kind of procedures. This case is a very good example of the type of problems where
 nonlinear aeroelasticity is essential.
- 
-![_Catapult Takeoff of Flexible Aircraft_](../_static/capabilities/hale_cruise.png) 
+
+![_Catapult Takeoff of Flexible Aircraft_](../_static/capabilities/hale_cruise.png)
 
 * Flight in full 3D atmospheric boundary layer (to be published). A very flexible aircraft is flown immersed in a
 turbulent boundary layer obtained from HPC LES simulations. The results are compared against simpler turbulence models
@@ -33,7 +33,7 @@ aeroelastic solver for static and dynamic cases. A set of vertical and lateral g
 
 ## Wind turbine aeroelasticity
 
-SHARPy is suitable to simulate wind turbine aeroelasticity. 
+SHARPy is suitable to simulate wind turbine aeroelasticity.
 
 On the structural side, it accounts for material anisotropy which is needed to characterize composite blades and for
 geometrically non-linear deformations observed in current blades due to the increasing length and flexibility. Both
@@ -61,9 +61,9 @@ SHARPy offers several model order reduction methods to reduce the initially larg
 attending to the user's requirements of numerical efficiency or global error bound.
 
 ### Krylov Methods for Model Order Reduction - Moment Matching
-Model reduction by moment matching can be seen as approximating a transfer function through a power series expansion 
-about a user defined point in the complex plane. The reduction by projection retains the moments between the full and 
-reduced systems as long as the projection matrices span certain Krylov subspaces dependant on the expansion point and 
+Model reduction by moment matching can be seen as approximating a transfer function through a power series expansion
+about a user defined point in the complex plane. The reduction by projection retains the moments between the full and
+reduced systems as long as the projection matrices span certain Krylov subspaces dependant on the expansion point and
 the system's matrices.
 This can be taken advantage of,
 in particular for aeroelastic applications where the interest resides in the low frequency behaviour of the system,

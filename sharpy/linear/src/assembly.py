@@ -34,7 +34,7 @@ avec = [0, 1, 2, 3]  # 1st vertex no.
 bvec = [1, 2, 3, 0]  # 2nd vertex no.
 
 
-def AICs(Surfs, Surfs_star, target='collocation', Project=True):
+def AICs(Surfs, Surfs_star, target="collocation", Project=True):
     """
     Given a list of bound (Surfs) and wake (Surfs_star) instances of
     surface.AeroGridSurface, returns the list of AIC matrices in the format:
@@ -48,8 +48,7 @@ def AICs(Surfs, Surfs_star, target='collocation', Project=True):
     AIC_star_list = []
 
     n_surf = len(Surfs)
-    assert len(Surfs_star) == n_surf, \
-        'Number of bound and wake surfaces much be equal'
+    assert len(Surfs_star) == n_surf, "Number of bound and wake surfaces much be equal"
 
     for ss_out in range(n_surf):
         AIC_list_here = []
@@ -59,12 +58,14 @@ def AICs(Surfs, Surfs_star, target='collocation', Project=True):
         for ss_in in range(n_surf):
             # Bound surface
             Surf_in = Surfs[ss_in]
-            AIC_list_here.append(Surf_in.get_aic_over_surface(
-                Surf_out, target=target, Project=Project))
+            AIC_list_here.append(
+                Surf_in.get_aic_over_surface(Surf_out, target=target, Project=Project)
+            )
             # Wakes
             Surf_in = Surfs_star[ss_in]
-            AIC_star_list_here.append(Surf_in.get_aic_over_surface(
-                Surf_out, target=target, Project=Project))
+            AIC_star_list_here.append(
+                Surf_in.get_aic_over_surface(Surf_out, target=target, Project=Project)
+            )
         AIC_list.append(AIC_list_here)
         AIC_star_list.append(AIC_star_list_here)
 
@@ -94,7 +95,7 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in, Surf_out, Der_coll, Der_vert, Surf_in_bound
     """
 
     # calc collocation points (and weights)
-    if not hasattr(Surf_out, 'zetac'):
+    if not hasattr(Surf_out, "zetac"):
         Surf_out.generate_collocations()
     ZetaColl = Surf_out.zetac
     wcv_out = Surf_out.get_panel_wcv()
@@ -106,9 +107,9 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in, Surf_out, Der_coll, Der_vert, Surf_in_bound
     K_in = Surf_in.maps.K
     Kzeta_in = Surf_in.maps.Kzeta
 
-    assert Der_coll.shape == (K_out, 3 * Kzeta_out), 'Unexpected Der_coll shape'
+    assert Der_coll.shape == (K_out, 3 * Kzeta_out), "Unexpected Der_coll shape"
     if Surf_in_bound:
-        assert Der_vert.shape == (K_out, 3 * Kzeta_in), 'Unexpected Der_vert shape'
+        assert Der_vert.shape == (K_out, 3 * Kzeta_in), "Unexpected Der_vert shape"
     else:
         # determine size of bound surface of which Surf_in is the wake
         Kzeta_bound_in = Der_vert.shape[1] // 3
@@ -121,7 +122,6 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in, Surf_out, Der_coll, Der_vert, Surf_in_bound
 
     ##### loop collocation points
     for cc_out in range(K_out):
-
         # get (m,n) indices of collocation point
         mm_out = Surf_out.maps.ind_2d_pan_scal[0][cc_out]
         nn_out = Surf_out.maps.ind_2d_pan_scal[1][cc_out]
@@ -132,14 +132,20 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in, Surf_out, Der_coll, Der_vert, Surf_in_bound
 
         # get derivative of induced velocity w.r.t. zetac
         if Surf_in_bound:
-            dvind_coll, dvind_vert = dvinddzeta_cpp(zetac_here, Surf_in,
-                                                    is_bound=Surf_in_bound,
-                                                    vortex_radius=Surf_in.vortex_radius)
+            dvind_coll, dvind_vert = dvinddzeta_cpp(
+                zetac_here,
+                Surf_in,
+                is_bound=Surf_in_bound,
+                vortex_radius=Surf_in.vortex_radius,
+            )
         else:
-            dvind_coll, dvind_vert = dvinddzeta_cpp(zetac_here, Surf_in,
-                                                    is_bound=Surf_in_bound,
-                                                    vortex_radius=Surf_in.vortex_radius,
-                                                    M_in_bound=M_bound_in)
+            dvind_coll, dvind_vert = dvinddzeta_cpp(
+                zetac_here,
+                Surf_in,
+                is_bound=Surf_in_bound,
+                vortex_radius=Surf_in.vortex_radius,
+                M_in_bound=M_bound_in,
+            )
 
         ### Surf_in vertices contribution
         Der_vert[cc_out, :] += np.dot(nc_here, dvind_vert)
@@ -151,8 +157,10 @@ def nc_dqcdzeta_Sin_to_Sout(Surf_in, Surf_out, Der_coll, Der_vert, Surf_in_bound
         # loop panel vertices
         for vv, dm, dn in zip(range(4), dmver, dnver):
             mm_v, nn_v = mm_out + dm, nn_out + dn
-            ii_v = [np.ravel_multi_index(
-                (cc, mm_v, nn_v), shape_zeta_out) for cc in range(3)]
+            ii_v = [
+                np.ravel_multi_index((cc, mm_v, nn_v), shape_zeta_out)
+                for cc in range(3)
+            ]
             Der_coll[cc_out, ii_v] += wcv_out[vv] * dvindnorm_coll
 
     return Der_coll, Der_vert
@@ -185,15 +193,13 @@ def nc_dqcdzeta(Surfs, Surfs_star, Merge=False):
     """
 
     n_surf = len(Surfs)
-    assert len(Surfs_star) == n_surf, \
-        'Number of bound and wake surfaces much be equal'
+    assert len(Surfs_star) == n_surf, "Number of bound and wake surfaces much be equal"
 
     DAICcoll = []
     DAICvert = []
 
     ### loop output (bound) surfaces
     for ss_out in range(n_surf):
-
         # define output bound surface size
         Surf_out = Surfs[ss_out]
         K_out = Surf_out.maps.K
@@ -215,12 +221,14 @@ def nc_dqcdzeta(Surfs, Surfs_star, Merge=False):
             # compute terms
             Dvert = np.zeros((K_out, 3 * Kzeta_in))
             Dcoll, Dvert = nc_dqcdzeta_Sin_to_Sout(
-                Surf_in, Surf_out, Dcoll, Dvert, Surf_in_bound=True)
+                Surf_in, Surf_out, Dcoll, Dvert, Surf_in_bound=True
+            )
 
             ##### wake:
             Surf_in = Surfs_star[ss_in]
             Dcoll, Dvert = nc_dqcdzeta_Sin_to_Sout(
-                Surf_in, Surf_out, Dcoll, Dvert, Surf_in_bound=False)
+                Surf_in, Surf_out, Dcoll, Dvert, Surf_in_bound=False
+            )
             DAICvert_sub.append(Dvert)
 
         if Merge:
@@ -237,6 +245,7 @@ def nc_dqcdzeta(Surfs, Surfs_star, Merge=False):
 
 
 # end
+
 
 def nc_domegazetadzeta(Surfs, Surfs_star):
     """
@@ -260,7 +269,6 @@ def nc_domegazetadzeta(Surfs, Surfs_star):
 
     ### loop output (bound) surfaces
     for ss in range(n_surf):
-
         # define output bound surface size
         Surf = Surfs[ss]
         skew_omega = algebra.skew(Surf.omega)
@@ -274,7 +282,6 @@ def nc_domegazetadzeta(Surfs, Surfs_star):
 
         ##### loop collocation points
         for cc in range(K):
-
             # get (m,n) indices of collocation point
             mm = Surf.maps.ind_2d_pan_scal[0][cc]
             nn = Surf.maps.ind_2d_pan_scal[1][cc]
@@ -282,13 +289,15 @@ def nc_domegazetadzeta(Surfs, Surfs_star):
             # get normal
             nc_here = Surf.normals[:, mm, nn]
 
-            nc_skew_omega = -1. * np.dot(nc_here, skew_omega)
+            nc_skew_omega = -1.0 * np.dot(nc_here, skew_omega)
 
             # loop panel vertices
             for vv, dm, dn in zip(range(4), dmver, dnver):
                 mm_v, nn_v = mm + dm, nn + dn
-                ii_v = [np.ravel_multi_index(
-                    (comp, mm_v, nn_v), shape_zeta) for comp in range(3)]
+                ii_v = [
+                    np.ravel_multi_index((comp, mm_v, nn_v), shape_zeta)
+                    for comp in range(3)
+                ]
 
                 ncDvert[cc, ii_v] += nc_skew_omega
 
@@ -321,18 +330,19 @@ def uc_dncdzeta(Surf):
             DerList.append(uc_dncdzeta(Surf[ss]))
         return DerList
     else:
-        if (not hasattr(Surf, 'u_ind_coll')) or (Surf.u_input_coll is None):
+        if (not hasattr(Surf, "u_ind_coll")) or (Surf.u_input_coll is None):
             raise NameError(
-                'Surf does not have the required attributes\nu_ind_coll\nu_input_coll')
+                "Surf does not have the required attributes\nu_ind_coll\nu_input_coll"
+            )
 
     Map = Surf.maps
     K, Kzeta = Map.K, Map.Kzeta
     Der = np.zeros((K, 3 * Kzeta))
 
     # map panel to vertice
-    if not hasattr(Map.Mpv, 'Mpv1d_scalar'):
+    if not hasattr(Map.Mpv, "Mpv1d_scalar"):
         Map.map_panels_to_vertices_1D_scalar()
-    if not hasattr(Map.Mpv, 'Mpv'):
+    if not hasattr(Map.Mpv, "Mpv"):
         Map.map_panels_to_vertices()
 
     # map u_normal 2d to 1d
@@ -341,12 +351,12 @@ def uc_dncdzeta(Surf):
     # for ii in range(K):
 
     for ii in Map.ind_1d_pan_scal:
-
         # panel m,n coordinates
         m_pan, n_pan = Map.ind_2d_pan_scal[0][ii], Map.ind_2d_pan_scal[1][ii]
         # extract u_input_coll
-        u_tot_coll_here = \
+        u_tot_coll_here = (
             Surf.u_input_coll[:, m_pan, n_pan] + Surf.u_ind_coll[:, m_pan, n_pan]
+        )
 
         # find vertices
         mpv = Map.Mpv[m_pan, n_pan, :, :]
@@ -384,17 +394,15 @@ def dfqsdgamma_vrel0(Surfs, Surfs_star):
     Der_star_list = []
 
     n_surf = len(Surfs)
-    assert len(Surfs_star) == n_surf, \
-        'Number of bound and wake surfaces much be equal'
+    assert len(Surfs_star) == n_surf, "Number of bound and wake surfaces much be equal"
 
     for ss in range(n_surf):
-
         Surf = Surfs[ss]
-        if not hasattr(Surf, 'u_ind_seg'):
-            raise NameError('Induced velocities at segments missing')
+        if not hasattr(Surf, "u_ind_seg"):
+            raise NameError("Induced velocities at segments missing")
         if Surf.u_input_seg is None:
-            raise NameError('Input velocities at segments missing')
-        if not hasattr(Surf, 'fqs_seg'):
+            raise NameError("Input velocities at segments missing")
+        if not hasattr(Surf, "fqs_seg"):
             Surf.get_joukovski_qs(gammaw_TE=Surfs_star[ss].gamma[0, :])
 
         M, N = Surf.maps.M, Surf.maps.N
@@ -427,10 +435,12 @@ def dfqsdgamma_vrel0(Surfs, Surfs_star):
                 mm_b, nn_b = mm_in + dmver[bb], nn_in + dnver[bb]
 
                 # get vertices 1d index
-                ii_a = [np.ravel_multi_index(
-                    (cc, mm_a, nn_a), shape_fqs) for cc in range(3)]
-                ii_b = [np.ravel_multi_index(
-                    (cc, mm_b, nn_b), shape_fqs) for cc in range(3)]
+                ii_a = [
+                    np.ravel_multi_index((cc, mm_a, nn_a), shape_fqs) for cc in range(3)
+                ]
+                ii_b = [
+                    np.ravel_multi_index((cc, mm_b, nn_b), shape_fqs) for cc in range(3)
+                ]
                 Der[ii_a, pp_in] += df
                 Der[ii_b, pp_in] += df
 
@@ -445,8 +455,7 @@ def dfqsdgamma_vrel0(Surfs, Surfs_star):
 
         Der_star = np.zeros((3 * Kzeta, K_star))
 
-        assert N == N_star, \
-            'trying to associate wrong wake to current bound surface!'
+        assert N == N_star, "trying to associate wrong wake to current bound surface!"
 
         # loop bound panels
         for nn_in in range(N):
@@ -459,10 +468,12 @@ def dfqsdgamma_vrel0(Surfs, Surfs_star):
             mm_b, nn_b = M, nn_in + dnver[bb]
 
             # get vertices 1d index
-            ii_a = [np.ravel_multi_index(
-                (cc, mm_a, nn_a), shape_fqs) for cc in range(3)]
-            ii_b = [np.ravel_multi_index(
-                (cc, mm_b, nn_b), shape_fqs) for cc in range(3)]
+            ii_a = [
+                np.ravel_multi_index((cc, mm_a, nn_a), shape_fqs) for cc in range(3)
+            ]
+            ii_b = [
+                np.ravel_multi_index((cc, mm_b, nn_b), shape_fqs) for cc in range(3)
+            ]
             Der_star[ii_a, pp_in] += df
             Der_star[ii_b, pp_in] += df
 
@@ -481,16 +492,14 @@ def dfqsdzeta_vrel0(Surfs, Surfs_star):
 
     Der_list = []
     n_surf = len(Surfs)
-    assert len(Surfs_star) == n_surf, \
-        'Number of bound and wake surfaces much be equal'
+    assert len(Surfs_star) == n_surf, "Number of bound and wake surfaces much be equal"
 
     for ss in range(n_surf):
-
         Surf = Surfs[ss]
-        if not hasattr(Surf, 'u_ind_seg'):
-            raise NameError('Induced velocities at segments missing')
+        if not hasattr(Surf, "u_ind_seg"):
+            raise NameError("Induced velocities at segments missing")
         if Surf.u_input_seg is None:
-            raise NameError('Input velocities at segments missing')
+            raise NameError("Input velocities at segments missing")
 
         M, N = Surf.maps.M, Surf.maps.N
         K = Surf.maps.K
@@ -507,19 +516,25 @@ def dfqsdzeta_vrel0(Surfs, Surfs_star):
             nn_in = Surf.maps.ind_2d_pan_scal[1][pp_in]
 
             for ll, aa, bb in zip(svec, avec, bvec):
-                vrel_seg = (Surf.u_input_seg[:, ll, mm_in, nn_in] +
-                            Surf.u_ind_seg[:, ll, mm_in, nn_in])
-                Df = algebra.skew((0.5 * Surf.rho * Surf.gamma[mm_in, nn_in]) * vrel_seg)
+                vrel_seg = (
+                    Surf.u_input_seg[:, ll, mm_in, nn_in]
+                    + Surf.u_ind_seg[:, ll, mm_in, nn_in]
+                )
+                Df = algebra.skew(
+                    (0.5 * Surf.rho * Surf.gamma[mm_in, nn_in]) * vrel_seg
+                )
 
                 # get vertices m,n indices
                 mm_a, nn_a = mm_in + dmver[aa], nn_in + dnver[aa]
                 mm_b, nn_b = mm_in + dmver[bb], nn_in + dnver[bb]
 
                 # get vertices 1d index
-                ii_a = [np.ravel_multi_index(
-                    (cc, mm_a, nn_a), shape_fqs) for cc in range(3)]
-                ii_b = [np.ravel_multi_index(
-                    (cc, mm_b, nn_b), shape_fqs) for cc in range(3)]
+                ii_a = [
+                    np.ravel_multi_index((cc, mm_a, nn_a), shape_fqs) for cc in range(3)
+                ]
+                ii_b = [
+                    np.ravel_multi_index((cc, mm_b, nn_b), shape_fqs) for cc in range(3)
+                ]
                 Der[np.ix_(ii_a, ii_a)] += -Df
                 Der[np.ix_(ii_b, ii_a)] += -Df
                 Der[np.ix_(ii_a, ii_b)] += Df
@@ -534,18 +549,20 @@ def dfqsdzeta_vrel0(Surfs, Surfs_star):
         # - using orientation of wake panel
         for nn_in in range(N):
             # get velocity at seg.3 of wake TE
-            vrel_seg = (Surf.u_input_seg[:, 1, M - 1, nn_in] + Surf.u_ind_seg[:, 1, M - 1, nn_in])
+            vrel_seg = (
+                Surf.u_input_seg[:, 1, M - 1, nn_in]
+                + Surf.u_ind_seg[:, 1, M - 1, nn_in]
+            )
             Df = Df = algebra.skew(
-                (0.5 * Surfs_star[ss].rho * Surfs_star[ss].gamma[0, nn_in]) * vrel_seg)
+                (0.5 * Surfs_star[ss].rho * Surfs_star[ss].gamma[0, nn_in]) * vrel_seg
+            )
 
             # get TE bound vertices m,n indices
             nn_a = nn_in + dnver[2]
             nn_b = nn_in + dnver[1]
             # get vertices 1d index on bound
-            ii_a = [np.ravel_multi_index(
-                (cc, M, nn_a), shape_fqs) for cc in range(3)]
-            ii_b = [np.ravel_multi_index(
-                (cc, M, nn_b), shape_fqs) for cc in range(3)]
+            ii_a = [np.ravel_multi_index((cc, M, nn_a), shape_fqs) for cc in range(3)]
+            ii_b = [np.ravel_multi_index((cc, M, nn_b), shape_fqs) for cc in range(3)]
 
             Der[np.ix_(ii_a, ii_a)] += -Df
             Der[np.ix_(ii_b, ii_a)] += -Df
@@ -563,14 +580,12 @@ def dfqsduinput(Surfs, Surfs_star):
 
     Der_list = []
     n_surf = len(Surfs)
-    assert len(Surfs_star) == n_surf, \
-        'Number of bound and wake surfaces much be equal'
+    assert len(Surfs_star) == n_surf, "Number of bound and wake surfaces much be equal"
 
     for ss in range(n_surf):
-
         Surf = Surfs[ss]
         if Surf.u_input_seg is None:
-            raise NameError('Input velocities at segments missing')
+            raise NameError("Input velocities at segments missing")
 
         M, N = Surf.maps.M, Surf.maps.N
         K = Surf.maps.K
@@ -588,8 +603,11 @@ def dfqsduinput(Surfs, Surfs_star):
 
             # get panel vertices
             # zetav_here=Surf.get_panel_vertices_coords(mm_in,nn_in)
-            zetav_here = Surf.zeta[:, [mm_in + 0, mm_in + 1, mm_in + 1, mm_in + 0],
-                         [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1]].T
+            zetav_here = Surf.zeta[
+                :,
+                [mm_in + 0, mm_in + 1, mm_in + 1, mm_in + 0],
+                [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1],
+            ].T
 
             for ll, aa, bb in zip(svec, avec, bvec):
                 # get segment
@@ -601,10 +619,12 @@ def dfqsduinput(Surfs, Surfs_star):
                 mm_b, nn_b = mm_in + dmver[bb], nn_in + dnver[bb]
 
                 # get vertices 1d index
-                ii_a = [np.ravel_multi_index(
-                    (cc, mm_a, nn_a), shape_fqs) for cc in range(3)]
-                ii_b = [np.ravel_multi_index(
-                    (cc, mm_b, nn_b), shape_fqs) for cc in range(3)]
+                ii_a = [
+                    np.ravel_multi_index((cc, mm_a, nn_a), shape_fqs) for cc in range(3)
+                ]
+                ii_b = [
+                    np.ravel_multi_index((cc, mm_b, nn_b), shape_fqs) for cc in range(3)
+                ]
                 Der[np.ix_(ii_a, ii_a)] += Df
                 Der[np.ix_(ii_b, ii_a)] += Df
                 Der[np.ix_(ii_a, ii_b)] += Df
@@ -627,10 +647,8 @@ def dfqsduinput(Surfs, Surfs_star):
             Df = algebra.skew((-0.25 * Surf.rho * Surf.gamma[mm_in, nn_in]) * lv)
 
             # get vertices 1d index on bound
-            ii_a = [np.ravel_multi_index(
-                (cc, M, nn_a), shape_fqs) for cc in range(3)]
-            ii_b = [np.ravel_multi_index(
-                (cc, M, nn_b), shape_fqs) for cc in range(3)]
+            ii_a = [np.ravel_multi_index((cc, M, nn_a), shape_fqs) for cc in range(3)]
+            ii_b = [np.ravel_multi_index((cc, M, nn_b), shape_fqs) for cc in range(3)]
 
             Der[np.ix_(ii_a, ii_a)] += Df
             Der[np.ix_(ii_b, ii_a)] += Df
@@ -652,7 +670,6 @@ def dfqsdzeta_omega(Surfs, Surfs_star):
     n_surf = len(Surfs)
 
     for ss in range(n_surf):
-
         Surf = Surfs[ss]
         skew_omega = algebra.skew(Surf.omega)
         M, N = Surf.maps.M, Surf.maps.N
@@ -670,23 +687,30 @@ def dfqsdzeta_omega(Surfs, Surfs_star):
             nn_in = Surf.maps.ind_2d_pan_scal[1][pp_in]
 
             # get panel vertices
-            zetav_here = Surf.zeta[:, [mm_in + 0, mm_in + 1, mm_in + 1, mm_in + 0],
-                         [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1]].T
+            zetav_here = Surf.zeta[
+                :,
+                [mm_in + 0, mm_in + 1, mm_in + 1, mm_in + 0],
+                [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1],
+            ].T
 
             for ll, aa, bb in zip(svec, avec, bvec):
                 # get segment
                 lv = zetav_here[bb, :] - zetav_here[aa, :]
-                Df = (0.25 * Surf.rho * Surf.gamma[mm_in, nn_in]) * algebra.skew(lv).dot(skew_omega)
+                Df = (0.25 * Surf.rho * Surf.gamma[mm_in, nn_in]) * algebra.skew(
+                    lv
+                ).dot(skew_omega)
 
                 # get vertices m,n indices
                 mm_a, nn_a = mm_in + dmver[aa], nn_in + dnver[aa]
                 mm_b, nn_b = mm_in + dmver[bb], nn_in + dnver[bb]
 
                 # get vertices 1d index
-                ii_a = [np.ravel_multi_index(
-                    (cc, mm_a, nn_a), shape_fqs) for cc in range(3)]
-                ii_b = [np.ravel_multi_index(
-                    (cc, mm_b, nn_b), shape_fqs) for cc in range(3)]
+                ii_a = [
+                    np.ravel_multi_index((cc, mm_a, nn_a), shape_fqs) for cc in range(3)
+                ]
+                ii_b = [
+                    np.ravel_multi_index((cc, mm_b, nn_b), shape_fqs) for cc in range(3)
+                ]
                 Der[np.ix_(ii_a, ii_a)] += Df
                 Der[np.ix_(ii_b, ii_a)] += Df
                 Der[np.ix_(ii_a, ii_b)] += Df
@@ -706,13 +730,13 @@ def dfqsdzeta_omega(Surfs, Surfs_star):
 
             # get segment
             lv = Surf.zeta[:, M, nn_b] - Surf.zeta[:, M, nn_a]
-            Df = (0.25 * Surf.rho * Surf.gamma[mm_in, nn_in]) * algebra.skew(lv).dot(skew_omega)
+            Df = (0.25 * Surf.rho * Surf.gamma[mm_in, nn_in]) * algebra.skew(lv).dot(
+                skew_omega
+            )
 
             # get vertices 1d index on bound
-            ii_a = [np.ravel_multi_index(
-                (cc, M, nn_a), shape_fqs) for cc in range(3)]
-            ii_b = [np.ravel_multi_index(
-                (cc, M, nn_b), shape_fqs) for cc in range(3)]
+            ii_a = [np.ravel_multi_index((cc, M, nn_a), shape_fqs) for cc in range(3)]
+            ii_b = [np.ravel_multi_index((cc, M, nn_b), shape_fqs) for cc in range(3)]
 
             Der[np.ix_(ii_a, ii_a)] += Df
             Der[np.ix_(ii_b, ii_a)] += Df
@@ -732,8 +756,7 @@ def dfqsdvind_gamma(Surfs, Surfs_star):
     """
 
     n_surf = len(Surfs)
-    assert len(Surfs_star) == n_surf, \
-        'Number of bound and wake surfaces much be equal'
+    assert len(Surfs_star) == n_surf, "Number of bound and wake surfaces much be equal"
 
     ### compute all influence coeff matrices (high RAM, low CPU)
     # AIC_list,AIC_star_list=AICs(Surfs,Surfs_star,target='segments',Project=False)
@@ -741,7 +764,6 @@ def dfqsdvind_gamma(Surfs, Surfs_star):
     Der_list = []
     Der_star_list = []
     for ss_out in range(n_surf):
-
         Surf_out = Surfs[ss_out]
         M_out, N_out = Surf_out.maps.M, Surf_out.maps.N
         K_out = Surf_out.maps.K
@@ -752,10 +774,16 @@ def dfqsdvind_gamma(Surfs, Surfs_star):
         AICs = []
         AICs_star = []
         for ss_in in range(n_surf):
-            AICs.append(Surfs[ss_in].get_aic_over_surface(
-                Surf_out, target='segments', Project=False))
-            AICs_star.append(Surfs_star[ss_in].get_aic_over_surface(
-                Surf_out, target='segments', Project=False))
+            AICs.append(
+                Surfs[ss_in].get_aic_over_surface(
+                    Surf_out, target="segments", Project=False
+                )
+            )
+            AICs_star.append(
+                Surfs_star[ss_in].get_aic_over_surface(
+                    Surf_out, target="segments", Project=False
+                )
+            )
 
         # allocate all derivative matrices
         Der_list_sub = []
@@ -775,24 +803,30 @@ def dfqsdvind_gamma(Surfs, Surfs_star):
             nn_out = Surf_out.maps.ind_2d_pan_scal[1][pp_out]
             # get panel vertices
             # zetav_here=Surf_out.get_panel_vertices_coords(mm_out,nn_out)
-            zetav_here = Surf_out.zeta[:, [mm_out + 0, mm_out + 1, mm_out + 1, mm_out + 0],
-                         [nn_out + 0, nn_out + 0, nn_out + 1, nn_out + 1]].T
+            zetav_here = Surf_out.zeta[
+                :,
+                [mm_out + 0, mm_out + 1, mm_out + 1, mm_out + 0],
+                [nn_out + 0, nn_out + 0, nn_out + 1, nn_out + 1],
+            ].T
 
             for ll, aa, bb in zip(svec, avec, bvec):
-
                 # get segment
                 lv = zetav_here[bb, :] - zetav_here[aa, :]
-                Lskew = algebra.skew((-0.5 * Surf_out.rho * Surf_out.gamma[mm_out, nn_out]) * lv)
+                Lskew = algebra.skew(
+                    (-0.5 * Surf_out.rho * Surf_out.gamma[mm_out, nn_out]) * lv
+                )
 
                 # get vertices m,n indices
                 mm_a, nn_a = mm_out + dmver[aa], nn_out + dnver[aa]
                 mm_b, nn_b = mm_out + dmver[bb], nn_out + dnver[bb]
 
                 # get vertices 1d index
-                ii_a = [np.ravel_multi_index(
-                    (cc, mm_a, nn_a), shape_fqs) for cc in range(3)]
-                ii_b = [np.ravel_multi_index(
-                    (cc, mm_b, nn_b), shape_fqs) for cc in range(3)]
+                ii_a = [
+                    np.ravel_multi_index((cc, mm_a, nn_a), shape_fqs) for cc in range(3)
+                ]
+                ii_b = [
+                    np.ravel_multi_index((cc, mm_b, nn_b), shape_fqs) for cc in range(3)
+                ]
 
                 # update all derivatives
                 for ss_in in range(n_surf):
@@ -811,20 +845,23 @@ def dfqsdvind_gamma(Surfs, Surfs_star):
         # - we run along the positive direction as defined in the first row of
         # wake panels
         for nn_out in range(N_out):
-
             # get TE bound vertices m,n indices
             nn_a = nn_out + dnver[2]
             nn_b = nn_out + dnver[1]
 
             # get segment
             lv = Surf_out.zeta[:, M_out, nn_b] - Surf_out.zeta[:, M_out, nn_a]
-            Lskew = algebra.skew((-0.5 * Surf_out.rho * Surfs_star[ss_out].gamma[0, nn_out]) * lv)
+            Lskew = algebra.skew(
+                (-0.5 * Surf_out.rho * Surfs_star[ss_out].gamma[0, nn_out]) * lv
+            )
 
             # get vertices 1d index on bound
-            ii_a = [np.ravel_multi_index(
-                (cc, M_out, nn_a), shape_fqs) for cc in range(3)]
-            ii_b = [np.ravel_multi_index(
-                (cc, M_out, nn_b), shape_fqs) for cc in range(3)]
+            ii_a = [
+                np.ravel_multi_index((cc, M_out, nn_a), shape_fqs) for cc in range(3)
+            ]
+            ii_b = [
+                np.ravel_multi_index((cc, M_out, nn_b), shape_fqs) for cc in range(3)
+            ]
 
             # update all derivatives
             for ss_in in range(n_surf):
@@ -873,7 +910,7 @@ def dvinddzeta(zetac, Surf_in, IsBound, M_in_bound=None):
     Dercoll = np.zeros((3, 3))
 
     if IsBound:
-        """ Bound: scan everthing, and include every derivative. The TE is not
+        """Bound: scan everthing, and include every derivative. The TE is not
         scanned twice"""
 
         Dervert = np.zeros((3, 3 * Kzeta_in))
@@ -881,11 +918,18 @@ def dvinddzeta(zetac, Surf_in, IsBound, M_in_bound=None):
         for pp_in in itertools.product(range(0, M_in), range(0, N_in)):
             mm_in, nn_in = pp_in
             # zeta_panel_in=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
-            zeta_panel_in = Surf_in.zeta[:, [mm_in + 0, mm_in + 1, mm_in + 1, mm_in + 0],
-                            [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1]].T
+            zeta_panel_in = Surf_in.zeta[
+                :,
+                [mm_in + 0, mm_in + 1, mm_in + 1, mm_in + 0],
+                [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1],
+            ].T
             # get local derivatives
             der_zetac, der_zeta_panel = eval_panel_cpp(
-                zetac, zeta_panel_in, Surf_in.vortex_radius, gamma_pan=Surf_in.gamma[mm_in, nn_in])
+                zetac,
+                zeta_panel_in,
+                Surf_in.vortex_radius,
+                gamma_pan=Surf_in.gamma[mm_in, nn_in],
+            )
             ### Mid-segment point contribution
             Dercoll += der_zetac
             ### Panel vertices contribution
@@ -893,8 +937,10 @@ def dvinddzeta(zetac, Surf_in, IsBound, M_in_bound=None):
                 # get vertices m,n indices
                 mm_v, nn_v = mm_in + dmver[vv_in], nn_in + dnver[vv_in]
                 # get vertices 1d index
-                jj_v = [np.ravel_multi_index(
-                    (cc, mm_v, nn_v), shape_zeta_in) for cc in range(3)]
+                jj_v = [
+                    np.ravel_multi_index((cc, mm_v, nn_v), shape_zeta_in)
+                    for cc in range(3)
+                ]
                 Dervert[:, jj_v] += der_zeta_panel[vv_in, :, :]
 
     else:
@@ -912,11 +958,18 @@ def dvinddzeta(zetac, Surf_in, IsBound, M_in_bound=None):
         for pp_in in itertools.product(range(0, M_in), range(0, N_in)):
             mm_in, nn_in = pp_in
             # zeta_panel_in=Surf_in.get_panel_vertices_coords(mm_in,nn_in)
-            zeta_panel_in = Surf_in.zeta[:, [mm_in + 0, mm_in + 1, mm_in + 1, mm_in + 0],
-                            [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1]].T
+            zeta_panel_in = Surf_in.zeta[
+                :,
+                [mm_in + 0, mm_in + 1, mm_in + 1, mm_in + 0],
+                [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1],
+            ].T
             # get local derivatives
             der_zetac = dbiot.eval_panel_cpp_coll(
-                zetac, zeta_panel_in, Surf_in.vortex_radius, gamma_pan=Surf_in.gamma[mm_in, nn_in])
+                zetac,
+                zeta_panel_in,
+                Surf_in.vortex_radius,
+                gamma_pan=Surf_in.gamma[mm_in, nn_in],
+            )
             # der_zetac_fast=dbiot.eval_panel_fast_coll(
             # 		zetac,zeta_panel_in,gamma_pan=Surf_in.gamma[mm_in,nn_in])
             # if np.max(np.abs(der_zetac-der_zetac_fast))>1e-10:
@@ -934,18 +987,26 @@ def dvinddzeta(zetac, Surf_in, IsBound, M_in_bound=None):
         shape_zeta_in_bound = (3, M_in_bound + 1, N_in + 1)
         for nn_in in range(N_in):
             # zeta_panel_in=Surf_in.get_panel_vertices_coords(0,nn_in)
-            zeta_panel_in = Surf_in.zeta[:, [0, 1, 1, 0],
-                            [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1]].T
+            zeta_panel_in = Surf_in.zeta[
+                :, [0, 1, 1, 0], [nn_in + 0, nn_in + 0, nn_in + 1, nn_in + 1]
+            ].T
             # get local derivatives
             _, der_zeta_panel = eval_panel_cpp(
-                zetac, zeta_panel_in, Surf_in.vortex_radius, gamma_pan=Surf_in.gamma[0, nn_in])
+                zetac,
+                zeta_panel_in,
+                Surf_in.vortex_radius,
+                gamma_pan=Surf_in.gamma[0, nn_in],
+            )
 
             for vv in range(2):
                 nn_v = nn_in + dn[vv]
                 jj_v = []
                 for cc in range(3):
-                    jj_v.append(np.ravel_multi_index(
-                        (cc, M_in_bound, nn_v), shape_zeta_in_bound))
+                    jj_v.append(
+                        np.ravel_multi_index(
+                            (cc, M_in_bound, nn_v), shape_zeta_in_bound
+                        )
+                    )
                 Dervert[:, jj_v] += der_zeta_panel[vvec[vv], :, :]
 
     return Dercoll, Dervert
@@ -958,8 +1019,7 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
     """
 
     n_surf = len(Surfs)
-    assert len(Surfs_star) == n_surf, \
-        'Number of bound and wake surfaces much be equal'
+    assert len(Surfs_star) == n_surf, "Number of bound and wake surfaces much be equal"
 
     # allocate
     Dercoll_list = []
@@ -974,7 +1034,6 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
         Dervert_list.append(Dervert_list_sub)
 
     for ss_out in range(n_surf):
-
         Surf_out = Surfs[ss_out]
         M_out, N_out = Surf_out.maps.M, Surf_out.maps.N
         K_out = Surf_out.maps.K
@@ -986,23 +1045,30 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
         for pp_out in itertools.product(range(0, M_out), range(0, N_out)):
             mm_out, nn_out = pp_out
             # zeta_panel_out=Surf_out.get_panel_vertices_coords(mm_out,nn_out)
-            zeta_panel_out = Surf_out.zeta[:, [mm_out + 0, mm_out + 1, mm_out + 1, mm_out + 0],
-                             [nn_out + 0, nn_out + 0, nn_out + 1, nn_out + 1]].T
+            zeta_panel_out = Surf_out.zeta[
+                :,
+                [mm_out + 0, mm_out + 1, mm_out + 1, mm_out + 0],
+                [nn_out + 0, nn_out + 0, nn_out + 1, nn_out + 1],
+            ].T
 
             # Loop segments
             for ll, aa, bb in zip(svec, avec, bvec):
                 zeta_mid = 0.5 * (zeta_panel_out[bb, :] + zeta_panel_out[aa, :])
                 lv = zeta_panel_out[bb, :] - zeta_panel_out[aa, :]
-                Lskew = algebra.skew((-Surf_out.rho * Surf_out.gamma[mm_out, nn_out]) * lv)
+                Lskew = algebra.skew(
+                    (-Surf_out.rho * Surf_out.gamma[mm_out, nn_out]) * lv
+                )
 
                 # get vertices m,n indices
                 mm_a, nn_a = mm_out + dmver[aa], nn_out + dnver[aa]
                 mm_b, nn_b = mm_out + dmver[bb], nn_out + dnver[bb]
                 # get vertices 1d index
-                ii_a = [np.ravel_multi_index(
-                    (cc, mm_a, nn_a), shape_fqs) for cc in range(3)]
-                ii_b = [np.ravel_multi_index(
-                    (cc, mm_b, nn_b), shape_fqs) for cc in range(3)]
+                ii_a = [
+                    np.ravel_multi_index((cc, mm_a, nn_a), shape_fqs) for cc in range(3)
+                ]
+                ii_b = [
+                    np.ravel_multi_index((cc, mm_b, nn_b), shape_fqs) for cc in range(3)
+                ]
                 del mm_a, mm_b, nn_a, nn_b
 
                 ### loop input surfaces coordinates
@@ -1014,7 +1080,11 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                     Dervert = Dervert_list[ss_out][ss_in]  # <- link
                     # deriv wrt induced velocity
                     dvind_mid, dvind_vert = dvinddzeta_cpp(
-                        zeta_mid, Surf_in, is_bound=True, vortex_radius=Surf_in.vortex_radius)
+                        zeta_mid,
+                        Surf_in,
+                        is_bound=True,
+                        vortex_radius=Surf_in.vortex_radius,
+                    )
                     # allocate coll
                     Df = np.dot(0.25 * Lskew, dvind_mid)
                     Dercoll[np.ix_(ii_a, ii_a)] += Df
@@ -1029,9 +1099,12 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                     ### wake
                     # deriv wrt induced velocity
                     dvind_mid, dvind_vert = dvinddzeta_cpp(
-                        zeta_mid, Surfs_star[ss_in],
-                        is_bound=False, vortex_radius=Surf_in.vortex_radius,
-                        M_in_bound=Surf_in.maps.M)
+                        zeta_mid,
+                        Surfs_star[ss_in],
+                        is_bound=False,
+                        vortex_radius=Surf_in.vortex_radius,
+                        M_in_bound=Surf_in.maps.M,
+                    )
                     # allocate coll
                     Df = np.dot(0.25 * Lskew, dvind_mid)
                     Dercoll[np.ix_(ii_a, ii_a)] += Df
@@ -1048,21 +1121,26 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
         # - we run along the positive direction as defined in the first row of
         # wake panels
         for nn_out in range(N_out):
-
             # get TE bound vertices m,n indices
             nn_a = nn_out + 1
             nn_b = nn_out
 
             # get segment and mid-point
-            zeta_mid = 0.5 * (Surf_out.zeta[:, M_out, nn_b] + Surf_out.zeta[:, M_out, nn_a])
+            zeta_mid = 0.5 * (
+                Surf_out.zeta[:, M_out, nn_b] + Surf_out.zeta[:, M_out, nn_a]
+            )
             lv = Surf_out.zeta[:, M_out, nn_b] - Surf_out.zeta[:, M_out, nn_a]
-            Lskew = algebra.skew((-Surf_out.rho * Surfs_star[ss_out].gamma[0, nn_out]) * lv)
+            Lskew = algebra.skew(
+                (-Surf_out.rho * Surfs_star[ss_out].gamma[0, nn_out]) * lv
+            )
 
             # get vertices 1d index on bound
-            ii_a = [np.ravel_multi_index(
-                (cc, M_out, nn_a), shape_fqs) for cc in range(3)]
-            ii_b = [np.ravel_multi_index(
-                (cc, M_out, nn_b), shape_fqs) for cc in range(3)]
+            ii_a = [
+                np.ravel_multi_index((cc, M_out, nn_a), shape_fqs) for cc in range(3)
+            ]
+            ii_b = [
+                np.ravel_multi_index((cc, M_out, nn_b), shape_fqs) for cc in range(3)
+            ]
 
             ### loop input surfaces coordinates
             for ss_in in range(n_surf):
@@ -1072,9 +1150,12 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                 shape_zeta_in_bound = (3, M_in_bound + 1, N_in_bound + 1)
                 Dervert = Dervert_list[ss_out][ss_in]  # <- link
                 # deriv wrt induced velocity
-                dvind_mid, dvind_vert = dvinddzeta_cpp(zeta_mid, Surf_in,
-                                                       is_bound=True,
-                                                       vortex_radius=Surf_in.vortex_radius)
+                dvind_mid, dvind_vert = dvinddzeta_cpp(
+                    zeta_mid,
+                    Surf_in,
+                    is_bound=True,
+                    vortex_radius=Surf_in.vortex_radius,
+                )
                 # allocate coll
                 Df = np.dot(0.25 * Lskew, dvind_mid)
                 Dercoll[np.ix_(ii_a, ii_a)] += Df
@@ -1089,9 +1170,12 @@ def dfqsdvind_zeta(Surfs, Surfs_star):
                 ### wake
                 # deriv wrt induced velocity
                 dvind_mid, dvind_vert = dvinddzeta_cpp(
-                    zeta_mid, Surfs_star[ss_in],
-                    is_bound=False, vortex_radius=Surf_in.vortex_radius,
-                    M_in_bound=Surf_in.maps.M)
+                    zeta_mid,
+                    Surfs_star[ss_in],
+                    is_bound=False,
+                    vortex_radius=Surf_in.vortex_radius,
+                    M_in_bound=Surf_in.maps.M,
+                )
                 # allocate coll
                 Df = np.dot(0.25 * Lskew, dvind_mid)
                 Dercoll[np.ix_(ii_a, ii_a)] += Df
@@ -1124,8 +1208,9 @@ def dfunstdgamma_dot(Surfs):
         Surf = Surfs[ss]
 
         ### check gamma_dot is zero
-        assert (np.max(np.abs(Surf.gamma_dot)) < 1e-16), \
-            'gamma_not not zero! Implement derivative w.r.t. lattice geometry changes'
+        assert (
+            np.max(np.abs(Surf.gamma_dot)) < 1e-16
+        ), "gamma_not not zero! Implement derivative w.r.t. lattice geometry changes"
 
         ### compute sensitivity
         wcv = Surf.get_panel_wcv()
@@ -1148,15 +1233,17 @@ def dfunstdgamma_dot(Surfs):
                 df = wcv[vv] * dfcoll
 
                 # get vertices 1d index
-                iivec = [np.ravel_multi_index(
-                    (vv, mm + dm, nn + dn), shape_funst) for vv in range(3)]
+                iivec = [
+                    np.ravel_multi_index((vv, mm + dm, nn + dn), shape_funst)
+                    for vv in range(3)
+                ]
 
                 Der[iivec, pp] += df
 
     return DerList
 
 
-def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
+def wake_prop(MS, use_sparse=False, sparse_format="lil", settings=None):
     """
     Assembly of wake propagation matrices, in sparse or dense matrices format
 
@@ -1176,27 +1263,27 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
     """
 
     try:
-        cfl1 = settings['cfl1']
+        cfl1 = settings["cfl1"]
     except (KeyError, TypeError):
         # In case the key does not exist or settings=None
         cfl1 = True
     cout.cout_wrap("Computing wake propagation matrix with CFL1={}".format(cfl1), 1)
 
     n_surf = len(MS.Surfs)
-    assert len(MS.Surfs_star) == n_surf, 'No. of wake and bound surfaces not matching!'
+    assert len(MS.Surfs_star) == n_surf, "No. of wake and bound surfaces not matching!"
 
-    dimensions = [None]*n_surf
-    dimensions_star = [None]*n_surf
+    dimensions = [None] * n_surf
+    dimensions_star = [None] * n_surf
 
     for ss in range(n_surf):
-
         Surf = MS.Surfs[ss]
         Surf_star = MS.Surfs_star[ss]
 
         N, M, K = Surf.maps.N, Surf.maps.M, Surf.maps.K
         M_star, K_star = Surf_star.maps.M, Surf_star.maps.K
-        assert Surf_star.maps.N == N, \
-            'Bound and wake surface do not have the same spanwise discretisation'
+        assert (
+            Surf_star.maps.N == N
+        ), "Bound and wake surface do not have the same spanwise discretisation"
 
         dimensions[ss] = [M, N, K]
         dimensions_star[ss] = [M_star, N, K_star]
@@ -1204,10 +1291,10 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
         if not cfl1:
             # allocate...
             if use_sparse:
-                if sparse_format == 'csc':
+                if sparse_format == "csc":
                     C = libsp.csc_matrix((K_star, K))
                     C_star = libsp.csc_matrix((K_star, K_star))
-                elif sparse_format == 'lil':
+                elif sparse_format == "lil":
                     C = sparse.lil_matrix((K_star, K))
                     C_star = sparse.lil_matrix((K_star, K_star))
             else:
@@ -1218,9 +1305,7 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
             Cstar_list = []
 
             # Compute flow velocity at wake
-            uext = [np.zeros((3,
-                             dimensions_star[ss][0],
-                             dimensions_star[ss][1]))]
+            uext = [np.zeros((3, dimensions_star[ss][0], dimensions_star[ss][1]))]
 
             try:
                 Surf_star.zetac
@@ -1233,20 +1318,22 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
                 # propagation from trailing edge
                 conv_vec = Surf_star.zetac[:, 0, iin] - Surf.zetac[:, -1, iin]
                 dist = np.linalg.norm(conv_vec)
-                conv_dir_te = conv_vec/dist
+                conv_dir_te = conv_vec / dist
                 vel = Surf.u_input_coll[:, -1, iin]
                 vel_value = np.dot(vel, conv_dir_te)
-                cfl = settings['dt']*vel_value/dist
+                cfl = settings["dt"] * vel_value / dist
 
                 C[iin, N * (M - 1) + iin] = cfl
                 C_star[iin, iin] = 1.0 - cfl
 
                 # wake propagation
                 for mm in range(1, M_star):
-                    conv_vec = Surf_star.zetac[:, mm, iin] - Surf_star.zetac[:, mm - 1, iin]
+                    conv_vec = (
+                        Surf_star.zetac[:, mm, iin] - Surf_star.zetac[:, mm - 1, iin]
+                    )
                     dist = np.linalg.norm(conv_vec)
-                    conv_dir = conv_vec/dist
-                    cfl = settings['dt']*vel_value/dist
+                    conv_dir = conv_vec / dist
+                    cfl = settings["dt"] * vel_value / dist
 
                     C_star[mm * N + iin, (mm - 1) * N + iin] = cfl
                     C_star[mm * N + iin, mm * N + iin] = 1.0 - cfl
@@ -1255,15 +1342,19 @@ def wake_prop(MS, use_sparse=False, sparse_format='lil', settings=None):
             Cstar_list.append(C_star)
 
     if cfl1:
-        C_list, Cstar_list = wake_prop_from_dimensions(dimensions,
-                                                       dimensions_star,
-                                                       use_sparse=use_sparse,
-                                                       sparse_format=sparse_format)
+        C_list, Cstar_list = wake_prop_from_dimensions(
+            dimensions,
+            dimensions_star,
+            use_sparse=use_sparse,
+            sparse_format=sparse_format,
+        )
 
     return C_list, Cstar_list
 
 
-def wake_prop_from_dimensions(dimensions, dimensions_star, use_sparse=False, sparse_format='lil'):
+def wake_prop_from_dimensions(
+    dimensions, dimensions_star, use_sparse=False, sparse_format="lil"
+):
     """
     Same as ``wake_prop'' but using the dimensions directly
     """
@@ -1274,21 +1365,23 @@ def wake_prop_from_dimensions(dimensions, dimensions_star, use_sparse=False, spa
     # dimensions = [None]*n_surf
 
     n_surf = len(dimensions)
-    assert len(dimensions_star) == n_surf, 'No. of wake and bound surfaces not matching!'
+    assert (
+        len(dimensions_star) == n_surf
+    ), "No. of wake and bound surfaces not matching!"
 
     for ss in range(n_surf):
-
         M, N, K = dimensions[ss]
         M_star, N_star, K_star = dimensions_star[ss]
-        assert N_star == N, \
-            'Bound and wake surface do not have the same spanwise discretisation'
+        assert (
+            N_star == N
+        ), "Bound and wake surface do not have the same spanwise discretisation"
 
         # allocate...
         if use_sparse:
-            if sparse_format == 'csc':
+            if sparse_format == "csc":
                 C = libsp.csc_matrix((K_star, K))
                 C_star = libsp.csc_matrix((K_star, K_star))
-            elif sparse_format == 'lil':
+            elif sparse_format == "lil":
                 C = sparse.lil_matrix((K_star, K))
                 C_star = sparse.lil_matrix((K_star, K_star))
         else:
@@ -1309,7 +1402,7 @@ def wake_prop_from_dimensions(dimensions, dimensions_star, use_sparse=False, spa
     return C_list, Cstar_list
 
 
-def test_wake_prop_term(M, N, M_star, N_star, use_sparse, sparse_format='csc'):
+def test_wake_prop_term(M, N, M_star, N_star, use_sparse, sparse_format="csc"):
     """
     Test allocation of single term of wake propagation matrix
     """
@@ -1320,7 +1413,7 @@ def test_wake_prop_term(M, N, M_star, N_star, use_sparse, sparse_format='csc'):
     iivec = np.array(range(N), dtype=int)
 
     if use_sparse:
-        if sparse_format == 'csc':
+        if sparse_format == "csc":
             C = sparse.csc_matrix((K_star, K))
             C_star = sparse.csc_matrix((K_star, K_star))
     else:
@@ -1337,7 +1430,7 @@ def test_wake_prop_term(M, N, M_star, N_star, use_sparse, sparse_format='csc'):
     return C, C_star
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import time
 
     M, N = 20, 30
@@ -1346,12 +1439,12 @@ if __name__ == '__main__':
     t0 = time.time()
     C, C_star = test_wake_prop_term(M, N, M_star, N_star, use_sparse=False)
     tf = time.time() - t0
-    print('Dense propagation matrix allocated in %.4f sec' % tf)
+    print("Dense propagation matrix allocated in %.4f sec" % tf)
 
     t0 = time.time()
     Csp, Csp_star = test_wake_prop_term(M, N, M_star, N_star, use_sparse=True)
     tf = time.time() - t0
-    print('csc sparse propagation matrix allocated in %.4f sec' % tf)
+    print("csc sparse propagation matrix allocated in %.4f sec" % tf)
 
     # cProfile.runctx('self.assemble()', globals(), locals(), filename=self.prof_out)
     # 1/0
@@ -1362,15 +1455,15 @@ if __name__ == '__main__':
 
     t0 = time.time()
     Z = sparse.csc_matrix((Nx, Nx))
-    Z[:N1, :N1] = 2.
-    Z[:N1, N1:] = 3.
+    Z[:N1, :N1] = 2.0
+    Z[:N1, N1:] = 3.0
     tfin = time.time() - t0
-    print('csc allocated in %.6f sec' % tfin)
+    print("csc allocated in %.6f sec" % tfin)
 
     t0 = time.time()
     Z = sparse.lil_matrix((Nx, Nx))
-    Z[:N1, :N1] = 2.
-    Z[:N1, N1:] = 3.
+    Z[:N1, :N1] = 2.0
+    Z[:N1, N1:] = 3.0
     Z = Z.tocsc()
     tfin = time.time() - t0
-    print('lil->csc allocated in %.6f sec' % tfin)
+    print("lil->csc allocated in %.6f sec" % tfin)

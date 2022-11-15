@@ -7,4 +7,3 @@ class BaseStructure(metaclass=ABCMeta):
     @abstractmethod
     def generate(self, in_data, settings):
         pass
-

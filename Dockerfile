@@ -41,4 +41,3 @@ RUN cd sharpy_dir && \
     rm -rf build
 
 ENTRYPOINT ["/bin/bash", "--init-file", "/root/bashrc"]
-

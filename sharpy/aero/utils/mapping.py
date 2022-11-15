@@ -3,15 +3,17 @@ import numpy as np
 import sharpy.utils.algebra as algebra
 
 
-def aero2struct_force_mapping(aero_forces,
-                              struct2aero_mapping,
-                              zeta,
-                              pos_def,
-                              psi_def,
-                              master,
-                              conn,
-                              cag=np.eye(3),
-                              aero_dict=None):
+def aero2struct_force_mapping(
+    aero_forces,
+    struct2aero_mapping,
+    zeta,
+    pos_def,
+    psi_def,
+    master,
+    conn,
+    cag=np.eye(3),
+    aero_dict=None,
+):
     r"""
     Maps the aerodynamic forces at the lattice to the structural nodes
 
@@ -53,15 +55,14 @@ def aero2struct_force_mapping(aero_forces,
 
     for i_elem in range(n_elem):
         for i_local_node in range(3):
-
             i_global_node = conn[i_elem, i_local_node]
             if i_global_node in nodes:
                 continue
 
             nodes.append(i_global_node)
             for mapping in struct2aero_mapping[i_global_node]:
-                i_surf = mapping['i_surf']
-                i_n = mapping['i_n']
+                i_surf = mapping["i_surf"]
+                i_n = mapping["i_n"]
                 _, n_m, _ = aero_forces[i_surf].shape
 
                 crv = psi_def[i_elem, i_local_node, :]
@@ -69,17 +70,23 @@ def aero2struct_force_mapping(aero_forces,
                 cbg = np.dot(cab.T, cag)
 
                 for i_m in range(n_m):
-                    chi_g = zeta[i_surf][:, i_m, i_n] - np.dot(cag.T, pos_def[i_global_node, :])
-                    struct_forces[i_global_node, 0:3] += np.dot(cbg, aero_forces[i_surf][0:3, i_m, i_n])
-                    struct_forces[i_global_node, 3:6] += np.dot(cbg, aero_forces[i_surf][3:6, i_m, i_n])
-                    struct_forces[i_global_node, 3:6] += np.dot(cbg, algebra.cross3(chi_g, aero_forces[i_surf][0:3, i_m, i_n]))
+                    chi_g = zeta[i_surf][:, i_m, i_n] - np.dot(
+                        cag.T, pos_def[i_global_node, :]
+                    )
+                    struct_forces[i_global_node, 0:3] += np.dot(
+                        cbg, aero_forces[i_surf][0:3, i_m, i_n]
+                    )
+                    struct_forces[i_global_node, 3:6] += np.dot(
+                        cbg, aero_forces[i_surf][3:6, i_m, i_n]
+                    )
+                    struct_forces[i_global_node, 3:6] += np.dot(
+                        cbg, algebra.cross3(chi_g, aero_forces[i_surf][0:3, i_m, i_n])
+                    )
 
     return struct_forces
 
 
-def total_forces_moments(forces_nodes_a,
-                         pos_def,
-                         ref_pos=np.array([0., 0., 0.])):
+def total_forces_moments(forces_nodes_a, pos_def, ref_pos=np.array([0.0, 0.0, 0.0])):
     """
     Performs a summation of the forces and moments expressed at the structural nodes in the A frame of reference.
 
@@ -103,6 +110,8 @@ def total_forces_moments(forces_nodes_a,
     total_moments = np.zeros(3)
     for i_global_node in range(num_node):
         total_forces += forces_nodes_a[i_global_node, :3]
-        total_moments += forces_nodes_a[i_global_node, 3:] + algebra.cross3(ra_vec[i_global_node], forces_nodes_a[i_global_node, :3])
+        total_moments += forces_nodes_a[i_global_node, 3:] + algebra.cross3(
+            ra_vec[i_global_node], forces_nodes_a[i_global_node, :3]
+        )
 
     return np.concatenate((total_forces, total_moments))

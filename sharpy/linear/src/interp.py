@@ -6,98 +6,95 @@ S. Maraniello, 20 May 2018
 import numpy as np
 
 
-
 # -------------------------------------------------- interp at ollocation point
 
-def get_panel_wcv(aM=0.5,aN=0.5):
-	"""
-	Produces a compact array with weights for bilinear interpolation, where
-	aN,aM in [0,1] are distances in the chordwise and spanwise directions 
-	such that:
-		- (aM,aN)=(0,0) --> quantity at vertex 0
-		- (aM,aN)=(1,0) --> quantity at vertex 1
-		- (aM,aN)=(1,1) --> quantity at vertex 2
-		- (aM,aN)=(0,1) --> quantity at vertex 3
-	"""
 
-	wcv=np.array([ (1-aM)*(1-aN), aM*(1-aN), aM*aN, aN*(1-aM) ])
+def get_panel_wcv(aM=0.5, aN=0.5):
+    """
+    Produces a compact array with weights for bilinear interpolation, where
+    aN,aM in [0,1] are distances in the chordwise and spanwise directions
+    such that:
+            - (aM,aN)=(0,0) --> quantity at vertex 0
+            - (aM,aN)=(1,0) --> quantity at vertex 1
+            - (aM,aN)=(1,1) --> quantity at vertex 2
+            - (aM,aN)=(0,1) --> quantity at vertex 3
+    """
 
-	return wcv 
+    wcv = np.array([(1 - aM) * (1 - aN), aM * (1 - aN), aM * aN, aN * (1 - aM)])
+
+    return wcv
 
 
-def get_Wvc_scalar(Map,aM=0.5,aN=0.5):
-	"""
-	Produce scalar interpolation matrix Wvc for state-space realisation.
+def get_Wvc_scalar(Map, aM=0.5, aN=0.5):
+    """
+    Produce scalar interpolation matrix Wvc for state-space realisation.
 
-	Important: this will not work for coordinates extrapolation, as it would
-	require information about the panel size. It works for other forces/scalar 
-	quantities extrapolation. It assumes the quantity at the collocation point
-	is determined proportionally to the weight associated to each vertex and 
-	obtained through get_panel_wcv. 
-	"""
+    Important: this will not work for coordinates extrapolation, as it would
+    require information about the panel size. It works for other forces/scalar
+    quantities extrapolation. It assumes the quantity at the collocation point
+    is determined proportionally to the weight associated to each vertex and
+    obtained through get_panel_wcv.
+    """
 
-	# initialise
-	K,Kzeta=Map.K,Map.Kzeta
-	Wvc=np.zeros((Kzeta,K))
+    # initialise
+    K, Kzeta = Map.K, Map.Kzeta
+    Wvc = np.zeros((Kzeta, K))
 
-	# retrieve weights
-	wcv=get_panel_wcv(aM,aN)
-	wvc=wcv.T
+    # retrieve weights
+    wcv = get_panel_wcv(aM, aN)
+    wvc = wcv.T
 
-	# define mapping panels to vertices (for scalars)
-	if not hasattr(Map,'Mvp1d_scalar'):
-		Map.map_panels_to_vertices_1D_scalar()
+    # define mapping panels to vertices (for scalars)
+    if not hasattr(Map, "Mvp1d_scalar"):
+        Map.map_panels_to_vertices_1D_scalar()
 
-	# loop through panels
-	for jj in range(K):
-		# loop through local vertex index
-		for vv in range(4):
-			# vertex 1d index
-			ii = Map.Mpv1d_scalar[jj,vv]
-			# allocate
-			Wvc[ii,jj]=wvc[vv]
+    # loop through panels
+    for jj in range(K):
+        # loop through local vertex index
+        for vv in range(4):
+            # vertex 1d index
+            ii = Map.Mpv1d_scalar[jj, vv]
+            # allocate
+            Wvc[ii, jj] = wvc[vv]
 
-	return Wvc
+    return Wvc
 
 
 def get_Wvc_vector(Wvc_scalar):
+    Kzeta, K = Wvc_scalar.shape
+    Wvc = np.zeros((3 * Kzeta, 3 * K))
 
-	Kzeta,K=Wvc_scalar.shape
-	Wvc=np.zeros((3*Kzeta,3*K))
+    for cc in range(3):
+        Wvc[cc * Kzeta : (cc + 1) * Kzeta, cc * K : (cc + 1) * K] = Wvc_scalar
 
-	for cc in range(3):
-		Wvc[cc*Kzeta:(cc+1)*Kzeta,cc*K:(cc+1)*K]=Wvc_scalar 
-
-	return Wvc 
-
-
-def get_Wnv_vector(SurfGeo,aM=0.5,aN=0.5):
-	"""
-	Provide projection matrix from nodal velocities to normal velocity at 
-	collocation points
-	"""
-
-	# initialise
-	Map=SurfGeo.maps
-	K,Kzeta=Map.K,Map.Kzeta
-
-	# retrieve scaling matrix
-	Wvc_scalar=get_Wvc_scalar(Map,aM,aN)
-	Wvc=get_Wvc_vector(Wvc_scalar)
-	Wcv=Wvc.T
-	del Wvc_scalar, Wvc
-	
-	# Build Wnc matrix
-	Nmat=SurfGeo.normals.reshape((3,K))
-	Wnc=np.concatenate([
-		     np.diag(Nmat[0,:]),np.diag(Nmat[1,:]),np.diag(Nmat[2,:]) ], axis=1) 
-	
-	Wnv=np.dot(Wnc,Wcv)
-
-	return Wnv
+    return Wvc
 
 
+def get_Wnv_vector(SurfGeo, aM=0.5, aN=0.5):
+    """
+    Provide projection matrix from nodal velocities to normal velocity at
+    collocation points
+    """
 
+    # initialise
+    Map = SurfGeo.maps
+    K, Kzeta = Map.K, Map.Kzeta
+
+    # retrieve scaling matrix
+    Wvc_scalar = get_Wvc_scalar(Map, aM, aN)
+    Wvc = get_Wvc_vector(Wvc_scalar)
+    Wcv = Wvc.T
+    del Wvc_scalar, Wvc
+
+    # Build Wnc matrix
+    Nmat = SurfGeo.normals.reshape((3, K))
+    Wnc = np.concatenate(
+        [np.diag(Nmat[0, :]), np.diag(Nmat[1, :]), np.diag(Nmat[2, :])], axis=1
+    )
+
+    Wnv = np.dot(Wnc, Wcv)
+
+    return Wnv
 
 
 # -----------------------------------------------------------------------------
