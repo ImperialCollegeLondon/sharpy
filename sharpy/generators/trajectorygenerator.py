@@ -87,7 +87,7 @@ class TrajectoryGenerator(generator_interface.BaseGenerator):
         self.implemented_accelerations = ["constant", "linear"]
 
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
 

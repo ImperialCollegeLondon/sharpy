@@ -62,7 +62,7 @@ class AerogridLoader(BaseSolver):
     settings_default['freestream_dir'] = [1.0, 0.0, 0.0]
     settings_description['freestream_dir'] = 'Free stream flow direction'
 
-    settings_types['mstar'] = 'int'
+    settings_types['mstar'] = ['int', 'list(int)']
     settings_default['mstar'] = 10
     settings_description['mstar'] = 'Number of chordwise wake panels'
 
@@ -100,14 +100,14 @@ class AerogridLoader(BaseSolver):
 
         self.wake_shape_generator = None
 
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
 
         # init settings
         settings_utils.to_custom_types(self.settings,
-                                       self.settings_types,
-                                       self.settings_default, options=self.settings_options)
+                           self.settings_types,
+                           self.settings_default, options=self.settings_options)
 
         # read input file (aero)
         self.read_files()
@@ -116,7 +116,8 @@ class AerogridLoader(BaseSolver):
             self.settings['wake_shape_generator'])
         self.wake_shape_generator = wake_shape_generator_type()
         self.wake_shape_generator.initialise(data,
-                                             self.settings['wake_shape_generator_input'])
+                                             self.settings['wake_shape_generator_input'],
+                                             restart=restart)
 
     def read_files(self):
         # open aero file
@@ -134,7 +135,7 @@ class AerogridLoader(BaseSolver):
             # store files in dictionary
             self.aero_data_dict = h5utils.load_h5_in_dict(aero_file_handle)
 
-    def run(self):
+    def run(self, **kwargs):
         self.data.aero = aerogrid.Aerogrid()
         self.data.aero.generate(self.aero_data_dict,
                                 self.data.structure,

@@ -2,19 +2,21 @@ import os
 
 import numpy as np
 
-from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
-import sharpy.aero.utils.mapping as mapping
+import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
+from sharpy.utils.solver_interface import solver, BaseSolver
+import sharpy.utils.settings as settings_utils
+from sharpy.utils.datastructures import init_matrix_structure, standalone_ctypes_pointer
+import sharpy.aero.utils.mapping as mapping
 import sharpy.aero.utils.utils as aeroutils
 
 
 @solver
 class LiftDistribution(BaseSolver):
     """LiftDistribution
-    
+
     Calculates and exports the lift distribution on lifting surfaces
-    
+
     """
     solver_id = 'LiftDistribution'
     solver_classification = 'post-processor'
@@ -35,7 +37,7 @@ class LiftDistribution(BaseSolver):
     settings_default['rho'] = 1.225
     settings_description['rho'] = 'Reference freestream density [kg/m³]'
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -44,18 +46,30 @@ class LiftDistribution(BaseSolver):
         self.folder = None
         self.caller = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
-        self.settings = data.settings[self.solver_id]
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        if custom_settings is None:
+            self.settings = data.settings[self.solver_id]
+        else:
+            self.settings = custom_settings
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        self.ts_max = len(self.data.structure.timestep_info)
         self.caller = caller
         self.folder = data.output_folder
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
 
-    def run(self, online=False):
-        self.lift_distribution(self.data.structure.timestep_info[self.data.ts],
-                               self.data.aero.timestep_info[self.data.ts])
+    def run(self, **kwargs):
+
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
+
+        if not online:
+            for self.ts in range(self.ts_max):
+                self.lift_distribution()
+            cout.cout_wrap('...Finished', 1)
+        else:
+            self.ts = len(self.data.structure.timestep_info) - 1
+            self.lift_distribution()
         return self.data
 
     def lift_distribution(self, struct_tstep, aero_tstep):
@@ -70,7 +84,7 @@ class LiftDistribution(BaseSolver):
             self.data.structure.connectivities,
             struct_tstep.cag(),
             self.data.aero.aero_dict)
-        # Prepare output matrix and file 
+        # Prepare output matrix and file
         N_nodes = self.data.structure.num_node
         numb_col = 4
         header = "x,y,z,fz"
@@ -89,7 +103,7 @@ class LiftDistribution(BaseSolver):
                 local_node = self.data.aero.struct2aero_mapping[inode][0]["i_n"]
                 ielem, inode_in_elem = self.data.structure.node_master_elem[inode]
                 i_surf = int(self.data.aero.surface_distribution[ielem])
-                # get c_gb                
+                # get c_gb
                 cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem, :])
                 cgb = np.dot(cga, cab)
                 # Get c_bs

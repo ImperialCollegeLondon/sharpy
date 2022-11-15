@@ -188,13 +188,11 @@ class Aerogrid(object):
                     nodes_in_surface[i_surf].append(i_global_node)
                 if self.aero_dict['aero_node'][i_global_node]:
                     self.aero_dimensions[i_surf, 1] += 1
-
         # accounting for N+1 nodes -> N panels
-        self.aero_dimensions[:, 1] -= 1
-
+        self.aero_dimensions[:,1] -= 1
+        
         self.aero_dimensions_star = self.aero_dimensions.copy()
-        for i_surf in range(self.n_surf):
-            self.aero_dimensions_star[i_surf, 0] = self.aero_settings['mstar']
+        self.aero_dimensions_star[:, 0] = self.aero_settings['mstar']
 
     def add_timestep(self):
         try:
@@ -222,6 +220,10 @@ class Aerogrid(object):
         except KeyError:
             self.aero_dict['sweep'] = np.zeros_like(self.aero_dict['twist'])
 
+        # Define first_twist for backwards compatibility
+        if 'first_twist' not in self.aero_dict:     
+            self.aero_dict['first_twist'] = [True]*self.aero_dict['surface_m'].shape[0]
+        
         # one surface per element
         for i_elem in range(self.n_elem):
             i_surf = self.aero_dict['surface_distribution'][i_elem]
@@ -348,7 +350,8 @@ class Aerogrid(object):
                                    self.airfoil_db,
                                    aero_settings['aligned_grid'],
                                    orientation_in=aero_settings['freestream_dir'],
-                                   calculate_zeta_dot=True))
+                                   calculate_zeta_dot=True,
+                                   first_twist=self.aero_dict['first_twist'][i_surf]))
 
     def generate_zeta(self, beam, aero_settings, ts=-1, beam_ts=-1):
         self.generate_zeta_timestep_info(beam.timestep_info[beam_ts],
@@ -479,7 +482,10 @@ class Aerogrid(object):
 
 
 
-def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array([1, 0, 0]), calculate_zeta_dot = False):
+def generate_strip(node_info, airfoil_db, aligned_grid,
+                   orientation_in=np.array([1, 0, 0]),
+                   calculate_zeta_dot = False,
+                   first_twist=True):
     """
     Returns a strip of panels in ``A`` frame of reference, it has to be then rotated to
     simulate angles of attack, etc
@@ -495,11 +501,6 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
         strip_coordinates_b_frame[1, :] = np.linspace(0.0, 1.0, node_info['M'] + 1)
     elif node_info['M_distribution'] == '1-cos':
         domain = np.linspace(0, 1.0, node_info['M'] + 1)
-        strip_coordinates_b_frame[1, :] = 0.5*(1.0 - np.cos(domain*np.pi))
-    elif node_info['M_distribution'].lower() == 'user_defined':
-        # strip_coordinates_b_frame[1, :-1] = np.linspace(0.0, 1.0 - node_info['last_panel_length'], node_info['M'])
-        # strip_coordinates_b_frame[1,-1] = 1.
-        strip_coordinates_b_frame[1,:] = node_info['user_defined_m_distribution']
     else:
         raise NotImplemented('M_distribution is ' + node_info['M_distribution'] +
                              ' and it is not yet supported')
@@ -567,8 +568,12 @@ def generate_strip(node_info, airfoil_db, aligned_grid, orientation_in=np.array(
 
     # transformation from beam to beam prime (with sweep and twist)
     for i_M in range(node_info['M'] + 1):
-        strip_coordinates_b_frame[:, i_M] = np.dot(c_sweep, np.dot(Crot,
+        if first_twist:
+            strip_coordinates_b_frame[:, i_M] = np.dot(c_sweep, np.dot(Crot,
                                                    np.dot(Ctwist, strip_coordinates_b_frame[:, i_M])))
+        else:
+            strip_coordinates_b_frame[:, i_M] = np.dot(Ctwist, np.dot(Crot,
+                                                   np.dot(c_sweep, strip_coordinates_b_frame[:, i_M])))
         strip_coordinates_a_frame[:, i_M] = np.dot(Cab, strip_coordinates_b_frame[:, i_M])
 
         cs_velocity[:, i_M] = np.dot(Cab, cs_velocity[:, i_M])

@@ -1,6 +1,7 @@
 # SHARPy v2.0 Installation Guide
 __Last revision 21 October 2022__
 
+
 The following step by step tutorial will guide you through the installation process of SHARPy. This is the updated process valid from v2.0.
 
 ## Requirements
@@ -33,7 +34,7 @@ input file format.
 
 __GitHub Repository__
 
-+ [SHARPy](http://github.com/imperialcollegelondon/sharpy)
++ [SHARPy](https://github.com/imperialcollegelondon/sharpy/tree/master)
 
 SHARPy can be installed from the source code available on GitHub or you can get it packed in a Docker container.
 If what you want is to give it a go and run some static or simple dynamic cases (and are familiar with Docker),
@@ -65,7 +66,7 @@ SHARPy uses the Anaconda package manager to provide the necessary Python package
 These are specified in an Anaconda environment that shall be activated prior to compiling the xbeam and UVLM libraries
 or running any SHARPy cases.
 
-1. If you do not have it, install the [Anaconda](https://conda.io/docs/) Python 3 distribution
+1. If you still do not have it in your system, install the [Anaconda](https://conda.io/docs/) Python 3 distribution
 
 2. Make sure your Python version is at least 3.7:
     ```bash

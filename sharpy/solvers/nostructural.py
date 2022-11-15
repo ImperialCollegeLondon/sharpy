@@ -1,13 +1,12 @@
 import numpy as np
 
-import sharpy.structure.utils.xbeamlib as xbeamlib
 import sharpy.utils.settings as settings_utils
 from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
 
 _BaseStructural = solver_from_string('_BaseStructural')
 
 @solver
-class NonLinearStatic(_BaseStructural):
+class NoStructural(_BaseStructural):
     """
     Structural solver used for the static simulation of free-flying structures.
 
@@ -18,7 +17,7 @@ class NonLinearStatic(_BaseStructural):
     static aeroelastic simulation.
 
     """
-    solver_id = 'NonLinearStatic'
+    solver_id = 'NoStructural'
     solver_classification = 'structural'
 
     # settings list
@@ -28,9 +27,6 @@ class NonLinearStatic(_BaseStructural):
 
     settings_types['initial_position'] = 'list(float)'
     settings_default['initial_position'] = np.array([0.0, 0.0, 0.0])
-    
-    settings_types['initial_velocity'] = 'list(float)'
-    settings_default['initial_velocity'] = np.array([0., 0., 0., 0., 0., 0.])
 
     settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
@@ -45,12 +41,10 @@ class NonLinearStatic(_BaseStructural):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
     def run(self, **kwargs):
         self.data.structure.timestep_info[self.data.ts].for_pos[0:3] = self.settings['initial_position']
-        self.data.structure.timestep_info[self.data.ts].for_vel = self.settings['initial_velocity'].copy()
-        xbeamlib.cbeam3_solv_nlnstatic(self.data.structure, self.settings, self.data.ts)
         self.extract_resultants()
         return self.data
 

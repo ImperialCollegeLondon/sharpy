@@ -1,5 +1,5 @@
 from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 import configobj
 import os
 import sharpy.utils.cout_utils as cout
@@ -71,7 +71,7 @@ class SaveParametricCase(BaseSolver):
                                                    'the M, C, K matrices. The setting ``save_pmor_items`` ' \
                                                    'should be set to `on`'
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -80,7 +80,7 @@ class SaveParametricCase(BaseSolver):
         self.folder = None
         self.case_name = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
         self.data = data
 
         if custom_settings is None:
@@ -88,15 +88,17 @@ class SaveParametricCase(BaseSolver):
         else:
             self.settings = custom_settings
 
-        settings.to_custom_types(self.settings,
-                                 self.settings_types,
-                                 self.settings_default
-                                 )
+        settings_utils.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default)
 
         self.folder = data.output_folder
         self.case_name = self.data.settings['SHARPy']['case']
 
-    def run(self):
+    def run(self, **kwargs):
+        
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
+        restart = settings_utils.set_value_or_default(kwargs, 'restart', False)
 
         config = configobj.ConfigObj()
         file_name = self.folder + '/' + self.data.settings['SHARPy']['case'] + '.pmor.sharpy'
@@ -114,7 +116,7 @@ class SaveParametricCase(BaseSolver):
                           'attributes individually',
                           DeprecationWarning)
             pickle_solver = initialise_solver('PickleData')
-            pickle_solver.initialise(self.data)
+            pickle_solver.initialise(self.data, restart=restart)
             self.data = pickle_solver.run()
             sim_info['path_to_data'] = os.path.abspath(self.folder)
 

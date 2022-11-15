@@ -1,8 +1,4 @@
-import ctypes as ct
-import numpy as np
-
-import sharpy.utils.algebra as algebra
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.cout_utils as cout
@@ -70,7 +66,7 @@ class PrescribedUvlm(BaseSolver):
     settings_default['vortex_radius_wake_ind'] = vortex_radius_def
     settings_description['vortex_radius_wake_ind'] = 'Distance between points below which induction is not computed in the wake convection'
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -85,10 +81,10 @@ class PrescribedUvlm(BaseSolver):
         self.postprocessors = dict()
         self.with_postprocessors = False
 
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.dt = self.settings['dt']
 
         self.aero_solver = solver_interface.initialise_solver(self.settings['aero_solver'])
@@ -106,7 +102,8 @@ class PrescribedUvlm(BaseSolver):
         for postproc in self.settings['postprocessors']:
             self.postprocessors[postproc] = solver_interface.initialise_solver(postproc)
             self.postprocessors[postproc].initialise(
-                self.data, self.settings['postprocessors_settings'][postproc], caller=self)
+                self.data, self.settings['postprocessors_settings'][postproc], caller=self,
+                restart=restart)
 
         self.residual_table = cout.TablePrinter(2, 14, ['g', 'f'])
         self.residual_table.field_length[0] = 6
@@ -127,7 +124,7 @@ class PrescribedUvlm(BaseSolver):
         self.data.structure.next_step()
         self.aero_solver.add_step()
 
-    def run(self):
+    def run(self, **kwargs):
         structural_kstep = self.data.structure.ini_info.copy()
 
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
