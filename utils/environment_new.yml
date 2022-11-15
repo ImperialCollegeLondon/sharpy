@@ -13,6 +13,7 @@ dependencies:
   - mayavi>=4.7.1
   - nbsphinx>=0.4.3
   - pandas>=0.25.3
+  - pre-commit>=2.20.0
   - pyOpenSSL>=19.0.0
   - PySocks>=1.7.1
   - PyYAML>=5.1.2
