@@ -35,8 +35,13 @@ To Do:
 import warnings
 import numpy as np
 import scipy.sparse as sparse
-from scipy.sparse._sputils import upcast_char
 import scipy.sparse.linalg as spalg
+import scipy.sparse.sputils as sputils
+#from scipy.sparse._sputils import upcast_char
+try:
+        from scipy.sparse._sputils import upcast_char
+except ModuleNotFoundError:
+        from scipy.sparse.sputils import upcast_char
 
 # --------------------------------------------------------------------- Classes
 

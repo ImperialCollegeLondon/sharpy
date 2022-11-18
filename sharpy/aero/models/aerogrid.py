@@ -356,7 +356,7 @@ class Aerogrid(object):
                                    aero_settings['aligned_grid'],
                                    orientation_in=aero_settings['freestream_dir'],
                                    calculate_zeta_dot=True,
-                                   shift_panels14=aero_settings['shift_panels']))
+                                   shift_panels14=aero_settings['shift_panels'],
                                    first_twist=self.aero_dict['first_twist'][i_surf]))
 
     def generate_zeta(self, beam, aero_settings, ts=-1, beam_ts=-1):
@@ -490,7 +490,7 @@ class Aerogrid(object):
 def generate_strip(node_info, airfoil_db, aligned_grid,
                    orientation_in=np.array([1, 0, 0]),
                    calculate_zeta_dot = False,
-                   shift_panels14=True
+                   shift_panels14=True,
                    first_twist=True):
     """
     Returns a strip of panels in ``A`` frame of reference, it has to be then rotated to

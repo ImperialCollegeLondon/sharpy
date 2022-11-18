@@ -146,6 +146,12 @@ class StaticUvlm(BaseSolver):
         self.velocity_generator = velocity_generator_type()
         self.velocity_generator.initialise(self.settings['velocity_field_input'], restart=restart)
 
+        self.M_inf = self.settings['mach_number']
+        if self.M_inf == 0.:
+            self.beta_inf = 1.
+        else:
+            self.beta_inf = np.sqrt(1. - self.M_inf**2)
+
     def add_step(self):
         self.data.aero.add_timestep()
 
@@ -154,12 +160,6 @@ class StaticUvlm(BaseSolver):
                                      self.data.aero.aero_settings,
                                      -1,
                                      beam_ts=-1)
-
-        self.M_inf = self.settings['mach_number']
-        if self.M_inf == 0.:
-            self.beta_inf = 1.
-        else:
-            self.beta_inf = np.sqrt(1. - self.M_inf**2)
 
     def update_custom_grid(self, structure_tstep, aero_tstep):
         self.data.aero.generate_zeta_timestep_info(structure_tstep,
