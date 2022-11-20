@@ -6,6 +6,7 @@ import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 from abc import ABCMeta, abstractmethod
 from scipy import signal
+
 dict_of_linear_gusts = {}
 
 
@@ -14,7 +15,7 @@ def linear_gust(arg):
     try:
         arg.gust_id
     except AttributeError:
-        raise AttributeError('Class defined as gust has no gust_id attribute')
+        raise AttributeError("Class defined as gust has no gust_id attribute")
     dict_of_linear_gusts[arg.gust_id] = arg
     return arg
 
@@ -47,15 +48,25 @@ class LinearGust(metaclass=ABCMeta):
         self.dt = None  # type: float
         self.remove_predictor = None  # type: bool
         self.Kzeta = None  # type: int  # total number of lattice vertices
-        self.KKzeta = None  # type: list  # list of number of lattice vertices in each surface
+        self.KKzeta = (
+            None
+        )  # type: list  # list of number of lattice vertices in each surface
 
-        self.state_to_uext = None  #type: np.array # Gust system C matrix (for unpacking into timestep_info)
-        self.uin_to_uext = None  #type: np.array # Gust system D matrix (for unpacking into timestep_info)
-        self.gust_ss = None  #type: libss.StateSpace # containing the gust state-space system
+        self.state_to_uext = (
+            None
+        )  # type: np.array # Gust system C matrix (for unpacking into timestep_info)
+        self.uin_to_uext = (
+            None
+        )  # type: np.array # Gust system D matrix (for unpacking into timestep_info)
+        self.gust_ss = (
+            None
+        )  # type: libss.StateSpace # containing the gust state-space system
 
         self.settings = None
 
-        self.u_ext_direction = None  # np.ndarray Unit external velocity vector in G frame
+        self.u_ext_direction = (
+            None  # np.ndarray Unit external velocity vector in G frame
+        )
         self.u_inf = None  # float Free stream velocity magnitude
 
     def initialise(self, aero, linuvlm, tsaero0, u_ext, custom_settings=None):
@@ -78,7 +89,9 @@ class LinearGust(metaclass=ABCMeta):
 
         if custom_settings is not None:
             self.settings = custom_settings
-            settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+            settings.to_custom_types(
+                self.settings, self.settings_types, self.settings_default
+            )
 
         # find free stream velocity
         self.u_inf = np.linalg.norm(u_ext)
@@ -99,7 +112,10 @@ class LinearGust(metaclass=ABCMeta):
             _, m, n = zeta.shape
             for i_m in range(m):
                 for i_n in range(n):
-                    zeta_proj[:, i_m, i_n] = zeta[:, i_m, i_n].dot(self.u_ext_direction) * self.u_ext_direction
+                    zeta_proj[:, i_m, i_n] = (
+                        zeta[:, i_m, i_n].dot(self.u_ext_direction)
+                        * self.u_ext_direction
+                    )
             max_chord_surf.append(np.max(zeta_proj))
             min_chord_surf.append(np.min(zeta_proj))
         return min(min_chord_surf), max(max_chord_surf)
@@ -152,21 +168,27 @@ class LinearGust(metaclass=ABCMeta):
         ssgust = self.assemble()  # libss.StateSpace()
         #
         # Feed through UVLM inputs
-        b_aug = np.zeros((ssgust.states, ssuvlm.inputs - ssgust.outputs + ssgust.inputs))
+        b_aug = np.zeros(
+            (ssgust.states, ssuvlm.inputs - ssgust.outputs + ssgust.inputs)
+        )
         c_aug = np.zeros((ssuvlm.inputs, ssgust.states))
         d_aug = np.zeros((ssuvlm.inputs, b_aug.shape[1]))
-        b_aug[:, -ssgust.inputs:] = ssgust.B
-        c_aug[-ssgust.outputs:, :] = ssgust.C
-        d_aug[:-ssgust.outputs, :-ssgust.inputs] = np.eye(ssuvlm.inputs - ssgust.outputs)
+        b_aug[:, -ssgust.inputs :] = ssgust.B
+        c_aug[-ssgust.outputs :, :] = ssgust.C
+        d_aug[: -ssgust.outputs, : -ssgust.inputs] = np.eye(
+            ssuvlm.inputs - ssgust.outputs
+        )
 
         self.gust_ss = libss.StateSpace(ssgust.A, b_aug, c_aug, d_aug, dt=ssgust.dt)
         input_variables = ssuvlm.input_variables.copy()
-        input_variables.remove('u_gust')
-        self.gust_ss.input_variables = \
-            ss_interface.LinearVector.merge(input_variables, ssgust.input_variables)
+        input_variables.remove("u_gust")
+        self.gust_ss.input_variables = ss_interface.LinearVector.merge(
+            input_variables, ssgust.input_variables
+        )
         self.gust_ss.state_variables = ssgust.state_variables.copy()
-        self.gust_ss.output_variables = ss_interface.LinearVector.transform(ssuvlm.input_variables,
-                                                                            to_type=ss_interface.OutputVariable)
+        self.gust_ss.output_variables = ss_interface.LinearVector.transform(
+            ssuvlm.input_variables, to_type=ss_interface.OutputVariable
+        )
         ss = libss.series(self.gust_ss, ssuvlm)
 
         return ss
@@ -191,16 +213,18 @@ class LinearGust(metaclass=ABCMeta):
             self.state_to_uext = c_mod
             self.uin_to_uext = d_mod
         else:
-            gustss = libss.StateSpace(a_i, b_i, c_i, d_i,
-                                      dt=self.dt)
+            gustss = libss.StateSpace(a_i, b_i, c_i, d_i, dt=self.dt)
             self.state_to_uext = c_i
             self.uin_to_uext = d_i
         gustss.input_variables = ss_interface.LinearVector(
-            [ss_interface.InputVariable('u_gust', size=1, index=0)])
+            [ss_interface.InputVariable("u_gust", size=1, index=0)]
+        )
         gustss.state_variables = ss_interface.LinearVector(
-            [ss_interface.StateVariable('gust', size=gustss.states, index=0)])
+            [ss_interface.StateVariable("gust", size=gustss.states, index=0)]
+        )
         gustss.output_variables = ss_interface.LinearVector(
-            [ss_interface.OutputVariable('u_gust', size=gustss.outputs, index=0)])
+            [ss_interface.OutputVariable("u_gust", size=gustss.outputs, index=0)]
+        )
 
         return gustss
 
@@ -228,7 +252,8 @@ class LeadingEdge(LinearGust):
     This is vertical velocity is then convected downstream with the free stream velocity. The gust is uniform in span.
 
     """
-    gust_id = 'LeadingEdge'
+
+    gust_id = "LeadingEdge"
 
     def assemble(self):
         """
@@ -243,40 +268,57 @@ class LeadingEdge(LinearGust):
         # State Equation
         # for each input...
         a_i = np.zeros((N, N))
-        a_i[1:, :-1] = np.eye(N-1)
+        a_i[1:, :-1] = np.eye(N - 1)
         b_i = np.zeros((N, 1))
         b_i[0, 0] = 1
 
         c_i = np.zeros((3 * Kzeta, N))
         for i_surf in range(self.aero.n_surf):
-
             M_surf, N_surf = self.aero.aero_dimensions[i_surf]
-            Kzeta_start = 3 * sum(self.KKzeta[:i_surf])  # number of coordinates up to current surface
+            Kzeta_start = 3 * sum(
+                self.KKzeta[:i_surf]
+            )  # number of coordinates up to current surface
             shape_zeta = (3, M_surf + 1, N_surf + 1)
 
             if self.print_info:
-                cout.cout_wrap(f'Aero surface {i_surf}')
-                cout.cout_wrap(f'Gust monitoring station domain:\n{x_domain}', 1)
+                cout.cout_wrap(f"Aero surface {i_surf}")
+                cout.cout_wrap(f"Gust monitoring station domain:\n{x_domain}", 1)
 
             for i_node_span in range(N_surf + 1):
                 for i_node_chord in range(M_surf + 1):
-                    i_vertex = [Kzeta_start + np.ravel_multi_index((i_axis, i_node_chord, i_node_span),
-                                                                   shape_zeta) for i_axis in range(3)]
+                    i_vertex = [
+                        Kzeta_start
+                        + np.ravel_multi_index(
+                            (i_axis, i_node_chord, i_node_span), shape_zeta
+                        )
+                        for i_axis in range(3)
+                    ]
                     zeta = self.tsaero0.zeta[i_surf][:, i_node_chord, i_node_span]
                     x_vertex = zeta.dot(self.u_ext_direction)
-                    interpolation_weights, column_indices = linear_interpolation_weights(x_vertex, x_domain)
-                    c_i[i_vertex, column_indices[0]] = np.array([0, 0, interpolation_weights[0]])
-                    c_i[i_vertex, column_indices[1]] = np.array([0, 0, interpolation_weights[1]])
+                    (
+                        interpolation_weights,
+                        column_indices,
+                    ) = linear_interpolation_weights(x_vertex, x_domain)
+                    c_i[i_vertex, column_indices[0]] = np.array(
+                        [0, 0, interpolation_weights[0]]
+                    )
+                    c_i[i_vertex, column_indices[1]] = np.array(
+                        [0, 0, interpolation_weights[1]]
+                    )
 
                     if self.print_info:
-                        cout.cout_wrap(f'Vertex info: i_n = {i_node_span}\ti_m = {i_node_chord}')
-                        cout.cout_wrap(f'\tCoordinate: {zeta}', 1)
-                        cout.cout_wrap(f'\tProjected coordinate: {x_vertex}', 1)
-                        cout.cout_wrap(f'\tInterpolation weights: {interpolation_weights}', 2)
-                        cout.cout_wrap(f'\tC matrix column indices: {column_indices}', 2)
-                        cout.cout_wrap(f'\ti_vertex: {i_vertex}', 2)
-
-
+                        cout.cout_wrap(
+                            f"Vertex info: i_n = {i_node_span}\ti_m = {i_node_chord}"
+                        )
+                        cout.cout_wrap(f"\tCoordinate: {zeta}", 1)
+                        cout.cout_wrap(f"\tProjected coordinate: {x_vertex}", 1)
+                        cout.cout_wrap(
+                            f"\tInterpolation weights: {interpolation_weights}", 2
+                        )
+                        cout.cout_wrap(
+                            f"\tC matrix column indices: {column_indices}", 2
+                        )
+                        cout.cout_wrap(f"\ti_vertex: {i_vertex}", 2)
 
         d_i = np.zeros((c_i.shape[0], b_i.shape[1]))
 
@@ -293,18 +335,22 @@ class MultiLeadingEdge(LinearGust):
 
     """
 
-    gust_id = 'MultiLeadingEdge'
+    gust_id = "MultiLeadingEdge"
 
     settings_types = {}
     settings_default = {}
     settings_description = {}
 
-    settings_types['span_location'] = 'list(float)'
-    settings_default['span_location'] = [-10., 10.]
-    settings_description['span_location'] = 'Spanwise location of the input streams of the gust'
+    settings_types["span_location"] = "list(float)"
+    settings_default["span_location"] = [-10.0, 10.0]
+    settings_description[
+        "span_location"
+    ] = "Spanwise location of the input streams of the gust"
 
     settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(
+        settings_types, settings_default, settings_description
+    )
 
     def __init__(self):
         super().__init__()
@@ -315,13 +361,12 @@ class MultiLeadingEdge(LinearGust):
     def initialise(self, aero, linuvlm, tsaero0, u_ext, custom_settings=None):
         super().initialise(aero, linuvlm, tsaero0, u_ext, custom_settings)
 
-        self.span_loc = self.settings['span_location']
+        self.span_loc = self.settings["span_location"]
         self.n_gust = len(self.span_loc)
 
-        assert self.n_gust > 1, 'Use LeadingEdge gust for single inputs'
+        assert self.n_gust > 1, "Use LeadingEdge gust for single inputs"
 
     def assemble(self):
-
         n_gust = self.n_gust
         Kzeta = self.Kzeta
         span_loc = self.span_loc
@@ -334,26 +379,38 @@ class MultiLeadingEdge(LinearGust):
         gust_a = np.zeros((N * n_gust, N * n_gust))
         gust_b = np.zeros((N * n_gust, n_gust))
         for ith_gust in range(n_gust):
-            gust_a[ith_gust * N + 1: ith_gust * N + N, ith_gust * N: ith_gust * N + N - 1] = np.eye(N-1)
+            gust_a[
+                ith_gust * N + 1 : ith_gust * N + N, ith_gust * N : ith_gust * N + N - 1
+            ] = np.eye(N - 1)
             gust_b[ith_gust * N, ith_gust] = 1
 
         gust_c = np.zeros((3 * Kzeta, n_gust * N))
         gust_d = np.zeros((gust_c.shape[0], gust_b.shape[1]))
         for i_surf in range(self.aero.n_surf):
-
             M_surf, N_surf = self.aero.aero_dimensions[i_surf]
-            Kzeta_start = 3 * sum(self.KKzeta[:i_surf])  # number of coordinates up to current surface
+            Kzeta_start = 3 * sum(
+                self.KKzeta[:i_surf]
+            )  # number of coordinates up to current surface
             shape_zeta = (3, M_surf + 1, N_surf + 1)
 
             for i_node_span in range(N_surf + 1):
                 for i_node_chord in range(M_surf + 1):
-                    i_vertex = [Kzeta_start + np.ravel_multi_index((i_axis, i_node_chord, i_node_span),
-                                                                   shape_zeta) for i_axis in range(3)]
+                    i_vertex = [
+                        Kzeta_start
+                        + np.ravel_multi_index(
+                            (i_axis, i_node_chord, i_node_span), shape_zeta
+                        )
+                        for i_axis in range(3)
+                    ]
                     x_vertex = self.tsaero0.zeta[i_surf][0, i_node_chord, i_node_span]
                     y_vertex = self.tsaero0.zeta[i_surf][1, i_node_chord, i_node_span]
-                    interpolation_weights, column_indices = spanwise_interpolation(y_vertex, span_loc, x_vertex, x_domain)
+                    interpolation_weights, column_indices = spanwise_interpolation(
+                        y_vertex, span_loc, x_vertex, x_domain
+                    )
                     for i in range(len(column_indices)):
-                        gust_c[i_vertex, column_indices[i]] = np.array([0, 0, interpolation_weights[i]])
+                        gust_c[i_vertex, column_indices[i]] = np.array(
+                            [0, 0, interpolation_weights[i]]
+                        )
 
         gustss = self.assemble_gust_statespace(gust_a, gust_b, gust_c, gust_d)
         return gustss
@@ -361,17 +418,27 @@ class MultiLeadingEdge(LinearGust):
 
 def get_freestream_velocity(data):
     try:
-        u_inf = data.settings['StaticUvlm']['aero_solver_settings']['u_inf']
-        u_inf_direction = data.settings['StaticCoupled']['aero_solver_settings']['u_inf_direction']
+        u_inf = data.settings["StaticUvlm"]["aero_solver_settings"]["u_inf"]
+        u_inf_direction = data.settings["StaticCoupled"]["aero_solver_settings"][
+            "u_inf_direction"
+        ]
     except KeyError:
         try:
-            u_inf = data.settings['StaticCoupled']['aero_solver_settings']['velocity_field_input']['u_inf']
-            u_inf_direction = data.settings['StaticCoupled']['aero_solver_settings']['velocity_field_input']['u_inf_direction']
+            u_inf = data.settings["StaticCoupled"]["aero_solver_settings"][
+                "velocity_field_input"
+            ]["u_inf"]
+            u_inf_direction = data.settings["StaticCoupled"]["aero_solver_settings"][
+                "velocity_field_input"
+            ]["u_inf_direction"]
         except KeyError:
-            cout.cout_wrap('Unable to find free stream velocity settings in StaticUvlm or StaticCoupled,'
-                           'please ensure these settings are provided in the config .sharpy file. If'
-                           'you are running a restart simulation make sure they are included too, regardless'
-                           'of these solvers being present in the SHARPy flow', 4)
+            cout.cout_wrap(
+                "Unable to find free stream velocity settings in StaticUvlm or"
+                " StaticCoupled,please ensure these settings are provided in the config"
+                " .sharpy file. Ifyou are running a restart simulation make sure they"
+                " are included too, regardlessof these solvers being present in the"
+                " SHARPy flow",
+                4,
+            )
             raise KeyError
 
     try:
@@ -382,10 +449,14 @@ def get_freestream_velocity(data):
         try:
             u_inf_direction = np.array(u_inf_direction, dtype=float)
         except ValueError:
-            if u_inf_direction.find(',') < 0:
-                u_inf_direction = np.fromstring(u_inf_direction.strip('[]'), sep=' ', dtype=float)
+            if u_inf_direction.find(",") < 0:
+                u_inf_direction = np.fromstring(
+                    u_inf_direction.strip("[]"), sep=" ", dtype=float
+                )
             else:
-                u_inf_direction = np.fromstring(u_inf_direction.strip('[]'), sep=',', dtype=float)
+                u_inf_direction = np.fromstring(
+                    u_inf_direction.strip("[]"), sep=",", dtype=float
+                )
         finally:
             v0 = np.array(u_inf_direction, dtype=float) * float(u_inf)
 
@@ -393,24 +464,26 @@ def get_freestream_velocity(data):
 
 
 def linear_interpolation_weights(x_vertex, x_domain):
-
     column_ind_left = np.argwhere(x_domain >= x_vertex)[0][0] - 1
-    if column_ind_left == - 1:
+    if column_ind_left == -1:
         column_ind_left = 0
     column_indices = (column_ind_left, column_ind_left + 1)
-    interpolation_weights = np.array([x_domain[column_ind_left + 1] - x_vertex, x_vertex - x_domain[column_ind_left]])
-    interpolation_weights /= (x_domain[column_ind_left + 1] - x_domain[column_ind_left])
+    interpolation_weights = np.array(
+        [x_domain[column_ind_left + 1] - x_vertex, x_vertex - x_domain[column_ind_left]]
+    )
+    interpolation_weights /= x_domain[column_ind_left + 1] - x_domain[column_ind_left]
     return interpolation_weights, column_indices
 
 
 def chordwise_interpolation(x_vertex, x_domain):
-
     column_ind_left = np.argwhere(x_domain >= x_vertex)[0][0] - 1
-    if column_ind_left == - 1:
+    if column_ind_left == -1:
         column_ind_left = 0
     column_indices = (column_ind_left, column_ind_left + 1)
-    interpolation_weights = np.array([x_domain[column_ind_left + 1] - x_vertex, x_vertex - x_domain[column_ind_left]])
-    interpolation_weights /= (x_domain[column_ind_left + 1] - x_domain[column_ind_left])
+    interpolation_weights = np.array(
+        [x_domain[column_ind_left + 1] - x_vertex, x_vertex - x_domain[column_ind_left]]
+    )
+    interpolation_weights /= x_domain[column_ind_left + 1] - x_domain[column_ind_left]
     return interpolation_weights, column_indices
 
 
@@ -500,32 +573,34 @@ def campbell(sigma_w, length_scale, velocity, dt=None):
     """
     a = 1.339
     time_scale = a * length_scale / velocity
-    num_tf = np.array([91/12, 52, 60]) * sigma_w * np.sqrt(time_scale / a / np.pi)
-    den_tf = np.array([935/216, 561/12, 102, 60])
+    num_tf = np.array([91 / 12, 52, 60]) * sigma_w * np.sqrt(time_scale / a / np.pi)
+    den_tf = np.array([935 / 216, 561 / 12, 102, 60])
     if dt is not None:
-        num_tf, den_tf, dt = scsig.cont2discrete((num_tf, den_tf), dt, method='bilinear')
+        num_tf, den_tf, dt = scsig.cont2discrete(
+            (num_tf, den_tf), dt, method="bilinear"
+        )
         camp_tf = signal.TransferFunction(num_tf, den_tf, dt=dt)
     else:
         camp_tf = signal.TransferFunction(num_tf, den_tf)
     ss_turb = libss.StateSpace.from_scipy(camp_tf.to_ss())
 
-    ss_turb.initialise_variables(({'name': 'noise_in', 'size': 1}), var_type='in')
-    ss_turb.initialise_variables(({'name': 'u_gust', 'size': 1}), var_type='out')
-    ss_turb.initialise_variables(({'name': 'campbell_state', 'size': ss_turb.states}), var_type='state')
+    ss_turb.initialise_variables(({"name": "noise_in", "size": 1}), var_type="in")
+    ss_turb.initialise_variables(({"name": "u_gust", "size": 1}), var_type="out")
+    ss_turb.initialise_variables(
+        ({"name": "campbell_state", "size": ss_turb.states}), var_type="state"
+    )
 
     return ss_turb
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass
     # sys = campbell(90, 1750, 30, dt=0.1)
 
     import unittest
 
     class TestInterpolation(unittest.TestCase):
-
         def test_interpolation(self):
-
             x_domain = np.linspace(0, 1, 4)
             span_loc = np.linspace(0, 1, 2)
 
@@ -541,14 +616,17 @@ if __name__ == '__main__':
                 for j in range(len(y_grid)):
                     print(i)
                     print(j)
-                    print('Vertex x({:g}) = {:.2f}, y({:g}) = {:.2f}'.format(j, x_mesh[j, i],
-                                                                             i, y_mesh[j, i]))
-                    weights, columns = spanwise_interpolation(y_mesh[j, i], span_loc,
-                                                                              x_mesh[j, i], x_domain)
+                    print(
+                        "Vertex x({:g}) = {:.2f}, y({:g}) = {:.2f}".format(
+                            j, x_mesh[j, i], i, y_mesh[j, i]
+                        )
+                    )
+                    weights, columns = spanwise_interpolation(
+                        y_mesh[j, i], span_loc, x_mesh[j, i], x_domain
+                    )
 
-                    print('Weights', weights)
-                    print('Columns', columns)
-                    print('\n')
-
+                    print("Weights", weights)
+                    print("Columns", columns)
+                    print("\n")
 
     unittest.main()

@@ -44,35 +44,46 @@ class SaveParametricCase(BaseSolver):
             <name_of_your_parameter> = value
 
     """
-    solver_id = 'SaveParametricCase'
-    solver_classification = 'post-processor'
+
+    solver_id = "SaveParametricCase"
+    solver_classification = "post-processor"
 
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['save_case'] = 'bool'
-    settings_default['save_case'] = False
-    settings_description['save_case'] = 'DeprecationWarning - Save a .pkl of the SHARPy case. Required for PMOR.'
+    settings_types["save_case"] = "bool"
+    settings_default["save_case"] = False
+    settings_description[
+        "save_case"
+    ] = "DeprecationWarning - Save a .pkl of the SHARPy case. Required for PMOR."
 
-    settings_types['parameters'] = 'dict'
-    settings_default['parameters'] = None
-    settings_description['parameters'] = 'Dictionary containing the chosen simulation parameters and their values.'
+    settings_types["parameters"] = "dict"
+    settings_default["parameters"] = None
+    settings_description[
+        "parameters"
+    ] = "Dictionary containing the chosen simulation parameters and their values."
 
-    settings_types['save_pmor_items'] = 'bool'
-    settings_default['save_pmor_items'] = False
-    settings_description['save_pmor_items'] = 'Saves to h5 the items required for PMOR interpolation: the aerodynamic ' \
-                                              'reduced order bases, the structural modal matrix and the ' \
-                                              'reduced state-space'
+    settings_types["save_pmor_items"] = "bool"
+    settings_default["save_pmor_items"] = False
+    settings_description["save_pmor_items"] = (
+        "Saves to h5 the items required for PMOR interpolation: the aerodynamic "
+        "reduced order bases, the structural modal matrix and the "
+        "reduced state-space"
+    )
 
-    settings_types['save_pmor_subsystems'] = 'bool'
-    settings_default['save_pmor_subsystems'] = False
-    settings_description['save_pmor_subsystems'] = 'Saves to h5 the statespaces and matrices of the UVLM and beam and ' \
-                                                   'the M, C, K matrices. The setting ``save_pmor_items`` ' \
-                                                   'should be set to `on`'
+    settings_types["save_pmor_subsystems"] = "bool"
+    settings_default["save_pmor_subsystems"] = False
+    settings_description["save_pmor_subsystems"] = (
+        "Saves to h5 the statespaces and matrices of the UVLM and beam and "
+        "the M, C, K matrices. The setting ``save_pmor_items`` "
+        "should be set to `on`"
+    )
 
     settings_table = settings_utils.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(
+        settings_types, settings_default, settings_description
+    )
 
     def __init__(self):
         self.data = None
@@ -88,88 +99,104 @@ class SaveParametricCase(BaseSolver):
         else:
             self.settings = custom_settings
 
-        settings_utils.to_custom_types(self.settings,
-                           self.settings_types,
-                           self.settings_default)
+        settings_utils.to_custom_types(
+            self.settings, self.settings_types, self.settings_default
+        )
 
         self.folder = data.output_folder
-        self.case_name = self.data.settings['SHARPy']['case']
+        self.case_name = self.data.settings["SHARPy"]["case"]
 
     def run(self, **kwargs):
-        
-        online = settings_utils.set_value_or_default(kwargs, 'online', False)
-        restart = settings_utils.set_value_or_default(kwargs, 'restart', False)
+        online = settings_utils.set_value_or_default(kwargs, "online", False)
+        restart = settings_utils.set_value_or_default(kwargs, "restart", False)
 
         config = configobj.ConfigObj()
-        file_name = self.folder + '/' + self.data.settings['SHARPy']['case'] + '.pmor.sharpy'
+        file_name = (
+            self.folder + "/" + self.data.settings["SHARPy"]["case"] + ".pmor.sharpy"
+        )
         config.filename = file_name
-        config['parameters'] = dict()
-        for k, v in self.settings['parameters'].items():
-            cout.cout_wrap('\tWriting parameter %s: %s' % (k, str(v)), 1)
-            config['parameters'][k] = v
+        config["parameters"] = dict()
+        for k, v in self.settings["parameters"].items():
+            cout.cout_wrap("\tWriting parameter %s: %s" % (k, str(v)), 1)
+            config["parameters"][k] = v
 
         sim_info = dict()
-        sim_info['case'] = self.data.settings['SHARPy']['case']
+        sim_info["case"] = self.data.settings["SHARPy"]["case"]
 
-        if 'PickleData' not in self.data.settings['SHARPy']['flow'] and self.settings['save_case']:
-            warnings.warn('Post-proc: SaveParametricCase: Saving a pickle is not recommended - try saving required '
-                          'attributes individually',
-                          DeprecationWarning)
-            pickle_solver = initialise_solver('PickleData')
+        if (
+            "PickleData" not in self.data.settings["SHARPy"]["flow"]
+            and self.settings["save_case"]
+        ):
+            warnings.warn(
+                "Post-proc: SaveParametricCase: Saving a pickle is not recommended -"
+                " try saving required attributes individually",
+                DeprecationWarning,
+            )
+            pickle_solver = initialise_solver("PickleData")
             pickle_solver.initialise(self.data, restart=restart)
             self.data = pickle_solver.run()
-            sim_info['path_to_data'] = os.path.abspath(self.folder)
+            sim_info["path_to_data"] = os.path.abspath(self.folder)
 
-        sim_info['path_to_data'] = os.path.abspath(self.folder)
+        sim_info["path_to_data"] = os.path.abspath(self.folder)
 
-        config['sim_info'] = sim_info
+        config["sim_info"] = sim_info
         config.write()
 
-        if self.settings['save_pmor_items']:
+        if self.settings["save_pmor_items"]:
             try:
                 self.data.linear
             except AttributeError:
                 pass
             else:
-                if not os.path.exists(self.folder + '/save_pmor_data/'):
-                    os.makedirs(self.folder + '/save_pmor_data/')
+                if not os.path.exists(self.folder + "/save_pmor_data/"):
+                    os.makedirs(self.folder + "/save_pmor_data/")
                 self.save_state_space()
                 self.save_aero_rom_bases()
                 self.save_structural_modal_matrix()
 
-                if self.settings['save_pmor_subsystems']:
+                if self.settings["save_pmor_subsystems"]:
                     self.save_structural_matrices()
                     self.save_aero_state_space()
 
         return self.data
 
     def save_aero_rom_bases(self):
-        """Save the aerodynamic reduced order bases to h5 files in the output directory"""
+        """Save the aerodynamic reduced order bases to h5 files in the output directory
+        """
         # check rom's exist
         rom_dict = self.data.linear.linear_system.uvlm.rom
         if rom_dict is None:
             return None
 
         for rom_name, rom_class in rom_dict.items():
-            rom_class.save_reduced_order_bases(self.base_name + f'_{rom_name.lower()}_aerorob.h5')
+            rom_class.save_reduced_order_bases(
+                self.base_name + f"_{rom_name.lower()}_aerorob.h5"
+            )
 
     def save_structural_modal_matrix(self):
         if not self.data.linear.linear_system.beam.sys.modal:
             return None
 
-        self.data.linear.linear_system.beam.save_reduced_order_bases(self.base_name + f'_modal_structrob.h5')
+        self.data.linear.linear_system.beam.save_reduced_order_bases(
+            self.base_name + f"_modal_structrob.h5"
+        )
 
     def save_state_space(self):
-        self.data.linear.linear_system.ss.save(self.base_name + '_statespace.h5')
+        self.data.linear.linear_system.ss.save(self.base_name + "_statespace.h5")
 
     def save_structural_matrices(self):
-        self.data.linear.linear_system.beam.ss.save(self.base_name + '_beamstatespace.h5')
-        self.data.linear.linear_system.beam.save_structural_matrices(self.base_name + '_struct_matrices.h5')
+        self.data.linear.linear_system.beam.ss.save(
+            self.base_name + "_beamstatespace.h5"
+        )
+        self.data.linear.linear_system.beam.save_structural_matrices(
+            self.base_name + "_struct_matrices.h5"
+        )
 
     def save_aero_state_space(self):
-        self.data.linear.linear_system.uvlm.ss.save(self.base_name + '_aerostatespace.h5')
+        self.data.linear.linear_system.uvlm.ss.save(
+            self.base_name + "_aerostatespace.h5"
+        )
 
     @property
     def base_name(self):
-        return self.folder + '/save_pmor_data/' + self.case_name
-
+        return self.folder + "/save_pmor_data/" + self.case_name

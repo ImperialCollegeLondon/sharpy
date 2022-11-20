@@ -3,7 +3,9 @@ import numpy as np
 import sharpy.utils.algebra as algebra
 
 
-def structural_vector_to_timestep(vector, tstruct, structure, phi=None, num_rig_dof=0, copy_tstep=True):
+def structural_vector_to_timestep(
+    vector, tstruct, structure, phi=None, num_rig_dof=0, copy_tstep=True
+):
     """Transform a state-space structural vector into a time step object
 
     This adds to a reference time step the following variables extracted from the vector:
@@ -28,8 +30,8 @@ def structural_vector_to_timestep(vector, tstruct, structure, phi=None, num_rig_
           state-space vector.
     """
     n_dof = vector.shape[0]
-    v = vector[:n_dof//2]
-    v_dot = vector[n_dof//2:]
+    v = vector[: n_dof // 2]
+    v_dot = vector[n_dof // 2 :]
     if phi is not None:  # modal coordinates
         eta = phi.dot(v)
         eta_dot = phi.dot(v_dot)
@@ -52,7 +54,7 @@ def structural_vector_to_timestep(vector, tstruct, structure, phi=None, num_rig_
         tstep = tstruct
 
     vdof = structure.vdof
-    num_dof = 6*sum(vdof >= 0)
+    num_dof = 6 * sum(vdof >= 0)
 
     q = np.zeros((num_dof + num_rig_dof))
     dqdt = np.zeros_like(q)
@@ -69,30 +71,34 @@ def structural_vector_to_timestep(vector, tstruct, structure, phi=None, num_rig_
     for_acc = np.zeros_like(tstep.for_acc)
     quat = np.zeros_like(tstep.quat)
 
-    q[:num_dof + num_rig_dof] = np.concatenate((eta, beta_bar))
-    dqdt[:num_dof + num_rig_dof] = np.concatenate((eta_dot, beta))
+    q[: num_dof + num_rig_dof] = np.concatenate((eta, beta_bar))
+    dqdt[: num_dof + num_rig_dof] = np.concatenate((eta_dot, beta))
 
     for i_node in vdof[vdof >= 0]:
-        pos[i_node + 1, :] = q[6*i_node: 6*i_node + 3]
-        pos_dot[i_node + 1, :] = dqdt[6*i_node + 0: 6*i_node + 3]
+        pos[i_node + 1, :] = q[6 * i_node : 6 * i_node + 3]
+        pos_dot[i_node + 1, :] = dqdt[6 * i_node + 0 : 6 * i_node + 3]
 
     for i_elem in range(tstep.num_elem):
         for i_node in range(tstep.num_node_elem):
-            psi[i_elem, i_node, :] = np.linalg.inv(algebra.crv2tan(tstep.psi[i_elem, i_node]).T).dot(q[i_node + 3: i_node + 6])
-            psi_dot[i_elem, i_node, :] = dqdt[i_node + 3: i_node + 6]
+            psi[i_elem, i_node, :] = np.linalg.inv(
+                algebra.crv2tan(tstep.psi[i_elem, i_node]).T
+            ).dot(q[i_node + 3 : i_node + 6])
+            psi_dot[i_elem, i_node, :] = dqdt[i_node + 3 : i_node + 6]
 
-    if num_rig_dof != 0: # beam is clamped
+    if num_rig_dof != 0:  # beam is clamped
         for_vel = beta[:6]
         if num_rig_dof == 9:
             quat = algebra.euler2quat(beta[-3:])
         elif num_rig_dof == 10:
             quat = beta[-4:]
         else:
-            raise NotImplementedError('Structural vector to timestep for cases without 9 or 10 rigid'
-                                      'degrees of freedom not yet supported.')
+            raise NotImplementedError(
+                "Structural vector to timestep for cases without 9 or 10 rigid"
+                "degrees of freedom not yet supported."
+            )
 
-    tstep.q[:len(q)] += q
-    tstep.dqdt[:len(q)] += dqdt
+    tstep.q[: len(q)] += q
+    tstep.dqdt[: len(q)] += dqdt
 
     tstep.pos += pos
     tstep.pos_dot += pos_dot
@@ -107,4 +113,3 @@ def structural_vector_to_timestep(vector, tstruct, structure, phi=None, num_rig_
     tstep.quat /= np.linalg.norm(tstep.quat)  # normalise quaternion
 
     return tstep
-

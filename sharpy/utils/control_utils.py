@@ -2,6 +2,7 @@
 """
 import numpy as np
 
+
 def second_order_fd(history, n_calls, dt):
     # history is ordered such that the last element is the most recent one (t), and thus
     # it goes [(t - 2), (t - 1), (t)]
@@ -11,7 +12,7 @@ def second_order_fd(history, n_calls, dt):
         pass
 
     elif n_calls == 2:
-    # else:
+        # else:
         # first order derivative
         coefficients[1:3] = [-1.0, 1.0]
 
@@ -20,8 +21,9 @@ def second_order_fd(history, n_calls, dt):
         coefficients[:] = [1.0, -4.0, 3.0]
         coefficients *= 0.5
 
-    derivative = np.dot(coefficients, history)/dt
+    derivative = np.dot(coefficients, history) / dt
     return derivative
+
 
 class PID(object):
     """
@@ -39,6 +41,7 @@ class PID(object):
         pid.set_point(target_point)
         control = pid(current_point)
     """
+
     # for i in range(n_steps):
     #     state[i] = np.sum(feedback[:i])
     #     controller.set_point(set_point[i])
@@ -53,11 +56,11 @@ class PID(object):
         self._dt = dt
 
         self._accumulated_integral = 0.0
-        self._integral_limits = np.array([-1., 1.])*10000
+        self._integral_limits = np.array([-1.0, 1.0]) * 10000
         self._error_history = np.zeros((3,))
 
         self._derivator = second_order_fd
-        self._derivative_limits = np.array([-1, 1])*10000
+        self._derivative_limits = np.array([-1, 1]) * 10000
 
         self._n_calls = 0
 
@@ -82,18 +85,18 @@ class PID(object):
 
         detailed = np.zeros((3,))
         # Proportional gain
-        actuation += error*self._kp
-        detailed[0] = error*self._kp
+        actuation += error * self._kp
+        detailed[0] = error * self._kp
 
         # Derivative gain
         derivative = self._derivator(self._error_history, self._n_calls, self._dt)
         derivative = max(derivative, self._derivative_limits[0])
         derivative = min(derivative, self._derivative_limits[1])
-        actuation += derivative*self._kd
-        detailed[2] = derivative*self._kd
+        actuation += derivative * self._kd
+        detailed[2] = derivative * self._kd
 
         # Integral gain
-        aux_acc_int = self._accumulated_integral + error*self._dt
+        aux_acc_int = self._accumulated_integral + error * self._dt
         if aux_acc_int < self._integral_limits[0]:
             aux_acc_int = self._integral_limits[0]
         elif aux_acc_int > self._integral_limits[1]:
@@ -101,17 +104,18 @@ class PID(object):
 
         if self._anti_windup_lim is not None:
             # Apply anti wind up
-            aux_actuation = actuation + aux_acc_int*self._ki
-            if ((aux_actuation > self._anti_windup_lim[0]) and
-                (aux_actuation < self._anti_windup_lim[1])):
+            aux_actuation = actuation + aux_acc_int * self._ki
+            if (aux_actuation > self._anti_windup_lim[0]) and (
+                aux_actuation < self._anti_windup_lim[1]
+            ):
                 # Within limits
                 self._accumulated_integral = aux_acc_int
-                # If the system exceeds the limits, this 
+                # If the system exceeds the limits, this
                 # will not be added to the self._accumulated_integral
         else:
             self._accumulated_integral = aux_acc_int
 
-        actuation += self._accumulated_integral*self._ki
-        detailed[1] = self._accumulated_integral*self._ki
+        actuation += self._accumulated_integral * self._ki
+        detailed[1] = self._accumulated_integral * self._ki
 
         return actuation, detailed

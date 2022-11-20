@@ -57,7 +57,12 @@ import warnings
 import numpy as np
 import scipy.signal as scsig
 import scipy.linalg as scalg
-from sharpy.linear.utils.ss_interface import LinearVector, StateVariable, InputVariable, OutputVariable
+from sharpy.linear.utils.ss_interface import (
+    LinearVector,
+    StateVariable,
+    InputVariable,
+    OutputVariable,
+)
 import scipy.interpolate as scint
 import h5py
 import sharpy.utils.h5utils as h5utils
@@ -67,6 +72,7 @@ import sharpy.linear.src.libsparse as libsp
 
 
 # ------------------------------------------------------------- Dedicated class
+
 
 class StateSpace:
     """
@@ -103,13 +109,13 @@ class StateSpace:
         self._output_variables = None
 
         # verify dimensions
-        assert self.A.shape == (self.states, self.states), 'A and B rows not matching'
-        assert self.C.shape[1] == self.states, 'A and C columns not matching'
-        assert self.D.shape[0] == self.outputs, 'C and D rows not matching'
+        assert self.A.shape == (self.states, self.states), "A and B rows not matching"
+        assert self.C.shape[1] == self.states, "A and C columns not matching"
+        assert self.D.shape[0] == self.outputs, "C and D rows not matching"
         try:
-            assert self.D.shape[1] == self.inputs, 'B and D columns not matching'
+            assert self.D.shape[1] == self.inputs, "B and D columns not matching"
         except IndexError:
-            assert self.inputs == 1, 'D shape does not match number of inputs'
+            assert self.inputs == 1, "D shape does not match number of inputs"
 
     @property
     def inputs(self):
@@ -136,11 +142,14 @@ class StateSpace:
     @input_variables.setter
     def input_variables(self, variables):
         if variables.variable_class is not InputVariable:
-            raise TypeError('LinearVector does not include InputVariable s')
+            raise TypeError("LinearVector does not include InputVariable s")
         if variables.size != self.inputs:
-            raise IndexError('Size of LinearVector of InputVariable s ({:g}) is not the same as the number of '
-                             'inputs in the '
-                             'system ({:g})'.format(variables.size, self.inputs))
+            raise IndexError(
+                "Size of LinearVector of InputVariable s ({:g}) is not the same as the"
+                " number of inputs in the system ({:g})".format(
+                    variables.size, self.inputs
+                )
+            )
         self._input_variables = variables
 
     @property
@@ -150,11 +159,14 @@ class StateSpace:
     @output_variables.setter
     def output_variables(self, variables):
         if variables.variable_class is not OutputVariable:
-            raise TypeError('LinearVector does not include OutputVariable s')
+            raise TypeError("LinearVector does not include OutputVariable s")
         if variables.size != self.outputs:
-            raise IndexError('Size of LinearVector of OutputVariable s ({:g}) is not the same as the number of '
-                             'outputs in the '
-                             'system ({:g})'.format(variables.size, self.outputs))
+            raise IndexError(
+                "Size of LinearVector of OutputVariable s ({:g}) is not the same as the"
+                " number of outputs in the system ({:g})".format(
+                    variables.size, self.outputs
+                )
+            )
         self._output_variables = variables
 
     @property
@@ -164,63 +176,74 @@ class StateSpace:
     @state_variables.setter
     def state_variables(self, variables):
         if variables.variable_class is not StateVariable:
-            raise TypeError('LinearVector does not include StateVariable s')
+            raise TypeError("LinearVector does not include StateVariable s")
         if variables.size != self.states:
-            raise IndexError('Size of LinearVector of StateVariable s ({:g}) is not the same as the number '
-                             'of states in the '
-                             'system ({:g})'.format(variables.size, self.states))
+            raise IndexError(
+                "Size of LinearVector of StateVariable s ({:g}) is not the same as the"
+                " number of states in the system ({:g})".format(
+                    variables.size, self.states
+                )
+            )
         self._state_variables = variables
 
-    def initialise_variables(self, *variable_tuple, var_type='in'):
-        if var_type == 'in' or var_type == 'input':
+    def initialise_variables(self, *variable_tuple, var_type="in"):
+        if var_type == "in" or var_type == "input":
             var_class = InputVariable
-        elif var_type == 'out' or var_type == 'output':
+        elif var_type == "out" or var_type == "output":
             var_class = OutputVariable
-        elif var_type == 'state':
+        elif var_type == "state":
             var_class = StateVariable
         else:
-            raise TypeError('Unknown variable type')
+            raise TypeError("Unknown variable type")
 
         list_of_variables = []
         for ith, var_dict in enumerate(variable_tuple):
-            list_of_variables.append(var_class(name=var_dict['name'],
-                                               size=var_dict['size'],
-                                               index=var_dict.get('index', ith)))
+            list_of_variables.append(
+                var_class(
+                    name=var_dict["name"],
+                    size=var_dict["size"],
+                    index=var_dict.get("index", ith),
+                )
+            )
 
-        if var_type == 'in' or var_type == 'input':
+        if var_type == "in" or var_type == "input":
             self._input_variables = LinearVector(list_of_variables)
-        elif var_type == 'out' or var_type == 'output':
+        elif var_type == "out" or var_type == "output":
             self._output_variables = LinearVector(list_of_variables)
-        elif var_type == 'state':
+        elif var_type == "state":
             self._state_variables = LinearVector(list_of_variables)
 
     def __repr__(self):
-        str_out = ''
-        str_out += 'State-space object\n'
-        str_out += 'States: {:g}\n'.format(self.states)
-        str_out += 'Inputs: {:g}\n'.format(self.inputs)
-        str_out += 'Outputs: {:g}\n'.format(self.outputs)
+        str_out = ""
+        str_out += "State-space object\n"
+        str_out += "States: {:g}\n".format(self.states)
+        str_out += "Inputs: {:g}\n".format(self.inputs)
+        str_out += "Outputs: {:g}\n".format(self.outputs)
         if self.dt is not None:
-            str_out += 'dt: {:g}'.format(self.dt)
+            str_out += "dt: {:g}".format(self.dt)
 
         if self.input_variables is not None:
-            str_out += '\nInput Variables:\n' + str(self.input_variables)
+            str_out += "\nInput Variables:\n" + str(self.input_variables)
         if self.state_variables is not None:
-            str_out += 'State Variables:\n' + str(self.state_variables)
+            str_out += "State Variables:\n" + str(self.state_variables)
         if self.output_variables is not None:
-            str_out += 'Output Variables:\n' + str(self.output_variables)
+            str_out += "Output Variables:\n" + str(self.output_variables)
 
         return str_out
 
     def check_types(self):
-        assert type(self.A) in libsp.SupportedTypes, \
-            'Type of A matrix (%s) not supported' % type(self.A)
-        assert type(self.B) in libsp.SupportedTypes, \
-            'Type of B matrix (%s) not supported' % type(self.B)
-        assert type(self.C) in libsp.SupportedTypes, \
-            'Type of C matrix (%s) not supported' % type(self.C)
-        assert type(self.D) in libsp.SupportedTypes, \
-            'Type of D matrix (%s) not supported' % type(self.D)
+        assert (
+            type(self.A) in libsp.SupportedTypes
+        ), "Type of A matrix (%s) not supported" % type(self.A)
+        assert (
+            type(self.B) in libsp.SupportedTypes
+        ), "Type of B matrix (%s) not supported" % type(self.B)
+        assert (
+            type(self.C) in libsp.SupportedTypes
+        ), "Type of C matrix (%s) not supported" % type(self.C)
+        assert (
+            type(self.D) in libsp.SupportedTypes
+        ), "Type of D matrix (%s) not supported" % type(self.D)
 
     def get_mats(self):
         return self.A, self.B, self.C, self.D
@@ -255,8 +278,10 @@ class StateSpace:
             the state-space matrices are directly overwritten.
         """
 
-        assert where in ['in', 'out'], \
-            'Specify whether gains are added to input or output'
+        assert where in [
+            "in",
+            "out",
+        ], "Specify whether gains are added to input or output"
 
         with_vars = False
         if isinstance(K, Gain):
@@ -264,19 +289,19 @@ class StateSpace:
             K = K.value
             with_vars = True
 
-        if where == 'in':
+        if where == "in":
             self.B = libsp.dot(self.B, K)
             self.D = libsp.dot(self.D, K)
             if with_vars:
                 self._input_variables = gain.input_variables
 
-        if where == 'out':
+        if where == "out":
             self.C = libsp.dot(K, self.C)
             self.D = libsp.dot(K, self.D)
             if with_vars:
                 self._output_variables = gain.output_variables
 
-    def scale(self, input_scal=1., output_scal=1., state_scal=1.):
+    def scale(self, input_scal=1.0, output_scal=1.0, state_scal=1.0):
         """
         Given a state-space system, scales the equations such that the original
         state, input and output, (x, u and y), are substituted by
@@ -321,16 +346,18 @@ class StateSpace:
             self.A = libsp.dot(wt.value, libsp.dot(self.A, v.value))
             self.B = libsp.dot(wt.value, self.B)
             self.C = libsp.dot(self.C, v.value)
-            self.state_variables = LinearVector.transform(v.input_variables, to_type=StateVariable)
+            self.state_variables = LinearVector.transform(
+                v.input_variables, to_type=StateVariable
+            )
         else:
             self.A = libsp.dot(wt, libsp.dot(self.A, v))
             self.B = libsp.dot(wt, self.B)
             self.C = libsp.dot(self.C, v)
 
     def truncate(self, N):
-        """ Retains only the first N states. """
+        """Retains only the first N states."""
 
-        assert N > 0 and N <= self.states, 'N must be in [1,self.states]'
+        assert N > 0 and N <= self.states, "N must be in [1,self.states]"
 
         self.A = self.A[:N, :N]
         self.B = self.B[:N, :]
@@ -381,7 +408,11 @@ class StateSpace:
         retain_inout_channels(self, retain_channels, where)
 
     def summary(self):
-        msg = 'State-space system\nStates: %g\nInputs: %g\nOutputs: %g\n' % (self.states, self.inputs, self.outputs)
+        msg = "State-space system\nStates: %g\nInputs: %g\nOutputs: %g\n" % (
+            self.states,
+            self.inputs,
+            self.outputs,
+        )
         return msg
 
     def transfer_function_evaluation(self, s):
@@ -402,13 +433,13 @@ class StateSpace:
 
     def save(self, path):
         """Save state-space object to h5 file"""
-        with h5py.File(path, 'w') as f:
-            f.create_dataset('a', data=self.A)
-            f.create_dataset('b', data=self.B)
-            f.create_dataset('c', data=self.C)
-            f.create_dataset('d', data=self.D)
+        with h5py.File(path, "w") as f:
+            f.create_dataset("a", data=self.A)
+            f.create_dataset("b", data=self.B)
+            f.create_dataset("c", data=self.C)
+            f.create_dataset("d", data=self.D)
             if self.dt:
-                f.create_dataset('dt', data=self.dt)
+                f.create_dataset("dt", data=self.dt)
 
             if self.input_variables is not None:
                 self.input_variables.add_to_h5_file(f)
@@ -427,23 +458,28 @@ class StateSpace:
             StateSpace: loaded state-space from file
         """
 
-        with h5py.File(h5_file_name, 'r') as f:
+        with h5py.File(h5_file_name, "r") as f:
             data_dict = h5utils.load_h5_in_dict(f)
 
-        new_ss = cls(data_dict['a'],
-                     data_dict['b'],
-                     data_dict['c'],
-                     data_dict['d'],
-                     dt=data_dict.get('dt'))
+        new_ss = cls(
+            data_dict["a"],
+            data_dict["b"],
+            data_dict["c"],
+            data_dict["d"],
+            dt=data_dict.get("dt"),
+        )
 
-        input_variables = data_dict.get('InputVariable')
+        input_variables = data_dict.get("InputVariable")
         if input_variables is not None:
-            new_ss.input_variables = LinearVector.load_from_h5_file('InputVariable',
-                                                                    data_dict['InputVariable'])
-            new_ss.output_variables = LinearVector.load_from_h5_file('OutputVariable',
-                                                                     data_dict['OutputVariable'])
-            new_ss.state_variables = LinearVector.load_from_h5_file('StateVariable',
-                                                                    data_dict['StateVariable'])
+            new_ss.input_variables = LinearVector.load_from_h5_file(
+                "InputVariable", data_dict["InputVariable"]
+            )
+            new_ss.output_variables = LinearVector.load_from_h5_file(
+                "OutputVariable", data_dict["OutputVariable"]
+            )
+            new_ss.state_variables = LinearVector.load_from_h5_file(
+                "StateVariable", data_dict["StateVariable"]
+            )
 
             return new_ss
         else:
@@ -460,8 +496,11 @@ class StateSpace:
 
         """
         if self.input_variables is None:
-            raise AttributeError('No input variables have been defined for the current state-space object. Define '
-                                 'some variables prior to using the remove_inputs() method.')
+            raise AttributeError(
+                "No input variables have been defined for the current state-space"
+                " object. Define some variables prior to using the remove_inputs()"
+                " method."
+            )
 
         self.input_variables.remove(*input_remove_list)
 
@@ -495,8 +534,11 @@ class StateSpace:
 
         """
         if self.output_variables is None:
-            raise AttributeError('No output variables have been defined for the current state-space object. Define '
-                                 'some variables prior to using the remove_outputs() method.')
+            raise AttributeError(
+                "No output variables have been defined for the current state-space"
+                " object. Define some variables prior to using the remove_outputs()"
+                " method."
+            )
 
         new_outputs = 0
         for variable in self.output_variables:
@@ -508,7 +550,9 @@ class StateSpace:
         for variable in self.output_variables:
             if variable.name not in output_remove_list:
                 index = variable.rows_loc
-                out_gain[worked_outputs:worked_outputs + variable.size, index] = np.eye(variable.size)
+                out_gain[
+                    worked_outputs : worked_outputs + variable.size, index
+                ] = np.eye(variable.size)
                 worked_outputs += variable.size
 
         if new_outputs != self.outputs:
@@ -543,7 +587,6 @@ class StateSpace:
 
 
 class Gain:
-
     def __init__(self, value, input_vars=None, output_vars=None):
         self.value = value
         self._input_variables = None
@@ -561,11 +604,14 @@ class Gain:
     @input_variables.setter
     def input_variables(self, variables):
         if variables.variable_class is not InputVariable:
-            raise TypeError('LinearVector does not include InputVariable s')
+            raise TypeError("LinearVector does not include InputVariable s")
         if variables.size != self.inputs:
-            raise IndexError('Size of LinearVector of InputVariable s ({:g}) is not the same as the number of '
-                             'inputs in the '
-                             'system ({:g})'.format(variables.size, self.inputs))
+            raise IndexError(
+                "Size of LinearVector of InputVariable s ({:g}) is not the same as the"
+                " number of inputs in the system ({:g})".format(
+                    variables.size, self.inputs
+                )
+            )
         self._input_variables = variables
 
     @property
@@ -575,11 +621,14 @@ class Gain:
     @output_variables.setter
     def output_variables(self, variables):
         if variables.variable_class is not OutputVariable:
-            raise TypeError('LinearVector does not include OutputVariable s')
+            raise TypeError("LinearVector does not include OutputVariable s")
         if variables.size != self.outputs:
-            raise IndexError('Size of LinearVector of OutputVariable s ({:g}) is not the same as the number of '
-                             'outputs in the '
-                             'system ({:g})'.format(variables.size, self.outputs))
+            raise IndexError(
+                "Size of LinearVector of OutputVariable s ({:g}) is not the same as the"
+                " number of outputs in the system ({:g})".format(
+                    variables.size, self.outputs
+                )
+            )
         self._output_variables = variables
 
     @property
@@ -608,22 +657,24 @@ class Gain:
         if type(elem) is Gain:
             LinearVector.check_connection(elem.output_variables, self.input_variables)
             new_gain_value = libsp.dot(self.value, elem.value)
-            return Gain(new_gain_value,
-                        input_vars=elem.input_variables.copy(),
-                        output_vars=self.output_variables.copy())
+            return Gain(
+                new_gain_value,
+                input_vars=elem.input_variables.copy(),
+                output_vars=self.output_variables.copy(),
+            )
         else:
             return self.value.dot(elem)
 
     def __repr__(self):
-        str_out = ''
-        str_out += 'Gain object\n'
-        str_out += 'Inputs: {:g}\n'.format(self.inputs)
-        str_out += 'Outputs: {:g}\n'.format(self.outputs)
+        str_out = ""
+        str_out += "Gain object\n"
+        str_out += "Inputs: {:g}\n".format(self.inputs)
+        str_out += "Outputs: {:g}\n".format(self.outputs)
 
         if self.input_variables is not None:
-            str_out += '\nInput Variables:\n' + str(self.input_variables)
+            str_out += "\nInput Variables:\n" + str(self.input_variables)
         if self.output_variables is not None:
-            str_out += 'Output Variables:\n' + str(self.output_variables)
+            str_out += "Output Variables:\n" + str(self.output_variables)
 
         return str_out
 
@@ -634,14 +685,16 @@ class Gain:
 
         if self.input_variables is not None:
             temp_input_var = self.input_variables.copy()
-            input_variables = LinearVector.transform(self.output_variables,
-                                                     to_type=InputVariable)
-            output_variables = LinearVector.transform(temp_input_var,
-                                                      to_type=OutputVariable)
+            input_variables = LinearVector.transform(
+                self.output_variables, to_type=InputVariable
+            )
+            output_variables = LinearVector.transform(
+                temp_input_var, to_type=OutputVariable
+            )
 
-            return Gain(self.value.T,
-                        input_vars=input_variables,
-                        output_vars=output_variables)
+            return Gain(
+                self.value.T, input_vars=input_variables, output_vars=output_variables
+            )
         else:
             return Gain(self.value.T)
 
@@ -651,14 +704,18 @@ class Gain:
 
     def copy(self):
         if self.input_variables is not None:
-            return Gain(self.value, input_vars=self.input_variables.copy(), output_vars=self.output_variables.copy())
+            return Gain(
+                self.value,
+                input_vars=self.input_variables.copy(),
+                output_vars=self.output_variables.copy(),
+            )
         else:
             return Gain(self.value)
 
     def save(self, path):
         """Save gain object to h5 file"""
-        with h5py.File(path, 'w') as f:
-            f.create_dataset('gain', data=self.value)
+        with h5py.File(path, "w") as f:
+            f.create_dataset("gain", data=self.value)
 
             if self.input_variables is not None:
                 self.input_variables.add_to_h5_file(f)
@@ -667,14 +724,14 @@ class Gain:
     def add_as_group_to_h5(self, h5_file_handle, group_name):
         """
         Adds gain to an h5 file handle
-        
+
         Args:
             h5_file_handle (h5py.File): writeable h5 file handle
             group_name (str): Desired group name to save gain in h5
 
         """
         gain_group = h5_file_handle.create_group(group_name)
-        gain_group.create_dataset(name='gain', data=self.value)
+        gain_group.create_dataset(name="gain", data=self.value)
 
         if self.input_variables is not None:
             self.input_variables.add_to_h5_file(gain_group)
@@ -691,7 +748,7 @@ class Gain:
         Returns:
             Gain: instance of a Gain
         """
-        with h5py.File(h5_file_name, 'r') as f:
+        with h5py.File(h5_file_name, "r") as f:
             data_dict = h5utils.load_h5_in_dict(f)
 
         return cls.load_from_dict(data_dict)
@@ -710,17 +767,22 @@ class Gain:
         Returns:
             Gain: instance of Gain
         """
-        input_variables = data_dict.get('InputVariable')
+        input_variables = data_dict.get("InputVariable")
         if input_variables is not None:
-            input_variables = LinearVector.load_from_h5_file('InputVariable',
-                                                             data_dict['InputVariable'])
-            output_variables = LinearVector.load_from_h5_file('OutputVariable',
-                                                              data_dict['OutputVariable'])
+            input_variables = LinearVector.load_from_h5_file(
+                "InputVariable", data_dict["InputVariable"]
+            )
+            output_variables = LinearVector.load_from_h5_file(
+                "OutputVariable", data_dict["OutputVariable"]
+            )
 
-            return cls(data_dict['gain'], input_vars=input_variables,
-                       output_vars=output_variables)
+            return cls(
+                data_dict["gain"],
+                input_vars=input_variables,
+                output_vars=output_variables,
+            )
         else:
-            return cls(data_dict['gain'])
+            return cls(data_dict["gain"])
 
     @classmethod
     def save_multiple_gains(cls, h5_file_name, *gains_names_tuple):
@@ -733,7 +795,7 @@ class Gain:
               given on the h5 file
 
         """
-        with h5py.File(h5_file_name, 'w') as f:
+        with h5py.File(h5_file_name, "w") as f:
             for name, gain in gains_names_tuple:
                 gain.add_as_group_to_h5(f, name)
 
@@ -748,7 +810,7 @@ class Gain:
         Returns:
             dict: Dictionary of loaded gains in a gain_name: Gain dictionary
         """
-        with h5py.File(h5_file_name, 'r') as f:
+        with h5py.File(h5_file_name, "r") as f:
             data_dict = h5utils.load_h5_in_dict(f)
 
         out_gains = {}
@@ -758,7 +820,7 @@ class Gain:
         return out_gains
 
 
-class ss_block():
+class ss_block:
     """
     State-space model in block form. This class has the same purpose as "StateSpace",
     but the A, B, C, D are allocated in the form of nested lists. The format is
@@ -818,15 +880,15 @@ class ss_block():
         - index: index of block to remove
         """
 
-        assert where in ['in', 'out'], "'where' must be equal to {'in', 'out'}"
+        assert where in ["in", "out"], "'where' must be equal to {'in', 'out'}"
 
-        if where == 'in':
+        if where == "in":
             for ii in range(self.blocks_x):
                 del self.B[ii][index]
             for ii in range(self.blocks_y):
                 del self.D[ii][index]
 
-        if where == 'out':
+        if where == "out":
             for ii in range(self.blocks_y):
                 del self.C[ii]
                 del self.D[ii]
@@ -845,19 +907,21 @@ class ss_block():
         compatible with either B or C for block matrix product.
         """
 
-        assert where in ['in', 'out'], \
-            'Specify whether gains are added to input or output'
+        assert where in [
+            "in",
+            "out",
+        ], "Specify whether gains are added to input or output"
 
         rows, cols = self.get_sizes(K)
 
-        if where == 'in':
+        if where == "in":
             self.B = libsp.block_dot(self.B, K)
             self.D = libsp.block_dot(self.D, K)
             self.S_u = cols
             self.blocks_u = len(cols)
             self.inputs = sum(cols)
 
-        if where == 'out':
+        if where == "out":
             self.C = libsp.block_dot(K, self.C)
             self.D = libsp.block_dot(K, self.D)
             self.S_y = rows
@@ -881,14 +945,18 @@ class ss_block():
                     if rows[ii] is None:  # allocate
                         rows[ii] = rhere
                     else:  # check
-                        assert rows[ii] == rhere, \
-                            'Block (%d,%d) has inconsistent size with other in same row!' % (ii, jj)
+                        assert rows[ii] == rhere, (
+                            "Block (%d,%d) has inconsistent size with other in same"
+                            " row!" % (ii, jj)
+                        )
 
                     if cols[jj] is None:  # allocate
                         cols[jj] = chere
                     else:  # check
-                        assert cols[jj] == chere, \
-                            'Block (%d,%d) has inconsistent size with other in same column!' % (ii, jj)
+                        assert cols[jj] == chere, (
+                            "Block (%d,%d) has inconsistent size with other in same"
+                            " column!" % (ii, jj)
+                        )
 
         return rows, cols
 
@@ -914,7 +982,6 @@ class ss_block():
         """
 
         if by_arrays:  # transform to block structures
-
             II0 = 0
             Vblock = []
             WTblock = [[]]
@@ -932,38 +999,41 @@ class ss_block():
             self.B = libsp.block_dot(WTblock, self.B)
             self.C = libsp.block_dot(self.C, Vblock)
         else:
-            return (libsp.block_dot(WTblock, libsp.block_dot(self.A, Vblock)),
-                    libsp.block_dot(WTblock, self.B),
-                    libsp.block_dot(self.C, Vblock))
+            return (
+                libsp.block_dot(WTblock, libsp.block_dot(self.A, Vblock)),
+                libsp.block_dot(WTblock, self.B),
+                libsp.block_dot(self.C, Vblock),
+            )
 
     def solve_step(self, xn, un):
-
         # TODO: add options about predictor ...
         xn1 = libsp.block_sum(libsp.block_dot(self.A, xn), libsp.block_dot(self.B, un))
         yn = libsp.block_sum(libsp.block_dot(self.C, xn), libsp.block_dot(self.D, un))
 
         return xn1, yn
 
-
     def get_mats(self):
-        
         A = np.zeros((self.states, self.states))
         B = np.zeros((self.states, self.inputs))
         C = np.zeros((self.outputs, self.states))
         D = np.zeros((self.outputs, self.inputs))
-        
+
         iloc = 0
         for i in range(self.blocks_x):
             jloc = 0
             for j in range(self.blocks_x):
                 if not self.A[i][j] is None:
                     if type(self.A[i][j]) == libsp.csc_matrix:
-                        A[iloc:iloc+self.S_x[i], jloc:jloc+self.S_x[j]] = self.A[i][j].todense()
+                        A[
+                            iloc : iloc + self.S_x[i], jloc : jloc + self.S_x[j]
+                        ] = self.A[i][j].todense()
                     else:
-                        A[iloc:iloc+self.S_x[i], jloc:jloc+self.S_x[j]] = self.A[i][j].copy()
+                        A[
+                            iloc : iloc + self.S_x[i], jloc : jloc + self.S_x[j]
+                        ] = self.A[i][j].copy()
                 jloc += self.S_x[j]
             iloc += self.S_x[i]
-        
+
         iloc = 0
         for i in range(self.blocks_x):
             jloc = 0
@@ -972,9 +1042,13 @@ class ss_block():
                     # print(i, j, iloc, jloc, self.S_x[i], self.S_u[j], self.B[i][j].shape)
                     # print(iloc, iloc+self.S_x[i], jloc, jloc+self.S_u[j])
                     if type(self.B[i][j]) == libsp.csc_matrix:
-                        B[iloc:iloc+self.S_x[i], jloc:jloc+self.S_u[j]] = self.B[i][j].todense()
+                        B[
+                            iloc : iloc + self.S_x[i], jloc : jloc + self.S_u[j]
+                        ] = self.B[i][j].todense()
                     else:
-                        B[iloc:iloc+self.S_x[i], jloc:jloc+self.S_u[j]] = self.B[i][j].copy()
+                        B[
+                            iloc : iloc + self.S_x[i], jloc : jloc + self.S_u[j]
+                        ] = self.B[i][j].copy()
                 jloc += self.S_u[j]
             iloc += self.S_x[i]
 
@@ -984,25 +1058,34 @@ class ss_block():
             for j in range(self.blocks_x):
                 if not self.C[i][j] is None:
                     if type(self.C[i][j]) == libsp.csc_matrix:
-                        C[iloc:iloc+self.S_y[i], jloc:jloc+self.S_x[j]] = self.C[i][j].todense()
+                        C[
+                            iloc : iloc + self.S_y[i], jloc : jloc + self.S_x[j]
+                        ] = self.C[i][j].todense()
                     else:
-                        C[iloc:iloc+self.S_y[i], jloc:jloc+self.S_x[j]] = self.C[i][j].copy()
+                        C[
+                            iloc : iloc + self.S_y[i], jloc : jloc + self.S_x[j]
+                        ] = self.C[i][j].copy()
                 jloc += self.S_x[j]
             iloc += self.S_y[i]
-        
+
         iloc = 0
         for i in range(self.blocks_y):
             jloc = 0
             for j in range(self.blocks_u):
                 if not self.D[i][j] is None:
                     if type(self.D[i][j]) == libsp.csc_matrix:
-                        D[iloc:iloc+self.S_y[i], jloc:jloc+self.S_u[j]] = self.D[i][j].todense()
+                        D[
+                            iloc : iloc + self.S_y[i], jloc : jloc + self.S_u[j]
+                        ] = self.D[i][j].todense()
                     else:
-                        D[iloc:iloc+self.S_y[i], jloc:jloc+self.S_u[j]] = self.D[i][j].copy()
+                        D[
+                            iloc : iloc + self.S_y[i], jloc : jloc + self.S_u[j]
+                        ] = self.D[i][j].copy()
                 jloc += self.S_u[j]
             iloc += self.S_y[i]
 
         return A, B, C, D
+
 
 # ---------------------------------------- Methods for state-space manipulation
 def project(ss_here, WT, V):
@@ -1039,12 +1122,20 @@ def couple(ss01, ss02, K12, K21, out_sparse=False):
         pass
     else:
         try:
-            assert np.abs(ss01.dt - ss02.dt) < 1e-10 * ss01.dt, 'Time-steps not matching!'
+            assert (
+                np.abs(ss01.dt - ss02.dt) < 1e-10 * ss01.dt
+            ), "Time-steps not matching!"
         except TypeError:
-            raise TypeError('One of the systems to couple is discrete and the other continuous')
+            raise TypeError(
+                "One of the systems to couple is discrete and the other continuous"
+            )
 
-    if ss01.input_variables is not None and ss02.input_variables is not None \
-            and isinstance(K12, Gain) and isinstance(K21, Gain):
+    if (
+        ss01.input_variables is not None
+        and ss02.input_variables is not None
+        and isinstance(K12, Gain)
+        and isinstance(K21, Gain)
+    ):
         with_enhanced_vars = True
         LinearVector.check_connection(K12.output_variables, ss01.input_variables)
         LinearVector.check_connection(ss02.output_variables, K12.input_variables)
@@ -1055,10 +1146,14 @@ def couple(ss01, ss02, K12, K21, out_sparse=False):
         K12 = K12.value
     else:
         with_enhanced_vars = False
-        assert K12.shape == (ss01.inputs, ss02.outputs), \
-            'Gain K12 shape not matching with systems number of inputs/outputs'
-        assert K21.shape == (ss02.inputs, ss01.outputs), \
-            'Gain K21 shape not matching with systems number of inputs/outputs'
+        assert K12.shape == (
+            ss01.inputs,
+            ss02.outputs,
+        ), "Gain K12 shape not matching with systems number of inputs/outputs"
+        assert K21.shape == (
+            ss02.inputs,
+            ss01.outputs,
+        ), "Gain K21 shape not matching with systems number of inputs/outputs"
 
     A1, B1, C1, D1 = ss01.get_mats()
     A2, B2, C2, D2 = ss02.get_mats()
@@ -1096,33 +1191,71 @@ def couple(ss01, ss02, K12, K21, out_sparse=False):
 
     # Build coupled system
     if out_sparse:
-        raise NameError('out_sparse=True not supported yet (verify if worth it first).')
+        raise NameError("out_sparse=True not supported yet (verify if worth it first).")
     else:
-        A = np.block([
-            [libsp.dense(A1 + libsp.dot(libsp.dot(B1, cpl_11), C1)), libsp.dense(libsp.dot(libsp.dot(B1, cpl_12), C2))],
-            [libsp.dense(libsp.dot(libsp.dot(B2, cpl_21), C1)),
-             libsp.dense(A2 + libsp.dot(libsp.dot(B2, cpl_22), C2))]])
+        A = np.block(
+            [
+                [
+                    libsp.dense(A1 + libsp.dot(libsp.dot(B1, cpl_11), C1)),
+                    libsp.dense(libsp.dot(libsp.dot(B1, cpl_12), C2)),
+                ],
+                [
+                    libsp.dense(libsp.dot(libsp.dot(B2, cpl_21), C1)),
+                    libsp.dense(A2 + libsp.dot(libsp.dot(B2, cpl_22), C2)),
+                ],
+            ]
+        )
 
-        C = np.block([
-            [libsp.dense(C1 + libsp.dot(libsp.dot(D1, cpl_11), C1)), libsp.dense(libsp.dot(libsp.dot(D1, cpl_12), C2))],
-            [libsp.dense(libsp.dot(libsp.dot(D2, cpl_21), C1)),
-             libsp.dense(C2 + libsp.dot(libsp.dot(D2, cpl_22), C2))]])
+        C = np.block(
+            [
+                [
+                    libsp.dense(C1 + libsp.dot(libsp.dot(D1, cpl_11), C1)),
+                    libsp.dense(libsp.dot(libsp.dot(D1, cpl_12), C2)),
+                ],
+                [
+                    libsp.dense(libsp.dot(libsp.dot(D2, cpl_21), C1)),
+                    libsp.dense(C2 + libsp.dot(libsp.dot(D2, cpl_22), C2)),
+                ],
+            ]
+        )
 
-        B = np.block([
-            [libsp.dense(B1 + libsp.dot(libsp.dot(B1, cpl_11), D1)), libsp.dense(libsp.dot(libsp.dot(B1, cpl_12), D2))],
-            [libsp.dense(libsp.dot(libsp.dot(B2, cpl_21), D1)),
-             libsp.dense(B2 + libsp.dot(libsp.dot(B2, cpl_22), D2))]])
+        B = np.block(
+            [
+                [
+                    libsp.dense(B1 + libsp.dot(libsp.dot(B1, cpl_11), D1)),
+                    libsp.dense(libsp.dot(libsp.dot(B1, cpl_12), D2)),
+                ],
+                [
+                    libsp.dense(libsp.dot(libsp.dot(B2, cpl_21), D1)),
+                    libsp.dense(B2 + libsp.dot(libsp.dot(B2, cpl_22), D2)),
+                ],
+            ]
+        )
 
-        D = np.block([
-            [libsp.dense(D1 + libsp.dot(libsp.dot(D1, cpl_11), D1)), libsp.dense(libsp.dot(libsp.dot(D1, cpl_12), D2))],
-            [libsp.dense(libsp.dot(libsp.dot(D2, cpl_21), D1)),
-             libsp.dense(D2 + libsp.dot(libsp.dot(D2, cpl_22), D2))]])
+        D = np.block(
+            [
+                [
+                    libsp.dense(D1 + libsp.dot(libsp.dot(D1, cpl_11), D1)),
+                    libsp.dense(libsp.dot(libsp.dot(D1, cpl_12), D2)),
+                ],
+                [
+                    libsp.dense(libsp.dot(libsp.dot(D2, cpl_21), D1)),
+                    libsp.dense(D2 + libsp.dot(libsp.dot(D2, cpl_22), D2)),
+                ],
+            ]
+        )
 
     coupled_ss = StateSpace(A, B, C, D, dt=ss01.dt)
     if with_enhanced_vars:
-        coupled_ss.state_variables = LinearVector.merge(ss01.state_variables, ss02.state_variables)
-        coupled_ss.input_variables = LinearVector.merge(ss01.input_variables, ss02.input_variables)
-        coupled_ss.output_variables = LinearVector.merge(ss01.output_variables, ss02.output_variables)
+        coupled_ss.state_variables = LinearVector.merge(
+            ss01.state_variables, ss02.state_variables
+        )
+        coupled_ss.input_variables = LinearVector.merge(
+            ss01.input_variables, ss02.input_variables
+        )
+        coupled_ss.output_variables = LinearVector.merge(
+            ss01.output_variables, ss02.output_variables
+        )
 
     return coupled_ss
 
@@ -1152,7 +1285,7 @@ def disc2cont(sys):
         libss.StateSpace: Converted continuous-time state-space object.
     """
 
-    assert sys.dt is not None, 'System to transform is not a discrete-time system.'
+    assert sys.dt is not None, "System to transform is not a discrete-time system."
 
     n = sys.A.shape[0]
     eye = np.eye(n)
@@ -1187,16 +1320,20 @@ def retain_inout_channels(sys, retain_channels, where):
     """
     retain_m = len(retain_channels)  # new number of in/out
 
-    if where == 'in':
+    if where == "in":
         m = sys.inputs  # current number of in/out
         gain_input_vars = sys.input_variables
-        gain_output_vars = LinearVector.transform(sys.input_variables, to_type=OutputVariable)
-    elif where == 'out':
+        gain_output_vars = LinearVector.transform(
+            sys.input_variables, to_type=OutputVariable
+        )
+    elif where == "out":
         m = sys.outputs
-        gain_input_vars = LinearVector.transform(sys.output_variables, to_type=InputVariable)
+        gain_input_vars = LinearVector.transform(
+            sys.output_variables, to_type=InputVariable
+        )
         gain_output_vars = sys.output_variables.copy()
     else:
-        raise NameError('Argument ``where`` can only be ``in`` or ``out``.')
+        raise NameError("Argument ``where`` can only be ``in`` or ``out``.")
 
     gain_matrix = np.zeros((retain_m, m))
     for ith, channel in enumerate(retain_channels):
@@ -1205,7 +1342,9 @@ def retain_inout_channels(sys, retain_channels, where):
     # Go through variables...
     for var in gain_input_vars:
         n_vars = np.sum(
-            (np.array(retain_channels) < var.end_position) * (np.array(retain_channels) >= var.first_position))
+            (np.array(retain_channels) < var.end_position)
+            * (np.array(retain_channels) >= var.first_position)
+        )
 
         if n_vars == 0:
             gain_output_vars.remove(var.name)
@@ -1215,16 +1354,16 @@ def retain_inout_channels(sys, retain_channels, where):
     gain_output_vars.update_indices()
     gain_output_vars.update_locations()
 
-    gain_matrix = Gain(gain_matrix,
-                       input_vars=gain_input_vars,
-                       output_vars=gain_output_vars)
+    gain_matrix = Gain(
+        gain_matrix, input_vars=gain_input_vars, output_vars=gain_output_vars
+    )
 
-    if where == 'in':
-        sys.addGain(gain_matrix.transpose(), where='in')
-    elif where == 'out':
-        sys.addGain(gain_matrix, where='out')
+    if where == "in":
+        sys.addGain(gain_matrix.transpose(), where="in")
+    elif where == "out":
+        sys.addGain(gain_matrix, where="out")
     else:
-        raise NameError('Argument ``where`` can only be ``in`` or ``out``.')
+        raise NameError("Argument ``where`` can only be ``in`` or ``out``.")
 
     return sys
 
@@ -1247,17 +1386,19 @@ def freqresp(SS, wv, dlti=True):
     matrices.
     """
 
-    assert type(SS) == StateSpace, \
-        'Type %s of state-space model not supported. Use libss.StateSpace instead!' % type(SS)
+    assert type(SS) == StateSpace, (
+        "Type %s of state-space model not supported. Use libss.StateSpace instead!"
+        % type(SS)
+    )
     SS.check_types()
 
-    if hasattr(SS, 'dt') and dlti:
+    if hasattr(SS, "dt") and dlti:
         Ts = SS.dt
         wTs = Ts * wv
-        zv = np.cos(wTs) + 1.j * np.sin(wTs)
+        zv = np.cos(wTs) + 1.0j * np.sin(wTs)
     else:
         # print('Assuming a continuous time system')
-        zv = 1.j * wv
+        zv = 1.0j * wv
 
     Nx = SS.A.shape[0]
     Ny = SS.D.shape[0]
@@ -1268,7 +1409,14 @@ def freqresp(SS, wv, dlti=True):
 
     Nw = len(wv)
 
-    Yfreq = np.empty((Ny, Nu, Nw,), dtype=np.complex_)
+    Yfreq = np.empty(
+        (
+            Ny,
+            Nu,
+            Nw,
+        ),
+        dtype=np.complex_,
+    )
     Eye = libsp.eye_as(SS.A)
     for ii in range(Nw):
         sol_cplx = libsp.solve(zv[ii] * Eye - SS.A, SS.B)
@@ -1300,10 +1448,12 @@ def series(SS01, SS02):
     """
 
     if type(SS01) is not type(SS02):
-        raise TypeError('The two input systems are not of the same type')
+        raise TypeError("The two input systems are not of the same type")
     if SS01.dt != SS02.dt:
-        raise NameError('DLTI systems do not have the same time-step. SS01 dt={:f}, SS02 dt={:f}'.format(
-            SS01.dt, SS02.dt))
+        raise NameError(
+            "DLTI systems do not have the same time-step. SS01 dt={:f}, SS02 dt={:f}"
+            .format(SS01.dt, SS02.dt)
+        )
 
     # check series connection
     if SS01.output_variables is not None and SS02.input_variables is not None:
@@ -1323,7 +1473,11 @@ def series(SS01, SS02):
     Nout = SS02.outputs
 
     if SS01.outputs != SS02.inputs:
-        raise ValueError('SS01 outputs not equal to SS02 inputs,\nSS01={:s}\nSS02={:s}'.format(str(SS01), str(SS02)))
+        raise ValueError(
+            "SS01 outputs not equal to SS02 inputs,\nSS01={:s}\nSS02={:s}".format(
+                str(SS01), str(SS02)
+            )
+        )
 
     # Build A matrix
     A = np.zeros((Nst, Nst))
@@ -1333,15 +1487,21 @@ def series(SS01, SS02):
     A[Nst01:, :Nst01] = libsp.dense(libsp.dot(SS02.B, SS01.C))
 
     # Build the rest
-    B = np.concatenate((libsp.dense(SS01.B), libsp.dense(libsp.dot(SS02.B, SS01.D))), axis=0)
-    C = np.concatenate((libsp.dense(libsp.dot(SS02.D, SS01.C)), libsp.dense(SS02.C)), axis=1)
+    B = np.concatenate(
+        (libsp.dense(SS01.B), libsp.dense(libsp.dot(SS02.B, SS01.D))), axis=0
+    )
+    C = np.concatenate(
+        (libsp.dense(libsp.dot(SS02.D, SS01.C)), libsp.dense(SS02.C)), axis=1
+    )
     D = libsp.dense(libsp.dot(SS02.D, SS01.D))
 
     SStot = StateSpace(A, B, C, D, dt=SS01.dt)
 
     SStot.input_variables = SS01.input_variables
     try:
-        SStot.state_variables = LinearVector.merge(SS01.state_variables, SS02.state_variables)
+        SStot.state_variables = LinearVector.merge(
+            SS01.state_variables, SS02.state_variables
+        )
     except AttributeError:
         SStot.state_variables = None
     SStot.output_variables = SS02.output_variables
@@ -1359,12 +1519,12 @@ def parallel(SS01, SS02):
     """
 
     if type(SS01) is not type(SS02):
-        raise NameError('The two input systems need to have the same size!')
+        raise NameError("The two input systems need to have the same size!")
     if SS01.dt != SS02.dt:
-        raise NameError('DLTI systems do not have the same time-step!')
+        raise NameError("DLTI systems do not have the same time-step!")
     Nout = SS02.outputs
     if Nout != SS01.outputs:
-        raise NameError('DLTI systems need to have the same number of output!')
+        raise NameError("DLTI systems need to have the same number of output!")
 
     # if type(SS01) is control.statesp.StateSpace:
     # 	SStot=control.parallel(SS01,SS02)
@@ -1459,11 +1619,10 @@ def SSconv(A, B0, B1, C, D, Bm1=None):
     if Bm1 is None:
         outs = (A, Bh, C, Dh)
     else:
-        warnings.warn('Function untested when Bm1!=None')
+        warnings.warn("Function untested when Bm1!=None")
 
         Nx, Nu, Ny = A.shape[0], Bh.shape[1], C.shape[0]
-        AA = np.block([[A, Bm1],
-                       [np.zeros((Nu, Nx)), np.zeros((Nu, Nu))]])
+        AA = np.block([[A, Bm1], [np.zeros((Nu, Nx)), np.zeros((Nu, Nu))]])
         BB = np.block([[Bh], [np.eye(Nu)]])
         CC = np.block([C, np.zeros((Ny, Nu))])
         DD = Dh
@@ -1489,28 +1648,32 @@ def addGain(SShere, Kmat, where):
     Warning: function not tested for Kmat stored in sparse format
     """
 
-    assert where in ['in', 'out', 'parallel-down', 'parallel-up'], \
-        'Specify whether gains are added to input or output'
+    assert where in [
+        "in",
+        "out",
+        "parallel-down",
+        "parallel-up",
+    ], "Specify whether gains are added to input or output"
 
-    if where == 'in':
+    if where == "in":
         A = SShere.A
         B = SShere.B.dot(Kmat)
         C = SShere.C
         D = SShere.D.dot(Kmat)
 
-    if where == 'out':
+    if where == "out":
         A = SShere.A
         B = SShere.B
         C = Kmat.dot(SShere.C)
         D = Kmat.dot(SShere.D)
 
-    if where == 'parallel-down':
+    if where == "parallel-down":
         A = SShere.A
         C = SShere.C
         B = np.block([SShere.B, np.zeros((SShere.B.shape[0], Kmat.shape[1]))])
         D = np.block([SShere.D, Kmat])
 
-    if where == 'parallel-up':
+    if where == "parallel-up":
         A = SShere.A
         C = SShere.C
         B = np.block([np.zeros((SShere.B.shape[0], Kmat.shape[1])), SShere.B])
@@ -1553,62 +1716,61 @@ def join2(SS1, SS2):
     type_dlti = scsig.ltisys.StateSpaceDiscrete
 
     if isinstance(SS1, np.ndarray) and isinstance(SS2, np.ndarray):
-
         Nin01, Nin02 = SS1.shape[1], SS2.shape[1]
         Nout01, Nout02 = SS1.shape[0], SS2.shape[0]
-        SStot = np.block([[SS1, np.zeros((Nout01, Nin02))],
-                          [np.zeros((Nout02, Nin01)), SS2]])
+        SStot = np.block(
+            [[SS1, np.zeros((Nout01, Nin02))], [np.zeros((Nout02, Nin01)), SS2]]
+        )
 
     elif isinstance(SS1, np.ndarray) and isinstance(SS2, type_dlti):
-
         Nin01, Nout01 = SS1.shape[1], SS1.shape[0]
         Nin02, Nout02 = SS2.inputs, SS2.outputs
         Nx02 = SS2.A.shape[0]
 
         A = SS2.A
         B = np.block([np.zeros((Nx02, Nin01)), SS2.B])
-        C = np.block([[np.zeros((Nout01, Nx02))],
-                      [SS2.C]])
-        D = np.block([[SS1, np.zeros((Nout01, Nin02))],
-                      [np.zeros((Nout02, Nin01)), SS2.D]])
+        C = np.block([[np.zeros((Nout01, Nx02))], [SS2.C]])
+        D = np.block(
+            [[SS1, np.zeros((Nout01, Nin02))], [np.zeros((Nout02, Nin01)), SS2.D]]
+        )
 
         SStot = scsig.StateSpace(A, B, C, D, dt=SS2.dt)
 
     elif isinstance(SS1, type_dlti) and isinstance(SS2, np.ndarray):
-
         Nin01, Nout01 = SS1.inputs, SS1.outputs
         Nin02, Nout02 = SS2.shape[1], SS2.shape[0]
         Nx01 = SS1.A.shape[0]
 
         A = SS1.A
         B = np.block([SS1.B, np.zeros((Nx01, Nin02))])
-        C = np.block([[SS1.C],
-                      [np.zeros((Nout02, Nx01))]])
-        D = np.block([[SS1.D, np.zeros((Nout01, Nin02))],
-                      [np.zeros((Nout02, Nin01)), SS2]])
+        C = np.block([[SS1.C], [np.zeros((Nout02, Nx01))]])
+        D = np.block(
+            [[SS1.D, np.zeros((Nout01, Nin02))], [np.zeros((Nout02, Nin01)), SS2]]
+        )
 
         SStot = scsig.StateSpace(A, B, C, D, dt=SS1.dt)
 
     elif isinstance(SS1, type_dlti) and isinstance(SS2, type_dlti):
-
-        assert SS1.dt == SS2.dt, 'State-space models must have the same time-step'
+        assert SS1.dt == SS2.dt, "State-space models must have the same time-step"
 
         Nin01, Nout01 = SS1.inputs, SS1.outputs
         Nin02, Nout02 = SS2.inputs, SS2.outputs
         Nx01, Nx02 = SS1.A.shape[0], SS2.A.shape[0]
 
-        A = np.block([[SS1.A, np.zeros((Nx01, Nx02))],
-                      [np.zeros((Nx02, Nx01)), SS2.A]])
-        B = np.block([[SS1.B, np.zeros((Nx01, Nin02))],
-                      [np.zeros((Nx02, Nin01)), SS2.B]])
-        C = np.block([[SS1.C, np.zeros((Nout01, Nx02))],
-                      [np.zeros((Nout02, Nx01)), SS2.C]])
-        D = np.block([[SS1.D, np.zeros((Nout01, Nin02))],
-                      [np.zeros((Nout02, Nin01)), SS2.D]])
+        A = np.block([[SS1.A, np.zeros((Nx01, Nx02))], [np.zeros((Nx02, Nx01)), SS2.A]])
+        B = np.block(
+            [[SS1.B, np.zeros((Nx01, Nin02))], [np.zeros((Nx02, Nin01)), SS2.B]]
+        )
+        C = np.block(
+            [[SS1.C, np.zeros((Nout01, Nx02))], [np.zeros((Nout02, Nx01)), SS2.C]]
+        )
+        D = np.block(
+            [[SS1.D, np.zeros((Nout01, Nin02))], [np.zeros((Nout02, Nin01)), SS2.D]]
+        )
         SStot = scsig.StateSpace(A, B, C, D, dt=SS1.dt)
 
     else:
-        raise NameError('Input types not recognised in any implemented option!')
+        raise NameError("Input types not recognised in any implemented option!")
 
     return SStot
 
@@ -1635,13 +1797,13 @@ def join(SS_list, wv=None):
     if wv is not None:
         assert N == len(wv), "'weights input should have'"
 
-    A = scalg.block_diag(*[getattr(ss, 'A') for ss in SS_list])
-    B = np.block([[getattr(ss, 'B')] for ss in SS_list])
+    A = scalg.block_diag(*[getattr(ss, "A") for ss in SS_list])
+    B = np.block([[getattr(ss, "B")] for ss in SS_list])
 
     if wv is None:
-        C = np.block([getattr(ss, 'C') for ss in SS_list])
+        C = np.block([getattr(ss, "C") for ss in SS_list])
     else:
-        C = np.block([ww * getattr(ss, 'C') for ww, ss in zip(wv, SS_list)])
+        C = np.block([ww * getattr(ss, "C") for ww, ss in zip(wv, SS_list)])
 
     D = np.zeros_like(SS_list[0].D)
     for ii in range(N):
@@ -1686,31 +1848,35 @@ def sum_ss(SS1, SS2, negative=False):
         SStot = scsig.StateSpace(A, B, C, D, dt=SS2.dt)
 
     elif isinstance(SS1, type_dlti) and isinstance(SS2, type_dlti):
-
-        assert np.abs(1. - SS1.dt / SS2.dt) < 1e-13, \
-            'State-space models must have the same time-step'
+        assert (
+            np.abs(1.0 - SS1.dt / SS2.dt) < 1e-13
+        ), "State-space models must have the same time-step"
 
         Nin01, Nout01 = SS1.inputs, SS1.outputs
         Nin02, Nout02 = SS2.inputs, SS2.outputs
         Nx01, Nx02 = SS1.A.shape[0], SS2.A.shape[0]
 
-        A = np.block([[SS1.A, np.zeros((Nx01, Nx02))],
-                      [np.zeros((Nx02, Nx01)), SS2.A]])
-        B = np.block([[SS1.B, ],
-                      [SS2.B]])
+        A = np.block([[SS1.A, np.zeros((Nx01, Nx02))], [np.zeros((Nx02, Nx01)), SS2.A]])
+        B = np.block(
+            [
+                [
+                    SS1.B,
+                ],
+                [SS2.B],
+            ]
+        )
         C = np.block([SS1.C, SS2.C])
         D = SS1.D + SS2.D
 
         SStot = scsig.StateSpace(A, B, C, D, dt=SS1.dt)
 
-
     else:
-        raise NameError('Input types not recognised in any implemented option!')
+        raise NameError("Input types not recognised in any implemented option!")
 
     return SStot
 
 
-def scale_SS(SSin, input_scal=1., output_scal=1., state_scal=1., byref=True):
+def scale_SS(SSin, input_scal=1.0, output_scal=1.0, state_scal=1.0, byref=True):
     r"""
     Given a state-space system, scales the equations such that the original
     input and output, :math:`u` and :math:`y`, are substituted by :math:`u_{AD}=\frac{u}{u_{ref}}`
@@ -1752,27 +1918,30 @@ def scale_SS(SSin, input_scal=1., output_scal=1., state_scal=1., byref=True):
     Nstates = SSin.A.shape[0]
 
     if isinstance(input_scal, (list, np.ndarray)):
-        assert len(input_scal) == Nin, \
-            'Length of input_scal not matching number of state-space inputs!'
+        assert (
+            len(input_scal) == Nin
+        ), "Length of input_scal not matching number of state-space inputs!"
     else:
         input_scal = Nin * [input_scal]
 
     if isinstance(output_scal, (list, np.ndarray)):
-        assert len(output_scal) == Nout, \
-            'Length of output_scal not matching number of state-space outputs!'
+        assert (
+            len(output_scal) == Nout
+        ), "Length of output_scal not matching number of state-space outputs!"
     else:
         output_scal = Nout * [output_scal]
 
     if isinstance(state_scal, (list, np.ndarray)):
-        assert len(state_scal) == Nstates, \
-            'Length of state_scal not matching number of state-space states!'
+        assert (
+            len(state_scal) == Nstates
+        ), "Length of state_scal not matching number of state-space states!"
     else:
         state_scal = Nstates * [state_scal]
 
     if byref:
         SS = SSin
     else:
-        print('deep-copying state-space model before scaling')
+        print("deep-copying state-space model before scaling")
         SS = copy.deepcopy(SSin)
 
     # update input related matrices
@@ -1817,7 +1986,8 @@ def simulate(SShere, U, x0=None):
     X = np.zeros((NT, Nx))
     Y = np.zeros((NT, Ny))
 
-    if x0 is not None: X[0] = x0
+    if x0 is not None:
+        X[0] = x0
     if len(U.shape) == 1:
         U = U.reshape((NT, 1))
 
@@ -1841,16 +2011,16 @@ def Hnorm_from_freq_resp(gv, method):
     Warning: only use for SISO systems! For MIMO definitions are different
     """
 
-    if method == 'H2':
+    if method == "H2":
         Nk = len(gv)
         gvsq = gv * gv.conj()
-        Gnorm = np.sqrt(np.trapz(gvsq / (Nk - 1.)))
+        Gnorm = np.sqrt(np.trapz(gvsq / (Nk - 1.0)))
 
-    elif method == 'Hinf':
+    elif method == "Hinf":
         Gnorm = np.linalg.norm(gv, np.inf)
 
     if np.abs(Gnorm.imag / Gnorm.real) > 1e-16:
-        raise NameError('Norm is not a real number. Verify data/algorithm!')
+        raise NameError("Norm is not a real number. Verify data/algorithm!")
 
     return Gnorm
 
@@ -1861,23 +2031,24 @@ def adjust_phase(y, deg=True):
     """
 
     if deg is True:
-        shift = 360.
+        shift = 360.0
     else:
-        shift = 2. * np.pi
+        shift = 2.0 * np.pi
 
     dymax = 0.0
 
     N = len(y)
     for ii in range(N - 1):
         dy = y[ii + 1] - y[ii]
-        if np.abs(dy) > dymax: dymax = np.abs(dy)
+        if np.abs(dy) > dymax:
+            dymax = np.abs(dy)
         if dy > 0.97 * shift:
-            print('Subtracting shift to frequency response phase diagram!')
-            y[ii + 1::] = y[ii + 1::] - shift
+            print("Subtracting shift to frequency response phase diagram!")
+            y[ii + 1 : :] = y[ii + 1 : :] - shift
 
         elif dy < -0.97 * shift:
-            y[ii + 1::] = y[ii + 1::] + shift
-            print('Adding shift to frequency response phase diagram!')
+            y[ii + 1 : :] = y[ii + 1 : :] + shift
+            print("Adding shift to frequency response phase diagram!")
 
     return y
 
@@ -1905,7 +2076,7 @@ def SSderivative(ds):
     return Aout, Bout, Cout, Dout
 
 
-def SSintegr(ds, method='trap'):
+def SSintegr(ds, method="trap"):
     """
     Builds a state-space model of an integrator.
 
@@ -1919,23 +2090,23 @@ def SSintegr(ds, method='trap'):
     """
 
     A = np.array([[1]])
-    C = np.array([[1.]])
-    D = np.array([[0.]])
+    C = np.array([[1.0]])
+    D = np.array([[0.0]])
 
-    if method == '1tay':
-        Bm1 = np.array([0.])
+    if method == "1tay":
+        Bm1 = np.array([0.0])
         B0 = np.array([[ds]])
-        B1 = np.array([[0.]])
+        B1 = np.array([[0.0]])
         Aout, Bout, Cout, Dout = A, B0, C, D
 
-    elif method == 'trap':
-        Bm1 = np.array([0.])
-        B0 = np.array([[.5 * ds]])
-        B1 = np.array([[.5 * ds]])
+    elif method == "trap":
+        Bm1 = np.array([0.0])
+        B0 = np.array([[0.5 * ds]])
+        B1 = np.array([[0.5 * ds]])
         Aout, Bout, Cout, Dout = SSconv(A, B0, B1, C, D, Bm1=None)
 
     else:
-        raise NameError('Method %s not available!' % method)
+        raise NameError("Method %s not available!" % method)
 
     # change state
 
@@ -1953,7 +2124,7 @@ def build_SS_poly(Acf, ds, negative=False):
     """
 
     Nout, Nin, Ncf = Acf.shape
-    assert Ncf == 3, 'Acf input last dimension must be equal to 3!'
+    assert Ncf == 3, "Acf input last dimension must be equal to 3!"
 
     Ader, Bder, Cder, Dder = SSderivative(ds)
     SSder = scsig.dlti(Ader, Bder, Cder, Dder, dt=ds)
@@ -1965,7 +2136,8 @@ def build_SS_poly(Acf, ds, negative=False):
 
     # Build polynomial forcing terms
     sign = 1.0
-    if negative == True: sign = -1.0
+    if negative == True:
+        sign = -1.0
 
     A0 = Acf[:, :, 0]
     A1 = Acf[:, :, 1]
@@ -1975,12 +2147,12 @@ def build_SS_poly(Acf, ds, negative=False):
         Kforce[:, 3 * ii] = sign * (A0[:, ii])
         Kforce[:, 3 * ii + 1] = sign * (A1[:, ii])
         Kforce[:, 3 * ii + 2] = sign * (A2[:, ii])
-    SSpoly_neg = addGain(SSder_all, Kforce, where='out')
+    SSpoly_neg = addGain(SSder_all, Kforce, where="out")
 
     return SSpoly_neg
 
 
-def butter(order, Wn, N=1, btype='lowpass'):
+def butter(order, Wn, N=1, btype="lowpass"):
     """
     build MIMO butterworth filter of order ord and cut-off freq over Nyquist
     freq ratio Wn.
@@ -1993,7 +2165,7 @@ def butter(order, Wn, N=1, btype='lowpass'):
     """
 
     # build DLTI SISO
-    num, den = scsig.butter(order, Wn, btype=btype, analog=False, output='ba')
+    num, den = scsig.butter(order, Wn, btype=btype, analog=False, output="ba")
     Af, Bf, Cf, Df = scsig.tf2ss(num, den)
     SSf = scsig.dlti(Af, Bf, Cf, Df, dt=1.0)
 
@@ -2005,6 +2177,7 @@ def butter(order, Wn, N=1, btype='lowpass'):
 
 
 # ----------------------------------------------------------------------- Utils
+
 
 def get_freq_from_eigs(eigs, dlti=True):
     """
@@ -2076,17 +2249,19 @@ def random_ss(Nx, Nu, Ny, dt=None, use_sparse=False, stable=True):
     D = np.random.rand(Ny, Nu)
 
     if use_sparse:
-        ss = StateSpace(libsp.csc_matrix(A),
-                        libsp.csc_matrix(B),
-                        libsp.csc_matrix(C),
-                        libsp.csc_matrix(D),
-                        dt=dt)
+        ss = StateSpace(
+            libsp.csc_matrix(A),
+            libsp.csc_matrix(B),
+            libsp.csc_matrix(C),
+            libsp.csc_matrix(D),
+            dt=dt,
+        )
     else:
         ss = StateSpace(A, B, C, D, dt=dt)
 
-    ss.initialise_variables(({'name': 'input_variable', 'size': Nu}), var_type='in')
-    ss.initialise_variables(({'name': 'output_variable', 'size': Ny}), var_type='out')
-    ss.initialise_variables(({'name': 'state_variable', 'size': Nx}), var_type='state')
+    ss.initialise_variables(({"name": "input_variable", "size": Nu}), var_type="in")
+    ss.initialise_variables(({"name": "output_variable", "size": Ny}), var_type="out")
+    ss.initialise_variables(({"name": "state_variable", "size": Nx}), var_type="state")
 
     return ss
 
@@ -2097,21 +2272,25 @@ def compare_ss(SS1, SS2, tol=1e-10, Print=False):
     """
 
     era = np.max(np.abs(libsp.dense(SS1.A) - libsp.dense(SS2.A)))
-    if Print: print('Max. error A: %.3e' % era)
+    if Print:
+        print("Max. error A: %.3e" % era)
 
     erb = np.max(np.abs(libsp.dense(SS1.B) - libsp.dense(SS2.B)))
-    if Print: print('Max. error B: %.3e' % erb)
+    if Print:
+        print("Max. error B: %.3e" % erb)
 
     erc = np.max(np.abs(libsp.dense(SS1.C) - libsp.dense(SS2.C)))
-    if Print: print('Max. error C: %.3e' % erc)
+    if Print:
+        print("Max. error C: %.3e" % erc)
 
     erd = np.max(np.abs(libsp.dense(SS1.D) - libsp.dense(SS2.D)))
-    if Print: print('Max. error D: %.3e' % erd)
+    if Print:
+        print("Max. error D: %.3e" % erd)
 
-    assert era < tol, 'Error A matrix %.2e>%.2e' % (era, tol)
-    assert erb < tol, 'Error B matrix %.2e>%.2e' % (erb, tol)
-    assert erc < tol, 'Error C matrix %.2e>%.2e' % (erc, tol)
-    assert erd < tol, 'Error D matrix %.2e>%.2e' % (erd, tol)
+    assert era < tol, "Error A matrix %.2e>%.2e" % (era, tol)
+    assert erb < tol, "Error B matrix %.2e>%.2e" % (erb, tol)
+    assert erc < tol, "Error C matrix %.2e>%.2e" % (erc, tol)
+    assert erd < tol, "Error D matrix %.2e>%.2e" % (erd, tol)
 
     # print('System matrices identical within tolerance %.2e'%tol)
     return (era, erb, erc, erd)

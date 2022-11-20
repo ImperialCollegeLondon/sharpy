@@ -40,10 +40,10 @@ import sharpy.linear.src.libss as libss
 
 def transfer_function(SS_list, wv):
     """
-    Returns an interpolatory state-space model based on the transfer function 
-    method [1]. This method is general and is, effectively, a wrapper of the 
+    Returns an interpolatory state-space model based on the transfer function
+    method [1]. This method is general and is, effectively, a wrapper of the
     :func:`sharpy.linear.src.libss.join` method.
-    
+
     Features:
 
         - stability preserved
@@ -71,8 +71,8 @@ def transfer_function(SS_list, wv):
 
 def FLB_transfer_function(SS_list, wv, U_list, VT_list, hsv_list=None, M_list=None):
     r"""
-    Returns an interpolatory state-space model based on the transfer function 
-    method [1]. This method is applicable to frequency limited balanced 
+    Returns an interpolatory state-space model based on the transfer function
+    method [1]. This method is applicable to frequency limited balanced
     state-space models only.
 
 
@@ -123,25 +123,28 @@ def FLB_transfer_function(SS_list, wv, U_list, VT_list, hsv_list=None, M_list=No
     inputs = SS_list[0].inputs
     outputs = SS_list[0].outputs
     for ss_here in SS_list:
-        assert ss_here.states == states, \
-            'State-space models must have the same number of states!'
-        assert ss_here.inputs == inputs, \
-            'State-space models must have the same number of states!'
-        assert ss_here.outputs == outputs, \
-            'State-space models must have the same number of states!'
+        assert (
+            ss_here.states == states
+        ), "State-space models must have the same number of states!"
+        assert (
+            ss_here.inputs == inputs
+        ), "State-space models must have the same number of states!"
+        assert (
+            ss_here.outputs == outputs
+        ), "State-space models must have the same number of states!"
 
     ### case of unbalanced state-space models
     # in this case, U_list and VT_list contain the full-rank Gramians factors
     # of each ROM
     if U_list is None and VT_list is None:
-        raise NameError('apply FLB before calling this routine')
+        raise NameError("apply FLB before calling this routine")
         # hsv_list = None
         # M_list, U_list, VT_list = [], [], []
         # for ii in range(N_interp):
 
         #     # # avoid direct
         #     # hsv,U,Vh,Zc,Zo = librom.balreal_direct_py(
-        #     #                         SS_list[ii].A, SS_list[ii].B, SS_list[ii].C, 
+        #     #                         SS_list[ii].A, SS_list[ii].B, SS_list[ii].C,
         #     #                         DLTI=True,full_outputs=True)
 
         #     # iterative also fails
@@ -159,7 +162,9 @@ def FLB_transfer_function(SS_list, wv, U_list, VT_list, hsv_list=None, M_list=No
         if hsv_list is None:
             M_list = [np.dot(U, VT) for U, VT in zip(U_list, VT_list)]
         else:
-            M_list = [np.dot(U * hsv, VT) for U, hsv, VT in zip(U_list, hsv_list, VT_list)]
+            M_list = [
+                np.dot(U * hsv, VT) for U, hsv, VT in zip(U_list, hsv_list, VT_list)
+            ]
 
     # ------------------------------------------------------------------ online
 
@@ -179,11 +184,13 @@ def FLB_transfer_function(SS_list, wv, U_list, VT_list, hsv_list=None, M_list=No
         Ti_int_list = [np.dot(sinvUT_int, U) for U in U_list]
         T_int_list = [np.dot(VT, Vsinv_int) for VT in VT_list]
     else:
-        Ti_int_list = [np.dot(sinvUT_int, U * np.sqrt(hsv)) \
-                       for U, hsv in zip(U_list, hsv_list)]
-        T_int_list = [np.dot(np.dot(np.diag(np.sqrt(hsv)), VT),
-                             Vsinv_int) \
-                      for hsv, VT in zip(hsv_list, VT_list)]
+        Ti_int_list = [
+            np.dot(sinvUT_int, U * np.sqrt(hsv)) for U, hsv in zip(U_list, hsv_list)
+        ]
+        T_int_list = [
+            np.dot(np.dot(np.diag(np.sqrt(hsv)), VT), Vsinv_int)
+            for hsv, VT in zip(hsv_list, VT_list)
+        ]
 
     ### assemble interp state-space model
     A_int = np.zeros((states, states))
@@ -193,8 +200,7 @@ def FLB_transfer_function(SS_list, wv, U_list, VT_list, hsv_list=None, M_list=No
 
     for ii in range(N_interp):
         # in A and B the weigths come from Ti
-        A_int += wv[ii] * np.dot(Ti_int_list[ii],
-                                 np.dot(SS_list[ii].A, T_int_list[ii]))
+        A_int += wv[ii] * np.dot(Ti_int_list[ii], np.dot(SS_list[ii].A, T_int_list[ii]))
         B_int += wv[ii] * np.dot(Ti_int_list[ii], SS_list[ii].B)
         # in C and D the weights come from the interp system expression
         C_int += wv[ii] * np.dot(SS_list[ii].C, T_int_list[ii])
@@ -209,7 +215,7 @@ class InterpROM:
 
     This class allows interpolating from a list of state-space models, SS.
 
-    State-space models are required to have the same number of inputs and outputs 
+    State-space models are required to have the same number of inputs and outputs
     and need to have the same number of states.
 
     For state-space interpolation, state-space models also need to be defined
@@ -219,7 +225,7 @@ class InterpROM:
     .. math:: \mathbf{A}_{proj} = \mathbf{W}^\top \mathbf{A V}
 
     where A is the full-states matrix, also need to be provided. This will allow
-    projecting the state-space models onto a common set of generalised 
+    projecting the state-space models onto a common set of generalised
     coordinates before interpoling.
 
     For development purposes, the method currently creates a hard copy of the
@@ -234,7 +240,7 @@ class InterpROM:
       ROMs are defined over the same basis
 
     - WWT: list of W^T matrices used to derive the ROMs.
-    
+
     - Vref, WTref: reference subspaces for projection. Some methods neglect this
       input (e.g. panzer)
 
@@ -247,14 +253,14 @@ class InterpROM:
         - strongMAC: strong Modal Assurance Criterion [4] enforcement for general
           basis. See Ref. [3], Eq. (7)
 
-        - strongMAC_BT: strong Modal Assurance Criterion [4] enforcement for 
+        - strongMAC_BT: strong Modal Assurance Criterion [4] enforcement for
           basis obtained by Balanced Truncation. Equivalent to strongMAC
 
         - maraniello_BT: this is equivalent to strongMAC and strongMAC_BT but
           avoids inversions. However, performance are the same as other strongMAC
           approaches - it works only when basis map the same subspaces
 
-        - weakMAC_right_orth: weak MAC enforcement [1,3] for state-space models 
+        - weakMAC_right_orth: weak MAC enforcement [1,3] for state-space models
           with right orthonoraml basis, i.e. V.T V = I. This is like Ref. [1], but
           implemented only on one side.
 
@@ -269,27 +275,25 @@ class InterpROM:
 
     References:
 
-    [1] D. Amsallem and C. Farhat, An online method for interpolating linear 
+    [1] D. Amsallem and C. Farhat, An online method for interpolating linear
     parametric reduced-order models, SIAM J. Sci. Comput., 33 (2011), pp. 2169–2198.
 
-    [2] Panzer, J. Mohring, R. Eid, and B. Lohmann, Parametric model order 
-    reduction by matrix interpolation, at–Automatisierungstechnik, 58 (2010), 
+    [2] Panzer, J. Mohring, R. Eid, and B. Lohmann, Parametric model order
+    reduction by matrix interpolation, at–Automatisierungstechnik, 58 (2010),
     pp. 475–484.
 
-    [3] Mahony, R., Sepulchre, R. & Absil, P. -a., 2004. Riemannian Geometry of 
-    Grassmann Manifolds with a View on Algorithmic Computation. Acta Applicandae 
+    [3] Mahony, R., Sepulchre, R. & Absil, P. -a., 2004. Riemannian Geometry of
+    Grassmann Manifolds with a View on Algorithmic Computation. Acta Applicandae
     Mathematicae, 80(2), pp.199–220.
 
     [4] Geuss, M., Panzer, H. & Lohmann, B., 2013. On parametric model order
-    reduction by matrix interpolation. 2013 European Control Conference (ECC), 
+    reduction by matrix interpolation. 2013 European Control Conference (ECC),
     pp.3433–3438.
 
 
     """
 
-    def __init__(self, SS, VV=None, WWT=None,
-                 Vref=None, WTref=None, method_proj=None):
-
+    def __init__(self, SS, VV=None, WWT=None, Vref=None, WTref=None, method_proj=None):
         self.SS = SS
 
         self.VV = VV
@@ -314,22 +318,26 @@ class InterpROM:
         Nx, Nu, Ny = SS[0].states, SS[0].inputs, SS[0].outputs
         dt = SS[0].dt
         for ss_here in SS:
-            assert ss_here.states == Nx, \
-                'State-space models do not have the same number of states'
-            assert ss_here.inputs == Nu, \
-                'State-space models do not have the same number of inputs'
-            assert ss_here.outputs == Ny, \
-                'State-space models do not have the same number of outputs'
-            assert ss_here.dt == dt, \
-                'State-space models do not have same timestep'
+            assert (
+                ss_here.states == Nx
+            ), "State-space models do not have the same number of states"
+            assert (
+                ss_here.inputs == Nu
+            ), "State-space models do not have the same number of inputs"
+            assert (
+                ss_here.outputs == Ny
+            ), "State-space models do not have the same number of outputs"
+            assert ss_here.dt == dt, "State-space models do not have same timestep"
 
     def __call__(self, wv):
         """
         Evaluate interpolated model using weights wv.
         """
 
-        assert self.Projected, ('You must project the state-space models over' +
-                                ' a common basis before interpolating')
+        assert self.Projected, (
+            "You must project the state-space models over"
+            + " a common basis before interpolating"
+        )
 
         Aint = np.zeros_like(self.AA[0])
         Bint = np.zeros_like(self.BB[0])
@@ -346,7 +354,7 @@ class InterpROM:
 
     def project(self):
         """
-        Project the state-space models onto the generalised coordinates of 
+        Project the state-space models onto the generalised coordinates of
         state-space model IImap
         """
 
@@ -357,49 +365,59 @@ class InterpROM:
         self.QQ = []
         self.QQinv = []
 
-        if self.method_proj == 'amsallem':
-            warnings.warn('Method untested!')
+        if self.method_proj == "amsallem":
+            warnings.warn("Method untested!")
 
             for ii in range(len(self.SS)):
-                U, sv, Z = scalg.svd(np.dot(self.VV[ii].T, self.Vref),
-                                     full_matrices=False, overwrite_a=False,
-                                     lapack_driver='gesdd')
+                U, sv, Z = scalg.svd(
+                    np.dot(self.VV[ii].T, self.Vref),
+                    full_matrices=False,
+                    overwrite_a=False,
+                    lapack_driver="gesdd",
+                )
                 Q = np.dot(U, Z.T)
-                U, sv, Z = scalg.svd(np.dot(self.WWT[ii], self.WTref),
-                                     full_matrices=False, overwrite_a=False,
-                                     lapack_driver='gesdd')
+                U, sv, Z = scalg.svd(
+                    np.dot(self.WWT[ii], self.WTref),
+                    full_matrices=False,
+                    overwrite_a=False,
+                    lapack_driver="gesdd",
+                )
                 Qinv = np.dot(U, Z.T).T
                 self.QQ.append(Q)
                 self.QQinv.append(Qinv)
 
-        elif self.method_proj == 'panzer':
-            warnings.warn('Method untested!')
+        elif self.method_proj == "panzer":
+            warnings.warn("Method untested!")
 
             # generate basis
-            U, sv = scalg.svd(np.concatenate(self.VV, axis=1),
-                              full_matrices=False, overwrite_a=False,
-                              lapack_driver='gesdd')[:2]
+            U, sv = scalg.svd(
+                np.concatenate(self.VV, axis=1),
+                full_matrices=False,
+                overwrite_a=False,
+                lapack_driver="gesdd",
+            )[:2]
             # chop U
-            U = U[:, :self.SS[0].states]
+            U = U[:, : self.SS[0].states]
             for ii in range(len(self.SS)):
                 Qinv = np.linalg.inv(np.dot(self.WWT[ii], U))
                 Q = np.linalg.inv(np.dot(self.VV[ii].T, U))
                 self.QQ.append(Q)
                 self.QQinv.append(Qinv)
 
-        elif self.method_proj == 'leastsq':
-
+        elif self.method_proj == "leastsq":
             for ii in range(len(self.SS)):
                 Q, _, _, _ = scalg.lstsq(self.VV[ii], self.Vref)
-                print('det(Q): %.3e\tcond(Q): %.3e' \
-                      % (np.linalg.det(Q), np.linalg.cond(Q)))
+                print(
+                    "det(Q): %.3e\tcond(Q): %.3e"
+                    % (np.linalg.det(Q), np.linalg.cond(Q))
+                )
                 # if cond(Q) is small...
                 # Qinv = np.linalg.inv(Q)
                 P, _, _, _ = scalg.lstsq(self.WWT[ii].T, self.WTref.T)
                 self.QQ.append(Q)
                 self.QQinv.append(P.T)
 
-        elif self.method_proj == 'strongMAC':
+        elif self.method_proj == "strongMAC":
             """
             Strong MAC enforcements as per Ref.[4]
             """
@@ -408,12 +426,14 @@ class InterpROM:
             for ii in range(len(self.SS)):
                 Q = np.linalg.solve(np.dot(self.Vref.T, self.VV[ii]), VTVref)
                 Qinv = np.linalg.inv(Q)
-                print('det(Q): %.3e\tcond(Q): %.3e' \
-                      % (np.linalg.det(Q), np.linalg.cond(Q)))
+                print(
+                    "det(Q): %.3e\tcond(Q): %.3e"
+                    % (np.linalg.det(Q), np.linalg.cond(Q))
+                )
                 self.QQ.append(Q)
                 self.QQinv.append(Qinv)
 
-        elif self.method_proj == 'strongMAC_BT':
+        elif self.method_proj == "strongMAC_BT":
             """
             This is equivalent to Mahony 2004, Eq. 7, for the case of basis
             obtained by balancing. In general, it will fail if VV[ii] and Vref
@@ -423,12 +443,14 @@ class InterpROM:
             for ii in range(len(self.SS)):
                 Q = np.linalg.inv(np.dot(self.WTref, self.VV[ii]))
                 Qinv = np.dot(self.WTref, self.VV[ii])
-                print('det(Q): %.3e\tcond(Q): %.3e' \
-                      % (np.linalg.det(Q), np.linalg.cond(Q)))
+                print(
+                    "det(Q): %.3e\tcond(Q): %.3e"
+                    % (np.linalg.det(Q), np.linalg.cond(Q))
+                )
                 self.QQ.append(Q)
                 self.QQinv.append(Qinv)
 
-        elif self.method_proj == 'maraniello_BT':
+        elif self.method_proj == "maraniello_BT":
             """
             Projection over ii. This is a sort of weak enforcement
             """
@@ -436,27 +458,30 @@ class InterpROM:
             for ii in range(len(self.SS)):
                 Q = np.dot(self.WWT[ii], self.Vref)
                 Qinv = np.dot(self.WTref, self.VV[ii])
-                print('det(Q): %.3e\tcond(Q): %.3e' \
-                      % (np.linalg.det(Q), np.linalg.cond(Q)))
+                print(
+                    "det(Q): %.3e\tcond(Q): %.3e"
+                    % (np.linalg.det(Q), np.linalg.cond(Q))
+                )
                 self.QQ.append(Q)
                 self.QQinv.append(Qinv)
 
-
-        elif self.method_proj == 'weakMAC_right_orth':
+        elif self.method_proj == "weakMAC_right_orth":
             """
-            This is like Amsallem, but only for state-space models with right 
-            orthogonal basis 
+            This is like Amsallem, but only for state-space models with right
+            orthogonal basis
             """
 
             for ii in range(len(self.SS)):
                 Q, sc = scalg.orthogonal_procrustes(self.VV[ii], self.Vref)
                 Qinv = Q.T
-                print('det(Q): %.3e\tcond(Q): %.3e' \
-                      % (np.linalg.det(Q), np.linalg.cond(Q)))
+                print(
+                    "det(Q): %.3e\tcond(Q): %.3e"
+                    % (np.linalg.det(Q), np.linalg.cond(Q))
+                )
                 self.QQ.append(Q)
                 self.QQinv.append(Qinv)
 
-        elif self.method_proj == 'weakMAC':
+        elif self.method_proj == "weakMAC":
             """
             WeakMAC enforcement on the right hand side basis, V
             """
@@ -471,13 +496,15 @@ class InterpROM:
                 R, sc = scalg.orthogonal_procrustes(Uhere, Uref)
                 Q = np.dot(np.dot(Zhhere.T, np.diag(svhere ** (-1))), R)
                 Qinv = np.dot(R.T, np.dot(np.diag(svhere), Zhhere))
-                print('det(Q): %.3e\tcond(Q): %.3e' \
-                      % (np.linalg.det(Q), np.linalg.cond(Q)))
+                print(
+                    "det(Q): %.3e\tcond(Q): %.3e"
+                    % (np.linalg.det(Q), np.linalg.cond(Q))
+                )
                 self.QQ.append(Q)
                 self.QQinv.append(Qinv)
 
         else:
-            raise NameError('Projection method %s not implemented!' % self.method_proj)
+            raise NameError("Projection method %s not implemented!" % self.method_proj)
 
         ### Project
         for ii in range(len(self.SS)):
@@ -491,12 +518,11 @@ class InterpROM:
 # ------------------------------------------------------------------------------
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import unittest
 
-
     class Test_librom_inter(unittest.TestCase):
-        """ Test methods for DLTI ROM interpolation """
+        """Test methods for DLTI ROM interpolation"""
 
         def setUp(self):
             # allocate some state-space model (dense and sparse)
@@ -508,14 +534,15 @@ if __name__ == '__main__':
             D = np.random.rand(Ny, Nu)
             self.SS = libss.StateSpace(A, B, C, D, dt=dt)
 
+
 # class Interp1d():
 #     """
 #     State-space 1D interpolation class.
 
-#     This class allows interpolating from a list of state-space models, SS, 
-#     defined over the 1D parameter space zv. 
+#     This class allows interpolating from a list of state-space models, SS,
+#     defined over the 1D parameter space zv.
 
-#     State-space models are required to have the same number of inputs and outputs 
+#     State-space models are required to have the same number of inputs and outputs
 #     and need to have the same number of states.
 
 #     For state-space interpolation, state-space models also need to be defined
@@ -532,23 +559,23 @@ if __name__ == '__main__':
 
 #     - method_proj: method for projection of state-space models over common
 #     coordinates. Available:
-#         - panzer: Panzer, J. Mohring, R. Eid, and B. Lohmann, Parametric model 
-#         order reduction by matrix interpolation, at–Automatisierungstechnik, 58 
+#         - panzer: Panzer, J. Mohring, R. Eid, and B. Lohmann, Parametric model
+#         order reduction by matrix interpolation, at–Automatisierungstechnik, 58
 #         (2010), pp. 475–484.
-#         - amsallem: D. Amsallem and C. Farhat, An online method for interpolating 
-#         linear parametric reduced-order models, SIAM J. Sci. Comput., 33 (2011), 
+#         - amsallem: D. Amsallem and C. Farhat, An online method for interpolating
+#         linear parametric reduced-order models, SIAM J. Sci. Comput., 33 (2011),
 #         pp. 2169–2198.
 #     Note that 'panzel' and 'amsallem' only apply to orthogonal basis WT,V.
 
 
-#     - Map: map A matrices over Riemannian manifold 
+#     - Map: map A matrices over Riemannian manifold
 
-#     - IImap=if given, maps A matrices over manifold derived around A matrix 
-#     of ii-th state-space in SSlist. 
+#     - IImap=if given, maps A matrices over manifold derived around A matrix
+#     of ii-th state-space in SSlist.
 #     """
 
 
-#     def __init__(self, zv, SS, VV=None, WW=None, method_interp='cubic', 
+#     def __init__(self, zv, SS, VV=None, WW=None, method_interp='cubic',
 #                  method_proj='panzer', Map=True, IImap=None):
 
 #         assert IImap is not None, 'Option IImap=None not developed yet'
@@ -582,7 +609,7 @@ if __name__ == '__main__':
 
 #         Nint=len(zint)
 
-#         # interpolate A matrices, 
+#         # interpolate A matrices,
 #         if self.Map is True:
 #             IImap=self.IImap
 #             if IImap is not None:
@@ -605,15 +632,15 @@ if __name__ == '__main__':
 #                 pass
 
 #         else:
-#             Aint=self._interp_mats( 
+#             Aint=self._interp_mats(
 #                         [getattr(ss_here,'A') for ss_here in self.SS], zint)
 
 #         # and B, C, D...
-#         Bint=self._interp_mats( 
+#         Bint=self._interp_mats(
 #                         [getattr(ss_here,'B') for ss_here in self.SS], zint)
-#         Cint=self._interp_mats( 
-#                         [getattr(ss_here,'C') for ss_here in self.SS], zint)        
-#         Dint=self._interp_mats( 
+#         Cint=self._interp_mats(
+#                         [getattr(ss_here,'C') for ss_here in self.SS], zint)
+#         Dint=self._interp_mats(
 #                         [getattr(ss_here,'D') for ss_here in self.SS], zint)
 
 #         # and pack everything
@@ -627,7 +654,7 @@ if __name__ == '__main__':
 
 #     def _interp_mats(self,Mats,zint):
 #         """
-#         Interpolate a list of equal-size arrays, Mats, defined over zv at the 
+#         Interpolate a list of equal-size arrays, Mats, defined over zv at the
 #         points zint. The Mats are assumed to be defined onto the same set of
 #         generalised coordinates.
 #         """
@@ -635,14 +662,14 @@ if __name__ == '__main__':
 #         # define interpolator class
 #         # try:
 #         IntA=scint.interp1d(self.zv,Mats,kind=self.method_interp,
-#                                            copy=False,assume_sorted=True,axis=0)    
+#                                            copy=False,assume_sorted=True,axis=0)
 
 #         return IntA(zint)
 
 
 #     def project(self):
 #         """
-#         Project the state-space models onto the generalised coordinates of 
+#         Project the state-space models onto the generalised coordinates of
 #         state-space model IImap
 #         """
 
@@ -656,7 +683,7 @@ if __name__ == '__main__':
 #             for ii in range(len(self.SS)):
 
 #                 if ii == self.IImap:
-#                     continue 
+#                     continue
 
 #                 # get rotations
 #                 U,sv,Z = scalg.svd( np.dot(self.VV[ii].T, Vref) ,

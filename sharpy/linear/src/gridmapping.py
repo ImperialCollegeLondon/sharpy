@@ -7,7 +7,7 @@ import numpy as np
 import sharpy.utils.cout_utils as cout
 
 
-class AeroGridMap():
+class AeroGridMap:
     """
     Produces mapping between panels, segment and vertices of a surface.
     Grid elements are identified through the indices (m,n), where:
@@ -36,7 +36,7 @@ class AeroGridMap():
     - mapping matrices are stored as np.int16 or np.int32 arrays
     """
 
-    def __init__(self, M: 'number of chord-wise', N: 'number of span-wise'):
+    def __init__(self, M: "number of chord-wise", N: "number of span-wise"):
         ### init
         self.M = M
         self.N = N
@@ -45,7 +45,8 @@ class AeroGridMap():
 
         ### format
         self.intxx = np.int16
-        if self.Kzeta > np.iinfo(np.int16).max: self.intxx = np.int32
+        if self.Kzeta > np.iinfo(np.int16).max:
+            self.intxx = np.int32
 
         ### shapes for multi-dimensional arrays
         self.shape_pan_scal = (M, N)
@@ -76,12 +77,14 @@ class AeroGridMap():
 
         # vectors defined at vertices
         self.ind_1d_vert_vert = range(3 * self.Kzeta)
-        self.ind_3d_vert_vect = np.unravel_index(self.ind_1d_vert_vert,
-                                                 shape=self.shape_vert_vect, order='C')
+        self.ind_3d_vert_vect = np.unravel_index(
+            self.ind_1d_vert_vert, shape=self.shape_vert_vect, order="C"
+        )
         # scalars defined at panels
         self.ind_1d_pan_scal = range(self.K)
-        self.ind_2d_pan_scal = np.unravel_index(self.ind_1d_pan_scal,
-                                                shape=self.shape_pan_scal, order='C')
+        self.ind_2d_pan_scal = np.unravel_index(
+            self.ind_1d_pan_scal, shape=self.shape_pan_scal, order="C"
+        )
 
         # ### mapping to/from 1D arrays
         # self.maps.ind_vector_vertices_to_3d=
@@ -110,21 +113,22 @@ class AeroGridMap():
         self.Mpv1d_scalar = np.zeros((self.K, 4), dtype=self.intxx)
 
         # Map: panels 1D -> 3d
-        if not hasattr(self, 'Mpv'):
+        if not hasattr(self, "Mpv"):
             self.map_panels_to_vertices()
-        mn_panels = np.unravel_index(range(self.K),
-                                     shape=self.shape_pan_scal, order='C')
+        mn_panels = np.unravel_index(
+            range(self.K), shape=self.shape_pan_scal, order="C"
+        )
         # Mpv_new=self.Mpv[mn_panels] # from k to vertices
 
         for kk in range(self.K):
-
             # map from kk-th panel to vertices (m,n)
             mpv = self.Mpv[mn_panels[0][kk], mn_panels[1][kk], :, :]
 
             # loop through vertices
             for vv in range(4):
-                self.Mpv1d_scalar[kk, vv] = np.ravel_multi_index(mpv[vv, :],
-                                                                 dims=self.shape_vert_scal, order='C')
+                self.Mpv1d_scalar[kk, vv] = np.ravel_multi_index(
+                    mpv[vv, :], dims=self.shape_vert_scal, order="C"
+                )
 
     def map_panels_to_vertices(self):
         """
@@ -140,7 +144,7 @@ class AeroGridMap():
             for nn in range(N):
                 self.Mpv[mm, nn, :, :] = self.from_panel_to_vertices(mm, nn)
 
-    def from_panel_to_vertices(self, m: 'chordwise index', n: 'spanwise index'):
+    def from_panel_to_vertices(self, m: "chordwise index", n: "spanwise index"):
         """
         From panel of indices (m,n) to indices of vertices
         """
@@ -170,13 +174,13 @@ class AeroGridMap():
         self.Mvp1d_scalar = np.zeros((self.Kzeta, 4), dtype=self.intxx)
 
         # Map: vertices 1D -> 3d
-        if not hasattr(self, 'Mvp'):
+        if not hasattr(self, "Mvp"):
             self.map_vertices_to_panels()
-        mn_vertices = np.unravel_index(range(self.Kzeta),
-                                       shape=self.shape_vert_scal, order='C')
+        mn_vertices = np.unravel_index(
+            range(self.Kzeta), shape=self.shape_vert_scal, order="C"
+        )
 
         for kk in range(self.Kzeta):
-
             # map from kk-th vertex to panels (m,n)
             mvp = self.Mvp[mn_vertices[0][kk], mn_vertices[1][kk], :, :]
 
@@ -184,8 +188,9 @@ class AeroGridMap():
             for vv in range(4):
                 # check if vertex is vv-th for any panel
                 if np.all(mvp[vv, :] != -1):
-                    self.Mvp1d_scalar[kk, vv] = np.ravel_multi_index(mvp[vv, :],
-                                                                     dims=self.shape_pan_scal, order='C')
+                    self.Mvp1d_scalar[kk, vv] = np.ravel_multi_index(
+                        mvp[vv, :], dims=self.shape_pan_scal, order="C"
+                    )
                 else:
                     self.Mvp1d_scalar[kk, vv] = -1
 
@@ -211,7 +216,7 @@ class AeroGridMap():
                 self.Mvp[mm, nn, mmvec_rem, 0] = -1
                 self.Mvp[mm, nn, nnvec_rem, 1] = -1
 
-    def from_vertex_to_panel(self, m: 'chordwise index', n: 'spanwise index'):
+    def from_vertex_to_panel(self, m: "chordwise index", n: "spanwise index"):
         """
         Returns the panel for which the vertex is locally numbered as 0,1,2,3.
         Returns a (4,2) array such that its elements are:
@@ -247,7 +252,7 @@ class AeroGridMap():
             for nn in range(N):
                 self.Mps[mm, nn, :, :] = self.from_panel_to_segments(mm, nn)
 
-    def from_panel_to_segments(self, m: 'chordwise index', n: 'spanwise index'):
+    def from_panel_to_segments(self, m: "chordwise index", n: "spanwise index"):
         """
         For each panel (m,n) it provides the ms,ns indices of each segment.
         """
@@ -295,7 +300,7 @@ class AeroGridMap():
     # 	return mps
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     M, N = 3, 5
 
     Map = AeroGridMap(M, N)

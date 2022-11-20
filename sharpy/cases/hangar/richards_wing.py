@@ -10,18 +10,18 @@ import sharpy.utils.algebra as algebra
 
 
 class Baseline(HortenWing):
-
     def set_properties(self):
-
         # Wing geometry
         self.span = 20.0  # [m]
         self.sweep_LE = 20 * np.pi / 180  # [rad] Leading Edge Sweep
         self.c_root = 1.0  # [m] Root chord - Richards
         self.taper_ratio = 0.25  # Richards
-        self.thrust_nodes = [self.n_node_fuselage - 1,
-                             self.n_node_fuselage + self.n_node_wing + 1]
+        self.thrust_nodes = [
+            self.n_node_fuselage - 1,
+            self.n_node_fuselage + self.n_node_wing + 1,
+        ]
 
-        self.loc_cg = 0.45 # CG position wrt to LE (from sectional analysis)
+        self.loc_cg = 0.45  # CG position wrt to LE (from sectional analysis)
         # EA is the reference in NATASHA - defined with respect to the midchord. SHARPy is wrt to LE and as a pct of
         # local chord
         self.main_ea_root = 0.33
@@ -29,11 +29,11 @@ class Baseline(HortenWing):
         self.n_mass = 2 * self.n_elem_wing
 
         # FUSELAGE GEOMETRY
-        self.fuselage_width = 1.65/2
+        self.fuselage_width = 1.65 / 2
         self.c_fuselage = self.c_root
 
         # WASH OUT
-        self.washout_root = 0*np.pi/180
+        self.washout_root = 0 * np.pi / 180
         self.washout_tip = -2 * np.pi / 180
 
         # Horseshoe wake
@@ -43,7 +43,7 @@ class Baseline(HortenWing):
         self.dt = 1 / self.M / self.u_inf * self.dt_factor
 
         # Dynamics
-        self.n_tstep = int(self.physical_time/self.dt)
+        self.n_tstep = int(self.physical_time / self.dt)
         self.gust_intensity = 0.1
 
         # Numerics
@@ -51,7 +51,7 @@ class Baseline(HortenWing):
         self.fsi_tolerance = 1e-10
         self.relaxation_factor = 0.2
 
-    def update_mass_stiffness(self, sigma=1., sigma_mass=1., payload=0):
+    def update_mass_stiffness(self, sigma=1.0, sigma_mass=1.0, payload=0):
         """
         Sets the mass and stiffness properties of the default wing
 
@@ -78,11 +78,11 @@ class Baseline(HortenWing):
 
         root_i_beam = IBeam()
         root_i_beam.build(c_root)
-        root_i_beam.rotation_axes = np.array([0, self.main_ea_root-0.25, 0])
+        root_i_beam.rotation_axes = np.array([0, self.main_ea_root - 0.25, 0])
 
         root_airfoil = Airfoil()
         root_airfoil.build(c_root)
-        root_i_beam.rotation_axes = np.array([0, self.main_ea_root-0.25, 0])
+        root_i_beam.rotation_axes = np.array([0, self.main_ea_root - 0.25, 0])
 
         mu_0 = root_i_beam.mass + root_airfoil.mass
         j_xx = root_i_beam.ixx + root_airfoil.ixx
@@ -96,19 +96,24 @@ class Baseline(HortenWing):
         base_stiffness = self.base_stiffness
 
         stiffness_root = sigma * np.diag([ea, ga, ga, gj, eiy, eiz])
-        stiffness_tip = taper_ratio ** 2 * stiffness_root
+        stiffness_tip = taper_ratio**2 * stiffness_root
 
         # Assume a linear variation in the stiffness. Richards et al. use VABS on the linearly tapered wing to find the
         # spanwise properties
         alpha = np.linspace(0, 1, self.n_elem_wing)
         for i_elem in range(0, self.n_elem_wing):
-            base_stiffness[i_elem + 1, :, :] = stiffness_root*(1-alpha[i_elem]**2) + stiffness_tip*alpha[i_elem]**2
+            base_stiffness[i_elem + 1, :, :] = (
+                stiffness_root * (1 - alpha[i_elem] ** 2)
+                + stiffness_tip * alpha[i_elem] ** 2
+            )
         base_stiffness[0] = base_stiffness[1]
 
         # Mass variation along the span
         # Right wing centre of mass - wrt to 0.25c
-        cm = (root_airfoil.centre_mass * root_airfoil.mass + root_i_beam.centre_mass * root_i_beam.mass) \
-             / np.sum(root_airfoil.mass + root_i_beam.mass)
+        cm = (
+            root_airfoil.centre_mass * root_airfoil.mass
+            + root_i_beam.centre_mass * root_i_beam.mass
+        ) / np.sum(root_airfoil.mass + root_i_beam.mass)
         cg = np.array([0, -(cm[0] + 0.25 * self.c_root - self.main_ea_root), 0]) * 1
         n_mass = self.n_mass
         # sigma_mass = 1.25
@@ -133,7 +138,9 @@ class Baseline(HortenWing):
 
         for i_elem in range(self.n_elem_wing):
             # Create full cross section
-            c_bar = self.c_root * ((1-alpha[i_elem]) + self.taper_ratio * alpha[i_elem])
+            c_bar = self.c_root * (
+                (1 - alpha[i_elem]) + self.taper_ratio * alpha[i_elem]
+            )
             x_section = WingCrossSection(c_bar)
             # print(i_elem)
             # print('Section Mass: %.2f ' %x_section.mass)
@@ -145,17 +152,63 @@ class Baseline(HortenWing):
             # base_mass[i_elem, :, :] = mass_root_right*(1-alpha[i_elem]) + mass_tip_right*alpha[i_elem]
             # base_mass[i_elem + self.n_elem_wing + self.n_elem_fuselage - 1] = mass_root_left*(1-alpha[i_elem]) + mass_tip_left*alpha[i_elem]
 
-            base_mass[i_elem, :, :] = np.diag([x_section.mass, x_section.mass, x_section.mass,
-                                               x_section.ixx, x_section.iyy, x_section.izz])
-            cg = np.array([0, -(x_section.centre_mass[0] + (0.25 - self.main_ea_root) * c_bar / self.c_root), 0]) * 1
+            base_mass[i_elem, :, :] = np.diag(
+                [
+                    x_section.mass,
+                    x_section.mass,
+                    x_section.mass,
+                    x_section.ixx,
+                    x_section.iyy,
+                    x_section.izz,
+                ]
+            )
+            cg = (
+                np.array(
+                    [
+                        0,
+                        -(
+                            x_section.centre_mass[0]
+                            + (0.25 - self.main_ea_root) * c_bar / self.c_root
+                        ),
+                        0,
+                    ]
+                )
+                * 1
+            )
             base_mass[i_elem, :3, -3:] = -algebra.skew(cg) * x_section.mass
             base_mass[i_elem, -3:, :3] = algebra.skew(cg) * x_section.mass
 
-            base_mass[i_elem + self.n_elem_wing + self.n_elem_fuselage - 1, :, :] = np.diag([x_section.mass, x_section.mass, x_section.mass,
-                                               x_section.ixx, x_section.iyy, x_section.izz])
-            cg = np.array([0, -(x_section.centre_mass[0] + (0.25 - self.main_ea_root) * c_bar / self.c_root), 0]) * 1
-            base_mass[i_elem + self.n_elem_wing + self.n_elem_fuselage - 1, :3, -3:] = -algebra.skew(-cg) * x_section.mass
-            base_mass[i_elem + self.n_elem_wing + self.n_elem_fuselage - 1, -3:, :3] = algebra.skew(-cg) * x_section.mass
+            base_mass[
+                i_elem + self.n_elem_wing + self.n_elem_fuselage - 1, :, :
+            ] = np.diag(
+                [
+                    x_section.mass,
+                    x_section.mass,
+                    x_section.mass,
+                    x_section.ixx,
+                    x_section.iyy,
+                    x_section.izz,
+                ]
+            )
+            cg = (
+                np.array(
+                    [
+                        0,
+                        -(
+                            x_section.centre_mass[0]
+                            + (0.25 - self.main_ea_root) * c_bar / self.c_root
+                        ),
+                        0,
+                    ]
+                )
+                * 1
+            )
+            base_mass[i_elem + self.n_elem_wing + self.n_elem_fuselage - 1, :3, -3:] = (
+                -algebra.skew(-cg) * x_section.mass
+            )
+            base_mass[i_elem + self.n_elem_wing + self.n_elem_fuselage - 1, -3:, :3] = (
+                algebra.skew(-cg) * x_section.mass
+            )
 
             ixx_dummy.append(x_section.ixx)
             iyy_dummy.append(x_section.iyy)
@@ -210,7 +263,7 @@ class CrossSection(object):
     def __init__(self):
         self.rho = 2770
 
-        self.rotation_axes = np.array([0, 0.33-0.25, 0])
+        self.rotation_axes = np.array([0, 0.33 - 0.25, 0])
 
         self.y = np.ndarray((2,))
         self.z = np.ndarray((2,))
@@ -225,7 +278,12 @@ class CrossSection(object):
 
     @property
     def ixx(self):
-        ixx_ = np.sum(self.elem_length * self.t * self.rho * (self.elem_cm_y ** 2 + self.elem_cm_z ** 2))
+        ixx_ = np.sum(
+            self.elem_length
+            * self.t
+            * self.rho
+            * (self.elem_cm_y**2 + self.elem_cm_z**2)
+        )
         return ixx_ + self.mass * (self.centre_mass[0] - self.rotation_axes[1]) ** 2
 
     @property
@@ -235,13 +293,13 @@ class CrossSection(object):
 
     @property
     def elem_cm_y(self):
-        elem_cm_y_ = np.ndarray((self.n_elem, ))
+        elem_cm_y_ = np.ndarray((self.n_elem,))
         elem_cm_y_[:] = 0.5 * (self.y[:-1] + self.y[1:])
         return elem_cm_y_
 
     @property
     def elem_cm_z(self):
-        elem_cm_z_ = np.ndarray((self.n_elem, ))
+        elem_cm_z_ = np.ndarray((self.n_elem,))
         elem_cm_z_[:] = 0.5 * (self.z[:-1] + self.z[1:])
         return elem_cm_z_
 
@@ -260,8 +318,14 @@ class CrossSection(object):
         iyy_ = 0
         for elem in range(len(self.elem_length)):
             z_cg = np.ones_like(x_cg) * self.elem_cm_z[elem]
-            iyy_ += np.sum(self.elem_length[elem] * self.t[elem] * dx * self.rho * (x_cg ** 2 + z_cg ** 2))
-        return iyy_ #np.sum(self.elem_length * self.t * self.rho * 1 * self.elem_cm_z ** 2)
+            iyy_ += np.sum(
+                self.elem_length[elem]
+                * self.t[elem]
+                * dx
+                * self.rho
+                * (x_cg**2 + z_cg**2)
+            )
+        return iyy_  # np.sum(self.elem_length * self.t * self.rho * 1 * self.elem_cm_z ** 2)
 
     @property
     def izz(self):
@@ -272,8 +336,14 @@ class CrossSection(object):
         izz_ = 0
         for elem in range(len(self.elem_length)):
             y_cg = np.ones_like(x_cg) * self.elem_cm_y[elem]
-            izz_ += np.sum(self.elem_length[elem] * self.t[elem] * dx * self.rho * (x_cg ** 2 + y_cg ** 2))
-        return izz_ #np.sum(self.elem_length * self.t * self.rho * 1 * self.elem_cm_y ** 2)
+            izz_ += np.sum(
+                self.elem_length[elem]
+                * self.t[elem]
+                * dx
+                * self.rho
+                * (x_cg**2 + y_cg**2)
+            )
+        return izz_  # np.sum(self.elem_length * self.t * self.rho * 1 * self.elem_cm_y ** 2)
 
     @property
     def n_node(self):
@@ -290,7 +360,6 @@ class CrossSection(object):
 
 
 class IBeam(CrossSection):
-
     def build(self, c_root):
         t_skin = 0.127e-2
         t_c = 0.12
@@ -298,13 +367,15 @@ class IBeam(CrossSection):
 
         self.rho = 2770
 
-        self.y = np.ndarray((self.n_node, ))
-        self.z = np.ndarray((self.n_node, ))
-        self.t = np.ndarray((self.n_node, ))
+        self.y = np.ndarray((self.n_node,))
+        self.z = np.ndarray((self.n_node,))
+        self.t = np.ndarray((self.n_node,))
 
         z_max = t_c * c_root
-        y = np.array([-w_I/2, w_I/2, 0, 0, -w_I/2, w_I/2])
-        z = np.array([z_max/2, z_max/2, z_max/2, -z_max/2, -z_max/2, -z_max/2])
+        y = np.array([-w_I / 2, w_I / 2, 0, 0, -w_I / 2, w_I / 2])
+        z = np.array(
+            [z_max / 2, z_max / 2, z_max / 2, -z_max / 2, -z_max / 2, -z_max / 2]
+        )
         t = np.array([t_skin, 0, t_skin, 0, t_skin])
 
         self.y = y
@@ -313,18 +384,24 @@ class IBeam(CrossSection):
 
 
 class Airfoil(CrossSection):
-
     def build(self, c_root):
         t_c = 0.12
         t_skin = 0.127e-2 * 1.5
 
         y_dom = np.linspace(0, c_root, 100)
         y = np.concatenate((y_dom, y_dom[:-1][::-1]))
-        z_dom = 5 * t_c * (0.2969 * np.sqrt(y_dom/c_root) -
-                                              0.1260 * y_dom/c_root -
-                                              0.3516 * (y_dom/c_root) ** 2 +
-                                              0.2843 * (y_dom/c_root) ** 3 -
-                                              0.1015 * (y_dom/c_root) ** 4) * c_root
+        z_dom = (
+            5
+            * t_c
+            * (
+                0.2969 * np.sqrt(y_dom / c_root)
+                - 0.1260 * y_dom / c_root
+                - 0.3516 * (y_dom / c_root) ** 2
+                + 0.2843 * (y_dom / c_root) ** 3
+                - 0.1015 * (y_dom / c_root) ** 4
+            )
+            * c_root
+        )
         z = np.concatenate((z_dom, -z_dom[:-1][::-1]))
 
         self.y = y - 0.25 * c_root
@@ -333,7 +410,6 @@ class Airfoil(CrossSection):
 
 
 class WingCrossSection:
-
     def __init__(self, chord):
         self.chord = chord
 
@@ -368,14 +444,8 @@ class WingCrossSection:
         return np.sum([item.izz for item in self.items])
 
 
-if __name__ == '__main__':
-
-    ws = Baseline(M=4,
-                  N=11,
-                  Mstarfactor=5,
-                  u_inf=28,
-                  rho=1.225,
-                  alpha_deg=4)
+if __name__ == "__main__":
+    ws = Baseline(M=4, N=11, Mstarfactor=5, u_inf=28, rho=1.225, alpha_deg=4)
 
     # ws.clean_test_files()
     ws.update_mass_stiffness()

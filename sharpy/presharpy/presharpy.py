@@ -30,50 +30,61 @@ class PreSharpy(object):
                             }
 
     """
-    solver_id = 'PreSharpy'
-    solver_classification = 'loader'
+
+    solver_id = "PreSharpy"
+    solver_classification = "loader"
 
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
 
-    settings_types['flow'] = 'list(str)'
-    settings_default['flow'] = None
-    settings_description['flow'] = "List of the desired solvers' ``solver_id`` to run in sequential order."
+    settings_types["flow"] = "list(str)"
+    settings_default["flow"] = None
+    settings_description[
+        "flow"
+    ] = "List of the desired solvers' ``solver_id`` to run in sequential order."
 
-    settings_types['case'] = 'str'
-    settings_default['case'] = 'default_case_name'
-    settings_description['case'] = 'Case name'
+    settings_types["case"] = "str"
+    settings_default["case"] = "default_case_name"
+    settings_description["case"] = "Case name"
 
-    settings_types['route'] = 'str'
-    settings_default['route'] = None
-    settings_description['route'] = 'Route to case files'
+    settings_types["route"] = "str"
+    settings_default["route"] = None
+    settings_description["route"] = "Route to case files"
 
-    settings_types['write_screen'] = 'bool'
-    settings_default['write_screen'] = True
-    settings_description['write_screen'] = 'Display output on terminal screen'
+    settings_types["write_screen"] = "bool"
+    settings_default["write_screen"] = True
+    settings_description["write_screen"] = "Display output on terminal screen"
 
-    settings_types['write_log'] = 'bool'
-    settings_default['write_log'] = False
-    settings_description['write_log'] = 'Write log file'
+    settings_types["write_log"] = "bool"
+    settings_default["write_log"] = False
+    settings_description["write_log"] = "Write log file"
 
-    settings_types['log_folder'] = 'str'
-    settings_default['log_folder'] = './output/'
-    settings_description['log_folder'] = 'A folder with the case name will be created at this directory ' \
-                                         'containing the SHARPy log and output folders'
+    settings_types["log_folder"] = "str"
+    settings_default["log_folder"] = "./output/"
+    settings_description["log_folder"] = (
+        "A folder with the case name will be created at this directory "
+        "containing the SHARPy log and output folders"
+    )
 
-    settings_types['log_file'] = 'str'
-    settings_default['log_file'] = 'log'
-    settings_description['log_file'] = 'Name of the log file'
+    settings_types["log_file"] = "str"
+    settings_default["log_file"] = "log"
+    settings_description["log_file"] = "Name of the log file"
 
-    settings_types['save_settings'] = 'bool'
-    settings_default['save_settings'] = False
-    settings_description['save_settings'] = 'Save a copy of the settings to a ``.sharpy`` file in the output ' \
-                                            'directory specified in ``log_folder``'
+    settings_types["save_settings"] = "bool"
+    settings_default["save_settings"] = False
+    settings_description["save_settings"] = (
+        "Save a copy of the settings to a ``.sharpy`` file in the output "
+        "directory specified in ``log_folder``"
+    )
 
     settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
-                                       header_line='The following are the settings that the PreSharpy class takes:')
+    __doc__ += settings_table.generate(
+        settings_types,
+        settings_default,
+        settings_description,
+        header_line="The following are the settings that the PreSharpy class takes:",
+    )
 
     def __init__(self, in_settings=None):
         self._settings = True
@@ -85,30 +96,39 @@ class PreSharpy(object):
 
         if self._settings:
             self.settings = in_settings
-            self.settings['SHARPy']['flow'] = self.settings['SHARPy']['flow']
+            self.settings["SHARPy"]["flow"] = self.settings["SHARPy"]["flow"]
 
-            settings.to_custom_types(self.settings['SHARPy'], self.settings_types, self.settings_default)
-            self.output_folder = self.settings['SHARPy']['log_folder'] + '/' + self.settings['SHARPy']['case'] + '/'
+            settings.to_custom_types(
+                self.settings["SHARPy"], self.settings_types, self.settings_default
+            )
+            self.output_folder = (
+                self.settings["SHARPy"]["log_folder"]
+                + "/"
+                + self.settings["SHARPy"]["case"]
+                + "/"
+            )
             if not os.path.isdir(self.output_folder):
                 os.makedirs(self.output_folder)
 
-            cout.cout_wrap.initialise(self.settings['SHARPy']['write_screen'],
-                                      self.settings['SHARPy']['write_log'],
-                                      self.output_folder,
-                                      self.settings['SHARPy']['log_file'])
+            cout.cout_wrap.initialise(
+                self.settings["SHARPy"]["write_screen"],
+                self.settings["SHARPy"]["write_log"],
+                self.output_folder,
+                self.settings["SHARPy"]["log_file"],
+            )
 
-            self.case_route = in_settings['SHARPy']['route'] + '/'
-            self.case_name = in_settings['SHARPy']['case']
-            for solver_name in in_settings['SHARPy']['flow']:
+            self.case_route = in_settings["SHARPy"]["route"] + "/"
+            self.case_name = in_settings["SHARPy"]["case"]
+            for solver_name in in_settings["SHARPy"]["flow"]:
                 try:
                     dict_of_solvers[solver_name]
                 except KeyError:
                     exceptions.NotImplementedSolver(solver_name)
 
-            cout.cout_wrap('SHARPy output folder set')
-            cout.cout_wrap('\t' + self.output_folder, 1)
+            cout.cout_wrap("SHARPy output folder set")
+            cout.cout_wrap("\t" + self.output_folder, 1)
 
-            if self.settings['SHARPy']['save_settings']:
+            if self.settings["SHARPy"]["save_settings"]:
                 self.save_settings()
 
     def initialise(self):
@@ -116,20 +136,29 @@ class PreSharpy(object):
 
     def update_settings(self, new_settings):
         self.settings = new_settings
-        self.settings['SHARPy']['flow'] = self.settings['SHARPy']['flow']
-        settings.to_custom_types(self.settings['SHARPy'], self.settings_types, self.settings_default)
+        self.settings["SHARPy"]["flow"] = self.settings["SHARPy"]["flow"]
+        settings.to_custom_types(
+            self.settings["SHARPy"], self.settings_types, self.settings_default
+        )
 
-        self.output_folder = self.settings['SHARPy']['log_folder'] + '/' + self.settings['SHARPy']['case'] + '/'
+        self.output_folder = (
+            self.settings["SHARPy"]["log_folder"]
+            + "/"
+            + self.settings["SHARPy"]["case"]
+            + "/"
+        )
         if not os.path.isdir(self.output_folder):
             os.makedirs(self.output_folder)
-            
-        cout.cout_wrap.initialise(self.settings['SHARPy']['write_screen'],
-                                  self.settings['SHARPy']['write_log'],
-                                  self.output_folder,
-                                  self.settings['SHARPy']['log_file'])
 
-        self.case_route = self.settings['SHARPy']['route'] + '/'
-        self.case_name = self.settings['SHARPy']['case']
+        cout.cout_wrap.initialise(
+            self.settings["SHARPy"]["write_screen"],
+            self.settings["SHARPy"]["write_log"],
+            self.output_folder,
+            self.settings["SHARPy"]["log_file"],
+        )
+
+        self.case_route = self.settings["SHARPy"]["route"] + "/"
+        self.case_name = self.settings["SHARPy"]["case"]
 
     def save_settings(self):
         """
@@ -138,7 +167,9 @@ class PreSharpy(object):
         out_settings = configobj.ConfigObj()
         for k, v in self.settings.items():
             out_settings[k] = v
-        out_settings.filename = self.output_folder + self.settings['SHARPy']['case'] + '.sharpy'
+        out_settings.filename = (
+            self.output_folder + self.settings["SHARPy"]["case"] + ".sharpy"
+        )
         out_settings.write()
 
     @staticmethod

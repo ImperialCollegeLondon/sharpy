@@ -34,7 +34,7 @@ class TestAlgebra(unittest.TestCase):
         result = algebra.unit_vector(vector_in)
         self.assertAlmostEqual(np.linalg.norm(result), 1e-8, 5)
 
-        vector_in = 'aa'
+        vector_in = "aa"
         with self.assertRaises(ValueError):
             algebra.unit_vector(vector_in)
 
@@ -48,19 +48,21 @@ class TestAlgebra(unittest.TestCase):
         N = 1000
         for nn in range(N):
             # def random rotation in [-pi,pi]
-            a = np.pi * (2. * np.random.rand() - 1)
-            nv = 2. * np.random.rand(3) - 1
+            a = np.pi * (2.0 * np.random.rand() - 1)
+            nv = 2.0 * np.random.rand(3) - 1
             nv = nv / np.linalg.norm(nv)
             # reference
             fv0 = a * nv
             quat0 = np.zeros((4,))
-            quat0[0] = np.cos(.5 * a)
-            quat0[1:] = np.sin(.5 * a) * nv
+            quat0[0] = np.cos(0.5 * a)
+            quat0[1:] = np.sin(0.5 * a) * nv
             # check against reference
-            assert np.linalg.norm(fv0 - algebra.quat2crv(quat0)) < 1e-12, \
-                'Error in quat2crv'
-            assert np.linalg.norm(quat0 - algebra.crv2quat(fv0)) < 1e-12, \
-                'Error in crv2quat'
+            assert (
+                np.linalg.norm(fv0 - algebra.quat2crv(quat0)) < 1e-12
+            ), "Error in quat2crv"
+            assert (
+                np.linalg.norm(quat0 - algebra.crv2quat(fv0)) < 1e-12
+            ), "Error in crv2quat"
 
     def test_rotation_matrices(self):
         """
@@ -72,26 +74,33 @@ class TestAlgebra(unittest.TestCase):
 
         ### Verify that function build rotation matrix (not projection matrix)
         # set an easy rotation (x axis)
-        a = np.pi / 6.
+        a = np.pi / 6.0
         nv = np.array([1, 0, 0])
         sa, ca = np.sin(a), np.cos(a)
-        Cab_exp = np.array([[1, 0, 0],
-                            [0, ca, -sa],
-                            [0, sa, ca], ])
+        Cab_exp = np.array(
+            [
+                [1, 0, 0],
+                [0, ca, -sa],
+                [0, sa, ca],
+            ]
+        )
         ### rot from triad
         Cab_num = algebra.triad2rotation(Cab_exp[:, 0], Cab_exp[:, 1], Cab_exp[:, 2])
-        assert np.linalg.norm(Cab_num - Cab_exp) < 1e-15, \
-            'crv2rotation not producing the right result'
+        assert (
+            np.linalg.norm(Cab_num - Cab_exp) < 1e-15
+        ), "crv2rotation not producing the right result"
         ### rot from crv
         fv = a * nv
         Cab_num = algebra.crv2rotation(fv)
-        assert np.linalg.norm(Cab_num - Cab_exp) < 1e-15, \
-            'crv2rotation not producing the right result'
+        assert (
+            np.linalg.norm(Cab_num - Cab_exp) < 1e-15
+        ), "crv2rotation not producing the right result"
         ### rot from quat
         quat = algebra.crv2quat(fv)
         Cab_num = algebra.quat2rotation(quat)
-        assert np.linalg.norm(Cab_num - Cab_exp) < 1e-15, \
-            'quat2rotation not producing the right result'
+        assert (
+            np.linalg.norm(Cab_num - Cab_exp) < 1e-15
+        ), "quat2rotation not producing the right result"
 
         ### inverse relations
         # check crv2rotation and rotation2crv are biunivolcal in [-pi,pi]
@@ -99,48 +108,49 @@ class TestAlgebra(unittest.TestCase):
         N = 100
         for nn in range(N):
             # def random rotation in [-pi,pi]
-            a = np.pi * (2. * np.random.rand() - 1)
-            nv = 2. * np.random.rand(3) - 1
+            a = np.pi * (2.0 * np.random.rand() - 1)
+            nv = 2.0 * np.random.rand(3) - 1
             nv = nv / np.linalg.norm(nv)
 
             # inverse crv
             fv0 = a * nv
             Cab = algebra.crv2rotation(fv0)
             fv = algebra.rotation2crv(Cab)
-            assert np.linalg.norm(fv - fv0) < 1e-12, \
-                'rotation2crv not producing the right result'
+            assert (
+                np.linalg.norm(fv - fv0) < 1e-12
+            ), "rotation2crv not producing the right result"
 
             # triad2crv
             xa, ya, za = Cab[:, 0], Cab[:, 1], Cab[:, 2]
-            assert np.linalg.norm(
-                algebra.triad2crv(xa, ya, za) - fv0) < 1e-12, \
-                'triad2crv not producing the right result'
+            assert (
+                np.linalg.norm(algebra.triad2crv(xa, ya, za) - fv0) < 1e-12
+            ), "triad2crv not producing the right result"
 
             # inverse quat
             quat0 = np.zeros((4,))
-            quat0[0] = np.cos(.5 * a)
-            quat0[1:] = np.sin(.5 * a) * nv
+            quat0[0] = np.cos(0.5 * a)
+            quat0[1:] = np.sin(0.5 * a) * nv
             quat = algebra.rotation2quat(algebra.quat2rotation(quat0))
-            assert np.linalg.norm(quat - quat0) < 1e-12, \
-                'rotation2quat not producing the right result'
+            assert (
+                np.linalg.norm(quat - quat0) < 1e-12
+            ), "rotation2quat not producing the right result"
 
         ### combined rotation
         # assume 3 FoR, G, A and B where:
         #   - G is the initial FoR
         #   - A derives from a 90 deg rotation about zG
         #   - B derives from a 90 deg rotation about yA
-        crv_G_to_A = .5 * np.pi * np.array([0, 0, 1])
-        crv_A_to_B = .5 * np.pi * np.array([0, 1, 0])
+        crv_G_to_A = 0.5 * np.pi * np.array([0, 0, 1])
+        crv_A_to_B = 0.5 * np.pi * np.array([0, 1, 0])
         Cga = algebra.crv2rotation(crv_G_to_A)
         Cab = algebra.crv2rotation(crv_A_to_B)
 
         # rotation G to B (i.e. projection B onto G)
         Cgb = np.dot(Cga, Cab)
-        Cgb_exp = np.array([[0, -1, 0],
-                            [0, 0, 1],
-                            [-1, 0, 0]])
-        assert np.linalg.norm(Cgb - Cgb_exp) < 1e-15, \
-            'combined rotation not as expected!'
+        Cgb_exp = np.array([[0, -1, 0], [0, 0, 1], [-1, 0, 0]])
+        assert (
+            np.linalg.norm(Cgb - Cgb_exp) < 1e-15
+        ), "combined rotation not as expected!"
 
     def test_rotation_matrices_derivatives(self):
         """
@@ -180,7 +190,9 @@ class TestAlgebra(unittest.TestCase):
 
         # derivatives
         # xv=np.ones((3,)) # dummy vector
-        xv = np.array([random.random(), random.random(), random.random()])  # dummy vector
+        xv = np.array(
+            [random.random(), random.random(), random.random()]
+        )  # dummy vector
         derCga = algebra.der_Cquat_by_v(qv0, xv)
         derCag = algebra.der_CquatT_by_v(qv0, xv)
         derCab = algebra.der_Ccrv_by_v(fv0, xv)
@@ -189,18 +201,18 @@ class TestAlgebra(unittest.TestCase):
         derCag_euler = algebra.der_Peuler_by_v(ev0, xv)
 
         A = np.array([1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6])
-        er_ag = 10.
-        er_ga = 10.
-        er_ab = 10.
-        er_ba = 10.
-        er_ag_euler = 10.
-        er_ga_euler = 10.
+        er_ag = 10.0
+        er_ga = 10.0
+        er_ab = 10.0
+        er_ba = 10.0
+        er_ag_euler = 10.0
+        er_ga_euler = 10.0
 
         for a in A:
             # perturbed
-            qv = a * qv1 + (1. - a) * qv0
-            fv = a * fv1 + (1. - a) * fv0
-            ev = a * ev1 + (1. - a) * ev0
+            qv = a * qv1 + (1.0 - a) * qv0
+            fv = a * fv1 + (1.0 - a) * fv0
+            ev = a * ev1 + (1.0 - a) * ev0
             dqv = qv - qv0
             dfv = fv - fv0
             dev = ev - ev0
@@ -232,12 +244,16 @@ class TestAlgebra(unittest.TestCase):
             er_ag_euler_new = np.max(np.abs(dCag_num_euler - dCag_an_euler))
             er_ga_euler_new = np.max(np.abs(dCga_num_euler - dCga_an_euler))
 
-            assert er_ga_new < er_ga, 'der_Cquat_by_v error not converging to 0'
-            assert er_ag_new < er_ag, 'der_CquatT_by_v error not converging to 0'
-            assert er_ab_new < er_ab, 'der_Ccrv_by_v error not converging to 0'
-            assert er_ba_new < er_ba, 'der_CcrvT_by_v error not converging to 0'
-            assert er_ga_euler_new < er_ga_euler, 'der_Ceuler_by_v error not converging to 0'
-            assert er_ag_euler_new < er_ag_euler, 'der_Peuler_by_v error not converging to 0'
+            assert er_ga_new < er_ga, "der_Cquat_by_v error not converging to 0"
+            assert er_ag_new < er_ag, "der_CquatT_by_v error not converging to 0"
+            assert er_ab_new < er_ab, "der_Ccrv_by_v error not converging to 0"
+            assert er_ba_new < er_ba, "der_CcrvT_by_v error not converging to 0"
+            assert (
+                er_ga_euler_new < er_ga_euler
+            ), "der_Ceuler_by_v error not converging to 0"
+            assert (
+                er_ag_euler_new < er_ag_euler
+            ), "der_Peuler_by_v error not converging to 0"
 
             er_ag = er_ag_new
             er_ga = er_ga_new
@@ -246,15 +262,15 @@ class TestAlgebra(unittest.TestCase):
             er_ag_euler = er_ag_euler_new
             er_ga_euler = er_ga_euler_new
 
-        assert er_ga < A[-2], 'der_Cquat_by_v error too large'
-        assert er_ag < A[-2], 'der_CquatT_by_v error too large'
-        assert er_ab < A[-2], 'der_Ccrv_by_v error too large'
-        assert er_ba < A[-2], 'der_CcrvT_by_v error too large'
-        assert er_ag_euler < A[-2], 'der_Peuler_by_v error too large'
-        assert er_ga_euler < A[-2], 'der_Ceuler_by_v error too large'
+        assert er_ga < A[-2], "der_Cquat_by_v error too large"
+        assert er_ag < A[-2], "der_CquatT_by_v error too large"
+        assert er_ab < A[-2], "der_Ccrv_by_v error too large"
+        assert er_ba < A[-2], "der_CcrvT_by_v error too large"
+        assert er_ag_euler < A[-2], "der_Peuler_by_v error too large"
+        assert er_ga_euler < A[-2], "der_Ceuler_by_v error too large"
 
     def test_crv_tangential_operator(self):
-        """ Checks Cartesian rotation vector tangential operator """
+        """Checks Cartesian rotation vector tangential operator"""
 
         # linearisation point
         fi0 = -np.pi / 6
@@ -270,11 +286,11 @@ class TestAlgebra(unittest.TestCase):
         nv1 = nv1 / np.linalg.norm(nv1)
         fv1 = fi1 * nv1
 
-        er_tan = 10.
+        er_tan = 10.0
         A = np.array([1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6])
         for a in A:
             # perturbed
-            fv = a * fv1 + (1. - a) * fv0
+            fv = a * fv1 + (1.0 - a) * fv0
             dfv = fv - fv0
 
             ### Compute relevant quantities
@@ -285,13 +301,13 @@ class TestAlgebra(unittest.TestCase):
             dCab_an = np.dot(Cab, Tdfv_skew)
 
             er_tan_new = np.max(np.abs(dCab - dCab_an)) / np.max(np.abs(dCab_an))
-            assert er_tan_new < er_tan, 'crv2tan error not converging to 0'
+            assert er_tan_new < er_tan, "crv2tan error not converging to 0"
             er_tan = er_tan_new
 
-        assert er_tan < A[-2], 'crv2tan error too large'
+        assert er_tan < A[-2], "crv2tan error too large"
 
     def test_crv_tangetial_operator_derivative(self):
-        """ Checks Cartesian rotation vector tangential operator """
+        """Checks Cartesian rotation vector tangential operator"""
 
         # linearisation point
         fi0 = np.pi / 6
@@ -312,11 +328,11 @@ class TestAlgebra(unittest.TestCase):
         nv1 = nv1 / np.linalg.norm(nv1)
         fv1 = fi1 * nv1
 
-        er = 10.
+        er = 10.0
         A = np.array([1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6])
         for a in A:
             # perturbed
-            fv = a * fv1 + (1. - a) * fv0
+            fv = a * fv1 + (1.0 - a) * fv0
             dfv = fv - fv0
             Tpert = algebra.crv2tan(fv)
             Tpertxv = np.dot(Tpert, xv)
@@ -324,13 +340,13 @@ class TestAlgebra(unittest.TestCase):
             dT_an = np.dot(derT_an, dfv)
 
             er_new = np.max(np.abs(dT_num - dT_an)) / np.max(np.abs(dT_an))
-            assert er_new < er, 'der_Tan_by_xv error not converging to 0'
+            assert er_new < er, "der_Tan_by_xv error not converging to 0"
             er = er_new
 
-        assert er < A[-2], 'der_Tan_by_xv error too large'
+        assert er < A[-2], "der_Tan_by_xv error too large"
 
     def test_crv_tangetial_operator_transpose_derivative(self):
-        """ Checks Cartesian rotation vector tangential operator transpose"""
+        """Checks Cartesian rotation vector tangential operator transpose"""
 
         # dummy vector
         xv = np.random.rand(3)
@@ -352,11 +368,11 @@ class TestAlgebra(unittest.TestCase):
         nv1 = nv1 / np.linalg.norm(nv1)
         fv1 = fi1 * nv1
 
-        er = 10.
+        er = 10.0
         A = np.array([1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6])
         for a in A:
             # perturbed
-            fv = a * fv1 + (1. - a) * fv0
+            fv = a * fv1 + (1.0 - a) * fv0
             dfv = fv - fv0
             Tpert_T = np.transpose(algebra.crv2tan(fv))
             Tpert_Txv = np.dot(Tpert_T, xv)
@@ -365,24 +381,24 @@ class TestAlgebra(unittest.TestCase):
 
             # Error
             er_new = np.max(np.abs(dT_T_num - dT_T_an)) / np.max(np.abs(dT_T_an))
-            assert er_new < er, 'der_TanT_by_xv error not converging to 0'
+            assert er_new < er, "der_TanT_by_xv error not converging to 0"
             er = er_new
 
-        assert er < A[-2], 'der_TanT_by_xv error too large'
+        assert er < A[-2], "der_TanT_by_xv error too large"
 
     def test_quat_wrt_rot(self):
         """
         We define:
         - G: initial frame
         - A: frame obtained upon rotation, Cga, defined by the quaternion q0
-        - B: frame obtained upon further rotation, Cab, of A defined by 
+        - B: frame obtained upon further rotation, Cab, of A defined by
         the "infinitesimal" Cartesian rotation vector dcrv
         The test verifies that:
         1. the total rotation matrix Cgb(q0+dq) is equal to
             Cgb = Cga(q0) Cab(dcrv)
-        where 
+        where
             dq = algebra.der_quat_wrt_crv(q0)
-        2. the difference between analytically computed delta quaternion, dq, 
+        2. the difference between analytically computed delta quaternion, dq,
         and the numerical delta
             dq_num = algebra.crv2quat(algebra.rotation2crv(Cgb_ref))-q0
         is comparable to the step used to compute the delta dcrv
@@ -393,15 +409,15 @@ class TestAlgebra(unittest.TestCase):
         for a random vector v.
 
         Warning:
-        - The relation dcrv->dquat is not uniquely defined. However, the 
+        - The relation dcrv->dquat is not uniquely defined. However, the
         resulting rotation matrix is, namely:
-            Cga(q0+dq)=Cga(q0)*Cab(dcrv) 
+            Cga(q0+dq)=Cga(q0)*Cab(dcrv)
         """
 
         ### case 1: simple rotation about the same axis
 
         # linearisation point
-        a0 = 30. * np.pi / 180
+        a0 = 30.0 * np.pi / 180
         n0 = np.array([0, 0, 1])
         n0 = n0 / np.linalg.norm(n0)
         q0 = algebra.crv2quat(a0 * n0)
@@ -423,22 +439,25 @@ class TestAlgebra(unittest.TestCase):
             Cgb_ref = np.dot(Cga, Cab)
 
             # verify expected vs combined rotation matrices
-            assert np.linalg.norm(Cgb_exp - Cgb_ref) / a < 1e-8, \
-                'Verify test case - these matrices need to be identical'
+            assert (
+                np.linalg.norm(Cgb_exp - Cgb_ref) / a < 1e-8
+            ), "Verify test case - these matrices need to be identical"
 
             # verify analytical rotation matrix
             dq_an = np.dot(algebra.der_quat_wrt_crv(q0), drot)
             Cgb_an = algebra.quat2rotation(q0 + dq_an)
             erel_rot = np.linalg.norm(Cgb_an - Cgb_ref) / a
-            assert erel_rot < 3e-3, \
-                'Relative error of rotation matrix (%.2e) too large!' % erel_rot
+            assert erel_rot < 3e-3, (
+                "Relative error of rotation matrix (%.2e) too large!" % erel_rot
+            )
 
             # verify delta quaternion
             erel_dq = np.linalg.norm(Cgb_an - Cgb_ref)
             dq_num = algebra.crv2quat(algebra.rotation2crv(Cgb_ref)) - q0
             erel_dq = np.linalg.norm(dq_num - dq_an) / np.linalg.norm(dq_an) / a
-            assert erel_dq < .3, \
-                'Relative error delta quaternion (%.2e) too large!' % erel_dq
+            assert erel_dq < 0.3, (
+                "Relative error delta quaternion (%.2e) too large!" % erel_dq
+            )
 
             # verify algebraic relation
             v = np.ones((3,))
@@ -446,20 +465,21 @@ class TestAlgebra(unittest.TestCase):
             D2 = algebra.der_Ccrv_by_v(np.zeros((3,)), v)
             res = np.dot(D1, dq_num) - np.dot(np.dot(Cga, D2), drot)
             erel_res = np.linalg.norm(res) / a
-            assert erel_res < 5e-1 * a, \
-                'Relative error of residual (%.2e) too large!' % erel_res
+            assert erel_res < 5e-1 * a, (
+                "Relative error of residual (%.2e) too large!" % erel_res
+            )
 
         ### case 2: random rotation
 
         # linearisation point
-        a0 = 30. * np.pi / 180
+        a0 = 30.0 * np.pi / 180
         n0 = np.array([-2, -1, 1])
         n0 = n0 / np.linalg.norm(n0)
         q0 = algebra.crv2quat(a0 * n0)
         Cga = algebra.quat2rotation(q0)
 
         # direction of perturbation
-        n2 = np.array([0.5, 1., -2.])
+        n2 = np.array([0.5, 1.0, -2.0])
         n2 = n2 / np.linalg.norm(n2)
 
         A = np.array([1e-2, 1e-3, 1e-4, 1e-5, 1e-6])
@@ -474,15 +494,17 @@ class TestAlgebra(unittest.TestCase):
             dq_an = np.dot(algebra.der_quat_wrt_crv(q0), drot)
             Cgb_an = algebra.quat2rotation(q0 + dq_an)
             erel_rot = np.linalg.norm(Cgb_an - Cgb_ref) / a
-            assert erel_rot < 3e-3, \
-                'Relative error of rotation matrix (%.2e) too large!' % erel_rot
+            assert erel_rot < 3e-3, (
+                "Relative error of rotation matrix (%.2e) too large!" % erel_rot
+            )
 
             # verify delta quaternion
             erel_dq = np.linalg.norm(Cgb_an - Cgb_ref)
             dq_num = algebra.crv2quat(algebra.rotation2crv(Cgb_ref)) - q0
             erel_dq = np.linalg.norm(dq_num - dq_an) / np.linalg.norm(dq_an) / a
-            assert erel_dq < .3, \
-                'Relative error delta quaternion (%.2e) too large!' % erel_dq
+            assert erel_dq < 0.3, (
+                "Relative error delta quaternion (%.2e) too large!" % erel_dq
+            )
 
             # verify algebraic relation
             v = np.ones((3,))
@@ -490,8 +512,9 @@ class TestAlgebra(unittest.TestCase):
             D2 = algebra.der_Ccrv_by_v(np.zeros((3,)), v)
             res = np.dot(D1, dq_num) - np.dot(np.dot(Cga, D2), drot)
             erel_res = np.linalg.norm(res) / a
-            assert erel_res < 5e-1 * a, \
-                'Relative error of residual (%.2e) too large!' % erel_res
+            assert erel_res < 5e-1 * a, (
+                "Relative error of residual (%.2e) too large!" % erel_res
+            )
 
     def test_rotation_about_axis(self):
         """
@@ -552,27 +575,52 @@ class TestAlgebra(unittest.TestCase):
         Cga = algebra.euler2rot(euler)
         Cga_quat = algebra.quat2rotation(quat)
 
-        np.testing.assert_array_almost_equal(Cga.dot(aircraft_nose), aircraft_nose_rotated,
-                                             err_msg='Rotation using Euler angles not performed properly')
-        np.testing.assert_array_almost_equal(Cga_quat.dot(aircraft_nose), aircraft_nose_rotated,
-                                             err_msg='Rotation using quaternions not performed properly')
-        np.testing.assert_array_almost_equal(Cga.dot(z_A), z_A_rotated_g,
-                                             err_msg='Rotation using Euler angles not performed properly')
-        np.testing.assert_array_almost_equal(Cga_quat.dot(z_A), z_A_rotated_g,
-                                             err_msg='Rotation using quaternions not performed properly')
+        np.testing.assert_array_almost_equal(
+            Cga.dot(aircraft_nose),
+            aircraft_nose_rotated,
+            err_msg="Rotation using Euler angles not performed properly",
+        )
+        np.testing.assert_array_almost_equal(
+            Cga_quat.dot(aircraft_nose),
+            aircraft_nose_rotated,
+            err_msg="Rotation using quaternions not performed properly",
+        )
+        np.testing.assert_array_almost_equal(
+            Cga.dot(z_A),
+            z_A_rotated_g,
+            err_msg="Rotation using Euler angles not performed properly",
+        )
+        np.testing.assert_array_almost_equal(
+            Cga_quat.dot(z_A),
+            z_A_rotated_g,
+            err_msg="Rotation using quaternions not performed properly",
+        )
 
         # Check projections
         Pag = Cga.T
         Pag_quat = Cga_quat.T
 
-        np.testing.assert_array_almost_equal(Pag.dot(z_A_rotated_g), z_A,
-                                             err_msg='Error in projection from A to G using Euler angles')
-        np.testing.assert_array_almost_equal(Pag.dot(aircraft_nose_rotated), aircraft_nose,
-                                             err_msg='Error in projection from A to G using Euler angles')
-        np.testing.assert_array_almost_equal(Pag_quat.dot(z_A_rotated_g), z_A,
-                                             err_msg='Error in projection from A to G using quaternions')
-        np.testing.assert_array_almost_equal(Pag_quat.dot(aircraft_nose_rotated), aircraft_nose,
-                                             err_msg='Error in projection from A to G using quaternions')
+        np.testing.assert_array_almost_equal(
+            Pag.dot(z_A_rotated_g),
+            z_A,
+            err_msg="Error in projection from A to G using Euler angles",
+        )
+        np.testing.assert_array_almost_equal(
+            Pag.dot(aircraft_nose_rotated),
+            aircraft_nose,
+            err_msg="Error in projection from A to G using Euler angles",
+        )
+        np.testing.assert_array_almost_equal(
+            Pag_quat.dot(z_A_rotated_g),
+            z_A,
+            err_msg="Error in projection from A to G using quaternions",
+        )
+        np.testing.assert_array_almost_equal(
+            Pag_quat.dot(aircraft_nose_rotated),
+            aircraft_nose,
+            err_msg="Error in projection from A to G using quaternions",
+        )
+
 
 # if __name__=='__main__':
 # unittest.main()

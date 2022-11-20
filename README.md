@@ -16,7 +16,7 @@ wings and wind turbines.
 
 ### Contact
 
-For more information on the [research team](http://www.imperial.ac.uk/aeroelastics/people/) developing SHARPy or to get 
+For more information on the [research team](http://www.imperial.ac.uk/aeroelastics/people/) developing SHARPy or to get
 in touch, [visit our homepage](http://www.imperial.ac.uk/aeroelastics).
 
 ## Physical Models
@@ -25,8 +25,8 @@ SHARPy is a modular aeroelastic solver that currently uses two specific models f
 
 For the structural model, SHARPy employs a nonlinear, geometrically-exact displacement and rotation-based composite beam formulation,
 augmented with Lagrange multipliers for additional kinematic constraints.
-This model has the advantage of providing the solution directly in the physical problem's degrees of freedom, making the 
-coupling with the aerodynamic solver simple and not requiring any post-processing. The 1D beam formulation used limits 
+This model has the advantage of providing the solution directly in the physical problem's degrees of freedom, making the
+coupling with the aerodynamic solver simple and not requiring any post-processing. The 1D beam formulation used limits
 the analyses that can be done by SHARPy to slender structures, such as high aspect ratio wings.
 
 The aerodynamic model utilises the Unsteady Vortex Lattice Method (UVLM). The aerodynamic surfaces are modelled as a thin
@@ -70,16 +70,16 @@ The documentation for SHARPy can be found [here](http://ic-sharpy.readthedocs.io
 
 ## Installing SHARPy
 
-For the latest documentation, see the 
+For the latest documentation, see the
 [installation docs](https://ic-sharpy.readthedocs.io/en/latest/content/installation.html).
 
 As of version v1.0.1, SHARPy can also be obtained from Docker Hub to avoid compilation
-and platform-dependant issues. If you are interested, make sure you check 
+and platform-dependant issues. If you are interested, make sure you check
 the [SHARPy Docker distribution docs](https://ic-sharpy.readthedocs.io/en/latest/content/installation.html#using-sharpy-from-a-docker-container).
 
 ## Contributing and Bug reports
 
-If you think you can add a useful feature to SHARPy, want to write documentation or you encounter a bug, by all means, 
+If you think you can add a useful feature to SHARPy, want to write documentation or you encounter a bug, by all means,
 check out the [collaboration guide](https://ic-sharpy.readthedocs.io/en/latest/content/contributing.html).
 
 ## Citing SHARPy

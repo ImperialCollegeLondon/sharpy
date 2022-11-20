@@ -16,7 +16,7 @@ dmver = np.array([0, 1, 1, 0])  # delta to go from (m,n) panel to (m,n) vertices
 dnver = np.array([0, 0, 1, 1])
 
 
-class AeroGridGeo():
+class AeroGridGeo:
     r"""
     Allows retrieving geometrical information of a surface. Requires a
     gridmapping.AeroGridMap mapping structure in input and the surface vertices
@@ -36,12 +36,13 @@ class AeroGridGeo():
 
     """
 
-    def __init__(self,
-                 Map: 'gridmapping.AeroGridMap instance',
-                 zeta: 'Array of vertex coordinates at each surface',
-                 aM: 'chord-wise position of collocation point in panel' = 0.5,
-                 aN: 'span-wise position of collocation point in panel' = 0.5):
-
+    def __init__(
+        self,
+        Map: "gridmapping.AeroGridMap instance",
+        zeta: "Array of vertex coordinates at each surface",
+        aM: "chord-wise position of collocation point in panel" = 0.5,
+        aN: "span-wise position of collocation point in panel" = 0.5,
+    ):
         self.maps = Map
         self.maps.map_all()
         self.zeta = zeta
@@ -73,12 +74,13 @@ class AeroGridGeo():
         ###
         # return self.zeta[:,dmver+m,dnver+n].T
 
-        return self.zeta[:, [m + 0, m + 1, m + 1, m + 0], [n + 0, n + 0, n + 1, n + 1]].T
+        return self.zeta[
+            :, [m + 0, m + 1, m + 1, m + 0], [n + 0, n + 0, n + 1, n + 1]
+        ].T
 
     # ------------------------------------------------------- get panel normals
 
     def generate_normals(self):
-
         M, N = self.maps.M, self.maps.N
         self.normals = np.zeros((3, M, N))
 
@@ -90,7 +92,6 @@ class AeroGridGeo():
     # -------------------------------------------------- get panel surface area
 
     def generate_areas(self):
-
         M, N = self.maps.M, self.maps.N
         self.areas = np.zeros((M, N))
 
@@ -143,9 +144,8 @@ class AeroGridGeo():
         return zetac_here
 
     def generate_collocations(self):
-
         M, N = self.maps.M, self.maps.N
-        self.zetac = np.zeros((3, M, N), order='F')  # F order avoids the need to copy
+        self.zetac = np.zeros((3, M, N), order="F")  # F order avoids the need to copy
         # when passing self.zetac[:,x,x] to
         # C written libraries.
 
@@ -179,7 +179,9 @@ class AeroGridGeo():
         M, N = self.maps.M, self.maps.N
         # embed()
         inshape = q_vert.shape
-        assert inshape[-2] == M + 1 and inshape[-1] == N + 1, 'Unexpected shape of q_vert'
+        assert (
+            inshape[-2] == M + 1 and inshape[-1] == N + 1
+        ), "Unexpected shape of q_vert"
 
         # determine weights
         wcv = self.get_panel_wcv()
@@ -191,8 +193,9 @@ class AeroGridGeo():
                     # get q_vert at panel corners
                     mpv = self.maps.from_panel_to_vertices(mm, nn)
                     for vv in range(4):
-                        q_coll[mm, nn] = q_coll[mm, nn] + \
-                                         wcv[vv] * q_vert[mpv[vv, 0], mpv[vv, 1]]
+                        q_coll[mm, nn] = (
+                            q_coll[mm, nn] + wcv[vv] * q_vert[mpv[vv, 0], mpv[vv, 1]]
+                        )
 
         elif len(inshape) == 3:
             q_coll = np.zeros((3, M, N))
@@ -201,10 +204,12 @@ class AeroGridGeo():
                     # get q_vert at panel corners
                     mpv = self.maps.from_panel_to_vertices(mm, nn)
                     for vv in range(4):
-                        q_coll[:, mm, nn] = q_coll[:, mm, nn] + \
-                                            wcv[vv] * q_vert[:, mpv[vv, 0], mpv[vv, 1]]
+                        q_coll[:, mm, nn] = (
+                            q_coll[:, mm, nn]
+                            + wcv[vv] * q_vert[:, mpv[vv, 0], mpv[vv, 1]]
+                        )
         else:
-            raise NameError('Unexpected shape of q_vert')
+            raise NameError("Unexpected shape of q_vert")
 
         return q_coll
 
@@ -214,9 +219,9 @@ class AeroGridGeo():
         """
 
         M, N = self.maps.M, self.maps.N
-        assert q_coll.shape == (3, M, N), 'Unexpected shape of q_coll'
+        assert q_coll.shape == (3, M, N), "Unexpected shape of q_coll"
 
-        if not hasattr(self, 'normals'):
+        if not hasattr(self, "normals"):
             self.generate_normals()
 
         q_proj = np.zeros((M, N))
@@ -229,29 +234,37 @@ class AeroGridGeo():
     # ------------------------------------------------------- visualise surface
 
     def plot(self, plot_normals=False):
-
         try:
             import matplotlib.pyplot as plt
 
             fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
+            ax = fig.add_subplot(111, projection="3d")
 
             # Plot vertices grid
             ax.plot_wireframe(self.zeta[0], self.zeta[1], self.zeta[2])
             # rstride=10, cstride=10)
 
             # Plot collocation points
-            ax.scatter(self.zetac[0], self.zetac[1], self.zetac[2], zdir='z', s=3, c='r')
+            ax.scatter(
+                self.zetac[0], self.zetac[1], self.zetac[2], zdir="z", s=3, c="r"
+            )
 
             if plot_normals:
-                ax.quiver(self.zetac[0], self.zetac[1], self.zetac[2],
-                          self.normals[0], self.normals[1], self.normals[2],
-                          length=0.01 * np.max(self.zeta), )  # normalize=True)
+                ax.quiver(
+                    self.zetac[0],
+                    self.zetac[1],
+                    self.zetac[2],
+                    self.normals[0],
+                    self.normals[1],
+                    self.normals[2],
+                    length=0.01 * np.max(self.zeta),
+                )  # normalize=True)
 
             self.ax = ax
         except ModuleNotFoundError:
             import warnings
-            warnings.warn('Unable to import matplotlib, skipping plots')
+
+            warnings.warn("Unable to import matplotlib, skipping plots")
 
 
 class AeroGridSurface(AeroGridGeo):
@@ -285,16 +298,20 @@ class AeroGridSurface(AeroGridGeo):
         mid-point segments
     """
 
-    def __init__(self, Map, zeta, gamma,
-                 vortex_radius,
-                 u_ext=None,
-                 zeta_dot=None,
-                 gamma_dot=None,
-                 rho=1.,
-                 aM=0.5,
-                 aN=0.5,
-                 for_vel=np.zeros((6, ))):
-
+    def __init__(
+        self,
+        Map,
+        zeta,
+        gamma,
+        vortex_radius,
+        u_ext=None,
+        zeta_dot=None,
+        gamma_dot=None,
+        rho=1.0,
+        aM=0.5,
+        aN=0.5,
+        for_vel=np.zeros((6,)),
+    ):
         super().__init__(Map, zeta, aM, aN)
 
         self.gamma = gamma
@@ -306,24 +323,50 @@ class AeroGridSurface(AeroGridGeo):
         self.omega = for_vel[3:]
         self.for_vel_tra = for_vel[:3]
 
-        msg_out = 'wrong input shape!'
-        assert self.gamma.shape == (self.maps.M, self.maps.N), \
-            'Gamma shape %s not equal to M, N %s' % (str(self.gamma.shape), str((self.maps.M, self.maps.N)))
-        assert self.zeta.shape == (3, self.maps.M + 1, self.maps.N + 1), \
-            'Zeta shape %s not equal to 3, M+1, N+1 %s' % (str(self.zeta.shape), str((3, self.maps.M, self.maps.N)))
+        msg_out = "wrong input shape!"
+        assert self.gamma.shape == (
+            self.maps.M,
+            self.maps.N,
+        ), "Gamma shape %s not equal to M, N %s" % (
+            str(self.gamma.shape),
+            str((self.maps.M, self.maps.N)),
+        )
+        assert self.zeta.shape == (
+            3,
+            self.maps.M + 1,
+            self.maps.N + 1,
+        ), "Zeta shape %s not equal to 3, M+1, N+1 %s" % (
+            str(self.zeta.shape),
+            str((3, self.maps.M, self.maps.N)),
+        )
         if self.zeta_dot is not None:
-            assert self.zeta_dot.shape == (3, self.maps.M + 1, self.maps.N + 1), \
-                'zeta_dot shape %s not equal to 3, M+1, N+1 %s' % (str(self.zeta_dot.shape), str((3, self.maps.M, self.maps.N)))
+            assert self.zeta_dot.shape == (
+                3,
+                self.maps.M + 1,
+                self.maps.N + 1,
+            ), "zeta_dot shape %s not equal to 3, M+1, N+1 %s" % (
+                str(self.zeta_dot.shape),
+                str((3, self.maps.M, self.maps.N)),
+            )
         if self.u_ext is not None:
-            assert self.u_ext.shape == (3, self.maps.M + 1, self.maps.N + 1), \
-                'u_ext shape %s not equal to 3, M+1, N+1 %s' % (str(self.u_ext.shape), str((3, self.maps.M, self.maps.N)))
-        assert for_vel.shape == (6, ), msg_out
-        assert self.omega.shape == (3, ), msg_out
-        assert self.for_vel_tra.shape == (3, ), msg_out
+            assert self.u_ext.shape == (
+                3,
+                self.maps.M + 1,
+                self.maps.N + 1,
+            ), "u_ext shape %s not equal to 3, M+1, N+1 %s" % (
+                str(self.u_ext.shape),
+                str((3, self.maps.M, self.maps.N)),
+            )
+        assert for_vel.shape == (6,), msg_out
+        assert self.omega.shape == (3,), msg_out
+        assert self.for_vel_tra.shape == (3,), msg_out
 
         self.u_input_coll = None  # input velocities at the collocation points
-        self.u_input_coll_norm = None  # normal input velocities at the collocation points
+        self.u_input_coll_norm = (
+            None  # normal input velocities at the collocation points
+        )
         self.u_input_seg = None  # input velocities at segments
+
     # -------------------------------------------------------- input velocities
 
     def get_input_velocities_at_collocation_points(self):
@@ -350,7 +393,9 @@ class AeroGridSurface(AeroGridGeo):
         # Include rotation
         for i_m in range(self.maps.M + 1):
             for i_n in range(self.maps.N + 1):
-                u_tot[:, i_m, i_n] -= np.cross(self.omega, self.zeta[:, i_m, i_n]) + self.for_vel_tra
+                u_tot[:, i_m, i_n] -= (
+                    np.cross(self.omega, self.zeta[:, i_m, i_n]) + self.for_vel_tra
+                )
 
         self.u_input_coll = self.interp_vertex_to_coll(u_tot)
 
@@ -391,7 +436,9 @@ class AeroGridSurface(AeroGridGeo):
         # Include rotation
         for i_m in range(self.maps.M + 1):
             for i_n in range(self.maps.N + 1):
-                u_tot[:, i_m, i_n] -= np.cross(self.omega, self.zeta[:, i_m, i_n]) + self.for_vel_tra
+                u_tot[:, i_m, i_n] -= (
+                    np.cross(self.omega, self.zeta[:, i_m, i_n]) + self.for_vel_tra
+                )
 
         M, N = self.maps.M, self.maps.N
         self.u_input_seg = np.empty((3, 4, M, N))
@@ -408,7 +455,7 @@ class AeroGridSurface(AeroGridGeo):
         for ss, aa, bb in zip(svec, avec, bvec):
             uA = u_tot[:, mm + dmver[aa], nn + dnver[aa]]
             uB = u_tot[:, mm + dmver[bb], nn + dnver[bb]]
-            self.u_input_seg[:, ss, mm, nn] = .5 * (uA + uB)
+            self.u_input_seg[:, ss, mm, nn] = 0.5 * (uA + uB)
 
         ##### panels n=0: copy seg.3
         nn = 0
@@ -419,7 +466,7 @@ class AeroGridSurface(AeroGridGeo):
             for ss, aa, bb in zip(svec, avec, bvec):
                 uA = u_tot[:, mm + dmver[aa], nn + dnver[aa]]
                 uB = u_tot[:, mm + dmver[bb], nn + dnver[bb]]
-                self.u_input_seg[:, ss, mm, nn] = .5 * (uA + uB)
+                self.u_input_seg[:, ss, mm, nn] = 0.5 * (uA + uB)
             self.u_input_seg[:, 3, mm, nn] = self.u_input_seg[:, 1, mm - 1, nn]
         ##### panels m=0: copy seg.0
         mm = 0
@@ -430,7 +477,7 @@ class AeroGridSurface(AeroGridGeo):
             for ss, aa, bb in zip(svec, avec, bvec):
                 uA = u_tot[:, mm + dmver[aa], nn + dnver[aa]]
                 uB = u_tot[:, mm + dmver[bb], nn + dnver[bb]]
-                self.u_input_seg[:, ss, mm, nn] = .5 * (uA + uB)
+                self.u_input_seg[:, ss, mm, nn] = 0.5 * (uA + uB)
             self.u_input_seg[:, 0, mm, nn] = self.u_input_seg[:, 2, mm, nn - 1]
         ##### all others: copy seg. 0 and 3
         svec = [1, 2]  # seg. number
@@ -441,7 +488,7 @@ class AeroGridSurface(AeroGridGeo):
             for ss, aa, bb in zip(svec, avec, bvec):
                 uA = u_tot[:, mm + dmver[aa], nn + dnver[aa]]
                 uB = u_tot[:, mm + dmver[bb], nn + dnver[bb]]
-                self.u_input_seg[:, ss, mm, nn] = .5 * (uA + uB)
+                self.u_input_seg[:, ss, mm, nn] = 0.5 * (uA + uB)
             self.u_input_seg[:, 0, mm, nn] = self.u_input_seg[:, 2, mm, nn - 1]
             self.u_input_seg[:, 3, mm, nn] = self.u_input_seg[:, 1, mm - 1, nn]
 
@@ -455,17 +502,16 @@ class AeroGridSurface(AeroGridGeo):
         """
 
         M, N = self.maps.M, self.maps.N
-        uind_target = np.zeros((3,), order='C')
+        uind_target = np.zeros((3,), order="C")
         # uind_ref=np.zeros((3,),order='C')
 
         for mm in range(M):
             for nn in range(N):
                 # panel info
                 zetav_here = self.get_panel_vertices_coords(mm, nn)
-                uind_target += uvlmlib.biot_panel_cpp(zeta_target,
-                                                      zetav_here,
-                                                      self.vortex_radius,
-                                                      self.gamma[mm, nn])
+                uind_target += uvlmlib.biot_panel_cpp(
+                    zeta_target, zetav_here, self.vortex_radius, self.gamma[mm, nn]
+                )
 
         return uind_target
 
@@ -485,14 +531,15 @@ class AeroGridSurface(AeroGridGeo):
 
             # get panel coordinates
             zetav_here = self.get_panel_vertices_coords(mm, nn)
-            aic3[:, cc] = uvlmlib.biot_panel_cpp(zeta_target, zetav_here,
-                                                 self.vortex_radius,
-                                                 gamma=1.0)
+            aic3[:, cc] = uvlmlib.biot_panel_cpp(
+                zeta_target, zetav_here, self.vortex_radius, gamma=1.0
+            )
 
         return aic3
 
-    def get_induced_velocity_over_surface(self, Surf_target,
-                                          target='collocation', Project=False):
+    def get_induced_velocity_over_surface(
+        self, Surf_target, target="collocation", Project=False
+    ):
         """
         Computes induced velocity over an instance of AeroGridSurface, where
         target specifies the target grid (collocation or segments). If Project
@@ -519,13 +566,13 @@ class AeroGridSurface(AeroGridGeo):
         M_trg = Surf_target.maps.M
         N_trg = Surf_target.maps.N
 
-        if target == 'collocation':
-            if not hasattr(Surf_target, 'zetac'):
+        if target == "collocation":
+            if not hasattr(Surf_target, "zetac"):
                 Surf_target.generate_collocations()
             ZetaTarget = Surf_target.zetac
 
             if Project:
-                if not hasattr(Surf_target, 'normals'):
+                if not hasattr(Surf_target, "normals"):
                     Surf_target.generate_normals()
                 Uind = np.empty((M_trg, N_trg))
             else:
@@ -534,17 +581,21 @@ class AeroGridSurface(AeroGridGeo):
             # loop target points
             for pp in itertools.product(range(M_trg), range(N_trg)):
                 mm, nn = pp
-                uind = uvlmlib.get_induced_velocity_cpp(self.maps, self.zeta,
-                          self.gamma, ZetaTarget[:, mm, nn], self.vortex_radius)
+                uind = uvlmlib.get_induced_velocity_cpp(
+                    self.maps,
+                    self.zeta,
+                    self.gamma,
+                    ZetaTarget[:, mm, nn],
+                    self.vortex_radius,
+                )
                 if Project:
                     Uind[mm, nn] = np.dot(uind, Surf_target.normals[:, mm, nn])
                 else:
                     Uind[:, mm, nn] = uind
 
-        if target == 'segments':
-
+        if target == "segments":
             if Project:
-                raise NameError('Normal not defined for segment')
+                raise NameError("Normal not defined for segment")
 
             Uind = np.zeros((3, 4, M_trg, N_trg))
 
@@ -556,8 +607,9 @@ class AeroGridSurface(AeroGridGeo):
             zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
             for ss, aa, bb in zip(svec, avec, bvec):
                 zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(self.maps,
-                             self.zeta, self.gamma, zeta_mid, self.vortex_radius)
+                Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(
+                    self.maps, self.zeta, self.gamma, zeta_mid, self.vortex_radius
+                )
 
             ##### panels n=0: copy seg.3
             nn = 0
@@ -568,8 +620,9 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(self.maps,
-                                 self.zeta, self.gamma, zeta_mid, self.vortex_radius)
+                    Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(
+                        self.maps, self.zeta, self.gamma, zeta_mid, self.vortex_radius
+                    )
                 Uind[:, 3, mm, nn] = Uind[:, 1, mm - 1, nn]
 
             ##### panels m=0: copy seg.0
@@ -581,8 +634,9 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(self.maps,
-                                 self.zeta, self.gamma, zeta_mid, self.vortex_radius)
+                    Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(
+                        self.maps, self.zeta, self.gamma, zeta_mid, self.vortex_radius
+                    )
                 Uind[:, 0, mm, nn] = Uind[:, 2, mm, nn - 1]
 
             ##### all others: copy seg. 0 and 3
@@ -594,15 +648,15 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(*pp)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(self.maps,
-                                 self.zeta, self.gamma, zeta_mid, self.vortex_radius)
+                    Uind[:, ss, mm, nn] = uvlmlib.get_induced_velocity_cpp(
+                        self.maps, self.zeta, self.gamma, zeta_mid, self.vortex_radius
+                    )
                 Uind[:, 0, mm, nn] = Uind[:, 2, mm, nn - 1]
                 Uind[:, 3, mm, nn] = Uind[:, 1, mm - 1, nn]
 
         return Uind
 
-    def get_aic_over_surface(self, Surf_target,
-                             target='collocation', Project=True):
+    def get_aic_over_surface(self, Surf_target, target="collocation", Project=True):
         r"""
         Produces influence coefficient matrices such that the velocity induced
         over the Surface_target is given by the product:
@@ -630,15 +684,14 @@ class AeroGridSurface(AeroGridGeo):
 
         K_in = self.maps.K
 
-        if target == 'collocation':
-
+        if target == "collocation":
             K_out = Surf_target.maps.K
-            if not hasattr(Surf_target, 'zetac'):
+            if not hasattr(Surf_target, "zetac"):
                 Surf_target.generate_collocations()
             ZetaTarget = Surf_target.zetac
 
             if Project:
-                if not hasattr(Surf_target, 'normals'):
+                if not hasattr(Surf_target, "normals"):
                     Surf_target.generate_normals()
                 AIC = np.empty((K_out, K_in))
             else:
@@ -651,8 +704,9 @@ class AeroGridSurface(AeroGridGeo):
                 nn = Surf_target.maps.ind_2d_pan_scal[1][cc]
                 # retrieve influence coefficients
                 # ref_aic3=self.get_aic3(ZetaTarget[:,mm,nn])
-                aic3 = get_aic3_cpp(self.maps, self.zeta, ZetaTarget[:, mm, nn],
-                                    self.vortex_radius)
+                aic3 = get_aic3_cpp(
+                    self.maps, self.zeta, ZetaTarget[:, mm, nn], self.vortex_radius
+                )
                 # assert np.max(np.abs(aic3-ref_aic3))<1e-13, embed()
 
                 if Project:
@@ -660,9 +714,9 @@ class AeroGridSurface(AeroGridGeo):
                 else:
                     AIC[:, cc, :] = aic3
 
-        if target == 'segments':
+        if target == "segments":
             if Project:
-                raise NameError('Normal not defined at collocation points')
+                raise NameError("Normal not defined at collocation points")
 
             M_trg, N_trg = Surf_target.maps.M, Surf_target.maps.N
             AIC = np.zeros((3, K_in, 4, M_trg, N_trg))
@@ -675,8 +729,9 @@ class AeroGridSurface(AeroGridGeo):
             zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
             for ss, aa, bb in zip(svec, avec, bvec):
                 zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta,
-                                                     zeta_mid, self.vortex_radius)
+                AIC[:, :, ss, mm, nn] = get_aic3_cpp(
+                    self.maps, self.zeta, zeta_mid, self.vortex_radius
+                )
 
             ##### panels n=0: copy seg.3
             nn = 0
@@ -687,8 +742,9 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta,
-                                                         zeta_mid, self.vortex_radius)
+                    AIC[:, :, ss, mm, nn] = get_aic3_cpp(
+                        self.maps, self.zeta, zeta_mid, self.vortex_radius
+                    )
                 AIC[:, :, 3, mm, nn] = AIC[:, :, 1, mm - 1, nn]
 
             ##### panels m=0: copy seg.0
@@ -700,8 +756,9 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(mm, nn)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta,
-                                                         zeta_mid, self.vortex_radius)
+                    AIC[:, :, ss, mm, nn] = get_aic3_cpp(
+                        self.maps, self.zeta, zeta_mid, self.vortex_radius
+                    )
                 AIC[:, :, 0, mm, nn] = AIC[:, :, 2, mm, nn - 1]
 
             ##### all others: copy seg. 0 and 3
@@ -713,8 +770,9 @@ class AeroGridSurface(AeroGridGeo):
                 zetav_here = Surf_target.get_panel_vertices_coords(*pp)
                 for ss, aa, bb in zip(svec, avec, bvec):
                     zeta_mid = 0.5 * (zetav_here[aa, :] + zetav_here[bb, :])
-                    AIC[:, :, ss, mm, nn] = get_aic3_cpp(self.maps, self.zeta,
-                                                         zeta_mid, self.vortex_radius)
+                    AIC[:, :, ss, mm, nn] = get_aic3_cpp(
+                        self.maps, self.zeta, zeta_mid, self.vortex_radius
+                    )
                 AIC[:, :, 3, mm, nn] = AIC[:, :, 1, mm - 1, nn]
                 AIC[:, :, 0, mm, nn] = AIC[:, :, 2, mm, nn - 1]
 
@@ -742,8 +800,8 @@ class AeroGridSurface(AeroGridGeo):
             if not recompute_velocities:
                 print("WARNING: recomputing velocities")
             self.get_input_velocities_at_segments()
-        if not hasattr(self, 'u_ind_seg'):
-            raise NameError('u_ind_seg not available!')
+        if not hasattr(self, "u_ind_seg"):
+            raise NameError("u_ind_seg not available!")
 
         M, N = self.maps.M, self.maps.N
         self.fqs_seg_unit = np.zeros((3, 4, M, N))
@@ -762,13 +820,21 @@ class AeroGridSurface(AeroGridGeo):
             zetav_here = self.get_panel_vertices_coords(mm, nn)
             for ss, aa, bb in zip(svec, avec, bvec):
                 df = uvlmutils.joukovski_qs_segment(
-                    zetaA=zetav_here[aa, :], zetaB=zetav_here[bb, :],
-                    v_mid=self.u_ind_seg[:, ss, mm, nn] + self.u_input_seg[:, ss, mm, nn],
-                    gamma=1.0, fact=self.rho)
+                    zetaA=zetav_here[aa, :],
+                    zetaB=zetav_here[bb, :],
+                    v_mid=self.u_ind_seg[:, ss, mm, nn]
+                    + self.u_input_seg[:, ss, mm, nn],
+                    gamma=1.0,
+                    fact=self.rho,
+                )
                 self.fqs_seg_unit[:, ss, mm, nn] = df
                 # project on vertices
-                self.fqs[:, mm + dmver[aa], nn + dnver[aa]] += 0.5 * self.gamma[mm, nn] * df
-                self.fqs[:, mm + dmver[bb], nn + dnver[bb]] += 0.5 * self.gamma[mm, nn] * df
+                self.fqs[:, mm + dmver[aa], nn + dnver[aa]] += (
+                    0.5 * self.gamma[mm, nn] * df
+                )
+                self.fqs[:, mm + dmver[bb], nn + dnver[bb]] += (
+                    0.5 * self.gamma[mm, nn] * df
+                )
 
         ### force produced by wake T.E. segments
         # Note:
@@ -776,7 +842,7 @@ class AeroGridSurface(AeroGridGeo):
         # subtracts to the bound circulation over TE segment
         # 2. the TE segment corresponds to seg.1 of the last row of BOUND panels
         if gammaw_TE is None:
-            raise NameError('Enter gammaw_TE - option disabled for debugging')
+            raise NameError("Enter gammaw_TE - option disabled for debugging")
             gammaw_TE = self.gamma[M - 1, :]
 
         self.fqs_wTE_unit = np.zeros((3, N))
@@ -785,9 +851,11 @@ class AeroGridSurface(AeroGridGeo):
             df = uvlmutils.joukovski_qs_segment(
                 zetaA=self.zeta[:, M, nn + 1],
                 zetaB=self.zeta[:, M, nn],
-                v_mid=self.u_input_seg[:, 1, M - 1, nn] + self.u_ind_seg[:, 1, M - 1, nn],
+                v_mid=self.u_input_seg[:, 1, M - 1, nn]
+                + self.u_ind_seg[:, 1, M - 1, nn],
                 gamma=1.0,
-                fact=self.rho)
+                fact=self.rho,
+            )
             # record force on TE due to wake and project
             self.fqs_wTE_unit[:, nn] = df
             self.fqs[:, M, nn + 1] += 0.5 * gammaw_TE[nn] * df
@@ -801,8 +869,8 @@ class AeroGridSurface(AeroGridGeo):
         """
 
         if self.gamma_dot is None:
-            raise NameError('circulation derivative not specified!')
-        if not hasattr(self, 'areas'):
+            raise NameError("circulation derivative not specified!")
+        if not hasattr(self, "areas"):
             self.generate_areas()
 
         M, N = self.maps.M, self.maps.N
@@ -813,7 +881,12 @@ class AeroGridSurface(AeroGridGeo):
             mm, nn = pp
 
             # force at collocation point
-            fcoll = -self.rho * self.areas[mm, nn] * self.normals[:, mm, nn] * self.gamma_dot[mm, nn]
+            fcoll = (
+                -self.rho
+                * self.areas[mm, nn]
+                * self.normals[:, mm, nn]
+                * self.gamma_dot[mm, nn]
+            )
 
             # project at vertices
             for vv in range(4):

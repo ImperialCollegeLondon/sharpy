@@ -10,7 +10,7 @@ def frequency_damping(eigenvalue):
     f_n = omega_n / 2 / np.pi
     f_d = omega_d / 2 / np.pi
     if f_d < 1e-8:
-        damping_ratio = 1.
+        damping_ratio = 1.0
         period = np.inf
     else:
         damping_ratio = -eigenvalue.real / omega_n
@@ -21,16 +21,34 @@ def frequency_damping(eigenvalue):
 
 class EigenvalueTable(cout.TablePrinter):
     def __init__(self, filename=None):
-        super().__init__(7, 12, ['g', 'f', 'f', 'f', 'f', 'f', 'f'], filename)
+        super().__init__(7, 12, ["g", "f", "f", "f", "f", "f", "f"], filename)
 
-        self.headers = ['mode', 'eval_real', 'eval_imag', 'freq_n (Hz)', 'freq_d (Hz)',
-                        'damping', 'period (s)']
+        self.headers = [
+            "mode",
+            "eval_real",
+            "eval_imag",
+            "freq_n (Hz)",
+            "freq_d (Hz)",
+            "damping",
+            "period (s)",
+        ]
 
     def print_evals(self, eigenvalues):
         for i in range(len(eigenvalues)):
-            omega_n, omega_d, damping_ratio, f_n, f_d, period = frequency_damping(eigenvalues[i])
-            self.print_line([i, eigenvalues[i].real, eigenvalues[i].imag, f_n, f_d,
-                             damping_ratio, period])
+            omega_n, omega_d, damping_ratio, f_n, f_d, period = frequency_damping(
+                eigenvalues[i]
+            )
+            self.print_line(
+                [
+                    i,
+                    eigenvalues[i].real,
+                    eigenvalues[i].imag,
+                    f_n,
+                    f_d,
+                    damping_ratio,
+                    period,
+                ]
+            )
 
 
 def cg(M, use_euler=False):
@@ -128,7 +146,6 @@ def get_mode_zeta(data, eigvect):
     Cga0 = algebra.quat2rotation(tsstr.quat)
     Cag0 = Cga0.T
     for node_glob in range(struct.num_node):
-
         ### detect bc at node (and no. of dofs)
         bc_here = struct.boundary_conditions[node_glob]
         if bc_here == 1:  # clamp
@@ -160,9 +177,8 @@ def get_mode_zeta(data, eigvect):
         ### str -> aero mapping
         # some nodes may be linked to multiple surfaces...
         for str2aero_here in aero.struct2aero_mapping[node_glob]:
-
             # detect surface/span-wise coordinate (ss,nn)
-            nn, ss = str2aero_here['i_n'], str2aero_here['i_surf']
+            nn, ss = str2aero_here["i_n"], str2aero_here["i_surf"]
             # print('%.2d,%.2d'%(nn,ss))
 
             # surface panelling
@@ -194,7 +210,6 @@ def write_zeta_vtk(zeta, zeta_ref, filename_root):
     """
 
     for i_surf in range(len(zeta)):
-
         filename = filename_root + "_%02u.vtu" % (i_surf,)
         _, M, N = zeta[i_surf].shape
 
@@ -225,19 +240,23 @@ def write_zeta_vtk(zeta, zeta_ref, filename_root):
                 node_counter += 1
                 # point data
                 # point_struct_id[node_counter]=global_counter
-                point_struct_mag[node_counter] = \
-                    np.linalg.norm(zeta[i_surf][:, i_m, i_n] \
-                                   - zeta_ref[i_surf][:, i_m, i_n])
+                point_struct_mag[node_counter] = np.linalg.norm(
+                    zeta[i_surf][:, i_m, i_n] - zeta_ref[i_surf][:, i_m, i_n]
+                )
 
                 if i_n < N and i_m < M:
                     counter += 1
                 else:
                     continue
 
-                conn.append([node_counter + 0,
-                             node_counter + 1,
-                             node_counter + M + 2,
-                             node_counter + M + 1])
+                conn.append(
+                    [
+                        node_counter + 0,
+                        node_counter + 1,
+                        node_counter + M + 2,
+                        node_counter + M + 1,
+                    ]
+                )
                 # cell data
                 panel_id[counter] = counter
                 panel_surf_id[counter] = i_surf
@@ -245,22 +264,23 @@ def write_zeta_vtk(zeta, zeta_ref, filename_root):
         ug = tvtk.UnstructuredGrid(points=coords)
         ug.set_cells(tvtk.Quad().cell_type, conn)
         ug.cell_data.scalars = panel_id
-        ug.cell_data.scalars.name = 'panel_n_id'
+        ug.cell_data.scalars.name = "panel_n_id"
         ug.cell_data.add_array(panel_surf_id)
-        ug.cell_data.get_array(1).name = 'panel_surface_id'
+        ug.cell_data.get_array(1).name = "panel_surface_id"
 
         ug.point_data.scalars = np.arange(0, coords.shape[0])
-        ug.point_data.scalars.name = 'n_id'
+        ug.point_data.scalars.name = "n_id"
         # ug.point_data.add_array(point_struct_id)
         # ug.point_data.get_array(1).name = 'point_struct_id'
         ug.point_data.add_array(point_struct_mag)
-        ug.point_data.get_array(1).name = 'point_displacement_magnitude'
+        ug.point_data.get_array(1).name = "point_displacement_magnitude"
 
         write_data(ug, filename)
 
 
-def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
-                    rot_max_deg=15., perc_max=0.15, ts=-1):
+def write_modes_vtk(
+    data, eigenvectors, NumLambda, filename_root, rot_max_deg=15.0, perc_max=0.15, ts=-1
+):
     """
     Writes a vtk file for each of the first ``NumLambda`` eigenvectors. When these
     are associated to the state-space form of the structural equations, only
@@ -278,7 +298,7 @@ def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
 
     # Check whether rigid body motion is selected
     # Skip rigid body modes
-    if data.settings['Modal']['rigid_body_modes']:
+    if data.settings["Modal"]["rigid_body_modes"]:
         num_rigid_body = 10
     else:
         num_rigid_body = 0
@@ -319,7 +339,9 @@ def free_modes_principal_axes(phi, mass_matrix, use_euler=False, **kwargs):
         num_rigid_modes = 10
 
     r_cg = cg(mass_matrix, use_euler)  # centre of gravity
-    mrr = mass_matrix[-num_rigid_modes:-num_rigid_modes + 6, -num_rigid_modes:-num_rigid_modes + 6]
+    mrr = mass_matrix[
+        -num_rigid_modes : -num_rigid_modes + 6, -num_rigid_modes : -num_rigid_modes + 6
+    ]
     m = mrr[0, 0]  # mass
 
     # principal axes of inertia matrix and transformation matrix
@@ -337,15 +359,27 @@ def free_modes_principal_axes(phi, mass_matrix, use_euler=False, **kwargs):
     trb_diag = np.zeros((6, 6))  # matrix with (t_rb, t_rb) in the diagonal
     trb_diag[:3, :3] = t_rb
     trb_diag[-3:, -3:] = t_rb
-    rb_a = np.block([[np.eye(3), algebra.skew(r_cg)], [np.zeros((3, 3)), np.eye(3)]]).dot(trb_diag.dot(rb_cm))
+    rb_a = np.block(
+        [[np.eye(3), algebra.skew(r_cg)], [np.zeros((3, 3)), np.eye(3)]]
+    ).dot(trb_diag.dot(rb_cm))
 
-    phit = np.block([np.zeros((phi.shape[0], num_rigid_modes)), phi[:, num_rigid_modes:]])
-    phit[-num_rigid_modes:-num_rigid_modes + 6, :6] = rb_a
+    phit = np.block(
+        [np.zeros((phi.shape[0], num_rigid_modes)), phi[:, num_rigid_modes:]]
+    )
+    phit[-num_rigid_modes : -num_rigid_modes + 6, :6] = rb_a
 
-    phit[-num_rigid_modes + 6:, 6:num_rigid_modes] = np.eye(num_rigid_modes - 6)  # euler or quaternion modes
+    phit[-num_rigid_modes + 6 :, 6:num_rigid_modes] = np.eye(
+        num_rigid_modes - 6
+    )  # euler or quaternion modes
 
-    if kwargs.get('return_transform', False):
-        return phit, t_rb, np.block([[np.eye(3), algebra.skew(r_cg)], [np.zeros((3, 3)), np.eye(3)]]).dot(trb_diag)
+    if kwargs.get("return_transform", False):
+        return (
+            phit,
+            t_rb,
+            np.block(
+                [[np.eye(3), algebra.skew(r_cg)], [np.zeros((3, 3)), np.eye(3)]]
+            ).dot(trb_diag),
+        )
     else:
         return phit
 
@@ -376,7 +410,9 @@ def principal_axes_inertia(j_a, r_cg, m):
 
     """
 
-    j_p, t_pa = np.linalg.eig(j_a + algebra.multiply_matrices(algebra.skew(r_cg), algebra.skew(r_cg)) * m)
+    j_p, t_pa = np.linalg.eig(
+        j_a + algebra.multiply_matrices(algebra.skew(r_cg), algebra.skew(r_cg)) * m
+    )
 
     t_pa, j_p = order_eigenvectors(t_pa, j_p)
 
@@ -441,8 +477,14 @@ def mode_sign_convention(bocos, eigenvectors, rigid_body_motion=False, use_euler
 
         else:
             if rigid_body_motion:
-                if not np.max(np.abs(eigenvectors[-num_rigid_modes+6:, i])) == 1.0: # orientation mode, either euler/quat
-                    cout.cout_wrap('Implementing mode sign convention. Mode {:g} component at the A frame is 0.'.format(i), 3)
+                if (
+                    not np.max(np.abs(eigenvectors[-num_rigid_modes + 6 :, i])) == 1.0
+                ):  # orientation mode, either euler/quat
+                    cout.cout_wrap(
+                        "Implementing mode sign convention. Mode {:g} component at the"
+                        " A frame is 0.".format(i),
+                        3,
+                    )
             else:
                 # cout.cout_wrap('Mode component at the first free end (node {:g}) is 0.'.format(first_free_end_node), 3)
 
@@ -454,7 +496,6 @@ def mode_sign_convention(bocos, eigenvectors, rigid_body_motion=False, use_euler
 
 
 def order_rigid_body_modes(eigenvectors, use_euler):
-
     if use_euler:
         num_rigid_modes = 9
     else:
@@ -464,7 +505,9 @@ def order_rigid_body_modes(eigenvectors, use_euler):
     num_node = eigenvectors.shape[0]
 
     for i in range(num_rigid_modes):
-        index_max_node = np.where(eigenvectors[:, i] == np.max(eigenvectors[:, i]))[0][0]
+        index_max_node = np.where(eigenvectors[:, i] == np.max(eigenvectors[:, i]))[0][
+            0
+        ]
         index_mode = num_rigid_modes - (num_node - index_max_node)
         phi_rr[:, index_mode] = eigenvectors[-num_rigid_modes:, i]
 
@@ -477,8 +520,12 @@ def order_eigenvectors(eigenvectors, eigenvalues):
     ordered_eigenvectors = np.zeros_like(eigenvectors)
     new_order = []
     for i in range(eigenvectors.shape[1]):
-        index_max_node = np.where(np.abs(eigenvectors[:, i]) == np.max(np.abs(eigenvectors[:, i])))[0][0]
-        ordered_eigenvectors[:, index_max_node] = eigenvectors[:, i] * np.sign(eigenvectors[index_max_node, i])
+        index_max_node = np.where(
+            np.abs(eigenvectors[:, i]) == np.max(np.abs(eigenvectors[:, i]))
+        )[0][0]
+        ordered_eigenvectors[:, index_max_node] = eigenvectors[:, i] * np.sign(
+            eigenvectors[index_max_node, i]
+        )
         new_order.append(index_max_node)
 
     try:
@@ -510,7 +557,7 @@ def scale_mass_normalised_modes(eigenvectors, mass_matrix):
     """
     # mass normalise (diagonalises M and K)
     dfact = np.diag(np.dot(eigenvectors.T, np.dot(mass_matrix, eigenvectors)))
-    eigenvectors = (1./np.sqrt(dfact))*eigenvectors
+    eigenvectors = (1.0 / np.sqrt(dfact)) * eigenvectors
 
     return eigenvectors
 
@@ -530,13 +577,14 @@ def assert_orthogonal_eigenvectors(u, v, decimal, raise_error=False):
 
     """
     try:
-        np.testing.assert_almost_equal(u.dot(v), 0, decimal=decimal,
-                                       err_msg='Eigenvectors not orthogonal')  # random eigenvector to test orthonality
+        np.testing.assert_almost_equal(
+            u.dot(v), 0, decimal=decimal, err_msg="Eigenvectors not orthogonal"
+        )  # random eigenvector to test orthonality
     except AssertionError as e:
         if raise_error:
             raise e
         else:
-            cout.cout_wrap('Eigenvectors not orthogonal', 3)
+            cout.cout_wrap("Eigenvectors not orthogonal", 3)
 
 
 def assert_modes_mass_normalised(phi, m, tolerance, raise_error=False):
@@ -556,13 +604,17 @@ def assert_modes_mass_normalised(phi, m, tolerance, raise_error=False):
     modal_mass = phi.T.dot(m.dot(phi))
 
     try:
-        np.testing.assert_allclose(modal_mass - np.eye(modal_mass.shape[0]), np.zeros_like(modal_mass),
-                                   atol=tolerance, err_msg='Eigenvectors are not mass normalised')
+        np.testing.assert_allclose(
+            modal_mass - np.eye(modal_mass.shape[0]),
+            np.zeros_like(modal_mass),
+            atol=tolerance,
+            err_msg="Eigenvectors are not mass normalised",
+        )
     except AssertionError as e:
         if raise_error:
             raise e
         else:
-            cout.cout_wrap('Eigenvectors are not mass normalised', 3)
+            cout.cout_wrap("Eigenvectors are not mass normalised", 3)
 
 
 def modes_to_cg_ref(phi, M, rigid_body_motion=False, use_euler=False):

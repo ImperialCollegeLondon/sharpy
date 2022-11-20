@@ -8,7 +8,12 @@ import sharpy.utils.settings as settings
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
 import sharpy.utils.generator_interface as gi
-from sharpy.linear.utils.ss_interface import LinearVector, InputVariable, StateVariable, OutputVariable
+from sharpy.linear.utils.ss_interface import (
+    LinearVector,
+    InputVariable,
+    StateVariable,
+    OutputVariable,
+)
 import sharpy.aero.utils.utils as aero_utils
 
 
@@ -30,37 +35,44 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
     Reference the individual systems for the particular ordering of the respective input and output variables.
     """
-    sys_id = 'LinearAeroelastic'
+    sys_id = "LinearAeroelastic"
 
     settings_default = dict()
     settings_types = dict()
     settings_description = dict()
 
-    settings_types['aero_settings'] = 'dict'
-    settings_default['aero_settings'] = None
-    settings_description['aero_settings'] = 'Linear UVLM settings'
+    settings_types["aero_settings"] = "dict"
+    settings_default["aero_settings"] = None
+    settings_description["aero_settings"] = "Linear UVLM settings"
 
-    settings_types['beam_settings'] = 'dict'
-    settings_default['beam_settings'] = None
-    settings_description['beam_settings'] = 'Linear Beam settings'
+    settings_types["beam_settings"] = "dict"
+    settings_default["beam_settings"] = None
+    settings_description["beam_settings"] = "Linear Beam settings"
 
-    settings_types['uvlm_filename'] = 'str'
-    settings_default['uvlm_filename'] = ''
-    settings_description['uvlm_filename'] = 'Path to .data.h5 file containing UVLM/ROM state space to load'
+    settings_types["uvlm_filename"] = "str"
+    settings_default["uvlm_filename"] = ""
+    settings_description[
+        "uvlm_filename"
+    ] = "Path to .data.h5 file containing UVLM/ROM state space to load"
 
-    settings_types['track_body'] = 'bool'
-    settings_default['track_body'] = True
-    settings_description['track_body'] = 'UVLM inputs and outputs projected to coincide with lattice at linearisation'
+    settings_types["track_body"] = "bool"
+    settings_default["track_body"] = True
+    settings_description[
+        "track_body"
+    ] = "UVLM inputs and outputs projected to coincide with lattice at linearisation"
 
-    settings_types['use_euler'] = 'bool'
-    settings_default['use_euler'] = True
-    settings_description['use_euler'] = 'Parametrise orientations in terms of Euler angles'
+    settings_types["use_euler"] = "bool"
+    settings_default["use_euler"] = True
+    settings_description[
+        "use_euler"
+    ] = "Parametrise orientations in terms of Euler angles"
 
     settings_table = settings.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
+    __doc__ += settings_table.generate(
+        settings_types, settings_default, settings_description
+    )
 
     def __init__(self):
-
         self.ss = None  # The state space object
         self.lsys = dict()  # Contains the underlying objects
         self.uvlm = None
@@ -89,41 +101,49 @@ class LinearAeroelastic(ss_interface.BaseElement):
         self.Crr = None
 
     def initialise(self, data):
-
         try:
-            self.settings = data.settings['LinearAssembler']['linear_system_settings']
+            self.settings = data.settings["LinearAssembler"]["linear_system_settings"]
         except KeyError:
             self.settings = None
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
+        settings.to_custom_types(
+            self.settings, self.settings_types, self.settings_default, no_ctype=True
+        )
 
-        if self.settings['use_euler']:
-            self.settings['beam_settings']['use_euler'] = True
+        if self.settings["use_euler"]:
+            self.settings["beam_settings"]["use_euler"] = True
 
         # Create Linear UVLM
-        self.uvlm = ss_interface.initialise_system('LinearUVLM')
-        self.uvlm.initialise(data, custom_settings=self.settings['aero_settings'])
+        self.uvlm = ss_interface.initialise_system("LinearUVLM")
+        self.uvlm.initialise(data, custom_settings=self.settings["aero_settings"])
 
         # Get the minimum parameters needed to define the wake
-        vel_gen_name, vel_gen_settings = aero_utils.find_velocity_generator(data.settings)
+        vel_gen_name, vel_gen_settings = aero_utils.find_velocity_generator(
+            data.settings
+        )
         vel_gen_type = gi.generator_from_string(vel_gen_name)
         vel_gen = vel_gen_type()
-        vel_gen.initialise(vel_gen_settings) 
+        vel_gen.initialise(vel_gen_settings)
 
-        wake_prop_settings = {'dt': self.settings['aero_settings']['dt'],
-                              'ts': data.ts,
-                              't': data.ts*self.settings['aero_settings']['dt'],
-                              'for_pos': data.structure.timestep_info[-1].for_pos,
-                              'cfl1': self.settings['aero_settings']['cfl1'],
-                              'vel_gen': vel_gen}
+        wake_prop_settings = {
+            "dt": self.settings["aero_settings"]["dt"],
+            "ts": data.ts,
+            "t": data.ts * self.settings["aero_settings"]["dt"],
+            "for_pos": data.structure.timestep_info[-1].for_pos,
+            "cfl1": self.settings["aero_settings"]["cfl1"],
+            "vel_gen": vel_gen,
+        }
 
-        if self.settings['uvlm_filename'] == '':
-            self.uvlm.assemble(track_body=self.settings['track_body'], wake_prop_settings=wake_prop_settings)
+        if self.settings["uvlm_filename"] == "":
+            self.uvlm.assemble(
+                track_body=self.settings["track_body"],
+                wake_prop_settings=wake_prop_settings,
+            )
         else:
             self.load_uvlm_from_file = True
 
         # Create beam
-        self.beam = ss_interface.initialise_system('LinearBeam')
-        self.beam.initialise(data, custom_settings=self.settings['beam_settings'])
+        self.beam = ss_interface.initialise_system("LinearBeam")
+        self.beam.initialise(data, custom_settings=self.settings["beam_settings"])
 
         for k, v in self.uvlm.linearisation_vectors.items():
             self.linearisation_vectors[k] = v
@@ -171,43 +191,73 @@ class LinearAeroelastic(ss_interface.BaseElement):
         total_dof = flex_nodes + rigid_dof
 
         if uvlm.scaled:
-            beam.assemble(t_ref=uvlm.sys.ScalingFacts['time'])
+            beam.assemble(t_ref=uvlm.sys.ScalingFacts["time"])
         else:
             beam.assemble()
 
         if not self.load_uvlm_from_file:
             # Projecting the UVLM inputs and outputs onto the structural degrees of freedom
-            Ksa = self.Kforces[:beam.sys.num_dof, :]  # maps aerodynamic grid forces to nodal forces
+            Ksa = self.Kforces[
+                : beam.sys.num_dof, :
+            ]  # maps aerodynamic grid forces to nodal forces
             gain_ksa = libss.Gain(Ksa)
-            gain_ksa.input_variables = LinearVector.transform(uvlm.ss.output_variables, to_type=InputVariable)
+            gain_ksa.input_variables = LinearVector.transform(
+                uvlm.ss.output_variables, to_type=InputVariable
+            )
             if beam.sys.Kin is not None:
-                gain_ksa.output_variables = LinearVector.transform(beam.sys.Kin.input_variables, to_type=OutputVariable)
+                gain_ksa.output_variables = LinearVector.transform(
+                    beam.sys.Kin.input_variables, to_type=OutputVariable
+                )
             else:
-                gain_ksa.output_variables = LinearVector.transform(beam.ss.input_variables, to_type=OutputVariable)
+                gain_ksa.output_variables = LinearVector.transform(
+                    beam.ss.input_variables, to_type=OutputVariable
+                )
 
             # Map the nodal displacement and velocities onto the grid displacements and velocities
-            Kas = np.zeros((uvlm.ss.inputs, 2*beam.sys.num_dof + (uvlm.ss.inputs - 2*self.Kdisp.shape[0])))
-            Kas[:2*self.Kdisp.shape[0], :2*beam.sys.num_dof] = \
-                np.block([[self.Kdisp[:, :beam.sys.num_dof], self.Kdisp_vel[:, :beam.sys.num_dof]],
-                [self.Kvel_disp[:, :beam.sys.num_dof], self.Kvel_vel[:, :beam.sys.num_dof]]])
+            Kas = np.zeros(
+                (
+                    uvlm.ss.inputs,
+                    2 * beam.sys.num_dof + (uvlm.ss.inputs - 2 * self.Kdisp.shape[0]),
+                )
+            )
+            Kas[: 2 * self.Kdisp.shape[0], : 2 * beam.sys.num_dof] = np.block(
+                [
+                    [
+                        self.Kdisp[:, : beam.sys.num_dof],
+                        self.Kdisp_vel[:, : beam.sys.num_dof],
+                    ],
+                    [
+                        self.Kvel_disp[:, : beam.sys.num_dof],
+                        self.Kvel_vel[:, : beam.sys.num_dof],
+                    ],
+                ]
+            )
 
             # Retain other inputs
-            Kas[2*self.Kdisp.shape[0]:, 2*beam.sys.num_dof:] = np.eye(uvlm.ss.inputs - 2 * self.Kdisp.shape[0])
+            Kas[2 * self.Kdisp.shape[0] :, 2 * beam.sys.num_dof :] = np.eye(
+                uvlm.ss.inputs - 2 * self.Kdisp.shape[0]
+            )
 
             gain_kas = libss.Gain(Kas)
-            gain_kas.output_variables = LinearVector.transform(uvlm.ss.input_variables, to_type=OutputVariable)
+            gain_kas.output_variables = LinearVector.transform(
+                uvlm.ss.input_variables, to_type=OutputVariable
+            )
             if beam.sys.Kout is not None:
-                kas_in_vars = LinearVector.transform(beam.sys.Kout.output_variables, to_type=InputVariable)
+                kas_in_vars = LinearVector.transform(
+                    beam.sys.Kout.output_variables, to_type=InputVariable
+                )
             else:
-                kas_in_vars = LinearVector.transform(beam.ss.output_variables, to_type=InputVariable)
+                kas_in_vars = LinearVector.transform(
+                    beam.ss.output_variables, to_type=InputVariable
+                )
             for variable in uvlm.ss.input_variables:
-                if variable.name not in ['zeta', 'zeta_dot']:
+                if variable.name not in ["zeta", "zeta_dot"]:
                     kas_in_vars.append(variable)
             gain_kas.input_variables = kas_in_vars
 
             # Scaling
             if uvlm.scaled:
-                Kas /= uvlm.sys.ScalingFacts['length']
+                Kas /= uvlm.sys.ScalingFacts["length"]
 
             uvlm.connect_output(gain_ksa)
             uvlm.connect_input(gain_kas)
@@ -217,46 +267,67 @@ class LinearAeroelastic(ss_interface.BaseElement):
             Dmod[:flex_nodes, :flex_nodes] -= self.Kss
             if rigid_dof > 0:
                 Dmod[flex_nodes:, :flex_nodes] -= self.Krs
-                Dmod[flex_nodes:, total_dof: total_dof + flex_nodes] -= self.Crs
-                Dmod[:flex_nodes, total_dof + flex_nodes: 2 * total_dof] -= self.Csr
-                Dmod[flex_nodes:, total_dof + flex_nodes: 2 * total_dof] -= self.Crr
+                Dmod[flex_nodes:, total_dof : total_dof + flex_nodes] -= self.Crs
+                Dmod[:flex_nodes, total_dof + flex_nodes : 2 * total_dof] -= self.Csr
+                Dmod[flex_nodes:, total_dof + flex_nodes : 2 * total_dof] -= self.Crr
                 if uvlm.scaled:
-                    Dmod /= uvlm.sys.ScalingFacts['force']
+                    Dmod /= uvlm.sys.ScalingFacts["force"]
                 uvlm.ss.D += Dmod
 
-            self.couplings['Ksa'] = gain_ksa
-            self.couplings['Kas'] = gain_kas
+            self.couplings["Ksa"] = gain_ksa
+            self.couplings["Kas"] = gain_kas
 
-            if self.settings['beam_settings']['modal_projection'] is True and \
-                    self.settings['beam_settings']['inout_coords'] == 'modes':
+            if (
+                self.settings["beam_settings"]["modal_projection"] is True
+                and self.settings["beam_settings"]["inout_coords"] == "modes"
+            ):
                 # Project UVLM onto modal space
                 phi = beam.sys.U
-                in_mode_matrix = np.zeros((uvlm.ss.inputs, beam.ss.outputs + (uvlm.ss.inputs - 2*beam.sys.num_dof)))
-                in_mode_matrix[:2*beam.sys.num_dof, :2*beam.sys.num_modes] = sclalg.block_diag(phi, phi)
-                in_mode_matrix[2*beam.sys.num_dof:, 2*beam.sys.num_modes:] = np.eye(uvlm.ss.inputs - 2*beam.sys.num_dof)
+                in_mode_matrix = np.zeros(
+                    (
+                        uvlm.ss.inputs,
+                        beam.ss.outputs + (uvlm.ss.inputs - 2 * beam.sys.num_dof),
+                    )
+                )
+                in_mode_matrix[
+                    : 2 * beam.sys.num_dof, : 2 * beam.sys.num_modes
+                ] = sclalg.block_diag(phi, phi)
+                in_mode_matrix[
+                    2 * beam.sys.num_dof :, 2 * beam.sys.num_modes :
+                ] = np.eye(uvlm.ss.inputs - 2 * beam.sys.num_dof)
 
                 in_mode_gain = libss.Gain(in_mode_matrix)
-                in_mode_inputs = LinearVector.transform(beam.ss.output_variables, to_type=InputVariable)
-                LinearVector.check_same_vectors(in_mode_inputs, beam.ss.output_variables)
+                in_mode_inputs = LinearVector.transform(
+                    beam.ss.output_variables, to_type=InputVariable
+                )
+                LinearVector.check_same_vectors(
+                    in_mode_inputs, beam.ss.output_variables
+                )
                 for variable in uvlm.ss.input_variables.copy():
-                    if variable.name not in ['eta', 'eta_dot', 'beta_bar', 'beta']:
+                    if variable.name not in ["eta", "eta_dot", "beta_bar", "beta"]:
                         in_mode_inputs.append(variable)
 
                 in_mode_gain.input_variables = in_mode_inputs
 
-                in_mode_gain.output_variables = LinearVector.transform(uvlm.ss.input_variables, to_type=OutputVariable)
+                in_mode_gain.output_variables = LinearVector.transform(
+                    uvlm.ss.input_variables, to_type=OutputVariable
+                )
 
                 out_mode_matrix = phi.T
-                out_mode_gain = libss.Gain(out_mode_matrix,
-                                           input_vars=LinearVector.transform(uvlm.ss.output_variables,
-                                                                             to_type=InputVariable),
-                                           output_vars=LinearVector.transform(beam.ss.input_variables,
-                                                                              to_type=OutputVariable))
+                out_mode_gain = libss.Gain(
+                    out_mode_matrix,
+                    input_vars=LinearVector.transform(
+                        uvlm.ss.output_variables, to_type=InputVariable
+                    ),
+                    output_vars=LinearVector.transform(
+                        beam.ss.input_variables, to_type=OutputVariable
+                    ),
+                )
 
                 uvlm.connect_input(in_mode_gain)
                 uvlm.connect_output(out_mode_gain)
-                self.couplings['in_mode_gain'] = in_mode_gain
-                self.couplings['out_mode_gain'] = out_mode_gain
+                self.couplings["in_mode_gain"] = in_mode_gain
+                self.couplings["out_mode_gain"] = out_mode_gain
 
             # Reduce uvlm projected onto structural coordinates
             if uvlm.rom:
@@ -267,48 +338,71 @@ class LinearAeroelastic(ss_interface.BaseElement):
                         uvlm.ss = rom.run(uvlm.ss)
 
         else:
-            uvlm.ss = self.load_uvlm(self.settings['uvlm_filename'])
+            uvlm.ss = self.load_uvlm(self.settings["uvlm_filename"])
 
         # Coupling matrices
-        Tas = libss.Gain(np.eye(uvlm.ss.inputs, beam.ss.outputs),
-                         input_vars=LinearVector.transform(beam.ss.output_variables, to_type=InputVariable),
-                         output_vars=LinearVector.transform(uvlm.ss.input_variables, to_type=OutputVariable))
-        Tsa = libss.Gain(np.eye(beam.ss.inputs, uvlm.ss.outputs),
-                         input_vars=LinearVector.transform(uvlm.ss.output_variables, to_type=InputVariable),
-                         output_vars=LinearVector.transform(beam.ss.input_variables, to_type=OutputVariable))
+        Tas = libss.Gain(
+            np.eye(uvlm.ss.inputs, beam.ss.outputs),
+            input_vars=LinearVector.transform(
+                beam.ss.output_variables, to_type=InputVariable
+            ),
+            output_vars=LinearVector.transform(
+                uvlm.ss.input_variables, to_type=OutputVariable
+            ),
+        )
+        Tsa = libss.Gain(
+            np.eye(beam.ss.inputs, uvlm.ss.outputs),
+            input_vars=LinearVector.transform(
+                uvlm.ss.output_variables, to_type=InputVariable
+            ),
+            output_vars=LinearVector.transform(
+                beam.ss.input_variables, to_type=OutputVariable
+            ),
+        )
 
         # Scale coupling matrices
         if uvlm.scaled:
-            Tsa.value *= uvlm.sys.ScalingFacts['force'] * uvlm.sys.ScalingFacts['time'] ** 2
+            Tsa.value *= (
+                uvlm.sys.ScalingFacts["force"] * uvlm.sys.ScalingFacts["time"] ** 2
+            )
             if rigid_dof > 0:
-                Tas.value[:flex_nodes + 6, :flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
-                Tas.value[total_dof: total_dof + flex_nodes + 6] /= uvlm.sys.ScalingFacts['length']
+                Tas.value[: flex_nodes + 6, : flex_nodes + 6] /= uvlm.sys.ScalingFacts[
+                    "length"
+                ]
+                Tas.value[
+                    total_dof : total_dof + flex_nodes + 6
+                ] /= uvlm.sys.ScalingFacts["length"]
             else:
-                if not self.settings['beam_settings']['modal_projection']:
-                    Tas.value /= uvlm.sys.ScalingFacts['length']
+                if not self.settings["beam_settings"]["modal_projection"]:
+                    Tas.value /= uvlm.sys.ScalingFacts["length"]
 
         ss = libss.couple(ss01=uvlm.ss, ss02=beam.ss, K12=Tas, K21=Tsa)
 
-        self.couplings['Tas'] = Tas
-        self.couplings['Tsa'] = Tsa
-        self.state_variables = {'aero': uvlm.ss.states,
-                                'beam': beam.ss.states}
+        self.couplings["Tas"] = Tas
+        self.couplings["Tsa"] = Tsa
+        self.state_variables = {"aero": uvlm.ss.states, "beam": beam.ss.states}
 
         # Save zero force reference
-        self.linearisation_vectors['forces_aero_beam_dof'] = Ksa.dot(self.linearisation_vectors['forces_aero'])
-        if self.settings['beam_settings']['modal_projection']:
-            self.linearisation_vectors['mode_shapes'] = beam.sys.U
+        self.linearisation_vectors["forces_aero_beam_dof"] = Ksa.dot(
+            self.linearisation_vectors["forces_aero"]
+        )
+        if self.settings["beam_settings"]["modal_projection"]:
+            self.linearisation_vectors["mode_shapes"] = beam.sys.U
 
-        if self.settings['beam_settings']['modal_projection'] is True and \
-                self.settings['beam_settings']['inout_coords'] == 'modes':
-            self.linearisation_vectors['forces_aero_beam_dof'] = out_mode_matrix.dot(self.linearisation_vectors['forces_aero_beam_dof'])
+        if (
+            self.settings["beam_settings"]["modal_projection"] is True
+            and self.settings["beam_settings"]["inout_coords"] == "modes"
+        ):
+            self.linearisation_vectors["forces_aero_beam_dof"] = out_mode_matrix.dot(
+                self.linearisation_vectors["forces_aero_beam_dof"]
+            )
 
-        cout.cout_wrap('Aeroelastic system assembled:')
-        cout.cout_wrap('\tAerodynamic states: %g' % uvlm.ss.states, 1)
-        cout.cout_wrap('\tStructural states: %g' % beam.ss.states, 1)
-        cout.cout_wrap('\tTotal states: %g' % ss.states, 1)
-        cout.cout_wrap('\tInputs: %g' % ss.inputs, 1)
-        cout.cout_wrap('\tOutputs: %g' % ss.outputs, 1)
+        cout.cout_wrap("Aeroelastic system assembled:")
+        cout.cout_wrap("\tAerodynamic states: %g" % uvlm.ss.states, 1)
+        cout.cout_wrap("\tStructural states: %g" % beam.ss.states, 1)
+        cout.cout_wrap("\tTotal states: %g" % ss.states, 1)
+        cout.cout_wrap("\tInputs: %g" % ss.inputs, 1)
+        cout.cout_wrap("\tOutputs: %g" % ss.outputs, 1)
 
         self.ss = ss
         return self.ss
@@ -326,7 +420,7 @@ class LinearAeroelastic(ss_interface.BaseElement):
             sharpy.linear.src.libss.StateSpace: Updated aeroelastic state-space system
 
         """
-        t_ref = self.uvlm.sys.ScalingFacts['length'] / u_infty
+        t_ref = self.uvlm.sys.ScalingFacts["length"] / u_infty
 
         self.beam.sys.update_matrices_time_scale(t_ref)
         self.beam.sys.assemble()
@@ -335,10 +429,16 @@ class LinearAeroelastic(ss_interface.BaseElement):
         elif self.beam.sys.SScont is not None:
             self.beam.ss = self.beam.sys.SScont
         else:
-            raise AttributeError('Could not find either a continuous or discrete system in Beam')
+            raise AttributeError(
+                "Could not find either a continuous or discrete system in Beam"
+            )
 
-        self.ss = libss.couple(ss01=self.uvlm.ss, ss02=self.beam.ss,
-                               K12=self.couplings['Tas'], K21=self.couplings['Tsa'])
+        self.ss = libss.couple(
+            ss01=self.uvlm.ss,
+            ss02=self.beam.ss,
+            K12=self.couplings["Tas"],
+            K21=self.couplings["Tsa"],
+        )
 
         return self.ss
 
@@ -350,16 +450,18 @@ class LinearAeroelastic(ss_interface.BaseElement):
         else:
             orient_dof = 4
         # Input side
-        if self.settings['beam_settings']['modal_projection'] is True and \
-                self.settings['beam_settings']['inout_coords'] == 'modes':
+        if (
+            self.settings["beam_settings"]["modal_projection"] is True
+            and self.settings["beam_settings"]["inout_coords"] == "modes"
+        ):
             rem_int_modes = np.zeros((ss.inputs, ss.inputs - rig_nodes))
             rem_int_modes[rig_nodes:, :] = np.eye(ss.inputs - rig_nodes)
 
             # Output side - remove quaternion equations output
-            rem_quat_out = np.zeros((ss.outputs-orient_dof, ss.outputs))
+            rem_quat_out = np.zeros((ss.outputs - orient_dof, ss.outputs))
             # find quaternion indices
             U = self.beam.sys.U
-            indices = np.where(U[-orient_dof:, :] == 1.)[1]
+            indices = np.where(U[-orient_dof:, :] == 1.0)[1]
             j = 0
             for i in range(ss.outputs):
                 if i in indices:
@@ -368,39 +470,51 @@ class LinearAeroelastic(ss_interface.BaseElement):
                 j += 1
 
             in_vars = ss.input_variables.copy()
-            in_vars.modify('q', size=in_vars.get_variable_from_name('q').size - rig_nodes)
-            remove_integro_inputs = libss.Gain(rem_int_modes,
-                                               input_vars=in_vars,
-                                               output_vars=libss.LinearVector.transform(ss.input_variables,
-                                                                                        to_type=OutputVariable))
+            in_vars.modify(
+                "q", size=in_vars.get_variable_from_name("q").size - rig_nodes
+            )
+            remove_integro_inputs = libss.Gain(
+                rem_int_modes,
+                input_vars=in_vars,
+                output_vars=libss.LinearVector.transform(
+                    ss.input_variables, to_type=OutputVariable
+                ),
+            )
 
             out_vars = ss.output_variables.copy()
-            out_vars.modify('Q', size=out_vars.get_variable_from_name('Q').size-orient_dof)
-            remove_quaternion_out = libss.Gain(rem_quat_out,
-                                               input_vars=libss.LinearVector.transform(ss.output_variables,
-                                                                                       to_type=InputVariable),
-                                               output_vars=out_vars)
+            out_vars.modify(
+                "Q", size=out_vars.get_variable_from_name("Q").size - orient_dof
+            )
+            remove_quaternion_out = libss.Gain(
+                rem_quat_out,
+                input_vars=libss.LinearVector.transform(
+                    ss.output_variables, to_type=InputVariable
+                ),
+                output_vars=out_vars,
+            )
 
         else:
             # TODO: THESE NEED DOING
             rem_int_modes = np.zeros((ss.inputs, ss.inputs - rig_nodes))
-            rem_int_modes[:self.beam.sys.num_dof_flex, :self.beam.sys.num_dof_flex] = \
-                np.eye(self.beam.sys.num_dof_flex)
-            rem_int_modes[self.beam.sys.num_dof_flex+rig_nodes:, self.beam.sys.num_dof_flex:] = \
-                np.eye(ss.inputs - self.beam.sys.num_dof_flex - rig_nodes)
+            rem_int_modes[
+                : self.beam.sys.num_dof_flex, : self.beam.sys.num_dof_flex
+            ] = np.eye(self.beam.sys.num_dof_flex)
+            rem_int_modes[
+                self.beam.sys.num_dof_flex + rig_nodes :, self.beam.sys.num_dof_flex :
+            ] = np.eye(ss.inputs - self.beam.sys.num_dof_flex - rig_nodes)
 
-            rem_quat_out = np.zeros((ss.outputs-orient_dof, ss.outputs))
-            rem_quat_out[:, :-orient_dof] = np.eye(ss.outputs-orient_dof)
+            rem_quat_out = np.zeros((ss.outputs - orient_dof, ss.outputs))
+            rem_quat_out[:, :-orient_dof] = np.eye(ss.outputs - orient_dof)
 
-        ss.addGain(remove_integro_inputs, where='in')
-        ss.addGain(remove_quaternion_out, where='out')
+        ss.addGain(remove_integro_inputs, where="in")
+        ss.addGain(remove_quaternion_out, where="out")
         for k, rom in uvlm.rom.items():
             uvlm.ss = rom.run(uvlm.ss)
 
         add_integro_inputs = remove_integro_inputs.transpose()
         add_quaternion_outputs = remove_quaternion_out.transpose()
-        uvlm.ss.addGain(add_integro_inputs, where='in')
-        uvlm.ss.addGain(add_quaternion_outputs, where='out')
+        uvlm.ss.addGain(add_integro_inputs, where="in")
+        uvlm.ss.addGain(add_quaternion_outputs, where="out")
 
     def get_gebm2uvlm_gains(self, data):
         r"""
@@ -597,7 +711,9 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
         # allocate output
         Kdisp = np.zeros((3 * Kzeta, num_dof_str))
-        Kdisp_vel = np.zeros((3 * Kzeta, num_dof_str))  # Orientation is in velocity DOFs
+        Kdisp_vel = np.zeros(
+            (3 * Kzeta, num_dof_str)
+        )  # Orientation is in velocity DOFs
         Kvel_disp = np.zeros((3 * Kzeta, num_dof_str))
         Kvel_vel = np.zeros((3 * Kzeta, num_dof_str))
         Kforces = np.zeros((num_dof_str, 3 * Kzeta))
@@ -623,10 +739,8 @@ class LinearAeroelastic(ss_interface.BaseElement):
         FaeroA = np.zeros(3)
 
         # GEBM degrees of freedom
-        jj_for_tra = range(num_dof_str - num_dof_rig,
-                           num_dof_str - num_dof_rig + 3)
-        jj_for_rot = range(num_dof_str - num_dof_rig + 3,
-                           num_dof_str - num_dof_rig + 6)
+        jj_for_tra = range(num_dof_str - num_dof_rig, num_dof_str - num_dof_rig + 3)
+        jj_for_rot = range(num_dof_str - num_dof_rig + 3, num_dof_str - num_dof_rig + 6)
 
         if use_euler:
             jj_euler = range(num_dof_str - 3, num_dof_str)
@@ -637,7 +751,6 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
         jj = 0  # nodal dof index
         for node_glob in range(structure.num_node):
-
             ### detect bc at node (and no. of dofs)
             bc_here = structure.boundary_conditions[node_glob]
 
@@ -651,8 +764,9 @@ class LinearAeroelastic(ss_interface.BaseElement):
                 jj_tra = 6 * structure.vdof[node_glob] + np.array([0, 1, 2], dtype=int)
                 jj_rot = 6 * structure.vdof[node_glob] + np.array([3, 4, 5], dtype=int)
             else:
-                raise NameError('Invalid boundary condition (%d) at node %d!' \
-                                % (bc_here, node_glob))
+                raise NameError(
+                    "Invalid boundary condition (%d) at node %d!" % (bc_here, node_glob)
+                )
 
             jj += dofs_here
 
@@ -669,14 +783,13 @@ class LinearAeroelastic(ss_interface.BaseElement):
             Cbg = np.dot(Cab.T, Cag)
             Tan = algebra.crv2tan(psi)
 
-            track_body = self.settings['track_body']
+            track_body = self.settings["track_body"]
 
             ### str -> aero mapping
             # some nodes may be linked to multiple surfaces...
             for str2aero_here in aero.struct2aero_mapping[node_glob]:
-
                 # detect surface/span-wise coordinate (ss,nn)
-                nn, ss = str2aero_here['i_n'], str2aero_here['i_surf']
+                nn, ss = str2aero_here["i_n"], str2aero_here["i_surf"]
                 # print('%.2d,%.2d'%(nn,ss))
 
                 # surface panelling
@@ -688,8 +801,10 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
                 for mm in range(M + 1):
                     # get bound vertex index
-                    ii_vert = [Kzeta_start + np.ravel_multi_index(
-                        (cc, mm, nn), shape_zeta) for cc in range(3)]
+                    ii_vert = [
+                        Kzeta_start + np.ravel_multi_index((cc, mm, nn), shape_zeta)
+                        for cc in range(3)
+                    ]
 
                     # get position vectors
                     zetag = tsaero.zeta[ss][:, mm, nn]  # in G FoR, w.r.t. origin A-G
@@ -702,7 +817,9 @@ class LinearAeroelastic(ss_interface.BaseElement):
                     XbskewTan = np.dot(Xbskew, Tan)
 
                     # get velocity terms
-                    zetag_dot = tsaero.zeta_dot[ss][:, mm, nn] - Cga.dot(for_vel)  # in G FoR, w.r.t. origin A-G
+                    zetag_dot = tsaero.zeta_dot[ss][:, mm, nn] - Cga.dot(
+                        for_vel
+                    )  # in G FoR, w.r.t. origin A-G
                     zetaa_dot = np.dot(Cag, zetag_dot)  # in A FoR, w.r.t. origin A-G
 
                     # get aero force
@@ -727,24 +844,28 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
                     # # ### w.r.t. quaternion (attitude changes)
                     if use_euler:
-                        Kdisp_vel[np.ix_(ii_vert, jj_euler)] += \
-                            algebra.der_Ceuler_by_v(tsstr.euler, zetaa)
+                        Kdisp_vel[np.ix_(ii_vert, jj_euler)] += algebra.der_Ceuler_by_v(
+                            tsstr.euler, zetaa
+                        )
 
                         # Track body - project inputs as for A not moving
                         if track_body:
-                            Kdisp_vel[np.ix_(ii_vert, jj_euler)] += \
-                                Cga.dot(algebra.der_Peuler_by_v(tsstr.euler, zetag))
+                            Kdisp_vel[np.ix_(ii_vert, jj_euler)] += Cga.dot(
+                                algebra.der_Peuler_by_v(tsstr.euler, zetag)
+                            )
                     else:
                         # Equation 25
                         # Kdisp[np.ix_(ii_vert, jj_quat)] += \
                         #     algebra.der_Cquat_by_v(tsstr.quat, zetaa)
-                        Kdisp_vel[np.ix_(ii_vert, jj_quat)] += \
-                            algebra.der_Cquat_by_v(tsstr.quat, zetaa)
+                        Kdisp_vel[np.ix_(ii_vert, jj_quat)] += algebra.der_Cquat_by_v(
+                            tsstr.quat, zetaa
+                        )
 
                         # Track body - project inputs as for A not moving
                         if track_body:
-                            Kdisp_vel[np.ix_(ii_vert, jj_quat)] += \
-                                Cga.dot(algebra.der_CquatT_by_v(tsstr.quat, zetag))
+                            Kdisp_vel[np.ix_(ii_vert, jj_quat)] += Cga.dot(
+                                algebra.der_CquatT_by_v(tsstr.quat, zetag)
+                            )
 
                     ### ------------------------------------ allocate Kvel_disp
 
@@ -753,41 +874,45 @@ class LinearAeroelastic(ss_interface.BaseElement):
                         Kvel_disp[np.ix_(ii_vert, jj_tra)] += Der_vel_Ra
 
                         # wrt psi (at zero psi_dot)
-                        Kvel_disp[np.ix_(ii_vert, jj_rot)] -= \
-                            np.dot(Cga,
-                                   np.dot(skew_for_rot,
-                                          np.dot(Cab, XbskewTan)))
+                        Kvel_disp[np.ix_(ii_vert, jj_rot)] -= np.dot(
+                            Cga, np.dot(skew_for_rot, np.dot(Cab, XbskewTan))
+                        )
 
                         # # wrt psi (psi_dot contributions - verified)
-                        Kvel_disp[np.ix_(ii_vert, jj_rot)] += np.dot(Cbg.T, np.dot(
-                            algebra.skew(np.dot(XbskewTan, psi_dot)), Tan))
+                        Kvel_disp[np.ix_(ii_vert, jj_rot)] += np.dot(
+                            Cbg.T, np.dot(algebra.skew(np.dot(XbskewTan, psi_dot)), Tan)
+                        )
 
                         if np.linalg.norm(psi) >= 1e-6:
-                            Kvel_disp[np.ix_(ii_vert, jj_rot)] -= \
-                                np.dot(Cbg.T,
-                                       np.dot(Xbskew,
-                                              algebra.der_Tan_by_xv(psi, psi_dot)))
+                            Kvel_disp[np.ix_(ii_vert, jj_rot)] -= np.dot(
+                                Cbg.T,
+                                np.dot(Xbskew, algebra.der_Tan_by_xv(psi, psi_dot)),
+                            )
 
                     # # w.r.t. position of FoR A (w.r.t. origin G)
                     # # null as A and G have always same origin in SHARPy
 
                     # # ### w.r.t. quaternion (attitude changes) - Eq 30
                     if use_euler:
-                        Kvel_vel[np.ix_(ii_vert, jj_euler)] += \
-                            algebra.der_Ceuler_by_v(tsstr.euler, zetaa_dot)
+                        Kvel_vel[np.ix_(ii_vert, jj_euler)] += algebra.der_Ceuler_by_v(
+                            tsstr.euler, zetaa_dot
+                        )
 
                         # Track body if ForA is rotating
                         if track_body:
-                            Kvel_vel[np.ix_(ii_vert, jj_euler)] += \
-                                Cga.dot(algebra.der_Peuler_by_v(tsstr.euler, zetag_dot))
+                            Kvel_vel[np.ix_(ii_vert, jj_euler)] += Cga.dot(
+                                algebra.der_Peuler_by_v(tsstr.euler, zetag_dot)
+                            )
                     else:
-                        Kvel_vel[np.ix_(ii_vert, jj_quat)] += \
-                            algebra.der_Cquat_by_v(tsstr.quat, zetaa_dot)
+                        Kvel_vel[np.ix_(ii_vert, jj_quat)] += algebra.der_Cquat_by_v(
+                            tsstr.quat, zetaa_dot
+                        )
 
                         # Track body if ForA is rotating
                         if track_body:
-                            Kvel_vel[np.ix_(ii_vert, jj_quat)] += \
-                                Cga.dot(algebra.der_CquatT_by_v(tsstr.quat, zetag_dot))
+                            Kvel_vel[np.ix_(ii_vert, jj_quat)] += Cga.dot(
+                                algebra.der_CquatT_by_v(tsstr.quat, zetag_dot)
+                            )
 
                     ### ------------------------------------- allocate Kvel_vel
 
@@ -800,8 +925,9 @@ class LinearAeroelastic(ss_interface.BaseElement):
 
                     # # wrt velocity of FoR A
                     Kvel_vel[np.ix_(ii_vert, jj_for_tra)] += Cga
-                    Kvel_vel[np.ix_(ii_vert, jj_for_rot)] -= \
-                        np.dot(Cga, algebra.skew(zetaa))
+                    Kvel_vel[np.ix_(ii_vert, jj_for_rot)] -= np.dot(
+                        Cga, algebra.skew(zetaa)
+                    )
 
                     # wrt rate of change of quaternion: not implemented!
 
@@ -812,16 +938,18 @@ class LinearAeroelastic(ss_interface.BaseElement):
                         Kforces[np.ix_(jj_tra, ii_vert)] += Cag
 
                         # nodal moments
-                        Kforces[np.ix_(jj_rot, ii_vert)] += \
-                            np.dot(Tan.T, np.dot(Cbg, algebra.skew(Xg)))
+                        Kforces[np.ix_(jj_rot, ii_vert)] += np.dot(
+                            Tan.T, np.dot(Cbg, algebra.skew(Xg))
+                        )
                     # or, equivalently, np.dot( algebra.skew(Xb),Cbg)
 
                     # total forces
                     Kforces[np.ix_(jj_for_tra, ii_vert)] += Cag
 
                     # total moments
-                    Kforces[np.ix_(jj_for_rot, ii_vert)] += \
-                        np.dot(Cag, algebra.skew(zetag))
+                    Kforces[np.ix_(jj_for_rot, ii_vert)] += np.dot(
+                        Cag, algebra.skew(zetag)
+                    )
 
                     # quaternion equation
                     # null, as not dep. on external forces
@@ -833,12 +961,16 @@ class LinearAeroelastic(ss_interface.BaseElement):
                         # nodal forces
                         if use_euler:
                             if not track_body:
-                                Csr[jj_tra, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, faero)
+                                Csr[jj_tra, -3:] -= algebra.der_Peuler_by_v(
+                                    tsstr.euler, faero
+                                )
                                 # Csr[jj_tra, -3:] -= algebra.der_Ceuler_by_v(tsstr.euler, Cga.T.dot(faero))
 
                         else:
                             if not track_body:
-                                Csr[jj_tra, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
+                                Csr[jj_tra, -4:] -= algebra.der_CquatT_by_v(
+                                    tsstr.quat, faero
+                                )
 
                             # Track body
                             # if track_body:
@@ -847,17 +979,22 @@ class LinearAeroelastic(ss_interface.BaseElement):
                         ### moments
                         TanTXbskew = np.dot(Tan.T, Xbskew)
                         # contrib. of TanT (dpsi) - Eq 37 - Integration of UVLM and GEBM
-                        Kss[np.ix_(jj_rot, jj_rot)] -= algebra.der_TanT_by_xv(psi, maero_b)
+                        Kss[np.ix_(jj_rot, jj_rot)] -= algebra.der_TanT_by_xv(
+                            psi, maero_b
+                        )
                         # contrib of delta aero moment (dpsi) - Eq 36
-                        Kss[np.ix_(jj_rot, jj_rot)] -= \
-                            np.dot(TanTXbskew, algebra.der_CcrvT_by_v(psi, np.dot(Cag, faero)))
+                        Kss[np.ix_(jj_rot, jj_rot)] -= np.dot(
+                            TanTXbskew, algebra.der_CcrvT_by_v(psi, np.dot(Cag, faero))
+                        )
                         # contribution of delta aero moment (dquat)
                         if use_euler:
                             if not track_body:
-                                Csr[jj_rot, -3:] -= \
-                                    np.dot(TanTXbskew,
-                                           np.dot(Cba,
-                                                  algebra.der_Peuler_by_v(tsstr.euler, faero)))
+                                Csr[jj_rot, -3:] -= np.dot(
+                                    TanTXbskew,
+                                    np.dot(
+                                        Cba, algebra.der_Peuler_by_v(tsstr.euler, faero)
+                                    ),
+                                )
 
                             # if track_body:
                             #     Csr[jj_rot, -3:] -= \
@@ -866,10 +1003,12 @@ class LinearAeroelastic(ss_interface.BaseElement):
                             #                       algebra.der_Peuler_by_v(tsstr.euler, Cga.T.dot(faero))))
                         else:
                             if not track_body:
-                                Csr[jj_rot, -4:] -= \
-                                    np.dot(TanTXbskew,
-                                           np.dot(Cba,
-                                                  algebra.der_CquatT_by_v(tsstr.quat, faero)))
+                                Csr[jj_rot, -4:] -= np.dot(
+                                    TanTXbskew,
+                                    np.dot(
+                                        Cba, algebra.der_CquatT_by_v(tsstr.quat, faero)
+                                    ),
+                                )
 
                             # Track body
                             # if track_body:
@@ -885,8 +1024,9 @@ class LinearAeroelastic(ss_interface.BaseElement):
                         # moments contribution due to delta_Ra (+ sign intentional)
                         Krs[3:6, jj_tra] += algebra.skew(faero_a)
                         # moment contribution due to delta_psi (+ sign intentional)
-                        Krs[3:6, jj_rot] += np.dot(algebra.skew(faero_a),
-                                                   algebra.der_Ccrv_by_v(psi, Xb))
+                        Krs[3:6, jj_rot] += np.dot(
+                            algebra.skew(faero_a), algebra.der_Ccrv_by_v(psi, Xb)
+                        )
 
                     if use_euler:
                         if not track_body:
@@ -894,10 +1034,13 @@ class LinearAeroelastic(ss_interface.BaseElement):
                             Crr[:3, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, faero)
 
                             # total moment contribution due to change in euler angles
-                            Crr[3:6, -3:] -= algebra.der_Peuler_by_v(tsstr.euler, np.cross(zetag, faero))
+                            Crr[3:6, -3:] -= algebra.der_Peuler_by_v(
+                                tsstr.euler, np.cross(zetag, faero)
+                            )
                             Crr[3:6, -3:] += np.dot(
                                 np.dot(Cag, algebra.skew(faero)),
-                                algebra.der_Peuler_by_v(tsstr.euler, np.dot(Cab, Xb)))
+                                algebra.der_Peuler_by_v(tsstr.euler, np.dot(Cab, Xb)),
+                            )
 
                     else:
                         if not track_body:
@@ -905,10 +1048,13 @@ class LinearAeroelastic(ss_interface.BaseElement):
                             Crr[:3, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, faero)
 
                             # total moment contribution due to quaternion
-                            Crr[3:6, -4:] -= algebra.der_CquatT_by_v(tsstr.quat, np.cross(zetag, faero))
+                            Crr[3:6, -4:] -= algebra.der_CquatT_by_v(
+                                tsstr.quat, np.cross(zetag, faero)
+                            )
                             Crr[3:6, -4:] += np.dot(
                                 np.dot(Cag, algebra.skew(faero)),
-                                algebra.der_CquatT_by_v(tsstr.quat, np.dot(Cab, Xb)))
+                                algebra.der_CquatT_by_v(tsstr.quat, np.dot(Cab, Xb)),
+                            )
 
                         # # Track body
                         # if track_body:
@@ -917,7 +1063,6 @@ class LinearAeroelastic(ss_interface.BaseElement):
                         #
                         #     Crr[3:6, -4:] -= Cag.dot(algebra.skew(zetag).dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(faero))))
                         #     Crr[3:6, -4:] += Cag.dot(algebra.skew(faero)).dot(algebra.der_Cquat_by_v(tsstr.quat, Cga.T.dot(zetag)))
-
 
         # transfer
         self.Kdisp = Kdisp
@@ -941,58 +1086,98 @@ class LinearAeroelastic(ss_interface.BaseElement):
         is_modal = self.beam.sys.modal
 
         if is_modal:
-            beam_kin = self.beam.sys.Kin    # N to Q
+            beam_kin = self.beam.sys.Kin  # N to Q
             beam_kout = self.beam.sys.Kout  # q to eta
 
-            aug_in_gain = sclalg.block_diag(self.couplings['in_mode_gain'].value.T, beam_kin.value)
-            input_gain = libss.Gain(aug_in_gain,
-                                    input_vars=LinearVector.merge(
-                                        LinearVector.transform(
-                                            self.couplings['in_mode_gain'].output_variables, to_type=InputVariable),
-                                        beam_kin.input_variables),
-                                    output_vars=LinearVector.merge(
-                                        LinearVector.transform(
-                                            self.couplings['in_mode_gain'].input_variables, to_type=OutputVariable),
-                                        beam_kin.output_variables)
-                                    )
+            aug_in_gain = sclalg.block_diag(
+                self.couplings["in_mode_gain"].value.T, beam_kin.value
+            )
+            input_gain = libss.Gain(
+                aug_in_gain,
+                input_vars=LinearVector.merge(
+                    LinearVector.transform(
+                        self.couplings["in_mode_gain"].output_variables,
+                        to_type=InputVariable,
+                    ),
+                    beam_kin.input_variables,
+                ),
+                output_vars=LinearVector.merge(
+                    LinearVector.transform(
+                        self.couplings["in_mode_gain"].input_variables,
+                        to_type=OutputVariable,
+                    ),
+                    beam_kin.output_variables,
+                ),
+            )
             try:
                 acceleration_gain = self.beam.sys.acceleration_modal_gain
             except AttributeError:
-                aug_out_gain = sclalg.block_diag(self.couplings['out_mode_gain'].value.T, beam_kout.value)
-                output_gain = libss.Gain(aug_out_gain,
-                                         input_vars=LinearVector.merge(
-                                             LinearVector.transform(
-                                                 self.couplings['out_mode_gain'].output_variables, to_type=InputVariable),
-                                             beam_kout.input_variables),
-                                         output_vars=LinearVector.merge(
-                                             LinearVector.transform(
-                                                 self.couplings['out_mode_gain'].input_variables, to_type=OutputVariable),
-                                             beam_kout.output_variables)
-                                         )
+                aug_out_gain = sclalg.block_diag(
+                    self.couplings["out_mode_gain"].value.T, beam_kout.value
+                )
+                output_gain = libss.Gain(
+                    aug_out_gain,
+                    input_vars=LinearVector.merge(
+                        LinearVector.transform(
+                            self.couplings["out_mode_gain"].output_variables,
+                            to_type=InputVariable,
+                        ),
+                        beam_kout.input_variables,
+                    ),
+                    output_vars=LinearVector.merge(
+                        LinearVector.transform(
+                            self.couplings["out_mode_gain"].input_variables,
+                            to_type=OutputVariable,
+                        ),
+                        beam_kout.output_variables,
+                    ),
+                )
             else:
-                aug_out_gain = sclalg.block_diag(self.couplings['out_mode_gain'].value.T, beam_kout.value,
-                                                 acceleration_gain.value)
-                output_gain = libss.Gain(aug_out_gain,
-                                         input_vars=LinearVector.merge(
-                                             LinearVector.transform(
-                                                 self.couplings['out_mode_gain'].output_variables, to_type=InputVariable),
-                                             LinearVector.merge(beam_kout.input_variables, acceleration_gain.input_variables),
-                                         ),
-                                         output_vars=LinearVector.merge(
-                                             LinearVector.transform(
-                                                 self.couplings['out_mode_gain'].input_variables, to_type=OutputVariable),
-                                             LinearVector.merge(beam_kout.output_variables, acceleration_gain.output_variables))
-                                         )
+                aug_out_gain = sclalg.block_diag(
+                    self.couplings["out_mode_gain"].value.T,
+                    beam_kout.value,
+                    acceleration_gain.value,
+                )
+                output_gain = libss.Gain(
+                    aug_out_gain,
+                    input_vars=LinearVector.merge(
+                        LinearVector.transform(
+                            self.couplings["out_mode_gain"].output_variables,
+                            to_type=InputVariable,
+                        ),
+                        LinearVector.merge(
+                            beam_kout.input_variables, acceleration_gain.input_variables
+                        ),
+                    ),
+                    output_vars=LinearVector.merge(
+                        LinearVector.transform(
+                            self.couplings["out_mode_gain"].input_variables,
+                            to_type=OutputVariable,
+                        ),
+                        LinearVector.merge(
+                            beam_kout.output_variables,
+                            acceleration_gain.output_variables,
+                        ),
+                    ),
+                )
 
-            self.ss.addGain(input_gain, where='in')
-            self.ss.addGain(output_gain, where='out')
+            self.ss.addGain(input_gain, where="in")
+            self.ss.addGain(output_gain, where="out")
 
     @staticmethod
     def load_uvlm(filename):
         import sharpy.utils.h5utils as h5
-        cout.cout_wrap('Loading UVLM state space system projected onto structural DOFs from file')
+
+        cout.cout_wrap(
+            "Loading UVLM state space system projected onto structural DOFs from file"
+        )
         read_data = h5.readh5(filename).ss
         # uvlm_ss_read = read_data.linear.linear_system.uvlm.ss
         uvlm_ss_read = read_data
-        return libss.StateSpace(uvlm_ss_read.A, uvlm_ss_read.B, uvlm_ss_read.C, uvlm_ss_read.D, dt=uvlm_ss_read.dt)
-
+        return libss.StateSpace(
+            uvlm_ss_read.A,
+            uvlm_ss_read.B,
+            uvlm_ss_read.C,
+            uvlm_ss_read.D,
+            dt=uvlm_ss_read.dt,
+        )

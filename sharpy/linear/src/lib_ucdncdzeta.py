@@ -11,10 +11,13 @@ import numpy as np
 import sharpy.utils.algebra as algebra
 
 dR_dZeta = np.array(
-    [[[[-1, 0, 0], [0, 0, 0]], [[0, -1, 0], [0, 0, 0]], [[0, 0, -1], [0, 0, 0]]],
-     [[[0, 0, 0], [-1, 0, 0]], [[0, 0, 0], [0, -1, 0]], [[0, 0, 0], [0, 0, -1]]],
-     [[[1, 0, 0], [0, 0, 0]], [[0, 1, 0], [0, 0, 0]], [[0, 0, 1], [0, 0, 0]]],
-     [[[0, 0, 0], [1, 0, 0]], [[0, 0, 0], [0, 1, 0]], [[0, 0, 0], [0, 0, 1]]]])
+    [
+        [[[-1, 0, 0], [0, 0, 0]], [[0, -1, 0], [0, 0, 0]], [[0, 0, -1], [0, 0, 0]]],
+        [[[0, 0, 0], [-1, 0, 0]], [[0, 0, 0], [0, -1, 0]], [[0, 0, 0], [0, 0, -1]]],
+        [[[1, 0, 0], [0, 0, 0]], [[0, 1, 0], [0, 0, 0]], [[0, 0, 1], [0, 0, 0]]],
+        [[[0, 0, 0], [1, 0, 0]], [[0, 0, 0], [0, 1, 0]], [[0, 0, 0], [0, 0, 1]]],
+    ]
+)
 
 
 def eval(Zeta00, Zeta01, Zeta02, Zeta03, Uc):
@@ -28,7 +31,7 @@ def eval(Zeta00, Zeta01, Zeta02, Zeta03, Uc):
 
     crR02R13 = algebra.cross3(R02, R13)
     norm_crR02R13 = np.linalg.norm(crR02R13)
-    cub_crR02R13 = norm_crR02R13 ** 3
+    cub_crR02R13 = norm_crR02R13**3
 
     Acr = algebra.cross3(crR02R13, R13)
     Bcr = algebra.cross3(crR02R13, R02)
@@ -45,12 +48,19 @@ def eval(Zeta00, Zeta01, Zeta02, Zeta03, Uc):
 
     # dUnorm_dR.shape=(2,3)
     dUnorm_dR = np.array(
-        [[Acr_x * Cdot / cub_crR02R13 + crR13Uc_x / norm_crR02R13,
-          Acr_y * Cdot / cub_crR02R13 + crR13Uc_y / norm_crR02R13,
-          Acr_z * Cdot / cub_crR02R13 + crR13Uc_z / norm_crR02R13],
-         [-Bcr_x * Cdot / cub_crR02R13 - crR02Uc_x / norm_crR02R13,
-          -Bcr_y * Cdot / cub_crR02R13 - crR02Uc_y / norm_crR02R13,
-          -Bcr_z * Cdot / cub_crR02R13 - crR02Uc_z / norm_crR02R13]])
+        [
+            [
+                Acr_x * Cdot / cub_crR02R13 + crR13Uc_x / norm_crR02R13,
+                Acr_y * Cdot / cub_crR02R13 + crR13Uc_y / norm_crR02R13,
+                Acr_z * Cdot / cub_crR02R13 + crR13Uc_z / norm_crR02R13,
+            ],
+            [
+                -Bcr_x * Cdot / cub_crR02R13 - crR02Uc_x / norm_crR02R13,
+                -Bcr_y * Cdot / cub_crR02R13 - crR02Uc_y / norm_crR02R13,
+                -Bcr_z * Cdot / cub_crR02R13 - crR02Uc_z / norm_crR02R13,
+            ],
+        ]
+    )
 
     # Allocate
     dUnorm_dZeta = np.zeros((4, 3))
@@ -58,14 +68,14 @@ def eval(Zeta00, Zeta01, Zeta02, Zeta03, Uc):
         for cc_zeta in range(3):  # loop panel vertices component
             for rr in range(2):  # loop segments R02, R13
                 for cc_rvec in range(3):  # loop segment component
-                    dUnorm_dZeta[vv, cc_zeta] += \
+                    dUnorm_dZeta[vv, cc_zeta] += (
                         dUnorm_dR[rr, cc_rvec] * dR_dZeta[vv, cc_zeta, rr, cc_rvec]
+                    )
 
     return dUnorm_dZeta
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     # calculate normal
     def get_panel_normal(zetav_here):
         """From Surface.AeroGridSurface"""
@@ -74,7 +84,6 @@ if __name__ == '__main__':
         nvec = np.cross(r02, r13)
         nvec = nvec / np.linalg.norm(nvec)
         return nvec
-
 
     # define panel vertices
     zeta00 = np.array([1.0, 0.2, 1.0])
@@ -104,4 +113,4 @@ if __name__ == '__main__':
             unorm_pert = np.dot(nvec_pert, ucoll)
             Dnum[ii, jj] = (unorm_pert - unorm0) / step
 
-    assert np.max(np.abs(dUnorm_dZeta - Dnum)) < step, 'Derivative not accurate!'
+    assert np.max(np.abs(dUnorm_dZeta - Dnum)) < step, "Derivative not accurate!"

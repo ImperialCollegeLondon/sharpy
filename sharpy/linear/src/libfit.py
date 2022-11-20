@@ -47,10 +47,10 @@ def rfa(cnum, cden, kv, ds=None):
 
     if ds == None:
         # continuous-time LTI system
-        zv = 1.j * kv
+        zv = 1.0j * kv
     else:
         # discrete-time LTI system
-        zv = np.exp(1.j * kv * ds)
+        zv = np.exp(1.0j * kv * ds)
 
     return np.polyval(cnum, zv) / np.polyval(cden, zv)
 
@@ -70,20 +70,20 @@ def rfader(cnum, cden, kv, m=1, ds=None):
 
     if ds == None:
         # continuous-time LTI system
-        zv = 1.j * kv
-        dzv = 1.j
-        raise NameError('Never tested for continuous systems!')
+        zv = 1.0j * kv
+        dzv = 1.0j
+        raise NameError("Never tested for continuous systems!")
     else:
         # discrete-time LTI system
-        zv = np.exp(1.j * kv * ds)
-        dzv = 1.j * ds * zv
+        zv = np.exp(1.0j * kv * ds)
+        dzv = 1.0j * ds * zv
 
     Nv = np.polyval(cnum, zv)
     Dv = np.polyval(cden, zv)
     dNv = np.polyval(np.polyder(cnum), zv)
     dDv = np.polyval(np.polyder(cden), zv)
 
-    return dzv * (dNv * Dv - Nv * dDv) / Dv ** 2
+    return dzv * (dNv * Dv - Nv * dDv) / Dv**2
 
 
 def fitfrd(kv, yv, N, dt=None, mag=0, eng=None):
@@ -97,7 +97,7 @@ def fitfrd(kv, yv, N, dt=None, mag=0, eng=None):
        dt (optional): sampling time for DLTI systems
     """
 
-    raise NameError('Please use fitfrd function in matwrapper module!')
+    raise NameError("Please use fitfrd function in matwrapper module!")
 
     return None
 
@@ -111,7 +111,7 @@ def get_rfa_res(xv, kv, Yv, Nnum, Nden, ds=None):
     where cnum and cden are as per the 'rfa' function.
     """
 
-    assert Nnum + Nden == len(xv), 'Nnum+Nden must be equal to len(xv)!'
+    assert Nnum + Nden == len(xv), "Nnum+Nden must be equal to len(xv)!"
     cnum = xv[:Nnum]
     cden = xv[Nnum:]
 
@@ -120,7 +120,7 @@ def get_rfa_res(xv, kv, Yv, Nnum, Nden, ds=None):
     return np.abs(Yfit - Yv)
 
 
-def get_rfa_res_norm(xv, kv, Yv, Nnum, Nden, ds=None, method='mix'):
+def get_rfa_res_norm(xv, kv, Yv, Nnum, Nden, ds=None, method="mix"):
     """
     Define residual scalar norm of Pade approximation of coefficients
     cnum=xv[:Nnum] and cden[Nnum:] (see get_rfa_res and rfa function) and
@@ -129,18 +129,29 @@ def get_rfa_res_norm(xv, kv, Yv, Nnum, Nden, ds=None, method='mix'):
 
     ErvAbs = get_rfa_res(xv, kv, Yv, Nnum, Nden, ds)
 
-    if method == 'H2':
-        res = np.sum(ErvAbs ** 2)
-    elif method == 'Hinf':
+    if method == "H2":
+        res = np.sum(ErvAbs**2)
+    elif method == "Hinf":
         res = np.max(ErvAbs)
-    elif method == 'mix':
-        res = np.sum(ErvAbs ** 2) + np.max(ErvAbs)
+    elif method == "mix":
+        res = np.sum(ErvAbs**2) + np.max(ErvAbs)
 
     return res
 
 
-def rfa_fit_dev(kv, Yv, Nnum, Nden, TolAbs, ds=None, Stability=True,
-                NtrialMax=10, Cfbound=1e2, OutFull=False, Print=False):
+def rfa_fit_dev(
+    kv,
+    Yv,
+    Nnum,
+    Nden,
+    TolAbs,
+    ds=None,
+    Stability=True,
+    NtrialMax=10,
+    Cfbound=1e2,
+    OutFull=False,
+    Print=False,
+):
     """
     Find best fitting RFA approximation from frequency response Yv over the
     frequency range kv for both continuous (ds=None) and discrete (ds>0) LTI
@@ -188,45 +199,82 @@ def rfa_fit_dev(kv, Yv, Nnum, Nden, TolAbs, ds=None, Stability=True,
         eigmax = np.max(np.abs(eigs))
 
         eiglim = 0.999
-        pen = 0.
+        pen = 0.0
         Fact = 1e3 * TolAbs / np.log(2)
         if eigmax > eiglim:
-            pen = Fact * np.log((eigmax + 1. - 2. * eiglim) / (1. - eiglim))
+            pen = Fact * np.log((eigmax + 1.0 - 2.0 * eiglim) / (1.0 - eiglim))
         else:
-            pen = 0.
+            pen = 0.0
         return pen
 
     if Stability:
+
         def fcost_dev(xv, kv, Yv, Nnum, Nden, ds, method):
             """
             xv is a vector such that the coeff:
             cnum=xv[:Nnum]
             cden=xv[Nnum:]
             """
-            xvpass = np.concatenate((xv, np.array([1, ])))
+            xvpass = np.concatenate(
+                (
+                    xv,
+                    np.array(
+                        [
+                            1,
+                        ]
+                    ),
+                )
+            )
             error_fit = get_rfa_res_norm(xvpass, kv, Yv, Nnum, Nden, ds, method)
             pen_stab = pen_max_eig(xvpass[Nnum:])
             return error_fit + pen_stab
 
         def fcost_lsq(xv, kv, Yv, Nnum, Nden, ds):
-
-            xvpass = np.concatenate((xv, np.array([1, ])))
+            xvpass = np.concatenate(
+                (
+                    xv,
+                    np.array(
+                        [
+                            1,
+                        ]
+                    ),
+                )
+            )
             res_fit = get_rfa_res(xvpass, kv, Yv, Nnum, Nden, ds)
             pen_stab = pen_max_eig(xvpass[Nnum:])
             return res_fit + pen_stab
 
     else:
+
         def fcost_dev(xv, kv, Yv, Nnum, Nden, ds, method):
             """
             xv is a vector such that the coeff:
             cnum=xv[:Nnum]
             cden=xv[Nnum:]
             """
-            xvpass = np.concatenate((xv, np.array([1, ])))
+            xvpass = np.concatenate(
+                (
+                    xv,
+                    np.array(
+                        [
+                            1,
+                        ]
+                    ),
+                )
+            )
             return get_rfa_res_norm(xvpass, kv, Yv, Nnum, Nden, ds, method)
 
         def fcost_lsq(xv, kv, Yv, Nnum, Nden, ds):
-            xvpass = np.concatenate((xv, np.array([1, ])))
+            xvpass = np.concatenate(
+                (
+                    xv,
+                    np.array(
+                        [
+                            1,
+                        ]
+                    ),
+                )
+            )
             return get_rfa_res(xvpass, kv, Yv, Nnum, Nden, ds)
 
     Nx = Nnum + Nden - 1
@@ -244,12 +292,13 @@ def rfa_fit_dev(kv, Yv, Nnum, Nden, TolAbs, ds=None, Stability=True,
 
         ###  Evolutionary algorithm
         res = scopt.differential_evolution(  # popsize=100,
-            strategy='best1bin',
+            strategy="best1bin",
             func=fcost_dev,
-            args=(kv, Yv, Nnum, Nden, ds, 'Hinf'),
-            bounds=Nx * ((-Cfbound, Cfbound),))
+            args=(kv, Yv, Nnum, Nden, ds, "Hinf"),
+            bounds=Nx * ((-Cfbound, Cfbound),),
+        )
         xvdev = res.x
-        cost_dev = fcost_dev(xvdev, kv, Yv, Nnum, Nden, ds, 'Hinf')
+        cost_dev = fcost_dev(xvdev, kv, Yv, Nnum, Nden, ds, "Hinf")
 
         # is this the best solution?
         if cost_dev < cost_best:
@@ -265,7 +314,7 @@ def rfa_fit_dev(kv, Yv, Nnum, Nden, TolAbs, ds=None, Stability=True,
         #  method only local, but do not move to the end of global search: best
         # results can be found even when starting from a "worse" solution
         xvlsq = scopt.leastsq(fcost_lsq, x0=xvdev, args=(kv, Yv, Nnum, Nden, ds))[0]
-        cost_lsq = fcost_dev(xvlsq, kv, Yv, Nnum, Nden, ds, 'Hinf')
+        cost_lsq = fcost_dev(xvlsq, kv, Yv, Nnum, Nden, ds, "Hinf")
 
         # is this the best solution?
         if cost_lsq < cost_best:
@@ -279,17 +328,19 @@ def rfa_fit_dev(kv, Yv, Nnum, Nden, TolAbs, ds=None, Stability=True,
 
         ### Print and move on
         if Print:
-            print('Trial %.2d: cost dev: %.3e, cost lsq: %.3e' \
-                  % (tt, cost_dev, cost_lsq))
+            print(
+                "Trial %.2d: cost dev: %.3e, cost lsq: %.3e" % (tt, cost_dev, cost_lsq)
+            )
 
     if cost_best > TolAbs:
         warnings.warn(
-            'RFA error (%.2e) greater than specified tolerance (%.2e)!' \
-            % (cost_best, TolAbs))
+            "RFA error (%.2e) greater than specified tolerance (%.2e)!"
+            % (cost_best, TolAbs)
+        )
 
     ### add 1 to denominator
     cnopt = xvopt[:Nnum]
-    cdopt = np.hstack([xvopt[Nnum:], 1.])
+    cdopt = np.hstack([xvopt[Nnum:], 1.0])
     # if np.abs(cdopt[-1])>1e-2:
     # 	cdscale=cdopt[-1]
     # else:
@@ -310,7 +361,7 @@ def rfa_fit_dev(kv, Yv, Nnum, Nden, TolAbs, ds=None, Stability=True,
     return Outputs
 
 
-def poly_fit(kv, Yv, dyv, ddyv, method='leastsq', Bup=None):
+def poly_fit(kv, Yv, dyv, ddyv, method="leastsq", Bup=None):
     """
     Find best II order fitting polynomial from frequency response Yv over the
     frequency range kv for both continuous (ds=None) and discrete (ds>0) LTI
@@ -328,7 +379,7 @@ def poly_fit(kv, Yv, dyv, ddyv, method='leastsq', Bup=None):
     - this function attributes equal weight to each data-point!
     """
 
-    if method == 'leastsq':
+    if method == "leastsq":
         # pointwise residual
         def funRes(bv, kv, Yv, dyv, ddyv):
             B0, B1, B2 = bv
@@ -336,14 +387,14 @@ def poly_fit(kv, Yv, dyv, ddyv, method='leastsq', Bup=None):
             return np.concatenate((rv.real, rv.imag))
 
         # solve
-        bvopt, cost = scopt.leastsq(funRes, x0=[0., 0., 0.], args=(kv, Yv, dyv, ddyv))
+        bvopt, cost = scopt.leastsq(
+            funRes, x0=[0.0, 0.0, 0.0], args=(kv, Yv, dyv, ddyv)
+        )
 
-
-    elif method == 'dev':
+    elif method == "dev":
         # use genetic algorithm with objective a sum of H2 and Hinf norms of
         # residual
         def funRes(bv, kv, Yv, dyv, ddyv):
-
             B0, B1, B2 = bv
             rv = fpoly(kv, B0, B1, B2, dyv, ddyv) - Yv
 
@@ -357,18 +408,34 @@ def poly_fit(kv, Yv, dyv, ddyv, method='leastsq', Bup=None):
         if Bup is None:
             Bounds = 3 * ((-Bup, Bup),)
         else:
-            assert len(Bup) == 3, 'Bup must be a length 3 list/array'
-            Bounds = ((-Bup[0], Bup[0]), (-Bup[1], Bup[1]), (-Bup[2], Bup[2]),)
+            assert len(Bup) == 3, "Bup must be a length 3 list/array"
+            Bounds = (
+                (-Bup[0], Bup[0]),
+                (-Bup[1], Bup[1]),
+                (-Bup[2], Bup[2]),
+            )
 
         res = scopt.differential_evolution(
-            func=funRes, args=(kv, Yv, dyv, ddyv), strategy='best1bin', bounds=Bounds)
+            func=funRes, args=(kv, Yv, dyv, ddyv), strategy="best1bin", bounds=Bounds
+        )
         bvopt = res.x
         cost = funRes(bvopt, kv, Yv, dyv, ddyv)
 
     return bvopt, cost
 
 
-def rfa_mimo(Yfull, kv, ds, tolAbs, Nnum, Nden, Dmatrix=None, NtrialMax=6, Ncpu=4, method='independent'):
+def rfa_mimo(
+    Yfull,
+    kv,
+    ds,
+    tolAbs,
+    Nnum,
+    Nden,
+    Dmatrix=None,
+    NtrialMax=6,
+    Ncpu=4,
+    method="independent",
+):
     """
     Given the frequency response of a MIMO DLTI system, this function returns
     the A,B,C,D matrices associated to the rational function approximation of
@@ -389,7 +456,9 @@ def rfa_mimo(Yfull, kv, ds, tolAbs, Nnum, Nden, Dmatrix=None, NtrialMax=6, Ncpu=
     """
 
     Nout, Nin, Nk = Yfull.shape
-    assert Nk == len(kv), 'Frequency response Yfull not compatible with frequency range kv'
+    assert Nk == len(
+        kv
+    ), "Frequency response Yfull not compatible with frequency range kv"
 
     iivec = range(Nin)
     oovec = range(Nout)
@@ -398,13 +467,30 @@ def rfa_mimo(Yfull, kv, ds, tolAbs, Nnum, Nden, Dmatrix=None, NtrialMax=6, Ncpu=
     args_const = (Nnum, Nden, tolAbs, ds, True, NtrialMax, 1e2, False, False)
 
     with mpr.Pool(Ncpu) as pool:
-
         if Dmatrix is None:
-            P = [pool.apply_async(rfa_fit_dev,
-                                  args=(kv, Yfull[oo, ii, :],) + args_const) for oo, ii in plist]
+            P = [
+                pool.apply_async(
+                    rfa_fit_dev,
+                    args=(
+                        kv,
+                        Yfull[oo, ii, :],
+                    )
+                    + args_const,
+                )
+                for oo, ii in plist
+            ]
         else:
-            P = [pool.apply_async(rfa_fit_dev,
-                                  args=(kv, Yfull[oo, ii, :] - Dmatrix[oo, ii],) + args_const) for oo, ii in plist]
+            P = [
+                pool.apply_async(
+                    rfa_fit_dev,
+                    args=(
+                        kv,
+                        Yfull[oo, ii, :] - Dmatrix[oo, ii],
+                    )
+                    + args_const,
+                )
+                for oo, ii in plist
+            ]
         R = [pp.get() for pp in P]
 
     Asub = []

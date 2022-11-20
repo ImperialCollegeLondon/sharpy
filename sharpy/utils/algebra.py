@@ -14,23 +14,26 @@ from warnings import warn
 #######
 # functions for back compatibility
 def quat2rot(quat):
-    warn('quat2rot(quat) is obsolete! Use quat2rotation(quat).T instead!', stacklevel=2)
+    warn("quat2rot(quat) is obsolete! Use quat2rotation(quat).T instead!", stacklevel=2)
     return quat2rotation(quat).T
 
 
 def crv2rot(psi):
-    warn('crv2rot(psi) is obsolete! Use crv2rotation(psi) instead!', stacklevel=2)
+    warn("crv2rot(psi) is obsolete! Use crv2rotation(psi) instead!", stacklevel=2)
     return crv2rotation(psi)
 
 
 def rot2crv(rot):
-    warn('rot2crv(rot) is obsolete! Use rotation2crv(rot.T) instead!', stacklevel=2)
+    warn("rot2crv(rot) is obsolete! Use rotation2crv(rot.T) instead!", stacklevel=2)
     return rotation2crv(rot.T)
 
 
-def triad2rot(xb,yb,zb):
-    warn('triad2rot(xb,yb,zb) is obsolete! Use triad2rotation(xb,yb,zb).T instead!', stacklevel=2)
-    return triad2rotation(xb,yb,zb).T
+def triad2rot(xb, yb, zb):
+    warn(
+        "triad2rot(xb,yb,zb) is obsolete! Use triad2rotation(xb,yb,zb).T instead!",
+        stacklevel=2,
+    )
+    return triad2rotation(xb, yb, zb).T
 
 
 def mat2quat(rot):
@@ -46,9 +49,11 @@ def mat2quat(rot):
     Returns:
         np.array: equivalent quaternion
     """
-    warn('mat2quat(rot) is obsolete! Use rotation2quat(rot.T) instead!', stacklevel=2)
+    warn("mat2quat(rot) is obsolete! Use rotation2quat(rot.T) instead!", stacklevel=2)
 
     return rotation2quat(rot.T)
+
+
 #######
 
 
@@ -90,7 +95,9 @@ def tangent_vector(in_coord, ordering=None):
         elif n_nodes == 3:
             ordering = [0, 2, 1]
         else:
-            raise NotImplementedError('Elements with more than 3 nodes are not supported')
+            raise NotImplementedError(
+                "Elements with more than 3 nodes are not supported"
+            )
 
     polyfit_vec, polyfit_der_vec, coord = get_polyfit(in_coord, ordering)
 
@@ -116,7 +123,7 @@ def tangent_vector(in_coord, ordering=None):
             # use previous vector
             fake_tangent[inode, :] = fake_tangent[inode - 1, :]
             continue
-        fake_tangent[inode, :] = coord[inode+1, :] - coord[inode, :]
+        fake_tangent[inode, :] = coord[inode + 1, :] - coord[inode, :]
 
     for inode in range(n_nodes):
         if np.dot(tangent[inode, :], fake_tangent[inode, :]) < 0:
@@ -137,8 +144,9 @@ def get_polyfit(in_coord, ordering):
     # we are going to differentiate wrt the indices ([0, 1, 2] for a 3-node)
     polyfit_vec = []  # we are going to store here the coefficients of the polyfit
     for idim in range(ndim):
-        polyfit_vec.append(np.polyfit(range(n_nodes), coord[:, idim],
-                                      polynomial_degree))
+        polyfit_vec.append(
+            np.polyfit(range(n_nodes), coord[:, idim], polynomial_degree)
+        )
 
     # differentiation
     polyfit_der_vec = []
@@ -163,14 +171,14 @@ def unit_vector(vector):
     """
     if np.linalg.norm(vector) < 1e-6:
         return np.zeros_like(vector)
-    return vector/np.linalg.norm(vector)
+    return vector / np.linalg.norm(vector)
 
 
 def rotation_matrix_around_axis(axis, angle):
     axis = unit_vector(axis)
-    rot = np.cos(angle)*np.eye(3)
-    rot += np.sin(angle)*skew(axis)
-    rot += (1 - np.cos(angle))*np.outer(axis, axis)
+    rot = np.cos(angle) * np.eye(3)
+    rot += np.sin(angle) * skew(axis)
+    rot += (1 - np.cos(angle)) * np.outer(axis, axis)
     return rot
 
 
@@ -195,7 +203,7 @@ def skew(vector):
 
     """
     if not vector.size == 3:
-        raise ValueError('The input vector is not 3D')
+        raise ValueError("The input vector is not 3D")
 
     matrix = np.zeros((3, 3))
     matrix[1, 2] = -vector[0]
@@ -226,12 +234,12 @@ def quadskew(vector):
         np.array: matrix
     """
     if not vector.size == 3:
-        raise ValueError('The input vector is not 3D')
+        raise ValueError("The input vector is not 3D")
 
     matrix = np.zeros((4, 4))
-    matrix[0,1:4] = vector
-    matrix[1:4,0] = -vector
-    matrix[1:4,1:4] = skew(vector)
+    matrix[0, 1:4] = vector
+    matrix[1:4, 0] = -vector
+    matrix[1:4, 1:4] = skew(vector)
     return matrix
 
 
@@ -265,15 +273,18 @@ def angle_between_vectors_sign(vec_a, vec_b, plane_normal=np.array([0, 0, 1])):
 
 
 def angle_between_vector_and_plane(vector, plane_normal):
-    angle = np.arcsin((np.linalg.norm(np.dot(vector, plane_normal)))/
-                      (np.linalg.norm(vector)*np.linalg.norm(plane_normal)))
+    angle = np.arcsin(
+        (np.linalg.norm(np.dot(vector, plane_normal)))
+        / (np.linalg.norm(vector) * np.linalg.norm(plane_normal))
+    )
     return angle
+
 
 def panel_area(A, B, C, D):
     """
-    Calculates the area of a quadrilateral panel from the corner 
+    Calculates the area of a quadrilateral panel from the corner
     points A,B,C, and D using Bertschneider's formula
-    
+
     Args:
         A (np.ndarray): Coordinates of point 1
         B (np.ndarray): Coordinates of point 2
@@ -282,17 +293,21 @@ def panel_area(A, B, C, D):
 
     Returns:
         float: Area of quadrilateral panel
-    """      
-    Theta_1 = angle_between_vectors(A-B, A-D)
-    Theta_2 = angle_between_vectors(B-C, B-D)
-    a = np.linalg.norm(D-A)
-    b = np.linalg.norm(A-B)
-    c = np.linalg.norm(B-C)
-    d = np.linalg.norm(C-D)
-    s = (a+b+c+d)/2
-    area = np.sqrt((s-a)*(s-b)*(s-c)*(s-d)-a*b*c*d*np.cos(0.5*(Theta_1+Theta_2))**2)
+    """
+    Theta_1 = angle_between_vectors(A - B, A - D)
+    Theta_2 = angle_between_vectors(B - C, B - D)
+    a = np.linalg.norm(D - A)
+    b = np.linalg.norm(A - B)
+    c = np.linalg.norm(B - C)
+    d = np.linalg.norm(C - D)
+    s = (a + b + c + d) / 2
+    area = np.sqrt(
+        (s - a) * (s - b) * (s - c) * (s - d)
+        - a * b * c * d * np.cos(0.5 * (Theta_1 + Theta_2)) ** 2
+    )
     return area
-    
+
+
 # def mat2quat(mat):
 #     matT = mat.T
 
@@ -386,11 +401,11 @@ def rotation2quat(Cab):
 
     # compute quaternion angles
     quat = np.zeros((4,))
-    quat[ismax] = 0.5*np.sqrt(smax)
+    quat[ismax] = 0.5 * np.sqrt(smax)
     for i in range(4):
         if i == ismax:
             continue
-        quat[i] = 0.25*s[ismax, i]/quat[ismax]
+        quat[i] = 0.25 * s[ismax, i] / quat[ismax]
 
     return quat_bound(quat)
 
@@ -419,25 +434,29 @@ def quat_bound(quat):
 
     """
     if quat[0] < 0:
-        quat *= -1.
+        quat *= -1.0
     return quat
 
 
 def matrix2skewvec(matrix):
-    vector = np.array([matrix[2, 1] - matrix[1, 2],
-                       matrix[0, 2] - matrix[2, 0],
-                       matrix[1, 0] - matrix[0, 1]])
+    vector = np.array(
+        [
+            matrix[2, 1] - matrix[1, 2],
+            matrix[0, 2] - matrix[2, 0],
+            matrix[1, 0] - matrix[0, 1],
+        ]
+    )
     return vector
 
 
 def quat2crv(quat):
-    crv_norm = 2.0*np.arccos(max(-1.0, min(quat[0], 1.0)))
+    crv_norm = 2.0 * np.arccos(max(-1.0, min(quat[0], 1.0)))
 
     # normal vector
     if abs(crv_norm) < 1e-15:
         psi = np.zeros((3,))
     else:
-        psi = crv_norm*quat[1:4]/np.sin(crv_norm*0.5)
+        psi = crv_norm * quat[1:4] / np.sin(crv_norm * 0.5)
 
     return psi
 
@@ -476,8 +495,8 @@ def crv2quat(psi):
         nv = psi_new
 
     quat = np.zeros((4,))
-    quat[0] = np.cos(.5 * fi)
-    quat[1:] = np.sin(.5 * fi) * nv
+    quat[0] = np.cos(0.5 * fi)
+    quat[1:] = np.sin(0.5 * fi) * nv
 
     return quat
 
@@ -501,16 +520,16 @@ def crv_bounds(crv_ini):
     norm_ini = np.linalg.norm(crv_ini)
 
     # force the norm to be in [-pi, pi]
-    norm = norm_ini - 2.0*np.pi*int(norm_ini/(2*np.pi))
+    norm = norm_ini - 2.0 * np.pi * int(norm_ini / (2 * np.pi))
 
     if norm == 0.0:
         crv *= 0.0
     else:
         if norm > np.pi:
-            norm -= 2.0*np.pi
+            norm -= 2.0 * np.pi
         elif norm < -np.pi:
-            norm += 2.0*np.pi
-        crv *= (norm/norm_ini)
+            norm += 2.0 * np.pi
+        crv *= norm / norm_ini
 
     return crv
     # return crv_ini
@@ -556,14 +575,14 @@ def crv2rotation(psi):
 
     if norm_psi < 1e-15:
         skew_psi = skew(psi)
-        rot_matrix = np.eye(3) + skew_psi + 0.5*np.dot(skew_psi, skew_psi)
+        rot_matrix = np.eye(3) + skew_psi + 0.5 * np.dot(skew_psi, skew_psi)
     else:
-        normal = psi/norm_psi
+        normal = psi / norm_psi
         skew_normal = skew(normal)
 
         rot_matrix = np.eye(3)
-        rot_matrix += np.sin(norm_psi)*skew_normal
-        rot_matrix += (1.0 - np.cos(norm_psi))*np.dot(skew_normal, skew_normal)
+        rot_matrix += np.sin(norm_psi) * skew_normal
+        rot_matrix += (1.0 - np.cos(norm_psi)) * np.dot(skew_normal, skew_normal)
 
     return rot_matrix
 
@@ -592,7 +611,9 @@ def rotation2crv(Cab):
     """
 
     if np.linalg.norm(Cab) < 1e-6:
-        raise AttributeError('Element Vector V is not orthogonal to reference line (51105)')
+        raise AttributeError(
+            "Element Vector V is not orthogonal to reference line (51105)"
+        )
 
     quat = rotation2quat(Cab)
     psi = quat2crv(quat)
@@ -641,11 +662,11 @@ def crv2tan(psi):
 
     eps = 1e-8
     if norm_psi < eps:
-        return np.eye(3) - 0.5*psi_skew + 1.0/6.0*np.dot(psi_skew, psi_skew)
+        return np.eye(3) - 0.5 * psi_skew + 1.0 / 6.0 * np.dot(psi_skew, psi_skew)
     else:
-        k1 = (np.cos(norm_psi) - 1.0)/(norm_psi*norm_psi)
-        k2 = (1.0 - np.sin(norm_psi)/norm_psi)/(norm_psi*norm_psi)
-        return np.eye(3) + k1*psi_skew + k2*np.dot(psi_skew, psi_skew)
+        k1 = (np.cos(norm_psi) - 1.0) / (norm_psi * norm_psi)
+        k2 = (1.0 - np.sin(norm_psi) / norm_psi) / (norm_psi * norm_psi)
+        return np.eye(3) + k1 * psi_skew + k2 * np.dot(psi_skew, psi_skew)
 
 
 def crv2invtant(psi):
@@ -710,29 +731,30 @@ def quat2rotation(q1):
         Stevens, L. Aircraft Control and Simulation. 1985. pg 41
     """
 
-    q = q1.copy(order='F')
+    q = q1.copy(order="F")
     q /= np.linalg.norm(q)
 
-    rot_mat = np.zeros((3, 3), order='F')
+    rot_mat = np.zeros((3, 3), order="F")
 
-    rot_mat[0, 0] = q[0]**2 + q[1]**2 - q[2]**2 - q[3]**2
-    rot_mat[1, 1] = q[0]**2 - q[1]**2 + q[2]**2 - q[3]**2
-    rot_mat[2, 2] = q[0]**2 - q[1]**2 - q[2]**2 + q[3]**2
+    rot_mat[0, 0] = q[0] ** 2 + q[1] ** 2 - q[2] ** 2 - q[3] ** 2
+    rot_mat[1, 1] = q[0] ** 2 - q[1] ** 2 + q[2] ** 2 - q[3] ** 2
+    rot_mat[2, 2] = q[0] ** 2 - q[1] ** 2 - q[2] ** 2 + q[3] ** 2
 
-    rot_mat[1, 0] = 2.*(q[1]*q[2] + q[0]*q[3])
-    rot_mat[0, 1] = 2.*(q[1]*q[2] - q[0]*q[3])
+    rot_mat[1, 0] = 2.0 * (q[1] * q[2] + q[0] * q[3])
+    rot_mat[0, 1] = 2.0 * (q[1] * q[2] - q[0] * q[3])
 
-    rot_mat[2, 0] = 2.*(q[1]*q[3] - q[0]*q[2])
-    rot_mat[0, 2] = 2.*(q[1]*q[3] + q[0]*q[2])
+    rot_mat[2, 0] = 2.0 * (q[1] * q[3] - q[0] * q[2])
+    rot_mat[0, 2] = 2.0 * (q[1] * q[3] + q[0] * q[2])
 
-    rot_mat[2, 1] = 2.*(q[2]*q[3] + q[0]*q[1])
-    rot_mat[1, 2] = 2.*(q[2]*q[3] - q[0]*q[1])
+    rot_mat[2, 1] = 2.0 * (q[2] * q[3] + q[0] * q[1])
+    rot_mat[1, 2] = 2.0 * (q[2] * q[3] - q[0] * q[1])
 
     return rot_mat
 
 
 def rot_skew(vec):
     from warnings import warn
+
     warn("use 'skew' function instead of 'rot_skew'")
     return skew(vec)
 
@@ -762,8 +784,8 @@ def rotation3d_x(angle):
     s = np.sin(angle)
     mat = np.zeros((3, 3))
     mat[0, :] = [1.0, 0.0, 0.0]
-    mat[1, :] = [0.0,   c,  -s]
-    mat[2, :] = [0.0,   s,   c]
+    mat[1, :] = [0.0, c, -s]
+    mat[2, :] = [0.0, s, c]
     return mat
 
 
@@ -793,7 +815,7 @@ def rotation3d_y(angle):
     mat = np.zeros((3, 3))
     mat[0, :] = [c, 0.0, s]
     mat[1, :] = [0.0, 1.0, 0.0]
-    mat[2, :] = [-s, 0.0,  c]
+    mat[2, :] = [-s, 0.0, c]
     return mat
 
 
@@ -819,8 +841,8 @@ def rotation3d_z(angle):
     c = np.cos(angle)
     s = np.sin(angle)
     mat = np.zeros((3, 3))
-    mat[0, :] = [  c,  -s, 0.0]
-    mat[1, :] = [  s,   c, 0.0]
+    mat[0, :] = [c, -s, 0.0]
+    mat[1, :] = [s, c, 0.0]
     mat[2, :] = [0.0, 0.0, 1.0]
     return mat
 
@@ -909,21 +931,26 @@ def quat2euler(quat):
         Report 012010. ETS Ingenieria Informatica. Universidad de Malaga. 2013.
     """
 
-    assert np.abs(np.linalg.norm(quat)-1.0) < 1.e6, 'Input quaternion is not normalised'
+    assert (
+        np.abs(np.linalg.norm(quat) - 1.0) < 1.0e6
+    ), "Input quaternion is not normalised"
 
     q0 = quat[0]
     q1 = quat[1]
     q2 = quat[2]
     q3 = quat[3]
 
-    delta = quat[0]*quat[2] - quat[1]*quat[3]
+    delta = quat[0] * quat[2] - quat[1] * quat[3]
 
     if np.abs(delta) > 0.9 * 0.5:
-        warn('Warning, approaching singularity. Delta {:.3f} for singularity at Delta=0.5'.format(np.abs(delta)))
+        warn(
+            "Warning, approaching singularity. Delta {:.3f} for singularity at"
+            " Delta=0.5".format(np.abs(delta))
+        )
 
-    yaw = np.arctan2(2*(q0*q3+q1*q2), (1-2*(q2**2+q3**2)))
-    pitch = np.arcsin(2*delta)
-    roll = np.arctan2(2*(q0*q1+q2*q3), (1-2*(q1**2+q2**2)))
+    yaw = np.arctan2(2 * (q0 * q3 + q1 * q2), (1 - 2 * (q2**2 + q3**2)))
+    pitch = np.arcsin(2 * delta)
+    roll = np.arctan2(2 * (q0 * q1 + q2 * q3), (1 - 2 * (q1**2 + q2**2)))
 
     return np.array([roll, pitch, yaw])
 
@@ -938,10 +965,10 @@ def crv_dot2Omega(crv, crv_dot):
 
 def quaternion_product(q, r):
     result = np.zeros((4,))
-    result[0] = q[0]*r[0] - q[1]*r[1] - q[2]*r[2] - q[3]*r[3]
-    result[1] = q[0]*r[1] + q[1]*r[0] + q[2]*r[3] - q[3]*r[2]
-    result[2] = q[0]*r[2] - q[1]*r[3] + q[2]*r[0] + q[3]*r[1]
-    result[3] = q[0]*r[3] + q[1]*r[2] - q[2]*r[1] + q[3]*r[0]
+    result[0] = q[0] * r[0] - q[1] * r[1] - q[2] * r[2] - q[3] * r[3]
+    result[1] = q[0] * r[1] + q[1] * r[0] + q[2] * r[3] - q[3] * r[2]
+    result[2] = q[0] * r[2] - q[1] * r[3] + q[2] * r[0] + q[3] * r[1]
+    result[3] = q[0] * r[3] + q[1] * r[2] - q[2] * r[1] + q[3] * r[0]
     return result
 
 
@@ -949,8 +976,8 @@ def omegadt2quat(omegadt):
     quat = np.zeros((4,))
 
     omegadt_norm = np.linalg.norm(omegadt)
-    quat[0] = np.cos(0.5*omegadt_norm)
-    quat[1:4] = unit_vector(omegadt)*np.sin(0.5*omegadt_norm)
+    quat[0] = np.cos(0.5 * omegadt_norm)
+    quat[1:4] = unit_vector(omegadt) * np.sin(0.5 * omegadt_norm)
     return quat
 
 
@@ -958,7 +985,13 @@ def rotate_quaternion(quat, omegadt):
     return quaternion_product(omegadt2quat(omegadt), quat)
 
 
-def get_triad(coordinates_def, frame_of_reference_delta, twist=None, n_nodes=3, ordering=np.array([0, 2, 1])):
+def get_triad(
+    coordinates_def,
+    frame_of_reference_delta,
+    twist=None,
+    n_nodes=3,
+    ordering=np.array([0, 2, 1]),
+):
     """
     Generates two unit vectors in body FoR that define the local FoR for
     a beam element. These vectors are calculated using `frame_of_reference_delta`
@@ -966,9 +999,7 @@ def get_triad(coordinates_def, frame_of_reference_delta, twist=None, n_nodes=3, 
     """
     # now, calculate tangent vector (and coefficients of the polynomial
     # fit just in case)
-    tangent, polyfit = tangent_vector(
-        coordinates_def,
-        ordering)
+    tangent, polyfit = tangent_vector(coordinates_def, ordering)
     normal = np.zeros_like(tangent)
     binormal = np.zeros_like(tangent)
 
@@ -976,19 +1007,14 @@ def get_triad(coordinates_def, frame_of_reference_delta, twist=None, n_nodes=3, 
     # equals frame_of_reference_delta
     for inode in range(n_nodes):
         v_vector = frame_of_reference_delta[inode, :]
-        normal[inode, :] = unit_vector(np.cross(
-                                                tangent[inode, :],
-                                                v_vector
-                                                )
-                                           )
-        binormal[inode, :] = -unit_vector(np.cross(
-                                                tangent[inode, :],
-                                                normal[inode, :]
-                                                        )
-                                              )
+        normal[inode, :] = unit_vector(np.cross(tangent[inode, :], v_vector))
+        binormal[inode, :] = -unit_vector(np.cross(tangent[inode, :], normal[inode, :]))
 
     if twist is not None:
-        raise NotImplementedError('Structural twist is not yet supported in algebra.get_triad, but it is in beamstructures.py')
+        raise NotImplementedError(
+            "Structural twist is not yet supported in algebra.get_triad, but it is in"
+            " beamstructures.py"
+        )
     # # we apply twist now
     # for inode in range(self.n_nodes):
     #     if not self.structural_twist[inode] == 0.0:
@@ -1000,7 +1026,7 @@ def get_triad(coordinates_def, frame_of_reference_delta, twist=None, n_nodes=3, 
     return tangent, binormal, normal
 
 
-def der_Cquat_by_v(q,v):
+def der_Cquat_by_v(q, v):
     """
     Being C=C(quat) the rotational matrix depending on the quaternion q and
     defined as C=quat2rotation(q), the function returns the derivative, w.r.t. the
@@ -1014,19 +1040,34 @@ def der_Cquat_by_v(q,v):
     where :math:`d(.)` is a delta operator.
     """
 
-    vx,vy,vz=v
-    q0,q1,q2,q3=q
+    vx, vy, vz = v
+    q0, q1, q2, q3 = q
 
-    return 2.*np.array( [[ q0*vx + q2*vz - q3*vy, q1*vx + q2*vy + q3*vz,
-                                 q0*vz + q1*vy - q2*vx, -q0*vy + q1*vz - q3*vx],
-                         [ q0*vy - q1*vz + q3*vx, -q0*vz - q1*vy + q2*vx,
-                                 q1*vx + q2*vy + q3*vz,  q0*vx + q2*vz - q3*vy],
-                         [ q0*vz + q1*vy - q2*vx, q0*vy - q1*vz + q3*vx,
-                                -q0*vx - q2*vz + q3*vy, q1*vx + q2*vy + q3*vz]])
+    return 2.0 * np.array(
+        [
+            [
+                q0 * vx + q2 * vz - q3 * vy,
+                q1 * vx + q2 * vy + q3 * vz,
+                q0 * vz + q1 * vy - q2 * vx,
+                -q0 * vy + q1 * vz - q3 * vx,
+            ],
+            [
+                q0 * vy - q1 * vz + q3 * vx,
+                -q0 * vz - q1 * vy + q2 * vx,
+                q1 * vx + q2 * vy + q3 * vz,
+                q0 * vx + q2 * vz - q3 * vy,
+            ],
+            [
+                q0 * vz + q1 * vy - q2 * vx,
+                q0 * vy - q1 * vz + q3 * vx,
+                -q0 * vx - q2 * vz + q3 * vy,
+                q1 * vx + q2 * vy + q3 * vz,
+            ],
+        ]
+    )
 
 
-
-def der_CquatT_by_v(q,v):
+def der_CquatT_by_v(q, v):
     r"""
     Returns the derivative with respect to quaternion components of a projection matrix times a constant vector.
 
@@ -1072,18 +1113,34 @@ def der_CquatT_by_v(q,v):
         np.array: :math:`\mathbf{D}` matrix.
     """
 
-    vx,vy,vz=v
-    q0,q1,q2,q3=q
+    vx, vy, vz = v
+    q0, q1, q2, q3 = q
 
-    return 2.*np.array( [[ q0*vx - q2*vz + q3*vy, q1*vx + q2*vy + q3*vz,
-                                 - q0*vz + q1*vy - q2*vx, q0*vy + q1*vz - q3*vx],
-                         [q0*vy + q1*vz - q3*vx, q0*vz - q1*vy + q2*vx,
-                                   q1*vx + q2*vy + q3*vz,-q0*vx + q2*vz - q3*vy],
-                         [q0*vz - q1*vy + q2*vx, -q0*vy - q1*vz + q3*vx,
-                                q0*vx - q2*vz + q3*vy, q1*vx + q2*vy + q3*vz]])
+    return 2.0 * np.array(
+        [
+            [
+                q0 * vx - q2 * vz + q3 * vy,
+                q1 * vx + q2 * vy + q3 * vz,
+                -q0 * vz + q1 * vy - q2 * vx,
+                q0 * vy + q1 * vz - q3 * vx,
+            ],
+            [
+                q0 * vy + q1 * vz - q3 * vx,
+                q0 * vz - q1 * vy + q2 * vx,
+                q1 * vx + q2 * vy + q3 * vz,
+                -q0 * vx + q2 * vz - q3 * vy,
+            ],
+            [
+                q0 * vz - q1 * vy + q2 * vx,
+                -q0 * vy - q1 * vz + q3 * vx,
+                q0 * vx - q2 * vz + q3 * vy,
+                q1 * vx + q2 * vy + q3 * vz,
+            ],
+        ]
+    )
 
 
-def der_Tan_by_xv(fv0,xv):
+def der_Tan_by_xv(fv0, xv):
     """
     Being fv0 a cartesian rotation vector and Tan the corresponding tangential
     operator (computed through crv2tan(fv)), the function returns the derivative
@@ -1106,9 +1163,9 @@ def der_Tan_by_xv(fv0,xv):
     fv0_x, fv0_y, fv0_z = fv0
     xv_x, xv_y, xv_z = xv
 
-    f0p2 = f0 ** 2
-    f0p3 = f0 ** 3
-    f0p4 = f0 ** 4
+    f0p2 = f0**2
+    f0p3 = f0**3
+    f0p4 = f0**4
 
     rs01 = sf0 / f0
     rs03 = sf0 / f0p3
@@ -1120,68 +1177,234 @@ def der_Tan_by_xv(fv0,xv):
 
     # if f0<1e-8: rs01=1.0 # no need
     return np.array(
-        [[xv_x*((-fv0_y**2 - fv0_z**2)*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 -
-            2*fv0_x*(1 - rs01)*(-fv0_y**2 - fv0_z**2)/f0p4) + xv_y*(fv0_x*fv0_y*(
-                -cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 + fv0_y*Ts02 +
-            fv0_x*fv0_z*rs03 - 2*fv0_x**2*fv0_y*Ts04 + 2*fv0_x*fv0_z*
-            rc04) + xv_z*(fv0_x*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 +
-            fv0_z*Ts02 - fv0_x*fv0_y*rs03 - 2*fv0_x**2*fv0_z*Ts04
-            - 2*fv0_x*fv0_y*rc04),
-            #
-          xv_x*(-2*fv0_y*Ts02 + (-fv0_y**2 - fv0_z**2)*(-cf0*fv0_y/f0p2 +
-            fv0_y*rs03)/f0p2 - 2*fv0_y*(1 - rs01)*(-fv0_y**2 - fv0_z**2)/f0p4) +
-          xv_y*(fv0_x*fv0_y*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 + fv0_x*Ts02 +
-            fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_y**2*Ts04 + 2*fv0_y*fv0_z*rc04)
-          + xv_z*(fv0_x*fv0_z*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 + rc02 -
-            fv0_y**2*rs03 - 2*fv0_x*fv0_y*fv0_z*Ts04 - 2*fv0_y**2*rc04),
-          #
-          xv_x*(-2*fv0_z*Ts02 + (-fv0_y**2 - fv0_z**2)*(-cf0*fv0_z/f0p2
-            + fv0_z*rs03)/f0p2 - 2*fv0_z*(1 - rs01)*(-fv0_y**2 - fv0_z**2)/f0p4) +
-          xv_y*(fv0_x*fv0_y*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 - rc02
-            + fv0_z**2*rs03 - 2*fv0_x*fv0_y*fv0_z*Ts04 + 2*fv0_z**2*rc04)
-          + xv_z*(fv0_x*fv0_z*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + fv0_x*Ts02
-            - fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_z**2*Ts04 - 2*fv0_y*fv0_z*rc04)],
-         [xv_x*(fv0_x*fv0_y*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 +
-            fv0_y*Ts02 - fv0_x*fv0_z*rs03 - 2*fv0_x**2*fv0_y*Ts04 -
-            2*fv0_x*fv0_z*rc04) + xv_y*(-2*fv0_x*Ts02 +
-            (-fv0_x**2 - fv0_z**2)*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2
-            - 2*fv0_x*(1 - rs01)*(-fv0_x**2 - fv0_z**2)/f0p4) +
-            xv_z*(fv0_y*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 - rc02
-                + fv0_x**2*rs03 + 2*fv0_x**2*rc04 - 2*fv0_x*fv0_y*fv0_z*Ts04),
-          xv_x*(fv0_x*fv0_y*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 +
-            fv0_x*Ts02 - fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_y**2*Ts04
-            - 2*fv0_y*fv0_z*rc04) + xv_y*((-fv0_x**2 - fv0_z**2)*(-cf0*fv0_y/f0p2
-                + fv0_y*rs03)/f0p2 - 2*fv0_y*(1 - rs01)*(-fv0_x**2 - fv0_z**2)/f0p4)
-            + xv_z*(fv0_y*fv0_z*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 + fv0_z*Ts02
-                + fv0_x*fv0_y*rs03 + 2*fv0_x*fv0_y*rc04 - 2*fv0_y**2*fv0_z*Ts04),
-          xv_x*(fv0_x*fv0_y*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + rc02 - fv0_z**2*rs03
-            - 2*fv0_x*fv0_y*fv0_z*Ts04 - 2*fv0_z**2*rc04) + xv_y*(-2*fv0_z*Ts02
-            + (-fv0_x**2 - fv0_z**2)*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 -
-            2*fv0_z*(1 - rs01)*(-fv0_x**2 - fv0_z**2)/f0p4) + xv_z*(fv0_y*fv0_z*(-cf0*fv0_z/f0p2
-                + fv0_z*rs03)/f0p2 + fv0_y*Ts02 + fv0_x*fv0_z*rs03 + 2*fv0_x*fv0_z*rc04
-            - 2*fv0_y*fv0_z**2*Ts04)],
-         [xv_x*(fv0_x*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 + fv0_z*Ts02
-            + fv0_x*fv0_y*rs03 - 2*fv0_x**2*fv0_z*Ts04 + 2*fv0_x*fv0_y*rc04)
-         + xv_y*(fv0_y*fv0_z*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 + rc02 - fv0_x**2*rs03
-            - 2*fv0_x**2*rc04 - 2*fv0_x*fv0_y*fv0_z*Ts04) + xv_z*(-2*fv0_x*Ts02
-            + (-fv0_x**2 - fv0_y**2)*(-cf0*fv0_x/f0p2 + fv0_x*rs03)/f0p2 -
-            2*fv0_x*(1 - rs01)*(-fv0_x**2 - fv0_y**2)/f0p4),
-          xv_x*(fv0_x*fv0_z*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 - rc02 + fv0_y**2*rs03 -
-            2*fv0_x*fv0_y*fv0_z*Ts04 + 2*fv0_y**2*rc04) + xv_y*(fv0_y*fv0_z*(-cf0*fv0_y/f0p2
-                + fv0_y*rs03)/f0p2 + fv0_z*Ts02 - fv0_x*fv0_y*rs03 - 2*fv0_x*fv0_y*rc04
-            - 2*fv0_y**2*fv0_z*Ts04) + xv_z*(-2*fv0_y*Ts02 + (-fv0_x**2
-                - fv0_y**2)*(-cf0*fv0_y/f0p2 + fv0_y*rs03)/f0p2 - 2*fv0_y*(1 - rs01)*(-fv0_x**2
-                - fv0_y**2)/f0p4),
-          xv_x*(fv0_x*fv0_z*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + fv0_x*Ts02 +
-            fv0_y*fv0_z*rs03 - 2*fv0_x*fv0_z**2*Ts04 + 2*fv0_y*fv0_z*rc04) +
-          xv_y*(fv0_y*fv0_z*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 + fv0_y*Ts02
-            - fv0_x*fv0_z*rs03 - 2*fv0_x*fv0_z*rc04 - 2*fv0_y*fv0_z**2*Ts04) +
-          xv_z*((-fv0_x**2 - fv0_y**2)*(-cf0*fv0_z/f0p2 + fv0_z*rs03)/f0p2 -
-            2*fv0_z*(1 - rs01)*(-fv0_x**2 - fv0_y**2)/f0p4)]])
+        [
+            [
+                xv_x
+                * (
+                    (-(fv0_y**2) - fv0_z**2)
+                    * (-cf0 * fv0_x / f0p2 + fv0_x * rs03)
+                    / f0p2
+                    - 2 * fv0_x * (1 - rs01) * (-(fv0_y**2) - fv0_z**2) / f0p4
+                )
+                + xv_y
+                * (
+                    fv0_x * fv0_y * (-cf0 * fv0_x / f0p2 + fv0_x * rs03) / f0p2
+                    + fv0_y * Ts02
+                    + fv0_x * fv0_z * rs03
+                    - 2 * fv0_x**2 * fv0_y * Ts04
+                    + 2 * fv0_x * fv0_z * rc04
+                )
+                + xv_z
+                * (
+                    fv0_x * fv0_z * (-cf0 * fv0_x / f0p2 + fv0_x * rs03) / f0p2
+                    + fv0_z * Ts02
+                    - fv0_x * fv0_y * rs03
+                    - 2 * fv0_x**2 * fv0_z * Ts04
+                    - 2 * fv0_x * fv0_y * rc04
+                ),
+                #
+                xv_x
+                * (
+                    -2 * fv0_y * Ts02
+                    + (-(fv0_y**2) - fv0_z**2)
+                    * (-cf0 * fv0_y / f0p2 + fv0_y * rs03)
+                    / f0p2
+                    - 2 * fv0_y * (1 - rs01) * (-(fv0_y**2) - fv0_z**2) / f0p4
+                )
+                + xv_y
+                * (
+                    fv0_x * fv0_y * (-cf0 * fv0_y / f0p2 + fv0_y * rs03) / f0p2
+                    + fv0_x * Ts02
+                    + fv0_y * fv0_z * rs03
+                    - 2 * fv0_x * fv0_y**2 * Ts04
+                    + 2 * fv0_y * fv0_z * rc04
+                )
+                + xv_z
+                * (
+                    fv0_x * fv0_z * (-cf0 * fv0_y / f0p2 + fv0_y * rs03) / f0p2
+                    + rc02
+                    - fv0_y**2 * rs03
+                    - 2 * fv0_x * fv0_y * fv0_z * Ts04
+                    - 2 * fv0_y**2 * rc04
+                ),
+                #
+                xv_x
+                * (
+                    -2 * fv0_z * Ts02
+                    + (-(fv0_y**2) - fv0_z**2)
+                    * (-cf0 * fv0_z / f0p2 + fv0_z * rs03)
+                    / f0p2
+                    - 2 * fv0_z * (1 - rs01) * (-(fv0_y**2) - fv0_z**2) / f0p4
+                )
+                + xv_y
+                * (
+                    fv0_x * fv0_y * (-cf0 * fv0_z / f0p2 + fv0_z * rs03) / f0p2
+                    - rc02
+                    + fv0_z**2 * rs03
+                    - 2 * fv0_x * fv0_y * fv0_z * Ts04
+                    + 2 * fv0_z**2 * rc04
+                )
+                + xv_z
+                * (
+                    fv0_x * fv0_z * (-cf0 * fv0_z / f0p2 + fv0_z * rs03) / f0p2
+                    + fv0_x * Ts02
+                    - fv0_y * fv0_z * rs03
+                    - 2 * fv0_x * fv0_z**2 * Ts04
+                    - 2 * fv0_y * fv0_z * rc04
+                ),
+            ],
+            [
+                xv_x
+                * (
+                    fv0_x * fv0_y * (-cf0 * fv0_x / f0p2 + fv0_x * rs03) / f0p2
+                    + fv0_y * Ts02
+                    - fv0_x * fv0_z * rs03
+                    - 2 * fv0_x**2 * fv0_y * Ts04
+                    - 2 * fv0_x * fv0_z * rc04
+                )
+                + xv_y
+                * (
+                    -2 * fv0_x * Ts02
+                    + (-(fv0_x**2) - fv0_z**2)
+                    * (-cf0 * fv0_x / f0p2 + fv0_x * rs03)
+                    / f0p2
+                    - 2 * fv0_x * (1 - rs01) * (-(fv0_x**2) - fv0_z**2) / f0p4
+                )
+                + xv_z
+                * (
+                    fv0_y * fv0_z * (-cf0 * fv0_x / f0p2 + fv0_x * rs03) / f0p2
+                    - rc02
+                    + fv0_x**2 * rs03
+                    + 2 * fv0_x**2 * rc04
+                    - 2 * fv0_x * fv0_y * fv0_z * Ts04
+                ),
+                xv_x
+                * (
+                    fv0_x * fv0_y * (-cf0 * fv0_y / f0p2 + fv0_y * rs03) / f0p2
+                    + fv0_x * Ts02
+                    - fv0_y * fv0_z * rs03
+                    - 2 * fv0_x * fv0_y**2 * Ts04
+                    - 2 * fv0_y * fv0_z * rc04
+                )
+                + xv_y
+                * (
+                    (-(fv0_x**2) - fv0_z**2)
+                    * (-cf0 * fv0_y / f0p2 + fv0_y * rs03)
+                    / f0p2
+                    - 2 * fv0_y * (1 - rs01) * (-(fv0_x**2) - fv0_z**2) / f0p4
+                )
+                + xv_z
+                * (
+                    fv0_y * fv0_z * (-cf0 * fv0_y / f0p2 + fv0_y * rs03) / f0p2
+                    + fv0_z * Ts02
+                    + fv0_x * fv0_y * rs03
+                    + 2 * fv0_x * fv0_y * rc04
+                    - 2 * fv0_y**2 * fv0_z * Ts04
+                ),
+                xv_x
+                * (
+                    fv0_x * fv0_y * (-cf0 * fv0_z / f0p2 + fv0_z * rs03) / f0p2
+                    + rc02
+                    - fv0_z**2 * rs03
+                    - 2 * fv0_x * fv0_y * fv0_z * Ts04
+                    - 2 * fv0_z**2 * rc04
+                )
+                + xv_y
+                * (
+                    -2 * fv0_z * Ts02
+                    + (-(fv0_x**2) - fv0_z**2)
+                    * (-cf0 * fv0_z / f0p2 + fv0_z * rs03)
+                    / f0p2
+                    - 2 * fv0_z * (1 - rs01) * (-(fv0_x**2) - fv0_z**2) / f0p4
+                )
+                + xv_z
+                * (
+                    fv0_y * fv0_z * (-cf0 * fv0_z / f0p2 + fv0_z * rs03) / f0p2
+                    + fv0_y * Ts02
+                    + fv0_x * fv0_z * rs03
+                    + 2 * fv0_x * fv0_z * rc04
+                    - 2 * fv0_y * fv0_z**2 * Ts04
+                ),
+            ],
+            [
+                xv_x
+                * (
+                    fv0_x * fv0_z * (-cf0 * fv0_x / f0p2 + fv0_x * rs03) / f0p2
+                    + fv0_z * Ts02
+                    + fv0_x * fv0_y * rs03
+                    - 2 * fv0_x**2 * fv0_z * Ts04
+                    + 2 * fv0_x * fv0_y * rc04
+                )
+                + xv_y
+                * (
+                    fv0_y * fv0_z * (-cf0 * fv0_x / f0p2 + fv0_x * rs03) / f0p2
+                    + rc02
+                    - fv0_x**2 * rs03
+                    - 2 * fv0_x**2 * rc04
+                    - 2 * fv0_x * fv0_y * fv0_z * Ts04
+                )
+                + xv_z
+                * (
+                    -2 * fv0_x * Ts02
+                    + (-(fv0_x**2) - fv0_y**2)
+                    * (-cf0 * fv0_x / f0p2 + fv0_x * rs03)
+                    / f0p2
+                    - 2 * fv0_x * (1 - rs01) * (-(fv0_x**2) - fv0_y**2) / f0p4
+                ),
+                xv_x
+                * (
+                    fv0_x * fv0_z * (-cf0 * fv0_y / f0p2 + fv0_y * rs03) / f0p2
+                    - rc02
+                    + fv0_y**2 * rs03
+                    - 2 * fv0_x * fv0_y * fv0_z * Ts04
+                    + 2 * fv0_y**2 * rc04
+                )
+                + xv_y
+                * (
+                    fv0_y * fv0_z * (-cf0 * fv0_y / f0p2 + fv0_y * rs03) / f0p2
+                    + fv0_z * Ts02
+                    - fv0_x * fv0_y * rs03
+                    - 2 * fv0_x * fv0_y * rc04
+                    - 2 * fv0_y**2 * fv0_z * Ts04
+                )
+                + xv_z
+                * (
+                    -2 * fv0_y * Ts02
+                    + (-(fv0_x**2) - fv0_y**2)
+                    * (-cf0 * fv0_y / f0p2 + fv0_y * rs03)
+                    / f0p2
+                    - 2 * fv0_y * (1 - rs01) * (-(fv0_x**2) - fv0_y**2) / f0p4
+                ),
+                xv_x
+                * (
+                    fv0_x * fv0_z * (-cf0 * fv0_z / f0p2 + fv0_z * rs03) / f0p2
+                    + fv0_x * Ts02
+                    + fv0_y * fv0_z * rs03
+                    - 2 * fv0_x * fv0_z**2 * Ts04
+                    + 2 * fv0_y * fv0_z * rc04
+                )
+                + xv_y
+                * (
+                    fv0_y * fv0_z * (-cf0 * fv0_z / f0p2 + fv0_z * rs03) / f0p2
+                    + fv0_y * Ts02
+                    - fv0_x * fv0_z * rs03
+                    - 2 * fv0_x * fv0_z * rc04
+                    - 2 * fv0_y * fv0_z**2 * Ts04
+                )
+                + xv_z
+                * (
+                    (-(fv0_x**2) - fv0_y**2)
+                    * (-cf0 * fv0_z / f0p2 + fv0_z * rs03)
+                    / f0p2
+                    - 2 * fv0_z * (1 - rs01) * (-(fv0_x**2) - fv0_y**2) / f0p4
+                ),
+            ],
+        ]
+    )
     # end der_Tan_by_xv
 
 
-def der_TanT_by_xv(fv0,xv):
+def der_TanT_by_xv(fv0, xv):
     """
     Being fv0 a cartesian rotation vector and Tan the corresponding tangential
     operator (computed through crv2tan(fv)), the function returns the derivative
@@ -1209,49 +1432,137 @@ def der_TanT_by_xv(fv0,xv):
 
     # Defining useful functions
     eps = 1e-15
-    f0=np.linalg.norm(fv0)
+    f0 = np.linalg.norm(fv0)
     if f0 < eps:
-        f1 = -1.0/2.0
-        f2 = 1.0/6.0
-        g1 = -1.0/12.0
-        g2 = 0.0 # TODO: check this
+        f1 = -1.0 / 2.0
+        f2 = 1.0 / 6.0
+        g1 = -1.0 / 12.0
+        g2 = 0.0  # TODO: check this
     else:
-        f1 = (np.cos(f0)-1.0)/f0**2.0
-        f2 = (1.0-np.sin(f0)/f0)/f0**2.0
-        g1 = (f0*np.sin(f0)+2.0*(np.cos(f0)-1.0))/f0**4.0
-        g2 = (2.0/f0**4 + np.cos(f0)/f0**4 - 3.0*np.sin(f0)/f0**5)
+        f1 = (np.cos(f0) - 1.0) / f0**2.0
+        f2 = (1.0 - np.sin(f0) / f0) / f0**2.0
+        g1 = (f0 * np.sin(f0) + 2.0 * (np.cos(f0) - 1.0)) / f0**4.0
+        g2 = 2.0 / f0**4 + np.cos(f0) / f0**4 - 3.0 * np.sin(f0) / f0**5
 
     # Computing the derivatives of the functions
-    df1dpx = -1.0*px*g1
-    df1dpy = -1.0*py*g1
-    df1dpz = -1.0*pz*g1
+    df1dpx = -1.0 * px * g1
+    df1dpy = -1.0 * py * g1
+    df1dpz = -1.0 * pz * g1
 
-    df2dpx = -1.0*px*g2
-    df2dpy = -1.0*py*g2
-    df2dpz = -1.0*pz*g2
+    df2dpx = -1.0 * px * g2
+    df2dpy = -1.0 * py * g2
+    df2dpz = -1.0 * pz * g2
 
     # Compute the output matrix
-    der_TanT_by_xv = np.zeros((3,3),)
+    der_TanT_by_xv = np.zeros(
+        (3, 3),
+    )
 
     # First column (derivatives with psi_x)
-    der_TanT_by_xv[0,0] = -1.0*df2dpx*(py**2+pz**2)*vx + df1dpx*pz*vy + df2dpx*px*py*vy + f2*py*vy - df1dpx*py*vz + df2dpx*px*pz*vz + f2*pz*vz
-    der_TanT_by_xv[1,0] = -1.0*df1dpx*pz*vx + df2dpx*px*py*vx + f2*py*vx - df2dpx*px**2*vy - 2.0*f2*px*vy - df2dpx*pz**2*vy + df1dpx*px*vz+f1*vz + df2dpx*py*pz*vz
-    der_TanT_by_xv[2,0] = df1dpx*py*vx + df2dpx*px*pz*vx + f2*pz*vx - df1dpx*px*vy -f1*vy + df2dpx*py*pz*vy - df2dpx*px**2*vz - 2.0*f2*px*vz - df2dpx*py**2*vz
+    der_TanT_by_xv[0, 0] = (
+        -1.0 * df2dpx * (py**2 + pz**2) * vx
+        + df1dpx * pz * vy
+        + df2dpx * px * py * vy
+        + f2 * py * vy
+        - df1dpx * py * vz
+        + df2dpx * px * pz * vz
+        + f2 * pz * vz
+    )
+    der_TanT_by_xv[1, 0] = (
+        -1.0 * df1dpx * pz * vx
+        + df2dpx * px * py * vx
+        + f2 * py * vx
+        - df2dpx * px**2 * vy
+        - 2.0 * f2 * px * vy
+        - df2dpx * pz**2 * vy
+        + df1dpx * px * vz
+        + f1 * vz
+        + df2dpx * py * pz * vz
+    )
+    der_TanT_by_xv[2, 0] = (
+        df1dpx * py * vx
+        + df2dpx * px * pz * vx
+        + f2 * pz * vx
+        - df1dpx * px * vy
+        - f1 * vy
+        + df2dpx * py * pz * vy
+        - df2dpx * px**2 * vz
+        - 2.0 * f2 * px * vz
+        - df2dpx * py**2 * vz
+    )
 
     # Second column (derivatives with psi_y)
-    der_TanT_by_xv[0,1] = -df2dpy*py**2*vx -f2*2*py*vx - df2dpy*pz**2*vx + df1dpy*pz*vy + df2dpy*px*py*vy +f2*px*vy - df1dpy*py*vz - f1*vz + df2dpy*px*pz*vz
-    der_TanT_by_xv[1,1] = -df1dpy*pz*vx + df2dpy*px*py*vx + f2*px*vx - df2dpy*px**2*vy - df2dpy*pz**2*vy + df1dpy*px*vz + df2dpy*py*pz*vz + f2*pz*vz
-    der_TanT_by_xv[2,1] = df1dpy*py*vx + f1*vx + df2dpy*px*pz*vx - df1dpy*px*vy + df2dpy*py*pz*vy + f2*pz*vy - df2dpy*px**2*vz - df2dpy*py**2*vz - 2.0*f2*py*vz
+    der_TanT_by_xv[0, 1] = (
+        -df2dpy * py**2 * vx
+        - f2 * 2 * py * vx
+        - df2dpy * pz**2 * vx
+        + df1dpy * pz * vy
+        + df2dpy * px * py * vy
+        + f2 * px * vy
+        - df1dpy * py * vz
+        - f1 * vz
+        + df2dpy * px * pz * vz
+    )
+    der_TanT_by_xv[1, 1] = (
+        -df1dpy * pz * vx
+        + df2dpy * px * py * vx
+        + f2 * px * vx
+        - df2dpy * px**2 * vy
+        - df2dpy * pz**2 * vy
+        + df1dpy * px * vz
+        + df2dpy * py * pz * vz
+        + f2 * pz * vz
+    )
+    der_TanT_by_xv[2, 1] = (
+        df1dpy * py * vx
+        + f1 * vx
+        + df2dpy * px * pz * vx
+        - df1dpy * px * vy
+        + df2dpy * py * pz * vy
+        + f2 * pz * vy
+        - df2dpy * px**2 * vz
+        - df2dpy * py**2 * vz
+        - 2.0 * f2 * py * vz
+    )
 
     # Second column (derivatives with psi_z)
-    der_TanT_by_xv[0,2] = -df2dpz*py**2*vx - df2dpz*pz**2*vx - 2.0*f2*pz*vx + df1dpz*pz*vy + f1*vy + df2dpz*px*py*vy - df1dpz*py*vz + df2dpz*px*pz*vz + f2*px*vz
-    der_TanT_by_xv[1,2] = -df1dpz*pz*vx - f1*vx + df2dpz*px*py*vx - df2dpz*px**2*vy - df2dpz*pz**2*vy - 2.0*f2*pz*vy + df1dpz*px*vz + df2dpz*py*pz*vz + f2*py*vz
-    der_TanT_by_xv[2,2] = df1dpz*py*vx + df2dpz*px*pz*vx + f2*px*vx - df1dpz*px*vy + df2dpz*py*pz*vy + f2*py*vy - df2dpz*px**2*vz - df2dpz*py**2*vz
+    der_TanT_by_xv[0, 2] = (
+        -df2dpz * py**2 * vx
+        - df2dpz * pz**2 * vx
+        - 2.0 * f2 * pz * vx
+        + df1dpz * pz * vy
+        + f1 * vy
+        + df2dpz * px * py * vy
+        - df1dpz * py * vz
+        + df2dpz * px * pz * vz
+        + f2 * px * vz
+    )
+    der_TanT_by_xv[1, 2] = (
+        -df1dpz * pz * vx
+        - f1 * vx
+        + df2dpz * px * py * vx
+        - df2dpz * px**2 * vy
+        - df2dpz * pz**2 * vy
+        - 2.0 * f2 * pz * vy
+        + df1dpz * px * vz
+        + df2dpz * py * pz * vz
+        + f2 * py * vz
+    )
+    der_TanT_by_xv[2, 2] = (
+        df1dpz * py * vx
+        + df2dpz * px * pz * vx
+        + f2 * px * vx
+        - df1dpz * px * vy
+        + df2dpz * py * pz * vy
+        + f2 * py * vy
+        - df2dpz * px**2 * vz
+        - df2dpz * py**2 * vz
+    )
 
     return der_TanT_by_xv
 
 
-def der_Ccrv_by_v(fv0,v):
+def der_Ccrv_by_v(fv0, v):
     r"""
     Being C=C(fv0) the rotational matrix depending on the Cartesian rotation
     vector fv0 and defined as C=crv2rotation(fv0), the function returns the
@@ -1265,14 +1576,14 @@ def der_Ccrv_by_v(fv0,v):
     where :math:`d(.)` is a delta operator.
     """
 
-    Cab0=crv2rotation(fv0)
-    T0=crv2tan(fv0)
-    vskew=skew(v)
+    Cab0 = crv2rotation(fv0)
+    T0 = crv2tan(fv0)
+    vskew = skew(v)
 
-    return -np.dot(Cab0,np.dot(vskew,T0))
+    return -np.dot(Cab0, np.dot(vskew, T0))
 
 
-def der_CcrvT_by_v(fv0,v):
+def der_CcrvT_by_v(fv0, v):
     """
     Being C=C(fv0) the rotation matrix depending on the Cartesian rotation
     vector fv0 and defined as C=crv2rotation(fv0), the function returns the
@@ -1286,10 +1597,10 @@ def der_CcrvT_by_v(fv0,v):
     where :math:`d(.)` is a delta operator.
     """
 
-    Cba0=crv2rotation(fv0).T
-    T0=crv2tan(fv0)
+    Cba0 = crv2rotation(fv0).T
+    T0 = crv2tan(fv0)
 
-    return np.dot( skew( np.dot(Cba0,v) ),T0)
+    return np.dot(skew(np.dot(Cba0, v)), T0)
 
 
 def der_quat_wrt_crv(quat0):
@@ -1403,16 +1714,20 @@ def der_Ceuler_by_v(euler, v):
     v2 = v[1]
     v3 = v[2]
 
-    res[0, 0] = v2*(sp*ss + cp*st*cp) + v3*(cp*ss - sp*st*cs)
-    res[0, 1] = v1*(-st*cs) + v2*(sp*ct*cs) + v3*(cp*ct*cs)
-    res[0, 2] = v1*(ct*ss) + v2*(-cp*cs - sp*st*ss) + v3*(sp*cs-cp*st*ss)
+    res[0, 0] = v2 * (sp * ss + cp * st * cp) + v3 * (cp * ss - sp * st * cs)
+    res[0, 1] = v1 * (-st * cs) + v2 * (sp * ct * cs) + v3 * (cp * ct * cs)
+    res[0, 2] = (
+        v1 * (ct * ss) + v2 * (-cp * cs - sp * st * ss) + v3 * (sp * cs - cp * st * ss)
+    )
 
-    res[1, 0] = v2*(-sp*cs+cp*st*ss) + v3*(-cp*cs + sp*st*ss)
-    res[1, 1] = v1*(-st*ss) + v2*(sp*ct*ss) + v3*(-cp*ct*ss)
-    res[1, 2] = v1*(ct*cs) + v2*(-cp*ss + sp*st*cs) + v3*(sp*ss + cp*st*cs)
+    res[1, 0] = v2 * (-sp * cs + cp * st * ss) + v3 * (-cp * cs + sp * st * ss)
+    res[1, 1] = v1 * (-st * ss) + v2 * (sp * ct * ss) + v3 * (-cp * ct * ss)
+    res[1, 2] = (
+        v1 * (ct * cs) + v2 * (-cp * ss + sp * st * cs) + v3 * (sp * ss + cp * st * cs)
+    )
 
-    res[2, 0] = v2*(cp*ct) + v3*(-sp*ct)
-    res[2, 1] = v1*(-ct) + v2*(-sp*st) + v3*(-cp*st)
+    res[2, 0] = v2 * (cp * ct) + v3 * (-sp * ct)
+    res[2, 1] = v1 * (-ct) + v2 * (-sp * st) + v3 * (-cp * st)
 
     return res
 
@@ -1505,16 +1820,20 @@ def der_Peuler_by_v(euler, v):
     v2 = v[1]
     v3 = v[2]
 
-    res[0, 1] = v1*(-st*cs) + v2*(-st*ss) - v3*ct
-    res[0, 2] = -v1*(ct*ss) + v2*ct*cs
+    res[0, 1] = v1 * (-st * cs) + v2 * (-st * ss) - v3 * ct
+    res[0, 2] = -v1 * (ct * ss) + v2 * ct * cs
 
-    res[1, 0] = v1*(sp*ss + cp*st*cs) + v2*(-sp*cs + cp*st*ss) + v3 * (cp*ct)
-    res[1, 1] = v1*(sp*ct*cs) + v2*(sp*ct*ss) + v3*(-sp*st)
-    res[1, 2] = v1*(-cp*cs - sp*st*ss) + v2*(-cp*ss + sp*st*cs)
+    res[1, 0] = (
+        v1 * (sp * ss + cp * st * cs) + v2 * (-sp * cs + cp * st * ss) + v3 * (cp * ct)
+    )
+    res[1, 1] = v1 * (sp * ct * cs) + v2 * (sp * ct * ss) + v3 * (-sp * st)
+    res[1, 2] = v1 * (-cp * cs - sp * st * ss) + v2 * (-cp * ss + sp * st * cs)
 
-    res[2, 0] = v1*(cp*ss-sp*st*cs) + v2*(-cp*cs-sp*st*ss) + v3*(-sp*ct)
-    res[2, 1] = v1*(cp*ct*cs) + v2*(cp*ct*ss) + v3*(-cp*st)
-    res[2, 2] = v1*(sp*ss + -cp*st*ss) + v2*(sp*ss+cp*st*cs)
+    res[2, 0] = (
+        v1 * (cp * ss - sp * st * cs) + v2 * (-cp * cs - sp * st * ss) + v3 * (-sp * ct)
+    )
+    res[2, 1] = v1 * (cp * ct * cs) + v2 * (cp * ct * ss) + v3 * (-cp * st)
+    res[2, 2] = v1 * (sp * ss + -cp * st * ss) + v2 * (sp * ss + cp * st * cs)
 
     return res
 
@@ -1602,29 +1921,35 @@ def der_Ceuler_by_v_NED(euler, v):
     v3 = v[2]
 
     res[0, 0] = 0
-    res[0, 1] = - v1*st*cs - v2*st*ss - v3*ct
-    res[0, 2] = -v1*ct*ss + v2*ct*cs
+    res[0, 1] = -v1 * st * cs - v2 * st * ss - v3 * ct
+    res[0, 2] = -v1 * ct * ss + v2 * ct * cs
 
-    res[1, 0] = v1*(sp*ss + cp*st*cs) + v2*(-sp*cs + cp*st*ss) + v3*cp*ct
-    res[1, 1] = v1*(sp*ct*cs) + v2*sp*ct*ss - v3*sp*st
-    res[1, 2] = v1*(-cp*cs - sp*st*ss) + v2*(-cp*ss + sp*st*cs)
+    res[1, 0] = (
+        v1 * (sp * ss + cp * st * cs) + v2 * (-sp * cs + cp * st * ss) + v3 * cp * ct
+    )
+    res[1, 1] = v1 * (sp * ct * cs) + v2 * sp * ct * ss - v3 * sp * st
+    res[1, 2] = v1 * (-cp * cs - sp * st * ss) + v2 * (-cp * ss + sp * st * cs)
 
-    res[2, 0] = v1*(cp*ss - sp*st*cs) + v2*(-cp*cs-sp*st*ss) + v3*(-sp*ct)
-    res[2, 1] = v1*cp*ct*cs + v2*cp*ct*ss - v3*cp*st
-    res[2, 2] = v1*(sp*cs - cp*st*ss) + v2*(sp*ss + cp*st*cs)
+    res[2, 0] = (
+        v1 * (cp * ss - sp * st * cs) + v2 * (-cp * cs - sp * st * ss) + v3 * (-sp * ct)
+    )
+    res[2, 1] = v1 * cp * ct * cs + v2 * cp * ct * ss - v3 * cp * st
+    res[2, 2] = v1 * (sp * cs - cp * st * ss) + v2 * (sp * ss + cp * st * cs)
 
     return res
 
 
-def cross3(v,w):
+def cross3(v, w):
     """
     Computes the cross product of two vectors (v and w) with size 3
     """
 
-    res = np.zeros((3,),)
-    res[0] = v[1]*w[2] - v[2]*w[1]
-    res[1] = -v[0]*w[2] + v[2]*w[0]
-    res[2] = v[0]*w[1] - v[1]*w[0]
+    res = np.zeros(
+        (3,),
+    )
+    res[0] = v[1] * w[2] - v[2] * w[1]
+    res[1] = -v[0] * w[2] + v[2] * w[0]
+    res[2] = v[0] * w[1] - v[1] * w[0]
 
     return res
 
@@ -1757,7 +2082,6 @@ def der_Teuler_by_w(euler, w):
         np.ndarray: Computed :math:`\frac{\partial}{\partial\Theta}\left.\left(T^{GA}(\mathbf{\Theta})\mathbf{\omega}^A\right)\right|_{\Theta_0,\omega^A_0}`
     """
 
-
     p = w[0]
     q = w[1]
     r = w[2]
@@ -1768,17 +2092,17 @@ def der_Teuler_by_w(euler, w):
     st = np.sin(euler[1])
     ct = np.cos(euler[1])
     tt = np.tan(euler[1])
-    tsec = ct ** -1
+    tsec = ct**-1
 
     derT = np.zeros((3, 3))
 
     derT[0, 0] = q * cp * tt + r * sp * tt
-    derT[0, 1] = q * sp * tsec ** 2 - r * cp * tsec ** 2
+    derT[0, 1] = q * sp * tsec**2 - r * cp * tsec**2
 
     derT[1, 0] = -q * sp + r * cp
 
-    derT[2, 0] = - q * cp / ct - r * sp / ct
-    derT[2, 1] = - q * sp * tt * tsec + r * cp * tt * tsec
+    derT[2, 0] = -q * cp / ct - r * sp / ct
+    derT[2, 1] = -q * sp * tt * tsec + r * cp * tt * tsec
 
     return derT
 
@@ -1839,12 +2163,12 @@ def der_Teuler_by_w_NED(euler, w):
     st = np.sin(euler[1])
     ct = np.cos(euler[1])
     tt = np.tan(euler[1])
-    tsec = ct ** -1
+    tsec = ct**-1
 
     derT = np.zeros((3, 3))
 
     derT[0, 0] = q * cp * tt - r * sp * tt
-    derT[0, 1] = q * sp * tsec ** 2 + r * cp * tsec ** 2
+    derT[0, 1] = q * sp * tsec**2 + r * cp * tsec**2
 
     derT[1, 0] = -q * sp - r * cp
 
@@ -1891,7 +2215,7 @@ def norm3d(v):
     Returns:
         np.ndarray: Norm of the vector
     """
-    return np.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2])
+    return np.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
 
 
 def normsq3d(v):
@@ -1904,7 +2228,7 @@ def normsq3d(v):
     Returns:
         np.ndarray: Square of the norm of the vector
     """
-    return v[0]*v[0]+v[1]*v[1]+v[2]*v[2]
+    return v[0] * v[0] + v[1] * v[1] + v[2] * v[2]
 
 
 def get_transformation_matrix(transformation):
@@ -1941,38 +2265,42 @@ def get_transformation_matrix(transformation):
         If a rotation is desired, it can be achieved by transposing the resulting projection matrix.
     """
 
-    if transformation == 'ab':
+    if transformation == "ab":
         cab = crv2rotation
         return cab
-    elif transformation == 'ba':
+    elif transformation == "ba":
+
         def cba(psi):
             return crv2rotation(psi).T
 
         return cba
-    elif transformation == 'ga':
+    elif transformation == "ga":
         cga = quat2rotation
         return cga
-    elif transformation == 'ag':
+    elif transformation == "ag":
+
         def cag(quat):
             return quat2rotation(quat).T
 
         return cag
-    elif transformation == 'bg':
+    elif transformation == "bg":
+
         def cbg(psi, quat):
-            cag = get_transformation_matrix('ag')
-            cba = get_transformation_matrix('ba')
+            cag = get_transformation_matrix("ag")
+            cba = get_transformation_matrix("ba")
             return cba(psi).dot(cag(quat))
 
         return cbg
-    elif transformation == 'gb':
+    elif transformation == "gb":
+
         def cgb(psi, quat):
-            cab = get_transformation_matrix('ba')
-            cga = get_transformation_matrix('ga')
+            cab = get_transformation_matrix("ba")
+            cga = get_transformation_matrix("ga")
             return cga(quat).dot(cab(psi))
 
         return cgb
     else:
-        raise NameError('Unknown transformation.')
+        raise NameError("Unknown transformation.")
 
 
 def der_skewp_skewp_v(p, v):
@@ -1981,18 +2309,18 @@ def der_skewp_skewp_v(p, v):
 
         .. math:: \frac{d}{d\boldsymbol{p}} (\tilde{\boldsymbol{p}} \tilde{\boldsymbol{p}} v)
     """
-    der = np.zeros((3,3))
+    der = np.zeros((3, 3))
 
-    der[0, 0] = v[1]*p[1] + v[2]*p[2]
-    der[0, 1] = -2*v[0]*p[1] + v[1]*p[0]
-    der[0, 2] = -2*v[0]*p[2] + v[2]*p[0]
+    der[0, 0] = v[1] * p[1] + v[2] * p[2]
+    der[0, 1] = -2 * v[0] * p[1] + v[1] * p[0]
+    der[0, 2] = -2 * v[0] * p[2] + v[2] * p[0]
 
-    der[1, 0] = v[0]*p[1] - 2*v[1]*p[0]
-    der[1, 1] = v[0]*p[0] + v[2]*p[2]
-    der[1, 2] = -2*v[1]*p[2] + v[2]*p[1]
+    der[1, 0] = v[0] * p[1] - 2 * v[1] * p[0]
+    der[1, 1] = v[0] * p[0] + v[2] * p[2]
+    der[1, 2] = -2 * v[1] * p[2] + v[2] * p[1]
 
-    der[2, 0] = v[0]*p[2] - 2*v[2]*p[0]
-    der[2, 1] = v[1]*p[2] - 2*v[2]*p[1]
-    der[2, 2] = v[0]*p[0] + v[1]*p[1]
+    der[2, 0] = v[0] * p[2] - 2 * v[2] * p[0]
+    der[2, 1] = v[1] * p[2] - 2 * v[2] * p[1]
+    der[2, 2] = v[0] * p[0] + v[1] * p[1]
 
     return der

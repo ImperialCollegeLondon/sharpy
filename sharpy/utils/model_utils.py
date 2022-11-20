@@ -12,7 +12,7 @@ def mass_matrix_generator(m, xcg, inertia):
     returns the complete 6x6 mass matrix.
     """
     mass = np.zeros((6, 6))
-    m_chi_cg = algebra.skew(m*xcg)
+    m_chi_cg = algebra.skew(m * xcg)
     mass[np.diag_indices(3)] = m
     mass[3:, 3:] = inertia
     mass[0:3, 3:6] = -m_chi_cg

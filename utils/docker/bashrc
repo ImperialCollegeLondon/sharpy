@@ -38,4 +38,3 @@ echo "SHARPy is located in /sharpy_dir/ and the"
 echo "environment is already set up!"
 echo "Copyright Imperial College London. Released under BSD 3-Clause license."
 echo "======================================================================="
-

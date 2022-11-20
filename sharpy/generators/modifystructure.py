@@ -14,67 +14,85 @@ class ModifyStructure(generator_interface.BaseGenerator):
 
     This generator is called at the start of each time step in ``DynamicCoupled``.
     """
-    generator_id = 'ModifyStructure'
-    generator_classification = 'runtime'
+
+    generator_id = "ModifyStructure"
+    generator_classification = "runtime"
 
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
     settings_options = dict()
 
-    settings_types['change_variable'] = 'list(str)'
-    settings_default['change_variable'] = None
-    settings_description['change_variable'] = 'Structural variable to modify'
-    settings_options['change_variable'] = ['lumped_mass']
+    settings_types["change_variable"] = "list(str)"
+    settings_default["change_variable"] = None
+    settings_description["change_variable"] = "Structural variable to modify"
+    settings_options["change_variable"] = ["lumped_mass"]
 
-    settings_types['variable_index'] = 'list(int)'
-    settings_default['variable_index'] = None
-    settings_description['variable_index'] = 'List of indices of variables to change. ' \
-                                             'For instance the 1st lumped mass would be ``[0]``'
+    settings_types["variable_index"] = "list(int)"
+    settings_default["variable_index"] = None
+    settings_description["variable_index"] = (
+        "List of indices of variables to change. "
+        "For instance the 1st lumped mass would be ``[0]``"
+    )
 
-    settings_types['file_list'] = 'list(str)'
-    settings_default['file_list'] = None
-    settings_description['file_list'] = 'File path for each variable containing the changing info, in the ' \
-                                        'appropriate format. See each of the allowed variables for the correct format.'
+    settings_types["file_list"] = "list(str)"
+    settings_default["file_list"] = None
+    settings_description["file_list"] = (
+        "File path for each variable containing the changing info, in the "
+        "appropriate format. See each of the allowed variables for the correct format."
+    )
 
     def __init__(self):
         self.settings = None
 
         self.num_changes = None  # :int number of variables that are changed
         self.variables = []  # :list of changed variables objects
-        self.control_objects = {}  #: dictionary of changed variable name and its control object as value
+        self.control_objects = (
+            {}
+        )  #: dictionary of changed variable name and its control object as value
 
     def initialise(self, in_dict, **kwargs):
-        structure = kwargs['data'].structure
+        structure = kwargs["data"].structure
         self.settings = in_dict
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True,
-                                 options=self.settings_options)
+        settings.to_custom_types(
+            self.settings,
+            self.settings_types,
+            self.settings_default,
+            no_ctype=True,
+            options=self.settings_options,
+        )
 
-        self.num_changes = len(self.settings['change_variable'])
+        self.num_changes = len(self.settings["change_variable"])
 
-        if 'lumped_mass' in self.settings['change_variable']:
-            self.control_objects['lumped_mass'] = LumpedMassControl()
+        if "lumped_mass" in self.settings["change_variable"]:
+            self.control_objects["lumped_mass"] = LumpedMassControl()
 
         lumped_mass_variables = []
         for i in range(self.num_changes):
-            var_type = self.settings['change_variable'][i]
-            if var_type == 'lumped_mass':
-                variable = ChangeLumpedMass(var_index=self.settings['variable_index'][i],
-                                            file=self.settings['file_list'][i])
+            var_type = self.settings["change_variable"][i]
+            if var_type == "lumped_mass":
+                variable = ChangeLumpedMass(
+                    var_index=self.settings["variable_index"][i],
+                    file=self.settings["file_list"][i],
+                )
                 variable.initialise(structure)
 
                 self.variables.append(variable)
                 lumped_mass_variables.append(i)
-                self.control_objects['lumped_mass'].append(i)
+                self.control_objects["lumped_mass"].append(i)
             else:
-                raise NotImplementedError('Variable {:s} not yet coded to be modified in runtime'.format(var_type))
+                raise NotImplementedError(
+                    "Variable {:s} not yet coded to be modified in runtime".format(
+                        var_type
+                    )
+                )
         try:
-            self.control_objects['lumped_mass'].set_unchanged_vars_to_zero(structure)
+            self.control_objects["lumped_mass"].set_unchanged_vars_to_zero(structure)
         except KeyError:
             pass
 
     def generate(self, params):
-        data = params['data']
+        data = params["data"]
         ts = data.ts
         structure = data.structure
 
@@ -83,7 +101,7 @@ class ModifyStructure(generator_interface.BaseGenerator):
 
         # should only be called once per time step
         try:
-            self.control_objects['lumped_mass'].execute_change(structure)
+            self.control_objects["lumped_mass"].execute_change(structure)
         except KeyError:
             pass
 
@@ -102,6 +120,7 @@ class ChangedVariable:
         original (np.ndarray): Original value of the desired value in the appropriate format
         current_value (np.ndarray): Running track of the current value of the desired variable
     """
+
     def __init__(self, name, var_index, file):
         self.name = name
         self.variable_index = var_index
@@ -112,7 +131,6 @@ class ChangedVariable:
         self.current_value = None  # initially
 
     def initialise(self, structure):
-
         self.get_original(structure)
         self.load_file()
 
@@ -153,8 +171,9 @@ class ChangeLumpedMass(ChangedVariable):
         var_index (int): Index of lumped mass. NOT the lumped mass node.
         file (str): Path to file containing time history of the lumped mass.
     """
+
     def __init__(self, var_index, file):
-        super().__init__('lumped_mass', var_index=var_index, file=file)
+        super().__init__("lumped_mass", var_index=var_index, file=file)
 
     def __call__(self, structure, ts):
         try:
@@ -195,18 +214,22 @@ class ChangeLumpedMass(ChangedVariable):
 
         if n_target_values != n_values:
             # if not enough column entries pad with original values
-            self.target_value = np.column_stack((self.target_value,
-                                                 self.original[-(n_values - n_target_values):]
-                                                 * np.ones((self.target_value.shape[0], n_values - n_target_values)
-                                                           )
-                                                 ))
+            self.target_value = np.column_stack(
+                (
+                    self.target_value,
+                    self.original[-(n_values - n_target_values) :]
+                    * np.ones((self.target_value.shape[0], n_values - n_target_values)),
+                )
+            )
 
     def get_original(self, structure):
         m = structure.lumped_mass[self.variable_index]
         pos = structure.lumped_mass_position[self.variable_index, :]
         inertia = structure.lumped_mass_inertia[self.variable_index, :, :]
 
-        self.original = np.hstack((m, pos, np.diag(inertia), inertia[0, 1], inertia[0, 2], inertia[1, 2]))
+        self.original = np.hstack(
+            (m, pos, np.diag(inertia), inertia[0, 1], inertia[0, 2], inertia[1, 2])
+        )
 
 
 class LumpedMassControl:
@@ -220,6 +243,7 @@ class LumpedMassControl:
         lumped_mass_variables (list): List of integers containing the indices of the variables to change. These indices
         refer to the order in which they are provided in the general settings for the generator.
     """
+
     def __init__(self):
         self.lumped_mass_variables = []
 

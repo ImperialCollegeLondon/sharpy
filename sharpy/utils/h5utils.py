@@ -30,21 +30,19 @@ def check_file_exists(file_name):
         FileNotFoundError : if the file does not exist, an error is raised with path to the non-existent file
     """
     if not os.path.isfile(file_name):
-        raise FileNotFoundError(
-            errno.ENOENT, os.strerror(errno.ENOENT),
-            file_name)
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_name)
 
 
-def load_h5_in_dict(handle, path='/'):
+def load_h5_in_dict(handle, path="/"):
     dictionary = {}
     for k, i in handle[path].items():
         if isinstance(i, h5._hl.dataset.Dataset):
             dictionary[k] = i[()]
         elif isinstance(i, h5._hl.group.Group):
-            dictionary[k] = load_h5_in_dict(handle, path + k + '/')
+            dictionary[k] = load_h5_in_dict(handle, path + k + "/")
 
         if len(i.attrs.items()):
-            dictionary['Attributes'] = load_attributes(handle, path + k + '/')
+            dictionary["Attributes"] = load_attributes(handle, path + k + "/")
 
     return dictionary
 
@@ -58,15 +56,15 @@ def load_attributes(handle, path):
 
 
 def check_fem_dict(fem_dict):
-    print('\tRunning tests for the FEM input file...', end='')
+    print("\tRunning tests for the FEM input file...", end="")
     # import pdb; pdb.set_trace()
-    (num_elem_dict, num_node_elem_dict) = np.shape(fem_dict['connectivities'])
-    num_elem = fem_dict['num_elem']
-    num_node_elem = fem_dict['num_node_elem']
+    (num_elem_dict, num_node_elem_dict) = np.shape(fem_dict["connectivities"])
+    num_elem = fem_dict["num_elem"]
+    num_node_elem = fem_dict["num_node_elem"]
     if not ((num_elem == num_elem_dict) or (num_node_elem == num_node_elem_dict)):
-        raise Exception('ERROR: FEM input file is not consistent')
+        raise Exception("ERROR: FEM input file is not consistent")
     else:
-        print(' PASSED')
+        print(" PASSED")
 
 
 def check_aero_dict(aero_dict):
@@ -96,7 +94,7 @@ def readh5(filename, GroupName=None):
     Hinst = ReadInto()
 
     ### read and scan file
-    hdfile = h5.File(filename, 'r')
+    hdfile = h5.File(filename, "r")
 
     NamesList = []  # dataset names
     hdfile.visit(NamesList.append)
@@ -105,7 +103,8 @@ def readh5(filename, GroupName=None):
     if GroupName is None:
         MainLev = []
         for name in NamesList:
-            if '/' not in name: MainLev.append(name)
+            if "/" not in name:
+                MainLev.append(name)
     else:
         if type(GroupName) is list:
             MainLev = GroupName
@@ -132,7 +131,7 @@ def readh5(filename, GroupName=None):
 
 
 def read_group(Grp):
-    """ Read an hdf5 group """
+    """Read an hdf5 group"""
 
     NamesList = []
     Grp.visit(NamesList.append)
@@ -140,45 +139,48 @@ def read_group(Grp):
     ### identify higher level
     MainLev = []
     for name in NamesList:
-        if '/' not in name: MainLev.append(name)
+        if "/" not in name:
+            MainLev.append(name)
 
     ### determine output format
-    read_as = 'class'
-    if '_read_as' in MainLev:
-        read_as = Grp['_read_as'][()]
+    read_as = "class"
+    if "_read_as" in MainLev:
+        read_as = Grp["_read_as"][()]
 
     ### initialise output
-    if read_as == 'class':
+    if read_as == "class":
         Hinst = ReadInto()
-    elif read_as == 'dict':
+    elif read_as == "dict":
         Hinst = {}
-    elif read_as == 'list' or read_as == 'tuple':
+    elif read_as == "list" or read_as == "tuple":
         Hinst = []
 
     ### Loop through higher level
-    if read_as == 'list' or read_as == 'tuple':
-        if '_as_array' in MainLev:
-            Hinst = list(Grp['_as_array'][()])
+    if read_as == "list" or read_as == "tuple":
+        if "_as_array" in MainLev:
+            Hinst = list(Grp["_as_array"][()])
         else:
             N = len(MainLev) - 1
             list_ts = MainLev.copy()
-            list_ts.remove('_read_as')
+            list_ts.remove("_read_as")
             list_ts = np.sort(np.unique(np.array(list_ts, dtype=np.int)))
             if len(list_ts > 0):
                 for nn in range(list_ts[0] - 1):
-                    Hinst.append('NoneType')
+                    Hinst.append("NoneType")
             for nn in list_ts:
-                name = '%.5d' % nn
+                name = "%.5d" % nn
                 ### extract value
                 if type(Grp[name]) is h5._hl.group.Group:
                     value = read_group(Grp[name])
                 else:
                     value = Grp[name][()]
                 Hinst.append(value)
-        if read_as == 'tuple': tuple(Hinst)
+        if read_as == "tuple":
+            tuple(Hinst)
     else:
         for name in MainLev:
-            if name == '_read_as': continue
+            if name == "_read_as":
+                continue
 
             ### extract value
             if type(Grp[name]) is h5._hl.group.Group:
@@ -187,7 +189,7 @@ def read_group(Grp):
                 value = Grp[name][()]
 
             ### allocate
-            if read_as == 'class':
+            if read_as == "class":
                 setattr(Hinst, name, value)
             else:
                 Hinst[name] = value
@@ -196,7 +198,7 @@ def read_group(Grp):
 
 
 class ReadInto:
-    def __init__(self, name='ReadInto'):
+    def __init__(self, name="ReadInto"):
         self._name = name
 
     pass
@@ -205,7 +207,7 @@ class ReadInto:
 # ---------------------------------------------------------------- Saving tools
 
 
-def saveh5(savedir, h5filename, *class_inst, permission='a', ClassesToSave=()):
+def saveh5(savedir, h5filename, *class_inst, permission="a", ClassesToSave=()):
     """
     Creates h5filename and saves all the classes specified in class_inst
 
@@ -227,9 +229,15 @@ def saveh5(savedir, h5filename, *class_inst, permission='a', ClassesToSave=()):
     return None
 
 
-def add_as_grp(obj, grpParent,
-               grpname=None, ClassesToSave=(), SkipAttr=[],
-               compress_float=False, overwrite=False):
+def add_as_grp(
+    obj,
+    grpParent,
+    grpname=None,
+    ClassesToSave=(),
+    SkipAttr=[],
+    compress_float=False,
+    overwrite=False,
+):
     """
     Given a class, dictionary, list or tuples instance 'obj', the routine adds
     it as a sub-group of name grpname to the parent group grpParent. An attribute
@@ -258,63 +266,70 @@ def add_as_grp(obj, grpParent,
 
     ### determine if dict, list, tuple or class
     if isinstance(obj, list):
-        ObjType = 'list'
+        ObjType = "list"
     elif isinstance(obj, tuple):
-        ObjType = 'tuple'
+        ObjType = "tuple"
     elif isinstance(obj, dict):
-        ObjType = 'dict'
-    elif hasattr(obj, '__class__'):
-        ObjType = 'class'
+        ObjType = "dict"
+    elif hasattr(obj, "__class__"):
+        ObjType = "class"
     else:
-        raise NameError('object type not supported')
+        raise NameError("object type not supported")
 
     ### determine sub-group name (only classes)
     if grpname is None:
-        if ObjType == 'class':
-            if hasattr(obj, '_name'):
+        if ObjType == "class":
+            if hasattr(obj, "_name"):
                 grpname = obj._name
             else:
                 grpname = obj.__class__.__name__
         else:
-            raise NameError('grpname must be specified for dict,list and tuples')
+            raise NameError("grpname must be specified for dict,list and tuples")
 
     ### Create group (if necessary)
     if not (grpname in grpParent):
         grp = grpParent.create_group(grpname)
-        grp['_read_as'] = ObjType
+        grp["_read_as"] = ObjType
     else:
         if overwrite:
             del grpParent[grpname]
             grp = grpParent.create_group(grpname)
-            grp['_read_as'] = ObjType
+            grp["_read_as"] = ObjType
         else:
             grp = grpParent[grpname]
-            assert grp['_read_as'][()] == ObjType, \
-                'Can not overwrite group of different type'
+            assert (
+                grp["_read_as"][()] == ObjType
+            ), "Can not overwrite group of different type"
 
     ### lists/tuples only: try to save as arrays
-    if ObjType in ('list', 'tuple'):
+    if ObjType in ("list", "tuple"):
         Success = save_list_as_array(
-            list_obj=obj, grp_target=grp, compress_float=compress_float)
+            list_obj=obj, grp_target=grp, compress_float=compress_float
+        )
         if Success:
             return grpParent
 
     ### create/retrieve dictionary of attributes/elements to be saved
-    if ObjType == 'dict':
+    if ObjType == "dict":
         dictname = obj
-    elif ObjType == 'class':
+    elif ObjType == "class":
         dictname = obj.__dict__
     else:
         N = len(obj)
         dictname = {}
         for nn in range(N):
-            dictname['%.5d' % nn] = obj[nn]
+            dictname["%.5d" % nn] = obj[nn]
 
     ### loop attributes and save
-    SaveAsGroups = ClassesToSave + (list, dict, tuple,)
+    SaveAsGroups = ClassesToSave + (
+        list,
+        dict,
+        tuple,
+    )
 
     for attr in dictname:
-        if attr in SkipAttr: continue
+        if attr in SkipAttr:
+            continue
 
         # ----- extract value & type
         value = dictname[attr]
@@ -323,8 +338,9 @@ def add_as_grp(obj, grpParent,
         # ----- classes/dict/lists
         # ps: no need to delete if overwrite is True
         if isinstance(value, SaveAsGroups):
-            add_as_grp(value, grp, attr,
-                       ClassesToSave, SkipAttr, compress_float, overwrite)
+            add_as_grp(
+                value, grp, attr, ClassesToSave, SkipAttr, compress_float, overwrite
+            )
             continue
 
         # ----- if attr already in grp always overwrite
@@ -349,21 +365,21 @@ def add_as_grp(obj, grpParent,
 
         # ----- Special
         if value == None:
-            grp[attr] = 'NoneType'
+            grp[attr] = "NoneType"
             continue
 
-        grp[attr] = 'not saved'
+        grp[attr] = "not saved"
 
     return grpParent
 
 
 def add_array_to_grp(data, name, grp, compress_float=False):
-    """ Add numpy array (data) as dataset 'name' to the group grp. If
-    compress is True, 64-bit float arrays are converted to 32-bit """
+    """Add numpy array (data) as dataset 'name' to the group grp. If
+    compress is True, 64-bit float arrays are converted to 32-bit"""
 
     if compress_float and data.dtype == float64:
         # embed()
-        grp.create_dataset(name, data=data, dtype='f4')
+        grp.create_dataset(name, data=data, dtype="f4")
     else:
         grp[name] = data
 
@@ -390,31 +406,36 @@ def save_list_as_array(list_obj, grp_target, compress_float=False):
                         SaveAsArray = False
                         break
             if SaveAsArray:
-                if '_as_array' in grp_target:
-                    del grp_target['_as_array']
+                if "_as_array" in grp_target:
+                    del grp_target["_as_array"]
                 if type0 in BasicNumTypes:  # list of scalars
                     if type0 == float and compress_float:
-                        grp_target['_as_array'] = float32(list_obj)
+                        grp_target["_as_array"] = float32(list_obj)
                     else:
-                        grp_target['_as_array'] = list_obj
+                        grp_target["_as_array"] = list_obj
                 elif type0 == str:  # list of strings
                     string_dt = h5.special_dtype(vlen=str)
-                    grp_target.create_dataset('_as_array',
-                                              data=array(list_obj, dtype=object), dtype=string_dt)
+                    grp_target.create_dataset(
+                        "_as_array", data=array(list_obj, dtype=object), dtype=string_dt
+                    )
 
                 elif type0 == ndarray:  # list of arrays
                     if list_obj[0].dtype in BasicNumTypes:
                         if list_obj[0].dtype == float64 and compress_float:
-                            grp_target['_as_array'] = float32(list_obj)
+                            grp_target["_as_array"] = float32(list_obj)
                         else:
-                            grp_target['_as_array'] = list_obj
+                            grp_target["_as_array"] = list_obj
                     else:
                         string_dt = h5.special_dtype(vlen=str)
-                        grp_target.create_dataset('_as_array',
-                                                  data=array(list_obj, dtype=object), dtype=string_dt)
+                        grp_target.create_dataset(
+                            "_as_array",
+                            data=array(list_obj, dtype=object),
+                            dtype=string_dt,
+                        )
                 else:
                     warnings.warn(
-                        '%s could not be saved as an array' % (grp_target.name,))
+                        "%s could not be saved as an array" % (grp_target.name,)
+                    )
                     return False
 
                 return True

@@ -21,4 +21,6 @@ if import_path[0] == "/":
 import_path = import_path.replace("/", ".")
 
 for file in files:
-    generator_interface.generators[file] = importlib.import_module(import_path + "." + file)
+    generator_interface.generators[file] = importlib.import_module(
+        import_path + "." + file
+    )

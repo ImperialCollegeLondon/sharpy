@@ -13,29 +13,31 @@ import sharpy.linear.src.libss as libss
 def frequency_error(Y_fom, Y_rom, wv):
     n_in = Y_fom.shape[1]
     n_out = Y_fom.shape[0]
-    cout.cout_wrap('Computing error in frequency response')
+    cout.cout_wrap("Computing error in frequency response")
     max_error = np.zeros((n_out, n_in, 2))
     for m in range(n_in):
         for p in range(n_out):
-            cout.cout_wrap('m = %g, p = %g' % (m, p))
-            max_error[p, m, 0] = error_between_signals(Y_fom[p, m, :].real,
-                                                            Y_rom[p, m, :].real,
-                                                            wv, 'real')
-            max_error[p, m, 1] = error_between_signals(Y_fom[p, m, :].imag,
-                                                            Y_rom[p, m, :].imag,
-                                                            wv, 'imag')
+            cout.cout_wrap("m = %g, p = %g" % (m, p))
+            max_error[p, m, 0] = error_between_signals(
+                Y_fom[p, m, :].real, Y_rom[p, m, :].real, wv, "real"
+            )
+            max_error[p, m, 1] = error_between_signals(
+                Y_fom[p, m, :].imag, Y_rom[p, m, :].imag, wv, "imag"
+            )
 
     if np.max(np.log10(max_error)) >= 0:
-        warnings.warn('Significant mismatch in the frequency response of the ROM and FOM')
+        warnings.warn(
+            "Significant mismatch in the frequency response of the ROM and FOM"
+        )
 
     return np.max(max_error)
 
 
-def error_between_signals(sig1, sig2, wv, sig_title=''):
+def error_between_signals(sig1, sig2, wv, sig_title=""):
     abs_error = np.abs(sig1 - sig2)
     max_error = np.max(abs_error)
     max_error_index = np.argmax(abs_error)
-    pct_error = max_error/sig1[max_error_index]
+    pct_error = max_error / sig1[max_error_index]
 
     max_err_freq = wv[max_error_index]
     if 1e-1 > max_error > 1e-3:
@@ -44,8 +46,11 @@ def error_between_signals(sig1, sig2, wv, sig_title=''):
         c = 4
     else:
         c = 1
-    cout.cout_wrap('\tError Magnitude -%s-: log10(error) = %.2f (%.2f pct) at %.2f rad/s'
-                   % (sig_title, np.log10(max_error), pct_error, max_err_freq), c)
+    cout.cout_wrap(
+        "\tError Magnitude -%s-: log10(error) = %.2f (%.2f pct) at %.2f rad/s"
+        % (sig_title, np.log10(max_error), pct_error, max_err_freq),
+        c,
+    )
 
     return max_error
 
@@ -79,8 +84,10 @@ def freqresp_relative_error(y1, y2, wv=None, **kwargs):
     """
     p, m, nwv = y1.shape
 
-    assert (p, m, nwv) == y2.shape, "Frequency responses do not have the same number of inputs, " \
-                                    "outputs or evaluation points."
+    assert (p, m, nwv) == y2.shape, (
+        "Frequency responses do not have the same number of inputs, "
+        "outputs or evaluation points."
+    )
 
     # freq_upper_limit = kwargs.get('vmax', None)
     # freq_lower_limit = kwargs.get('vmin', 0)
@@ -96,7 +103,9 @@ def freqresp_relative_error(y1, y2, wv=None, **kwargs):
     err = np.zeros((p, m))
     for pi in range(p):
         for mi in range(m):
-            err[pi, mi] = np.max(y1[pi, mi, i_min:i_max] - y2[pi, mi, i_min:i_max]) / np.max(y1[pi, mi, i_min:i_max])
+            err[pi, mi] = np.max(
+                y1[pi, mi, i_min:i_max] - y2[pi, mi, i_min:i_max]
+            ) / np.max(y1[pi, mi, i_min:i_max])
 
     return np.max(err)
 
@@ -117,8 +126,8 @@ def find_limits(wv, **kwargs):
         tuple: Index of ``vmin`` and index of ``vmax``.
 
     """
-    freq_upper_limit = kwargs.get('vmax', None)
-    freq_lower_limit = kwargs.get('vmin', 0)
+    freq_upper_limit = kwargs.get("vmax", None)
+    freq_lower_limit = kwargs.get("vmin", 0)
 
     if wv is not None and freq_upper_limit is not None:
         # find indices in frequencies
@@ -189,7 +198,10 @@ def l2norm(y_freq, wv, **kwargs):
 
     nwv = y_freq.shape[-1]
 
-    assert nwv == len(wv), "Number of frequency evaluations different %g vs %g" % (nwv, len(wv))
+    assert nwv == len(wv), "Number of frequency evaluations different %g vs %g" % (
+        nwv,
+        len(wv),
+    )
 
     i_min, i_max = find_limits(wv, **kwargs)
 
@@ -226,14 +238,18 @@ def hamiltonian(gamma, ss):
 
     p, m = d.shape
 
-    r = d.T.dot(d) - gamma ** 2 * np.eye(m)
-    s = d.dot(d.T) - gamma ** 2 * np.eye(p)
+    r = d.T.dot(d) - gamma**2 * np.eye(m)
+    s = d.dot(d.T) - gamma**2 * np.eye(p)
 
     rinv = sclalg.inv(r)
     sinv = sclalg.inv(s)
 
-    ham = np.block([[a - b.dot(rinv.dot(d.T.dot(c))),  - gamma * b.dot(rinv.dot(b.T))],
-                    [gamma * c.T.dot(sinv.dot(c)), - a.T + c.T.dot(d.dot(rinv.dot(b.T)))]])
+    ham = np.block(
+        [
+            [a - b.dot(rinv.dot(d.T.dot(c))), -gamma * b.dot(rinv.dot(b.T))],
+            [gamma * c.T.dot(sinv.dot(c)), -a.T + c.T.dot(d.dot(rinv.dot(b.T)))],
+        ]
+    )
     return ham
 
 
@@ -267,12 +283,12 @@ def h_infinity_norm(ss, **kwargs):
     Returns:
         float: H-infinity norm of the system.
     """
-    tol = kwargs.get('tol', 1e-7)
-    iter_max = kwargs.get('iter_max', 10)
-    print_info = kwargs.get('print_info', False)
+    tol = kwargs.get("tol", 1e-7)
+    iter_max = kwargs.get("iter_max", 10)
+    print_info = kwargs.get("print_info", False)
 
     # tolerance to find purely imaginary eigenvalues i.e those with Re(eig) < tol_imag_eigs
-    tol_imag_eigs = kwargs.get('tol_imag_eigs', 1e-7)
+    tol_imag_eigs = kwargs.get("tol_imag_eigs", 1e-7)
 
     if ss.dt is not None:
         ss = libss.disc2cont(ss)
@@ -283,9 +299,9 @@ def h_infinity_norm(ss, **kwargs):
     if any(eigs.real > tol_imag_eigs):
         if print_info:
             try:
-                cout.cout_wrap('System is unstable - H-inf = np.inf')
+                cout.cout_wrap("System is unstable - H-inf = np.inf")
             except ValueError:
-                print('System is unstable - H-inf = np.inf')
+                print("System is unstable - H-inf = np.inf")
         return np.inf
 
     # 2) Find eigenvalue that maximises equation. If all real pick largest eig
@@ -295,8 +311,14 @@ def h_infinity_norm(ss, **kwargs):
         eig_m, _ = max_eigs(eigs)
 
     # 3) Choose best option for gamma_lb
-    max_steady_state = np.max(sclalg.svd(ss.transfer_function_evaluation(0), compute_uv=False))
-    max_eig_m = np.max(sclalg.svd(ss.transfer_function_evaluation(1j*np.abs(eig_m)), compute_uv=False))
+    max_steady_state = np.max(
+        sclalg.svd(ss.transfer_function_evaluation(0), compute_uv=False)
+    )
+    max_eig_m = np.max(
+        sclalg.svd(
+            ss.transfer_function_evaluation(1j * np.abs(eig_m)), compute_uv=False
+        )
+    )
     max_d = np.max(sclalg.svd(ss.D, compute_uv=False))
 
     gamma_lb = max(max_steady_state, max_eig_m, max_d)
@@ -305,16 +327,20 @@ def h_infinity_norm(ss, **kwargs):
 
     if print_info:
         try:
-            cout.cout_wrap('Calculating H-inf norm\n{0:>4s} ::::: {1:^8s}'.format('Iter', 'Hinf'))
+            cout.cout_wrap(
+                "Calculating H-inf norm\n{0:>4s} ::::: {1:^8s}".format("Iter", "Hinf")
+            )
         except ValueError:
-            print('Calculating H_inf norm\n{0:>4s} ::::: {1:^8s}'.format('Iter', 'Hinf'))
+            print(
+                "Calculating H_inf norm\n{0:>4s} ::::: {1:^8s}".format("Iter", "Hinf")
+            )
 
     while iter_num < iter_max:
         if print_info:
             try:
-                cout.cout_wrap('{0:>4g} ::::: {1:>8.2e}'.format(iter_num, gamma_lb))
+                cout.cout_wrap("{0:>4g} ::::: {1:>8.2e}".format(iter_num, gamma_lb))
             except ValueError:
-                print('{0:>4g} ::::: {1:>8.2e}'.format(iter_num, gamma_lb))
+                print("{0:>4g} ::::: {1:>8.2e}".format(iter_num, gamma_lb))
         gamma = (1 + 2 * tol) * gamma_lb
 
         # 4) compute hamiltonian and eigenvalues
@@ -333,13 +359,27 @@ def h_infinity_norm(ss, **kwargs):
 
             if len(imag_eigs) == 1:
                 m = imag_eigs[0]
-                svdmax = np.max(sclalg.svd(ss.transfer_function_evaluation(1j*m), compute_uv=False))
+                svdmax = np.max(
+                    sclalg.svd(
+                        ss.transfer_function_evaluation(1j * m), compute_uv=False
+                    )
+                )
 
                 gamma_lb = svdmax
             else:
-                m_list = [0.5 * (imag_eigs[i] + imag_eigs[i+1]) for i in range(len(imag_eigs) - 1)]
+                m_list = [
+                    0.5 * (imag_eigs[i] + imag_eigs[i + 1])
+                    for i in range(len(imag_eigs) - 1)
+                ]
 
-                svdmax = [np.max(sclalg.svd(ss.transfer_function_evaluation(1j*m), compute_uv=False)) for m in m_list]
+                svdmax = [
+                    np.max(
+                        sclalg.svd(
+                            ss.transfer_function_evaluation(1j * m), compute_uv=False
+                        )
+                    )
+                    for m in m_list
+                ]
 
                 gamma_lb = max(svdmax)
 
@@ -350,7 +390,9 @@ def h_infinity_norm(ss, **kwargs):
         iter_num += 1
 
         if iter_num == iter_max:
-            raise np.linalg.LinAlgError('Unconverged H-inf solution after %g iterations' % iter_num)
+            raise np.linalg.LinAlgError(
+                "Unconverged H-inf solution after %g iterations" % iter_num
+            )
 
     hinf = 0.5 * (gamma_lb + gamma_ub)
 
@@ -398,16 +440,16 @@ def find_target_system(data, target_system):
         sharpy.linear.src.libss.StateSpace: State-space object of target system
     """
 
-    if target_system == 'aeroelastic':
+    if target_system == "aeroelastic":
         ss = data.linear.ss
 
-    elif target_system == 'structural':
+    elif target_system == "structural":
         ss = data.linear.linear_system.beam.ss
 
-    elif target_system == 'aerodynamic':
+    elif target_system == "aerodynamic":
         ss = data.linear.linear_system.uvlm.ss  # this could be a ROM
 
     else:
-        raise NameError('Unrecognised system')
+        raise NameError("Unrecognised system")
 
     return ss

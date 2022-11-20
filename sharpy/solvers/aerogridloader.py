@@ -42,56 +42,68 @@ class AerogridLoader(BaseSolver):
         wake_shape_generator (class): Wake shape generator
 
     """
-    solver_id = 'AerogridLoader'
-    solver_classification = 'loader'
+
+    solver_id = "AerogridLoader"
+    solver_classification = "loader"
 
     settings_types = dict()
     settings_default = dict()
     settings_description = dict()
     settings_options = dict()
 
-    settings_types['unsteady'] = 'bool'
-    settings_default['unsteady'] = False
-    settings_description['unsteady'] = 'Unsteady effects'
+    settings_types["unsteady"] = "bool"
+    settings_default["unsteady"] = False
+    settings_description["unsteady"] = "Unsteady effects"
 
-    settings_types['aligned_grid'] = 'bool'
-    settings_default['aligned_grid'] = True
-    settings_description['aligned_grid'] = 'Align grid'
+    settings_types["aligned_grid"] = "bool"
+    settings_default["aligned_grid"] = True
+    settings_description["aligned_grid"] = "Align grid"
 
-    settings_types['freestream_dir'] = 'list(float)'
-    settings_default['freestream_dir'] = [1.0, 0.0, 0.0]
-    settings_description['freestream_dir'] = 'Free stream flow direction'
+    settings_types["freestream_dir"] = "list(float)"
+    settings_default["freestream_dir"] = [1.0, 0.0, 0.0]
+    settings_description["freestream_dir"] = "Free stream flow direction"
 
-    settings_types['mstar'] = ['int', 'list(int)']
-    settings_default['mstar'] = 10
-    settings_description['mstar'] = 'Number of chordwise wake panels'
+    settings_types["mstar"] = ["int", "list(int)"]
+    settings_default["mstar"] = 10
+    settings_description["mstar"] = "Number of chordwise wake panels"
 
-    settings_types['control_surface_deflection'] = 'list(str)'
-    settings_default['control_surface_deflection'] = []
-    settings_description['control_surface_deflection'] = 'List of control surface generators for each control surface'
+    settings_types["control_surface_deflection"] = "list(str)"
+    settings_default["control_surface_deflection"] = []
+    settings_description[
+        "control_surface_deflection"
+    ] = "List of control surface generators for each control surface"
 
-    settings_types['control_surface_deflection_generator_settings'] = 'dict'
-    settings_default['control_surface_deflection_generator_settings'] = dict()
-    settings_description['control_surface_deflection_generator_settings'] = 'List of dictionaries with the settings ' \
-                                                                            'for each generator'
+    settings_types["control_surface_deflection_generator_settings"] = "dict"
+    settings_default["control_surface_deflection_generator_settings"] = dict()
+    settings_description[
+        "control_surface_deflection_generator_settings"
+    ] = "List of dictionaries with the settings for each generator"
 
-    settings_types['wake_shape_generator'] = 'str'
-    settings_default['wake_shape_generator'] = 'StraightWake'
-    settings_description['wake_shape_generator'] = 'ID of the generator to define the initial wake shape'
-    settings_options['wake_shape_generator'] = ['StraightWake', 'HelicoidalWake']
+    settings_types["wake_shape_generator"] = "str"
+    settings_default["wake_shape_generator"] = "StraightWake"
+    settings_description[
+        "wake_shape_generator"
+    ] = "ID of the generator to define the initial wake shape"
+    settings_options["wake_shape_generator"] = ["StraightWake", "HelicoidalWake"]
 
-    settings_types['wake_shape_generator_input'] = 'dict'
-    settings_default['wake_shape_generator_input'] = dict()
-    settings_description['wake_shape_generator_input'] = 'Dictionary of inputs needed by the wake shape generator'
+    settings_types["wake_shape_generator_input"] = "dict"
+    settings_default["wake_shape_generator_input"] = dict()
+    settings_description[
+        "wake_shape_generator_input"
+    ] = "Dictionary of inputs needed by the wake shape generator"
 
     settings_table = settings_utils.SettingsTable()
-    __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
-                                       settings_options=settings_options)
+    __doc__ += settings_table.generate(
+        settings_types,
+        settings_default,
+        settings_description,
+        settings_options=settings_options,
+    )
 
     def __init__(self):
         self.data = None
         self.settings = None
-        self.aero_file_name = ''
+        self.aero_file_name = ""
         # storage of file contents
         self.aero_data_dict = dict()
 
@@ -105,48 +117,54 @@ class AerogridLoader(BaseSolver):
         self.settings = data.settings[self.solver_id]
 
         # init settings
-        settings_utils.to_custom_types(self.settings,
-                           self.settings_types,
-                           self.settings_default, options=self.settings_options)
+        settings_utils.to_custom_types(
+            self.settings,
+            self.settings_types,
+            self.settings_default,
+            options=self.settings_options,
+        )
 
         # read input file (aero)
         self.read_files()
 
         wake_shape_generator_type = gen_interface.generator_from_string(
-            self.settings['wake_shape_generator'])
+            self.settings["wake_shape_generator"]
+        )
         self.wake_shape_generator = wake_shape_generator_type()
-        self.wake_shape_generator.initialise(data,
-                                             self.settings['wake_shape_generator_input'],
-                                             restart=restart)
+        self.wake_shape_generator.initialise(
+            data, self.settings["wake_shape_generator_input"], restart=restart
+        )
 
     def read_files(self):
         # open aero file
         # first, file names
-        self.aero_file_name = (self.data.case_route +
-                               '/' +
-                               self.data.case_name +
-                               '.aero.h5')
+        self.aero_file_name = (
+            self.data.case_route + "/" + self.data.case_name + ".aero.h5"
+        )
 
         #  then check that the file exists
         h5utils.check_file_exists(self.aero_file_name)
 
         #  read and store the hdf5 file
-        with h5.File(self.aero_file_name, 'r') as aero_file_handle:
+        with h5.File(self.aero_file_name, "r") as aero_file_handle:
             # store files in dictionary
             self.aero_data_dict = h5utils.load_h5_in_dict(aero_file_handle)
 
     def run(self, **kwargs):
         self.data.aero = aerogrid.Aerogrid()
-        self.data.aero.generate(self.aero_data_dict,
-                                self.data.structure,
-                                self.settings,
-                                self.data.ts)
+        self.data.aero.generate(
+            self.aero_data_dict, self.data.structure, self.settings, self.data.ts
+        )
         aero_tstep = self.data.aero.timestep_info[self.data.ts]
-        self.wake_shape_generator.generate({'zeta': aero_tstep.zeta,
-                                            'zeta_star': aero_tstep.zeta_star,
-                                            'gamma': aero_tstep.gamma,
-                                            'gamma_star': aero_tstep.gamma_star,
-                                            'dist_to_orig': aero_tstep.dist_to_orig})
+        self.wake_shape_generator.generate(
+            {
+                "zeta": aero_tstep.zeta,
+                "zeta_star": aero_tstep.zeta_star,
+                "gamma": aero_tstep.gamma,
+                "gamma_star": aero_tstep.gamma_star,
+                "dist_to_orig": aero_tstep.dist_to_orig,
+            }
+        )
         # keep the call to the wake generator
         # because it might be needed by other solvers
         self.data.aero.wake_shape_generator = self.wake_shape_generator

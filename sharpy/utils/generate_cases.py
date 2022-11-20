@@ -69,29 +69,31 @@ def get_airfoil_camber(x, y, n_points_camber):
 
     # Look for the minimum x (it will be assumed as the LE position
     for i in range(n):
-        if(x[i] < x[imin_x]):
+        if x[i] < x[imin_x]:
             imin_x = i
 
-    x_suction = np.zeros((imin_x+1, ))
-    y_suction = np.zeros((imin_x+1, ))
-    x_pressure = np.zeros((n-imin_x, ))
-    y_pressure = np.zeros((n-imin_x, ))
+    x_suction = np.zeros((imin_x + 1,))
+    y_suction = np.zeros((imin_x + 1,))
+    x_pressure = np.zeros((n - imin_x,))
+    y_pressure = np.zeros((n - imin_x,))
 
-    for i in range(0, imin_x+1):
-        x_suction[i] = x[imin_x-i]
-        y_suction[i] = y[imin_x-i]
+    for i in range(0, imin_x + 1):
+        x_suction[i] = x[imin_x - i]
+        y_suction[i] = y[imin_x - i]
 
     for i in range(imin_x, n):
-        x_pressure[i-imin_x] = x[i]
-        y_pressure[i-imin_x] = y[i]
+        x_pressure[i - imin_x] = x[i]
+        y_pressure[i - imin_x] = y[i]
 
     # Compute the camber coordinates
-    camber_y = np.zeros((n_points_camber, ))
+    camber_y = np.zeros((n_points_camber,))
     camber_x = np.linspace(0.0, 1.0, n_points_camber)
 
     # camber_y=0.5*(np.interp(camber_x,x[imin_x::-1],y[imin_x::-1])+np.interp(camber_x,x[imin_x:],y[imin_x:]))
-    camber_y = 0.5*(np.interp(camber_x, x_suction, y_suction) +
-                    np.interp(camber_x, x_pressure, y_pressure))
+    camber_y = 0.5 * (
+        np.interp(camber_x, x_suction, y_suction)
+        + np.interp(camber_x, x_pressure, y_pressure)
+    )
 
     # The function should be called as: camber_x, camber_y = get_airfoil_camber(x,y)
     return camber_x, camber_y
@@ -139,7 +141,9 @@ def from_node_array_to_elem_matrix(node_array, connectivities):
     elem_matrix = np.zeros(prop_size + (num_elem, 3), dtype=node_array.dtype)
     for ielem in range(num_elem):
         for inode_in_elem in range(3):
-            elem_matrix[:, ielem, inode_in_elem] = node_array[connectivities[ielem, inode_in_elem], :]
+            elem_matrix[:, ielem, inode_in_elem] = node_array[
+                connectivities[ielem, inode_in_elem], :
+            ]
 
     return elem_matrix
 
@@ -173,22 +177,22 @@ def read_column_sheet_type01(excel_file_name, excel_sheet, column_name):
     except KeyError:
         return None
 
-    if excel_db[column_name][1] == 'one_int':
+    if excel_db[column_name][1] == "one_int":
         var = excel_db[column_name][2]
-    elif excel_db[column_name][1] == 'one_float':
+    elif excel_db[column_name][1] == "one_float":
         var = excel_db[column_name][2]
-    elif excel_db[column_name][1] == 'one_str':
+    elif excel_db[column_name][1] == "one_str":
         var = excel_db[column_name][2]
-    elif excel_db[column_name][1] == 'vec_int':
+    elif excel_db[column_name][1] == "vec_int":
         var = np.zeros((num_elem,), dtype=int)
-    elif excel_db[column_name][1] == 'vec_float':
+    elif excel_db[column_name][1] == "vec_float":
         var = np.zeros((num_elem,), dtype=float)
-    elif excel_db[column_name][1] == 'vec_str':
+    elif excel_db[column_name][1] == "vec_str":
         var = np.zeros((num_elem,), dtype=object)
     else:
         raise RuntimeError("ERROR: not recognized number type")
 
-    if 'vec' in excel_db[column_name][1]:
+    if "vec" in excel_db[column_name][1]:
         for i in range(2, excel_db.index.stop):
             var[i - 2] = excel_db[column_name][i]
 
@@ -211,35 +215,37 @@ def get_factor_geometric_progression(a0, Sn_target, n):
     max_it = 1000
 
     # Case of uniform distribution
-    if abs(a0*n - Sn_target) < tol:
-        return 1.
+    if abs(a0 * n - Sn_target) < tol:
+        return 1.0
 
     # First estimation for r
-    if a0*n < Sn_target:
+    if a0 * n < Sn_target:
         r = 1.1
     else:
         r = 0.9
 
     # Iterative computation
-    error = 2.*tol
-    Sn_temp = a0*(1-r**n)/(1-r)
+    error = 2.0 * tol
+    Sn_temp = a0 * (1 - r**n) / (1 - r)
     it = 0
-    while ((error > tol) and (it < max_it)):
-        derivative = ((1-n*r**(n-1))*(1-r) + (1-r**n))/(1-r)**2
-        r += (Sn_target - Sn_temp)/a0/derivative
-        Sn_temp = a0*(1-r**n)/(1-r)
-        error = abs(Sn_temp - Sn_target)/Sn_target
+    while (error > tol) and (it < max_it):
+        derivative = ((1 - n * r ** (n - 1)) * (1 - r) + (1 - r**n)) / (1 - r) ** 2
+        r += (Sn_target - Sn_temp) / a0 / derivative
+        Sn_temp = a0 * (1 - r**n) / (1 - r)
+        error = abs(Sn_temp - Sn_target) / Sn_target
         it += 1
 
     if it == max_it:
-        message = ("Maximum iterations reached. Sn target:%f . Sn obtained:%f . Relative error: %f" % (Sn_target, Sn_temp, error))
+        message = (
+            "Maximum iterations reached. Sn target:%f . Sn obtained:%f . Relative"
+            " error: %f" % (Sn_target, Sn_temp, error)
+        )
         cout.cout_wrap(message, 3)
 
     return r
 
 
 def get_ielem_inode(connectivities, inode):
-
     num_elem, num_node_in_elem = connectivities.shape
 
     for ielem in range(num_elem):
@@ -260,15 +266,15 @@ def get_aoacl0_from_camber(x, y):
 
     # Scale
     c = x[-1] - x[0]
-    xc = (x - x[0])/c
-    yc = (y - y[0])/c
+    xc = (x - x[0]) / c
+    yc = (y - y[0]) / c
 
     # Remove the first and last points that may give rise to problems
     xc = xc[1:-1]
     yc = yc[1:-1]
 
-    f1 = 1./(np.pi*(1-xc)*np.sqrt(xc*(1-xc)))
-    int = yc*f1
+    f1 = 1.0 / (np.pi * (1 - xc) * np.sqrt(xc * (1 - xc)))
+    int = yc * f1
 
     return -scipy.integrate.trapz(int, xc)
 
@@ -283,21 +289,20 @@ def get_mu0_from_camber(x, y):
 
     # Scale
     c = x[-1] - x[0]
-    xc = (x - x[0])/c
-    yc = (y - y[0])/c
+    xc = (x - x[0]) / c
+    yc = (y - y[0]) / c
 
     # Remove the first and last points that may give rise to problems
     xc = xc[1:-1]
     yc = yc[1:-1]
 
-    f2 = (1. - 2*xc)/np.sqrt(xc*(1. - xc))
-    int = yc*f2
+    f2 = (1.0 - 2 * xc) / np.sqrt(xc * (1.0 - xc))
+    int = yc * f2
 
     return scipy.integrate.trapz(int, xc)
 
 
 def list_methods(class_instance, print_info=True, clean=True):
-
     list = []
     for str in dir(class_instance):
         func = getattr(class_instance, str)
@@ -316,7 +321,6 @@ def list_methods(class_instance, print_info=True, clean=True):
 
 
 def set_variable_dict(dictionary, variable, set_value):
-
     if variable in dictionary:
         dictionary[variable] = set_value
 
@@ -334,14 +338,14 @@ def define_or_concatenate(variable, value, axis=0):
         variable = value
     else:
         variable = np.concatenate((variable, value), axis=axis)
-    
+
     return variable
 
 
 ######################################################################
 ###############  STRUCTURAL INFORMATION  #############################
 ######################################################################
-class StructuralInformation():
+class StructuralInformation:
     """
     StructuralInformation
 
@@ -378,7 +382,6 @@ class StructuralInformation():
         self.lumped_mass_mat = None
         self.lumped_mass_mat_nodes = None
 
-
     def copy(self):
         """
         copy
@@ -399,26 +402,45 @@ class StructuralInformation():
         copied.stiffness_db = self.stiffness_db.astype(dtype=float, copy=True)
         copied.elem_mass = self.elem_mass.astype(dtype=int, copy=True)
         copied.mass_db = self.mass_db.astype(dtype=float, copy=True)
-        copied.frame_of_reference_delta = self.frame_of_reference_delta.astype(dtype=float, copy=True)
+        copied.frame_of_reference_delta = self.frame_of_reference_delta.astype(
+            dtype=float, copy=True
+        )
         copied.structural_twist = self.structural_twist.astype(dtype=float, copy=True)
-        copied.boundary_conditions = self.boundary_conditions.astype(dtype=int, copy=True)
+        copied.boundary_conditions = self.boundary_conditions.astype(
+            dtype=int, copy=True
+        )
         copied.beam_number = self.beam_number.astype(dtype=int, copy=True)
         copied.body_number = self.body_number.astype(dtype=int, copy=True)
         copied.app_forces = self.app_forces.astype(dtype=float, copy=True)
         if isinstance(self.lumped_mass_nodes, np.ndarray):
-            copied.lumped_mass_nodes = self.lumped_mass_nodes.astype(dtype=int, copy=True)
+            copied.lumped_mass_nodes = self.lumped_mass_nodes.astype(
+                dtype=int, copy=True
+            )
             copied.lumped_mass = self.lumped_mass.astype(dtype=float, copy=True)
-            copied.lumped_mass_inertia = self.lumped_mass_inertia.astype(dtype=float, copy=True)
-            copied.lumped_mass_position = self.lumped_mass_position.astype(dtype=float, copy=True)
+            copied.lumped_mass_inertia = self.lumped_mass_inertia.astype(
+                dtype=float, copy=True
+            )
+            copied.lumped_mass_position = self.lumped_mass_position.astype(
+                dtype=float, copy=True
+            )
         if isinstance(self.lumped_mass_mat_nodes, np.ndarray):
-            copied.lumped_mass_mat_nodes = self.lumped_mass_mat_nodes.astype(dtype=int, copy=True)
+            copied.lumped_mass_mat_nodes = self.lumped_mass_mat_nodes.astype(
+                dtype=int, copy=True
+            )
             copied.lumped_mass_mat = self.lumped_mass_mat.astype(dtype=float, copy=True)
 
         return copied
 
-    def set_to_zero(self, num_node_elem, num_node, num_elem,
-                    num_mass_db=None, num_stiffness_db=None, num_lumped_mass=0,
-                    num_lumped_mass_mat=0):
+    def set_to_zero(
+        self,
+        num_node_elem,
+        num_node,
+        num_elem,
+        num_mass_db=None,
+        num_stiffness_db=None,
+        num_lumped_mass=0,
+        num_lumped_mass_mat=0,
+    ):
         """
         set_to_zero
 
@@ -448,8 +470,9 @@ class StructuralInformation():
         self.stiffness_db = np.zeros((num_stiffness_db, 6, 6), dtype=float)
         self.elem_mass = np.zeros((num_elem,), dtype=int)
         self.mass_db = np.zeros((num_mass_db, 6, 6), dtype=float)
-        self.frame_of_reference_delta = np.zeros((num_elem, num_node_elem, 3),
-                                                 dtype=float)
+        self.frame_of_reference_delta = np.zeros(
+            (num_elem, num_node_elem, 3), dtype=float
+        )
         self.structural_twist = np.zeros((num_elem, num_node_elem), dtype=float)
         self.boundary_conditions = np.zeros((num_node,), dtype=int)
         self.beam_number = np.zeros((num_elem,), dtype=int)
@@ -458,36 +481,35 @@ class StructuralInformation():
         if not num_lumped_mass == 0:
             self.lumped_mass_nodes = np.zeros((num_lumped_mass,), dtype=int)
             self.lumped_mass = np.zeros((num_lumped_mass,), dtype=float)
-            self.lumped_mass_inertia = np.zeros((num_lumped_mass, 3, 3),
-                                                dtype=float)
-            self.lumped_mass_position = np.zeros((num_lumped_mass, 3),
-                                                 dtype=float)
+            self.lumped_mass_inertia = np.zeros((num_lumped_mass, 3, 3), dtype=float)
+            self.lumped_mass_position = np.zeros((num_lumped_mass, 3), dtype=float)
         if not num_lumped_mass_mat == 0:
             self.lumped_mass_mat_nodes = np.zeros((num_lumped_mass_mat,), dtype=int)
             self.lumped_mass_mat = np.zeros((num_lumped_mass_mat, 6, 6), dtype=float)
 
-
-    def generate_full_structure(self,
-                                num_node_elem,
-                                num_node,
-                                num_elem,
-                                coordinates,
-                                connectivities,
-                                elem_stiffness,
-                                stiffness_db,
-                                elem_mass,
-                                mass_db,
-                                frame_of_reference_delta,
-                                structural_twist,
-                                boundary_conditions,
-                                beam_number,
-                                app_forces,
-                                lumped_mass_nodes=None,
-                                lumped_mass=None,
-                                lumped_mass_inertia=None,
-                                lumped_mass_position=None,
-                                lumped_mass_mat_nodes=None,
-                                lumped_mass_mat=None):
+    def generate_full_structure(
+        self,
+        num_node_elem,
+        num_node,
+        num_elem,
+        coordinates,
+        connectivities,
+        elem_stiffness,
+        stiffness_db,
+        elem_mass,
+        mass_db,
+        frame_of_reference_delta,
+        structural_twist,
+        boundary_conditions,
+        beam_number,
+        app_forces,
+        lumped_mass_nodes=None,
+        lumped_mass=None,
+        lumped_mass_inertia=None,
+        lumped_mass_position=None,
+        lumped_mass_mat_nodes=None,
+        lumped_mass_mat=None,
+    ):
         """
         generate_full_structure
 
@@ -540,30 +562,34 @@ class StructuralInformation():
             self.lumped_mass_mat_nodes = lumped_mass_mat_nodes
             self.lumped_mass_mat = lumped_mass_mat
 
-
-    def generate_1to1_from_vectors(self,
-                                    num_node_elem,
-                                    num_node,
-                                    num_elem,
-                                    coordinates,
-                                    stiffness_db,
-                                    mass_db,
-                                    frame_of_reference_delta,
-                                    vec_node_structural_twist,
-                                    num_lumped_mass=0,
-                                    num_lumped_mass_mat=0):
-
+    def generate_1to1_from_vectors(
+        self,
+        num_node_elem,
+        num_node,
+        num_elem,
+        coordinates,
+        stiffness_db,
+        mass_db,
+        frame_of_reference_delta,
+        vec_node_structural_twist,
+        num_lumped_mass=0,
+        num_lumped_mass_mat=0,
+    ):
         self.num_node_elem = num_node_elem
         self.num_node = num_node
         self.num_elem = num_elem
         self.coordinates = coordinates
         self.create_simple_connectivities()
-        self.elem_stiffness = np.linspace(0,self.num_elem - 1, self.num_elem, dtype=int)
+        self.elem_stiffness = np.linspace(
+            0, self.num_elem - 1, self.num_elem, dtype=int
+        )
         self.stiffness_db = stiffness_db
-        self.elem_mass = np.linspace(0,self.num_elem - 1, self.num_elem, dtype=int)
+        self.elem_mass = np.linspace(0, self.num_elem - 1, self.num_elem, dtype=int)
         self.mass_db = mass_db
         self.create_frame_of_reference_delta(y_BFoR=frame_of_reference_delta)
-        self.structural_twist = from_node_list_to_elem_matrix(vec_node_structural_twist, self.connectivities)
+        self.structural_twist = from_node_list_to_elem_matrix(
+            vec_node_structural_twist, self.connectivities
+        )
         self.boundary_conditions = np.zeros((self.num_node,), dtype=int)
         self.beam_number = np.zeros((self.num_elem,), dtype=int)
         self.body_number = np.zeros((self.num_elem,), dtype=int)
@@ -577,8 +603,7 @@ class StructuralInformation():
             self.lumped_mass_mat_nodes = np.zeros((num_lumped_mass_mat,), dtype=int)
             self.lumped_mass_mat = np.zeros((num_lumped_mass_mat, 6, 6), dtype=float)
 
-
-    def create_frame_of_reference_delta(self, y_BFoR='y_AFoR'):
+    def create_frame_of_reference_delta(self, y_BFoR="y_AFoR"):
         """
         create_frame_of_reference_delta
 
@@ -588,31 +613,37 @@ class StructuralInformation():
             y_BFoR (string): Direction of the yB axis
         """
 
-        if y_BFoR == 'x_AFoR':
+        if y_BFoR == "x_AFoR":
             yB = np.array([1.0, 0.0, 0.0])
-        elif y_BFoR == 'y_AFoR':
+        elif y_BFoR == "y_AFoR":
             yB = np.array([0.0, 1.0, 0.0])
-        elif y_BFoR == 'z_AFoR':
+        elif y_BFoR == "z_AFoR":
             yB = np.array([0.0, 0.0, 1.0])
         else:
-            cout.cout_wrap("WARNING: y_BFoR not recognized, using the default value: y_BFoR = y_AFoR", 3)
+            cout.cout_wrap(
+                "WARNING: y_BFoR not recognized, using the default value: y_BFoR ="
+                " y_AFoR",
+                3,
+            )
 
         # y vector of the B frame of reference
-        self.frame_of_reference_delta = np.zeros((self.num_elem,
-                                                  self.num_node_elem, 3),
-                                                  dtype=float)
+        self.frame_of_reference_delta = np.zeros(
+            (self.num_elem, self.num_node_elem, 3), dtype=float
+        )
         for ielem in range(self.num_elem):
             for inode in range(self.num_node_elem):
                 # TODO: do i need to use the connectivities?
                 self.frame_of_reference_delta[ielem, inode, :] = yB
 
-    def create_mass_db_from_vector(self,
-                                   vec_mass_per_unit_length,
-                                   vec_mass_iner_x,
-                                   vec_mass_iner_y,
-                                   vec_mass_iner_z,
-                                   vec_pos_cg_B,
-                                   vec_mass_iner_yz=None):
+    def create_mass_db_from_vector(
+        self,
+        vec_mass_per_unit_length,
+        vec_mass_iner_x,
+        vec_mass_iner_y,
+        vec_mass_iner_z,
+        vec_pos_cg_B,
+        vec_mass_iner_yz=None,
+    ):
         """
         create_mass_db_from_vector
 
@@ -631,26 +662,25 @@ class StructuralInformation():
             vec_mass_iner_yz = np.zeros_like(vec_mass_per_unit_length)
 
         self.mass_db = np.zeros((len(vec_mass_per_unit_length), 6, 6), dtype=float)
-        mass = np.zeros((6, 6),)
+        mass = np.zeros(
+            (6, 6),
+        )
         for i in range(len(vec_mass_per_unit_length)):
-            mass[0:3, 0:3] = np.eye(3)*vec_mass_per_unit_length[i]
-            mass[0:3, 3:6] = -1.0*vec_mass_per_unit_length[i]*algebra.skew(vec_pos_cg_B[i])
-            mass[3:6, 0:3] = -1.0*mass[0:3, 3:6]
-            mass[3:6, 3:6] = np.diag([vec_mass_iner_x[i],
-                                      vec_mass_iner_y[i],
-                                      vec_mass_iner_z[i]])
+            mass[0:3, 0:3] = np.eye(3) * vec_mass_per_unit_length[i]
+            mass[0:3, 3:6] = (
+                -1.0 * vec_mass_per_unit_length[i] * algebra.skew(vec_pos_cg_B[i])
+            )
+            mass[3:6, 0:3] = -1.0 * mass[0:3, 3:6]
+            mass[3:6, 3:6] = np.diag(
+                [vec_mass_iner_x[i], vec_mass_iner_y[i], vec_mass_iner_z[i]]
+            )
             mass[4, 5] = vec_mass_iner_yz[i]
             mass[5, 4] = vec_mass_iner_yz[i]
             self.mass_db[i] = mass
 
-    def create_stiff_db_from_vector(self,
-                                    vec_EA,
-                                    vec_GAy,
-                                    vec_GAz,
-                                    vec_GJ,
-                                    vec_EIy,
-                                    vec_EIz,
-                                    vec_EIyz=None):
+    def create_stiff_db_from_vector(
+        self, vec_EA, vec_GAy, vec_GAz, vec_GJ, vec_EIy, vec_EIz, vec_EIyz=None
+    ):
         """
         create_stiff_db_from_vector
 
@@ -669,14 +699,13 @@ class StructuralInformation():
         if vec_EIyz is None:
             vec_EIyz = np.zeros_like(vec_EA)
 
-        self.stiffness_db = np.zeros((len(vec_EA), 6, 6),)
+        self.stiffness_db = np.zeros(
+            (len(vec_EA), 6, 6),
+        )
         for i in range(len(vec_EA)):
-            self.stiffness_db[i] = np.diag([vec_EA[i],
-                                            vec_GAy[i],
-                                            vec_GAz[i],
-                                            vec_GJ[i],
-                                            vec_EIy[i],
-                                            vec_EIz[i]])
+            self.stiffness_db[i] = np.diag(
+                [vec_EA[i], vec_GAy[i], vec_GAz[i], vec_GJ[i], vec_EIy[i], vec_EIz[i]]
+            )
             self.stiffness_db[i][4, 5] = vec_EIyz[i]
             self.stiffness_db[i][5, 4] = vec_EIyz[i]
 
@@ -687,11 +716,11 @@ class StructuralInformation():
         Create the matrix of connectivities for one single beam with the nodes
         ordered in increasing xB direction
         """
-        self.connectivities = np.zeros((self.num_elem, self.num_node_elem),
-                                       dtype=int)
+        self.connectivities = np.zeros((self.num_elem, self.num_node_elem), dtype=int)
         for ielem in range(self.num_elem):
-            self.connectivities[ielem, :] = (np.array([0, 2, 1], dtype=int) +
-                                             ielem*(self.num_node_elem - 1))
+            self.connectivities[ielem, :] = np.array([0, 2, 1], dtype=int) + ielem * (
+                self.num_node_elem - 1
+            )
 
     def rotate_around_origin(self, axis, angle):
         """
@@ -710,7 +739,9 @@ class StructuralInformation():
 
         for ielem in range(self.num_elem):
             for inode in range(self.num_node_elem):
-                self.frame_of_reference_delta[ielem, inode, :] = np.dot(rot, self.frame_of_reference_delta[ielem, inode, :])
+                self.frame_of_reference_delta[ielem, inode, :] = np.dot(
+                    rot, self.frame_of_reference_delta[ielem, inode, :]
+                )
 
     def compute_basic_num_elem(self):
         """
@@ -718,10 +749,14 @@ class StructuralInformation():
 
         It computes the number of elements when no nodes are shared between beams
         """
-        if ((self.num_node-1) % (self.num_node_elem-1)) == 0:
-            self.num_elem = int((self.num_node-1)/(self.num_node_elem-1))
+        if ((self.num_node - 1) % (self.num_node_elem - 1)) == 0:
+            self.num_elem = int((self.num_node - 1) / (self.num_node_elem - 1))
         else:
-            raise RuntimeError("The number of nodes cannot be converted into " + self.num_node_elem + "-noded elements")
+            raise RuntimeError(
+                "The number of nodes cannot be converted into "
+                + self.num_node_elem
+                + "-noded elements"
+            )
 
     def compute_basic_num_node(self):
         """
@@ -729,20 +764,22 @@ class StructuralInformation():
 
         It computes the number of nodes when no nodes are shared between beams
         """
-        self.num_node = self.num_elem*(self.num_node_elem-1) + 1
+        self.num_node = self.num_elem * (self.num_node_elem - 1) + 1
 
-    def generate_uniform_sym_beam(self,
-                                  node_pos,
-                                  mass_per_unit_length,
-                                  mass_iner,
-                                  EA,
-                                  GA,
-                                  GJ,
-                                  EI,
-                                  num_node_elem=3,
-                                  y_BFoR='y_AFoR',
-                                  num_lumped_mass=0,
-                                  num_lumped_mass_mat=0):
+    def generate_uniform_sym_beam(
+        self,
+        node_pos,
+        mass_per_unit_length,
+        mass_iner,
+        EA,
+        GA,
+        GJ,
+        EI,
+        num_node_elem=3,
+        y_BFoR="y_AFoR",
+        num_lumped_mass=0,
+        num_lumped_mass_mat=0,
+    ):
         """
         generate_uniform_sym_beam
 
@@ -760,40 +797,46 @@ class StructuralInformation():
             y_BFoR (str): orientation of the yB axis
             num_lumped_mass (int): number of lumped masses
         """
-        self.generate_uniform_beam(node_pos,
-                                   mass_per_unit_length,
-                                   mass_iner,
-                                   mass_iner,
-                                   mass_iner,
-                                   np.zeros((3,),),
-                                   EA,
-                                   GA,
-                                   GA,
-                                   GJ,
-                                   EI,
-                                   EI,
-                                   num_node_elem,
-                                   y_BFoR,
-                                   num_lumped_mass,
-                                   num_lumped_mass_mat)
+        self.generate_uniform_beam(
+            node_pos,
+            mass_per_unit_length,
+            mass_iner,
+            mass_iner,
+            mass_iner,
+            np.zeros(
+                (3,),
+            ),
+            EA,
+            GA,
+            GA,
+            GJ,
+            EI,
+            EI,
+            num_node_elem,
+            y_BFoR,
+            num_lumped_mass,
+            num_lumped_mass_mat,
+        )
 
-    def generate_uniform_beam(self,
-                              node_pos,
-                              mass_per_unit_length,
-                              mass_iner_x,
-                              mass_iner_y,
-                              mass_iner_z,
-                              pos_cg_B,
-                              EA,
-                              GAy,
-                              GAz,
-                              GJ,
-                              EIy,
-                              EIz,
-                              num_node_elem=3,
-                              y_BFoR='y_AFoR',
-                              num_lumped_mass=0,
-                              num_lumped_mass_mat=0):
+    def generate_uniform_beam(
+        self,
+        node_pos,
+        mass_per_unit_length,
+        mass_iner_x,
+        mass_iner_y,
+        mass_iner_z,
+        pos_cg_B,
+        EA,
+        GAy,
+        GAz,
+        GJ,
+        EIy,
+        EIz,
+        num_node_elem=3,
+        y_BFoR="y_AFoR",
+        num_lumped_mass=0,
+        num_lumped_mass_mat=0,
+    ):
         """
         generate_uniform_beam
 
@@ -821,8 +864,15 @@ class StructuralInformation():
         self.num_node_elem = num_node_elem
         self.compute_basic_num_elem()
 
-        self.set_to_zero(self.num_node_elem, self.num_node, self.num_elem, 1, 1,
-                         num_lumped_mass, num_lumped_mass_mat)
+        self.set_to_zero(
+            self.num_node_elem,
+            self.num_node,
+            self.num_elem,
+            1,
+            1,
+            num_lumped_mass,
+            num_lumped_mass_mat,
+        )
         self.coordinates = node_pos
         self.create_simple_connectivities()
         # self.create_mass_db_from_vector(np.ones((num_elem,),)*mass_per_unit_length,
@@ -836,32 +886,35 @@ class StructuralInformation():
         #                                 np.ones((num_elem,),)*GJ,
         #                                 np.ones((num_elem,),)*EIy,
         #                                 np.ones((num_elem,),)*EIz)
-        self.create_mass_db_from_vector(np.array([mass_per_unit_length]),
-                                       np.array([mass_iner_x]),
-                                       np.array([mass_iner_y]),
-                                       np.array([mass_iner_z]),
-                                       np.array([pos_cg_B]))
-        self.create_stiff_db_from_vector(np.array([EA]),
-                                        np.array([GAy]),
-                                        np.array([GAz]),
-                                        np.array([GJ]),
-                                        np.array([EIy]),
-                                        np.array([EIz]))
+        self.create_mass_db_from_vector(
+            np.array([mass_per_unit_length]),
+            np.array([mass_iner_x]),
+            np.array([mass_iner_y]),
+            np.array([mass_iner_z]),
+            np.array([pos_cg_B]),
+        )
+        self.create_stiff_db_from_vector(
+            np.array([EA]),
+            np.array([GAy]),
+            np.array([GAz]),
+            np.array([GJ]),
+            np.array([EIy]),
+            np.array([EIz]),
+        )
         self.create_frame_of_reference_delta(y_BFoR)
         self.boundary_conditions = np.zeros((self.num_node), dtype=int)
-
 
     def add_lumped_mass(self, node, mass=None, inertia=None, pos=None, mat=None):
         """
         Add lumped mass to structure
-        
+
         node(int): Node where the lumped mass is to be placed
 
         For lumped masses:
         mass(float): Mass
         inertia(np.array): 3x3 inertia matrix
         pos(np.array): 3 coordinates of the mass position
-        
+
         For lumped masses described as a 6x6 matrix:
         mat(np.array): 6x6 mass and inertia matrix
         """
@@ -870,18 +923,30 @@ class StructuralInformation():
             if pos is None:
                 pos = np.zeros((3))
             if mat is not None:
-                raise ValueError("mass, inertia and mat cannot be defined at the same time")
+                raise ValueError(
+                    "mass, inertia and mat cannot be defined at the same time"
+                )
 
-            self.lumped_mass_nodes = define_or_concatenate(self.lumped_mass_nodes, np.array([node]), axis=0)
-            self.lumped_mass = define_or_concatenate(self.lumped_mass, np.array([mass]), axis=0)
-            self.lumped_mass_inertia = define_or_concatenate(self.lumped_mass_inertia, np.array([inertia]), axis=0)
-            self.lumped_mass_position = define_or_concatenate(self.lumped_mass_position, np.array([pos]), axis=0)
+            self.lumped_mass_nodes = define_or_concatenate(
+                self.lumped_mass_nodes, np.array([node]), axis=0
+            )
+            self.lumped_mass = define_or_concatenate(
+                self.lumped_mass, np.array([mass]), axis=0
+            )
+            self.lumped_mass_inertia = define_or_concatenate(
+                self.lumped_mass_inertia, np.array([inertia]), axis=0
+            )
+            self.lumped_mass_position = define_or_concatenate(
+                self.lumped_mass_position, np.array([pos]), axis=0
+            )
 
-        elif (mat is not None):
-            
-            self.lumped_mass_mat_nodes = define_or_concatenate(self.lumped_mass_mat_nodes, np.array([node]), axis=0)
-            self.lumped_mass_mat = define_or_concatenate(self.lumped_mass_mat, np.array([mat]), axis=0)
-
+        elif mat is not None:
+            self.lumped_mass_mat_nodes = define_or_concatenate(
+                self.lumped_mass_mat_nodes, np.array([node]), axis=0
+            )
+            self.lumped_mass_mat = define_or_concatenate(
+                self.lumped_mass_mat, np.array([mat]), axis=0
+            )
 
     def assembly_structures(self, *args):
         """
@@ -896,44 +961,110 @@ class StructuralInformation():
             The structures does NOT merge any node (even if nodes are defined at the same coordinates)
         """
 
-        total_num_beam = max(self.beam_number)+1
-        total_num_body = max(self.body_number)+1
+        total_num_beam = max(self.beam_number) + 1
+        total_num_body = max(self.body_number) + 1
         total_num_node = self.num_node
         total_num_elem = self.num_elem
         total_num_stiff = self.stiffness_db.shape[0]
         total_num_mass = self.mass_db.shape[0]
 
         for structure_to_add in args:
-
-            self.coordinates = np.concatenate((self.coordinates, structure_to_add.coordinates), axis=0)
-            self.connectivities = np.concatenate((self.connectivities, structure_to_add.connectivities + total_num_node), axis=0)
-            assert self.num_node_elem == structure_to_add.num_node_elem, "num_node_elem does NOT match"
-            self.stiffness_db = np.concatenate((self.stiffness_db, structure_to_add.stiffness_db), axis=0)
-            self.elem_stiffness = np.concatenate((self.elem_stiffness, structure_to_add.elem_stiffness + total_num_stiff), axis=0)
-            self.mass_db = np.concatenate((self.mass_db, structure_to_add.mass_db), axis=0)
-            self.elem_mass = np.concatenate((self.elem_mass, structure_to_add.elem_mass + total_num_mass), axis=0)
-            self.frame_of_reference_delta = np.concatenate((self.frame_of_reference_delta, structure_to_add.frame_of_reference_delta), axis=0)
-            self.structural_twist = np.concatenate((self.structural_twist, structure_to_add.structural_twist), axis=0)
-            self.boundary_conditions = np.concatenate((self.boundary_conditions, structure_to_add.boundary_conditions), axis=0)
-            self.beam_number = np.concatenate((self.beam_number, structure_to_add.beam_number + total_num_beam), axis=0)
-            self.body_number = np.concatenate((self.body_number, structure_to_add.body_number + total_num_body), axis=0)
-            self.app_forces = np.concatenate((self.app_forces, structure_to_add.app_forces), axis=0)
+            self.coordinates = np.concatenate(
+                (self.coordinates, structure_to_add.coordinates), axis=0
+            )
+            self.connectivities = np.concatenate(
+                (self.connectivities, structure_to_add.connectivities + total_num_node),
+                axis=0,
+            )
+            assert (
+                self.num_node_elem == structure_to_add.num_node_elem
+            ), "num_node_elem does NOT match"
+            self.stiffness_db = np.concatenate(
+                (self.stiffness_db, structure_to_add.stiffness_db), axis=0
+            )
+            self.elem_stiffness = np.concatenate(
+                (
+                    self.elem_stiffness,
+                    structure_to_add.elem_stiffness + total_num_stiff,
+                ),
+                axis=0,
+            )
+            self.mass_db = np.concatenate(
+                (self.mass_db, structure_to_add.mass_db), axis=0
+            )
+            self.elem_mass = np.concatenate(
+                (self.elem_mass, structure_to_add.elem_mass + total_num_mass), axis=0
+            )
+            self.frame_of_reference_delta = np.concatenate(
+                (
+                    self.frame_of_reference_delta,
+                    structure_to_add.frame_of_reference_delta,
+                ),
+                axis=0,
+            )
+            self.structural_twist = np.concatenate(
+                (self.structural_twist, structure_to_add.structural_twist), axis=0
+            )
+            self.boundary_conditions = np.concatenate(
+                (self.boundary_conditions, structure_to_add.boundary_conditions), axis=0
+            )
+            self.beam_number = np.concatenate(
+                (self.beam_number, structure_to_add.beam_number + total_num_beam),
+                axis=0,
+            )
+            self.body_number = np.concatenate(
+                (self.body_number, structure_to_add.body_number + total_num_body),
+                axis=0,
+            )
+            self.app_forces = np.concatenate(
+                (self.app_forces, structure_to_add.app_forces), axis=0
+            )
             # self.body_number = np.concatenate((self.body_number, structure_to_add.body_number), axis=0)
-            if isinstance(self.lumped_mass_nodes, np.ndarray) and isinstance(structure_to_add.lumped_mass_nodes, np.ndarray):
-                self.lumped_mass_nodes = np.concatenate((self.lumped_mass_nodes, structure_to_add.lumped_mass_nodes + total_num_node), axis=0)
-                self.lumped_mass = np.concatenate((self.lumped_mass, structure_to_add.lumped_mass), axis=0)
-                self.lumped_mass_inertia = np.concatenate((self.lumped_mass_inertia, structure_to_add.lumped_mass_inertia), axis=0)
-                self.lumped_mass_position = np.concatenate((self.lumped_mass_position, structure_to_add.lumped_mass_position), axis=0)
+            if isinstance(self.lumped_mass_nodes, np.ndarray) and isinstance(
+                structure_to_add.lumped_mass_nodes, np.ndarray
+            ):
+                self.lumped_mass_nodes = np.concatenate(
+                    (
+                        self.lumped_mass_nodes,
+                        structure_to_add.lumped_mass_nodes + total_num_node,
+                    ),
+                    axis=0,
+                )
+                self.lumped_mass = np.concatenate(
+                    (self.lumped_mass, structure_to_add.lumped_mass), axis=0
+                )
+                self.lumped_mass_inertia = np.concatenate(
+                    (self.lumped_mass_inertia, structure_to_add.lumped_mass_inertia),
+                    axis=0,
+                )
+                self.lumped_mass_position = np.concatenate(
+                    (self.lumped_mass_position, structure_to_add.lumped_mass_position),
+                    axis=0,
+                )
             elif isinstance(structure_to_add.lumped_mass_nodes, np.ndarray):
-                self.lumped_mass_nodes = structure_to_add.lumped_mass_nodes + total_num_node
+                self.lumped_mass_nodes = (
+                    structure_to_add.lumped_mass_nodes + total_num_node
+                )
                 self.lumped_mass = structure_to_add.lumped_mass
                 self.lumped_mass_inertia = structure_to_add.lumped_mass_inertia
                 self.lumped_mass_position = structure_to_add.lumped_mass_position
-            if isinstance(self.lumped_mass_mat_nodes, np.ndarray) and isinstance(structure_to_add.lumped_mass_mat_nodes, np.ndarray):
-                self.lumped_mass_mat_nodes = np.concatenate((self.lumped_mass_mat_nodes, structure_to_add.lumped_mass_mat_nodes + total_num_node), axis=0)
-                self.lumped_mass_mat = np.concatenate((self.lumped_mass_mat, structure_to_add.lumped_mass_mat), axis=0)
+            if isinstance(self.lumped_mass_mat_nodes, np.ndarray) and isinstance(
+                structure_to_add.lumped_mass_mat_nodes, np.ndarray
+            ):
+                self.lumped_mass_mat_nodes = np.concatenate(
+                    (
+                        self.lumped_mass_mat_nodes,
+                        structure_to_add.lumped_mass_mat_nodes + total_num_node,
+                    ),
+                    axis=0,
+                )
+                self.lumped_mass_mat = np.concatenate(
+                    (self.lumped_mass_mat, structure_to_add.lumped_mass_mat), axis=0
+                )
             elif isinstance(structure_to_add.lumped_mass_mat_nodes, np.ndarray):
-                self.lumped_mass_mat_nodes = structure_to_add.lumped_mass_mat_nodes + total_num_node
+                self.lumped_mass_mat_nodes = (
+                    structure_to_add.lumped_mass_mat_nodes + total_num_node
+                )
                 self.lumped_mass_mat = structure_to_add.lumped_mass_mat
 
             total_num_stiff += structure_to_add.stiffness_db.shape[0]
@@ -956,32 +1087,53 @@ class StructuralInformation():
             These conditions have to be to correctly define a case but they are not the only ones
         """
         # CHECKING
-        if(self.elem_stiffness.shape[0] != self.num_elem):
-            raise RuntimeError("ERROR: Element stiffness must be defined for each element")
-        if(self.elem_mass.shape[0] != self.num_elem):
+        if self.elem_stiffness.shape[0] != self.num_elem:
+            raise RuntimeError(
+                "ERROR: Element stiffness must be defined for each element"
+            )
+        if self.elem_mass.shape[0] != self.num_elem:
             raise RuntimeError("ERROR: Element mass must be defined for each element")
-        if(self.frame_of_reference_delta.shape[0] != self.num_elem):
-            raise RuntimeError("ERROR: The first dimension of FoR does not match the number of elements")
-        if(self.frame_of_reference_delta.shape[1] != self.num_node_elem):
-            raise RuntimeError("ERROR: The second dimension of FoR does not match the number of nodes element")
-        if(self.frame_of_reference_delta.shape[2] != 3):
+        if self.frame_of_reference_delta.shape[0] != self.num_elem:
+            raise RuntimeError(
+                "ERROR: The first dimension of FoR does not match the number of"
+                " elements"
+            )
+        if self.frame_of_reference_delta.shape[1] != self.num_node_elem:
+            raise RuntimeError(
+                "ERROR: The second dimension of FoR does not match the number of nodes"
+                " element"
+            )
+        if self.frame_of_reference_delta.shape[2] != 3:
             raise RuntimeError("ERROR: The third dimension of FoR must be 3")
-        if(self.structural_twist.shape[0] != self.num_elem):
-            raise RuntimeError("ERROR: The structural twist must be defined for each element")
-        if(self.boundary_conditions.shape[0] != self.num_node):
-            raise RuntimeError("ERROR: The boundary conditions must be defined for each node")
-        if(self.beam_number.shape[0] != self.num_elem):
-            raise RuntimeError("ERROR: The beam number must be defined for each element")
-        if(self.app_forces.shape[0] != self.num_node):
-            raise RuntimeError("ERROR: The first dimension of the applied forces matrix does not match the number of nodes")
-        if(self.app_forces.shape[1] != 6):
-            raise RuntimeError("ERROR: The second dimension of the applied forces matrix must be 6")
+        if self.structural_twist.shape[0] != self.num_elem:
+            raise RuntimeError(
+                "ERROR: The structural twist must be defined for each element"
+            )
+        if self.boundary_conditions.shape[0] != self.num_node:
+            raise RuntimeError(
+                "ERROR: The boundary conditions must be defined for each node"
+            )
+        if self.beam_number.shape[0] != self.num_elem:
+            raise RuntimeError(
+                "ERROR: The beam number must be defined for each element"
+            )
+        if self.app_forces.shape[0] != self.num_node:
+            raise RuntimeError(
+                "ERROR: The first dimension of the applied forces matrix does not match"
+                " the number of nodes"
+            )
+        if self.app_forces.shape[1] != 6:
+            raise RuntimeError(
+                "ERROR: The second dimension of the applied forces matrix must be 6"
+            )
 
         default = StructuralInformation()
 
         for attr, value in self.__dict__.items():
             if not hasattr(default, attr):
-                raise RuntimeError(("StructuralInformation has no attribute named '%s'" % attr))
+                raise RuntimeError(
+                    "StructuralInformation has no attribute named '%s'" % attr
+                )
 
     def generate_fem_file(self, route, case_name):
         """
@@ -993,41 +1145,49 @@ class StructuralInformation():
             route (string): path of the case
             case_name (string): name of the case
         """
-    	# TODO: check variables that are not defined
+        # TODO: check variables that are not defined
         self.check_StructuralInformation()
         # Writting the file
-        with h5.File(route + '/' + case_name + '.fem.h5', 'a') as h5file:
+        with h5.File(route + "/" + case_name + ".fem.h5", "a") as h5file:
             # TODO: include something to write only exsisting variables
-            h5file.create_dataset('coordinates', data=self.coordinates)
-            h5file.create_dataset('connectivities', data=self.connectivities)
-            h5file.create_dataset('num_node_elem', data=self.num_node_elem)
-            h5file.create_dataset('num_node', data=self.num_node)
-            h5file.create_dataset('num_elem', data=self.num_elem)
-            h5file.create_dataset('stiffness_db', data=self.stiffness_db)
-            h5file.create_dataset('elem_stiffness', data=self.elem_stiffness)
-            h5file.create_dataset('mass_db', data=self.mass_db)
-            h5file.create_dataset('elem_mass', data=self.elem_mass)
-            h5file.create_dataset('frame_of_reference_delta', data=self.frame_of_reference_delta)
-            h5file.create_dataset('structural_twist', data=self.structural_twist)
-            h5file.create_dataset('boundary_conditions', data=self.boundary_conditions)
-            h5file.create_dataset('beam_number', data=self.beam_number)
-            h5file.create_dataset('body_number', data=self.body_number)
-            h5file.create_dataset('app_forces', data=self.app_forces)
+            h5file.create_dataset("coordinates", data=self.coordinates)
+            h5file.create_dataset("connectivities", data=self.connectivities)
+            h5file.create_dataset("num_node_elem", data=self.num_node_elem)
+            h5file.create_dataset("num_node", data=self.num_node)
+            h5file.create_dataset("num_elem", data=self.num_elem)
+            h5file.create_dataset("stiffness_db", data=self.stiffness_db)
+            h5file.create_dataset("elem_stiffness", data=self.elem_stiffness)
+            h5file.create_dataset("mass_db", data=self.mass_db)
+            h5file.create_dataset("elem_mass", data=self.elem_mass)
+            h5file.create_dataset(
+                "frame_of_reference_delta", data=self.frame_of_reference_delta
+            )
+            h5file.create_dataset("structural_twist", data=self.structural_twist)
+            h5file.create_dataset("boundary_conditions", data=self.boundary_conditions)
+            h5file.create_dataset("beam_number", data=self.beam_number)
+            h5file.create_dataset("body_number", data=self.body_number)
+            h5file.create_dataset("app_forces", data=self.app_forces)
             # h5file.create_dataset('body_number', data=self.body_number)
             if isinstance(self.lumped_mass_nodes, np.ndarray):
-                h5file.create_dataset('lumped_mass_nodes', data=self.lumped_mass_nodes)
-                h5file.create_dataset('lumped_mass', data=self.lumped_mass)
-                h5file.create_dataset('lumped_mass_inertia', data=self.lumped_mass_inertia)
-                h5file.create_dataset('lumped_mass_position', data=self.lumped_mass_position)
+                h5file.create_dataset("lumped_mass_nodes", data=self.lumped_mass_nodes)
+                h5file.create_dataset("lumped_mass", data=self.lumped_mass)
+                h5file.create_dataset(
+                    "lumped_mass_inertia", data=self.lumped_mass_inertia
+                )
+                h5file.create_dataset(
+                    "lumped_mass_position", data=self.lumped_mass_position
+                )
             if isinstance(self.lumped_mass_mat_nodes, np.ndarray):
-                h5file.create_dataset('lumped_mass_mat_nodes', data=self.lumped_mass_mat_nodes)
-                h5file.create_dataset('lumped_mass_mat', data=self.lumped_mass_mat)
+                h5file.create_dataset(
+                    "lumped_mass_mat_nodes", data=self.lumped_mass_mat_nodes
+                )
+                h5file.create_dataset("lumped_mass_mat", data=self.lumped_mass_mat)
 
 
 ######################################################################
 ###############  BLADE AERODYNAMIC INFORMATION  ######################
 ######################################################################
-class AerodynamicInformation():
+class AerodynamicInformation:
     """
     AerodynamicInformation
 
@@ -1080,10 +1240,14 @@ class AerodynamicInformation():
         copied.twist = self.twist.astype(dtype=float, copy=True)
         copied.sweep = self.sweep.astype(dtype=float, copy=True)
         copied.surface_m = self.surface_m.astype(dtype=int, copy=True)
-        copied.surface_distribution = self.surface_distribution.astype(dtype=int, copy=True)
+        copied.surface_distribution = self.surface_distribution.astype(
+            dtype=int, copy=True
+        )
         copied.m_distribution = self.m_distribution
         copied.elastic_axis = self.elastic_axis.astype(dtype=float, copy=True)
-        copied.airfoil_distribution = self.airfoil_distribution.astype(dtype=int, copy=True)
+        copied.airfoil_distribution = self.airfoil_distribution.astype(
+            dtype=int, copy=True
+        )
         copied.airfoils = self.airfoils.astype(dtype=float, copy=True)
         copied.user_defined_m_distribution = self.user_defined_m_distribution.copy()
         if self.polars is not None:
@@ -1092,8 +1256,15 @@ class AerodynamicInformation():
 
         return copied
 
-    def set_to_zero(self, num_node_elem, num_node, num_elem,
-                    num_airfoils=1, num_surfaces=0, num_points_camber=100):
+    def set_to_zero(
+        self,
+        num_node_elem,
+        num_node,
+        num_elem,
+        num_airfoils=1,
+        num_surfaces=0,
+        num_points_camber=100,
+    ):
         """
         set_to_zero
 
@@ -1115,7 +1286,7 @@ class AerodynamicInformation():
         self.surface_m = np.array([], dtype=int)
         # self.surface_m = np.array([], dtype=int)
         self.surface_distribution = np.zeros((num_elem,), dtype=int) - 1
-        self.m_distribution = 'uniform'
+        self.m_distribution = "uniform"
         self.elastic_axis = np.zeros((num_elem, num_node_elem), dtype=float)
         self.airfoil_distribution = np.zeros((num_elem, num_node_elem), dtype=int)
         self.airfoils = np.zeros((num_airfoils, num_points_camber, 2), dtype=float)
@@ -1123,18 +1294,20 @@ class AerodynamicInformation():
             self.airfoils[iairfoil, :, 0] = np.linspace(0.0, 1.0, num_points_camber)
         self.first_twist = [True]
 
-    def generate_full_aerodynamics(self,
-                                   aero_node,
-                                   chord,
-                                   twist,
-                                   sweep,
-                                   surface_m,
-                                   surface_distribution,
-                                   m_distribution,
-                                   elastic_axis,
-                                   airfoil_distribution,
-                                   airfoils,
-                                   first_twist):
+    def generate_full_aerodynamics(
+        self,
+        aero_node,
+        chord,
+        twist,
+        sweep,
+        surface_m,
+        surface_distribution,
+        m_distribution,
+        elastic_axis,
+        airfoil_distribution,
+        airfoils,
+        first_twist,
+    ):
         """
         generate_full_aerodynamics
 
@@ -1166,20 +1339,22 @@ class AerodynamicInformation():
         self.airfoils = airfoils
         self.first_twist = first_twist
 
-    def create_aerodynamics_from_vec(self,
-                                     StructuralInformation,
-                                     vec_aero_node,
-                                     vec_chord,
-                                     vec_twist,
-                                     vec_sweep,
-                                     vec_surface_m,
-                                     vec_surface_distribution,
-                                     vec_m_distribution,
-                                     vec_elastic_axis,
-                                     vec_airfoil_distribution,
-                                     airfoils,
-                                     user_defined_m_distribution=None,
-                                     first_twist=True):
+    def create_aerodynamics_from_vec(
+        self,
+        StructuralInformation,
+        vec_aero_node,
+        vec_chord,
+        vec_twist,
+        vec_sweep,
+        vec_surface_m,
+        vec_surface_distribution,
+        vec_m_distribution,
+        vec_elastic_axis,
+        vec_airfoil_distribution,
+        airfoils,
+        user_defined_m_distribution=None,
+        first_twist=True,
+    ):
         """
         create_aerodynamics_from_vec
 
@@ -1201,11 +1376,21 @@ class AerodynamicInformation():
         """
         self.aero_node = vec_aero_node
 
-        self.chord = from_node_list_to_elem_matrix(vec_chord, StructuralInformation.connectivities)
-        self.twist = from_node_list_to_elem_matrix(vec_twist, StructuralInformation.connectivities)
-        self.sweep = from_node_list_to_elem_matrix(vec_sweep, StructuralInformation.connectivities)
-        self.elastic_axis = from_node_list_to_elem_matrix(vec_elastic_axis, StructuralInformation.connectivities)
-        self.airfoil_distribution = from_node_list_to_elem_matrix(vec_airfoil_distribution, StructuralInformation.connectivities)
+        self.chord = from_node_list_to_elem_matrix(
+            vec_chord, StructuralInformation.connectivities
+        )
+        self.twist = from_node_list_to_elem_matrix(
+            vec_twist, StructuralInformation.connectivities
+        )
+        self.sweep = from_node_list_to_elem_matrix(
+            vec_sweep, StructuralInformation.connectivities
+        )
+        self.elastic_axis = from_node_list_to_elem_matrix(
+            vec_elastic_axis, StructuralInformation.connectivities
+        )
+        self.airfoil_distribution = from_node_list_to_elem_matrix(
+            vec_airfoil_distribution, StructuralInformation.connectivities
+        )
 
         self.surface_m = vec_surface_m
         self.surface_distribution = vec_surface_distribution
@@ -1214,23 +1399,27 @@ class AerodynamicInformation():
         self.airfoils = airfoils
 
         # TODO: this may not work for different surfaces
-        if vec_m_distribution == 'user_defined':
-            udmd_by_elements = from_node_array_to_elem_matrix(user_defined_m_distribution, StructuralInformation.connectivities)
+        if vec_m_distribution == "user_defined":
+            udmd_by_elements = from_node_array_to_elem_matrix(
+                user_defined_m_distribution, StructuralInformation.connectivities
+            )
             self.user_defined_m_distribution = [udmd_by_elements]
 
         self.first_twist = [first_twist]
 
-    def create_one_uniform_aerodynamics(self,
-                                     StructuralInformation,
-                                     chord,
-                                     twist,
-                                     sweep,
-                                     num_chord_panels,
-                                     m_distribution,
-                                     elastic_axis,
-                                     num_points_camber,
-                                     airfoil,
-                                     first_twist=True):
+    def create_one_uniform_aerodynamics(
+        self,
+        StructuralInformation,
+        chord,
+        twist,
+        sweep,
+        num_chord_panels,
+        m_distribution,
+        elastic_axis,
+        num_points_camber,
+        airfoil,
+        first_twist=True,
+    ):
         """
         create_one_uniform_aerodynamics
 
@@ -1252,23 +1441,27 @@ class AerodynamicInformation():
         num_node_elem = StructuralInformation.num_node_elem
         num_elem = StructuralInformation.num_elem
 
-        self.aero_node = np.ones((num_node,), dtype = bool)
-        self.chord = chord*np.ones((num_elem, num_node_elem), dtype=float)
-        self.twist = twist*np.ones((num_elem, num_node_elem), dtype=float)
-        self.sweep = sweep*np.ones((num_elem, num_node_elem), dtype=float)
+        self.aero_node = np.ones((num_node,), dtype=bool)
+        self.chord = chord * np.ones((num_elem, num_node_elem), dtype=float)
+        self.twist = twist * np.ones((num_elem, num_node_elem), dtype=float)
+        self.sweep = sweep * np.ones((num_elem, num_node_elem), dtype=float)
         # TODO: SHARPy does not ignore the surface_m when the surface is not aerodynamic
-        #self.surface_m = np.array([0], dtype = int)
+        # self.surface_m = np.array([0], dtype = int)
         self.surface_m = np.array([num_chord_panels], dtype=int)
         self.surface_distribution = np.zeros((num_elem,), dtype=int)
         self.m_distribution = m_distribution
-        self.elastic_axis = elastic_axis*np.ones((num_elem, num_node_elem), dtype=float)
+        self.elastic_axis = elastic_axis * np.ones(
+            (num_elem, num_node_elem), dtype=float
+        )
         self.airfoil_distribution = np.zeros((num_elem, num_node_elem), dtype=int)
         self.airfoils = np.zeros((1, num_points_camber, 2), dtype=float)
         self.airfoils = airfoil
 
-        if m_distribution == 'user_defined':
+        if m_distribution == "user_defined":
             self.user_defined_m_distribution = []
-            self.user_defined_m_distribution.append(np.zeros((num_chord_panels + 1, num_elem, num_node_elem)))
+            self.user_defined_m_distribution.append(
+                np.zeros((num_chord_panels + 1, num_elem, num_node_elem))
+            )
 
         self.first_twist = [first_twist]
 
@@ -1290,8 +1483,14 @@ class AerodynamicInformation():
         new_airfoils = np.zeros((nairfoils, new_num_nodes, 2), dtype=float)
 
         for iairfoil in range(nairfoils):
-            new_airfoils[iairfoil, :, 0] = np.linspace(airfoils[iairfoil, 0, 0], airfoils[iairfoil, -1, 0], new_num_nodes)
-            new_airfoils[iairfoil, :, 1] = np.interp(new_airfoils[iairfoil, :, 0], airfoils[iairfoil, :, 0], airfoils[iairfoil, :, 1])
+            new_airfoils[iairfoil, :, 0] = np.linspace(
+                airfoils[iairfoil, 0, 0], airfoils[iairfoil, -1, 0], new_num_nodes
+            )
+            new_airfoils[iairfoil, :, 1] = np.interp(
+                new_airfoils[iairfoil, :, 0],
+                airfoils[iairfoil, :, 0],
+                airfoils[iairfoil, :, 1],
+            )
 
         return new_airfoils
 
@@ -1315,32 +1514,80 @@ class AerodynamicInformation():
             self.twist = np.concatenate((self.twist, aerodynamics_to_add.twist), axis=0)
             self.sweep = np.concatenate((self.sweep, aerodynamics_to_add.sweep), axis=0)
             # self.m_distribution = np.concatenate((self.m_distribution, aerodynamics_to_add.m_distribution), axis=0)
-            assert self.m_distribution == aerodynamics_to_add.m_distribution, "m_distribution does not match"
+            assert (
+                self.m_distribution == aerodynamics_to_add.m_distribution
+            ), "m_distribution does not match"
             for isurf in range(len(aerodynamics_to_add.surface_distribution)):
                 if aerodynamics_to_add.surface_distribution[isurf] != -1:
                     # print(self.surface_distribution)
                     # print(aerodynamics_to_add.surface_distribution[isurf])
-                    self.surface_distribution = np.concatenate((self.surface_distribution, np.array([aerodynamics_to_add.surface_distribution[isurf]], dtype=int) + total_num_surfaces), axis=0)
+                    self.surface_distribution = np.concatenate(
+                        (
+                            self.surface_distribution,
+                            np.array(
+                                [aerodynamics_to_add.surface_distribution[isurf]],
+                                dtype=int,
+                            )
+                            + total_num_surfaces,
+                        ),
+                        axis=0,
+                    )
                 else:
-                    self.surface_distribution = np.concatenate((self.surface_distribution, np.array([aerodynamics_to_add.surface_distribution[isurf]], dtype=int)), axis=0)
-            self.surface_m = np.concatenate((self.surface_m, aerodynamics_to_add.surface_m), axis=0)
-            self.aero_node = np.concatenate((self.aero_node, aerodynamics_to_add.aero_node), axis=0)
-            self.elastic_axis = np.concatenate((self.elastic_axis, aerodynamics_to_add.elastic_axis), axis=0)
+                    self.surface_distribution = np.concatenate(
+                        (
+                            self.surface_distribution,
+                            np.array(
+                                [aerodynamics_to_add.surface_distribution[isurf]],
+                                dtype=int,
+                            ),
+                        ),
+                        axis=0,
+                    )
+            self.surface_m = np.concatenate(
+                (self.surface_m, aerodynamics_to_add.surface_m), axis=0
+            )
+            self.aero_node = np.concatenate(
+                (self.aero_node, aerodynamics_to_add.aero_node), axis=0
+            )
+            self.elastic_axis = np.concatenate(
+                (self.elastic_axis, aerodynamics_to_add.elastic_axis), axis=0
+            )
             # np.concatenate((self.airfoil_distribution, aerodynamics_to_add.airfoil_distribution), axis=0)
-            self.airfoil_distribution = np.concatenate((self.airfoil_distribution, aerodynamics_to_add.airfoil_distribution + total_num_airfoils), axis=0)
+            self.airfoil_distribution = np.concatenate(
+                (
+                    self.airfoil_distribution,
+                    aerodynamics_to_add.airfoil_distribution + total_num_airfoils,
+                ),
+                axis=0,
+            )
             # TODO: this should NOT be needed according to SHARPy input files. Modify at some point
-            if (self.airfoils.shape[1] == aerodynamics_to_add.airfoils.shape[1]):
-                self.airfoils = np.concatenate((self.airfoils, aerodynamics_to_add.airfoils), axis=0)
-            elif (self.airfoils.shape[1] > aerodynamics_to_add.airfoils.shape[1]):
-                cout.cout_wrap("WARNING: redefining the discretization of airfoil camber line", 3)
-                new_airfoils = self.change_airfoils_discretezation(aerodynamics_to_add.airfoils, self.airfoils.shape[1])
+            if self.airfoils.shape[1] == aerodynamics_to_add.airfoils.shape[1]:
+                self.airfoils = np.concatenate(
+                    (self.airfoils, aerodynamics_to_add.airfoils), axis=0
+                )
+            elif self.airfoils.shape[1] > aerodynamics_to_add.airfoils.shape[1]:
+                cout.cout_wrap(
+                    "WARNING: redefining the discretization of airfoil camber line", 3
+                )
+                new_airfoils = self.change_airfoils_discretezation(
+                    aerodynamics_to_add.airfoils, self.airfoils.shape[1]
+                )
                 self.airfoils = np.concatenate((self.airfoils, new_airfoils), axis=0)
-            elif (self.airfoils.shape[1] < aerodynamics_to_add.airfoils.shape[1]):
-                cout.cout_wrap("WARNING: redefining the discretization of airfoil camber line", 3)
-                new_airfoils = self.change_airfoils_discretezation(self.airfoils, aerodynamics_to_add.airfoils.shape[1])
-                self.airfoils = np.concatenate((new_airfoils, aerodynamics_to_add.airfoils), axis=0)
-            if self.m_distribution.lower() == 'user_defined':
-                self.user_defined_m_distribution = self.user_defined_m_distribution + aerodynamics_to_add.user_defined_m_distribution
+            elif self.airfoils.shape[1] < aerodynamics_to_add.airfoils.shape[1]:
+                cout.cout_wrap(
+                    "WARNING: redefining the discretization of airfoil camber line", 3
+                )
+                new_airfoils = self.change_airfoils_discretezation(
+                    self.airfoils, aerodynamics_to_add.airfoils.shape[1]
+                )
+                self.airfoils = np.concatenate(
+                    (new_airfoils, aerodynamics_to_add.airfoils), axis=0
+                )
+            if self.m_distribution.lower() == "user_defined":
+                self.user_defined_m_distribution = (
+                    self.user_defined_m_distribution
+                    + aerodynamics_to_add.user_defined_m_distribution
+                )
             if self.polars is not None:
                 self.polars = self.polars + aerodynamics_to_add.polars
             total_num_airfoils += len(aerodynamics_to_add.airfoils[:, 0, 0])
@@ -1351,7 +1598,9 @@ class AerodynamicInformation():
         # self.num_airfoils = total_num_airfoils
         # self.num_surfaces = total_num_surfaces
 
-    def interpolate_airfoils_camber(self, pure_airfoils_camber, r_pure_airfoils, r, n_points_camber):
+    def interpolate_airfoils_camber(
+        self, pure_airfoils_camber, r_pure_airfoils, r, n_points_camber
+    ):
         """
         interpolate_airfoils_camber
 
@@ -1368,28 +1617,44 @@ class AerodynamicInformation():
 
         """
         num_node = len(r)
-        airfoils_camber = np.zeros((num_node, n_points_camber, 2),)
+        airfoils_camber = np.zeros(
+            (num_node, n_points_camber, 2),
+        )
 
         for inode in range(num_node):
             # camber_x, camber_y = get_airfoil_camber(x,y)
 
             iairfoil = 0
-            while(r[inode] > r_pure_airfoils[iairfoil]):
+            while r[inode] > r_pure_airfoils[iairfoil]:
                 iairfoil += 1
-                if(iairfoil == len(r_pure_airfoils)):
+                if iairfoil == len(r_pure_airfoils):
                     iairfoil -= 1
                     break
 
             # print("interpolating between: ", iairfoil-1, "and", iairfoil)
-            beta = min((r[inode]-r_pure_airfoils[iairfoil-1])/(r_pure_airfoils[iairfoil]-r_pure_airfoils[iairfoil-1]), 1.0)
+            beta = min(
+                (r[inode] - r_pure_airfoils[iairfoil - 1])
+                / (r_pure_airfoils[iairfoil] - r_pure_airfoils[iairfoil - 1]),
+                1.0,
+            )
             beta = max(0.0, beta)
 
-            airfoils_camber[inode, :, 0] = (1 - beta)*pure_airfoils_camber[iairfoil-1, :, 0] + beta*pure_airfoils_camber[iairfoil, :, 0]
-            airfoils_camber[inode, :, 1] = (1 - beta)*pure_airfoils_camber[iairfoil-1, :, 1] + beta*pure_airfoils_camber[iairfoil, :, 1]
+            airfoils_camber[inode, :, 0] = (1 - beta) * pure_airfoils_camber[
+                iairfoil - 1, :, 0
+            ] + beta * pure_airfoils_camber[iairfoil, :, 0]
+            airfoils_camber[inode, :, 1] = (1 - beta) * pure_airfoils_camber[
+                iairfoil - 1, :, 1
+            ] + beta * pure_airfoils_camber[iairfoil, :, 1]
 
         return airfoils_camber
 
-    def interpolate_airfoils_camber_thickness(self, pure_airfoils_camber, thickness_pure_airfoils, blade_thickness, n_points_camber):
+    def interpolate_airfoils_camber_thickness(
+        self,
+        pure_airfoils_camber,
+        thickness_pure_airfoils,
+        blade_thickness,
+        n_points_camber,
+    ):
         """
         interpolate_airfoils_camber_thickness
 
@@ -1406,23 +1671,36 @@ class AerodynamicInformation():
 
         """
         num_node = len(blade_thickness)
-        airfoils_camber = np.zeros((num_node, n_points_camber, 2),)
+        airfoils_camber = np.zeros(
+            (num_node, n_points_camber, 2),
+        )
 
         for inode in range(num_node):
             # camber_x, camber_y = get_airfoil_camber(x,y)
 
             iairfoil = 0
-            while(blade_thickness[inode] < thickness_pure_airfoils[iairfoil]):
+            while blade_thickness[inode] < thickness_pure_airfoils[iairfoil]:
                 iairfoil += 1
-                if(iairfoil == len(thickness_pure_airfoils)):
+                if iairfoil == len(thickness_pure_airfoils):
                     iairfoil -= 1
                     break
 
-            beta = min((blade_thickness[inode] - thickness_pure_airfoils[iairfoil - 1])/(thickness_pure_airfoils[iairfoil] - thickness_pure_airfoils[iairfoil - 1]), 1.0)
+            beta = min(
+                (blade_thickness[inode] - thickness_pure_airfoils[iairfoil - 1])
+                / (
+                    thickness_pure_airfoils[iairfoil]
+                    - thickness_pure_airfoils[iairfoil - 1]
+                ),
+                1.0,
+            )
             beta = max(0.0, beta)
 
-            airfoils_camber[inode, :, 0] = (1 - beta)*pure_airfoils_camber[iairfoil-1, :, 0] + beta*pure_airfoils_camber[iairfoil, :, 0]
-            airfoils_camber[inode, :, 1] = (1 - beta)*pure_airfoils_camber[iairfoil-1, :, 1] + beta*pure_airfoils_camber[iairfoil, :, 1]
+            airfoils_camber[inode, :, 0] = (1 - beta) * pure_airfoils_camber[
+                iairfoil - 1, :, 0
+            ] + beta * pure_airfoils_camber[iairfoil, :, 0]
+            airfoils_camber[inode, :, 1] = (1 - beta) * pure_airfoils_camber[
+                iairfoil - 1, :, 1
+            ] + beta * pure_airfoils_camber[iairfoil, :, 1]
 
         return airfoils_camber
 
@@ -1436,30 +1714,58 @@ class AerodynamicInformation():
             These conditions have to be to correctly define a case but they are not the only ones
         """
         # CHECKING
-        if(self.aero_node.shape[0] != StructuralInformation.num_node):
+        if self.aero_node.shape[0] != StructuralInformation.num_node:
             raise RuntimeError("ERROR: Aero node must be defined for each node")
-        if(self.airfoil_distribution.shape[0] != StructuralInformation.num_elem or self.airfoil_distribution.shape[1] != StructuralInformation.num_node_elem):
-            raise RuntimeError("ERROR: Airfoil distribution must be defined for each element/local node")
-        if(self.chord.shape[0] != StructuralInformation.num_elem):
-            raise RuntimeError("ERROR: The first dimension of the chord matrix does not match the number of elements")
-        if(self.chord.shape[1] != StructuralInformation.num_node_elem):
-            raise RuntimeError("ERROR: The second dimension of the chord matrix does not match the number of nodes per element")
-        if(self.elastic_axis.shape[0] != StructuralInformation.num_elem):
-            raise RuntimeError("ERROR: The first dimension of the elastic axis matrix does not match the number of elements")
-        if(self.elastic_axis.shape[1] != StructuralInformation.num_node_elem):
-            raise RuntimeError("ERROR: The second dimension of the elastic axis matrix does not match the number of nodes per element")
-        if(self.surface_distribution.shape[0] != StructuralInformation.num_elem):
-            raise RuntimeError("ERROR: The surface distribution must be defined for each element")
-        if(self.twist.shape[0] != StructuralInformation.num_elem):
-            raise RuntimeError("ERROR: The first dimension of the aerodynamic twist does not match the number of elements")
-        if(self.twist.shape[1] != StructuralInformation.num_node_elem):
-            raise RuntimeError("ERROR: The second dimension of the aerodynamic twist does not match the number nodes per element")
+        if (
+            self.airfoil_distribution.shape[0] != StructuralInformation.num_elem
+            or self.airfoil_distribution.shape[1] != StructuralInformation.num_node_elem
+        ):
+            raise RuntimeError(
+                "ERROR: Airfoil distribution must be defined for each element/local"
+                " node"
+            )
+        if self.chord.shape[0] != StructuralInformation.num_elem:
+            raise RuntimeError(
+                "ERROR: The first dimension of the chord matrix does not match the"
+                " number of elements"
+            )
+        if self.chord.shape[1] != StructuralInformation.num_node_elem:
+            raise RuntimeError(
+                "ERROR: The second dimension of the chord matrix does not match the"
+                " number of nodes per element"
+            )
+        if self.elastic_axis.shape[0] != StructuralInformation.num_elem:
+            raise RuntimeError(
+                "ERROR: The first dimension of the elastic axis matrix does not match"
+                " the number of elements"
+            )
+        if self.elastic_axis.shape[1] != StructuralInformation.num_node_elem:
+            raise RuntimeError(
+                "ERROR: The second dimension of the elastic axis matrix does not match"
+                " the number of nodes per element"
+            )
+        if self.surface_distribution.shape[0] != StructuralInformation.num_elem:
+            raise RuntimeError(
+                "ERROR: The surface distribution must be defined for each element"
+            )
+        if self.twist.shape[0] != StructuralInformation.num_elem:
+            raise RuntimeError(
+                "ERROR: The first dimension of the aerodynamic twist does not match the"
+                " number of elements"
+            )
+        if self.twist.shape[1] != StructuralInformation.num_node_elem:
+            raise RuntimeError(
+                "ERROR: The second dimension of the aerodynamic twist does not match"
+                " the number nodes per element"
+            )
 
         default = AerodynamicInformation()
 
         for attr, value in self.__dict__.items():
             if not hasattr(default, attr):
-                raise RuntimeError(("AerodynamicInformation has no attribute named '%s'" % attr))
+                raise RuntimeError(
+                    "AerodynamicInformation has no attribute named '%s'" % attr
+                )
 
     def generate_aero_file(self, route, case_name, StructuralInformation):
         """
@@ -1473,35 +1779,46 @@ class AerodynamicInformation():
         """
         self.check_AerodynamicInformation(StructuralInformation)
 
-        with h5.File(route + '/' + case_name + '.aero.h5', 'a') as h5file:
+        with h5.File(route + "/" + case_name + ".aero.h5", "a") as h5file:
+            h5file.create_dataset("aero_node", data=self.aero_node)
+            chord_input = h5file.create_dataset("chord", data=self.chord)
+            chord_input.attrs["units"] = "m"
+            twist_input = h5file.create_dataset("twist", data=self.twist)
+            twist_input.attrs["units"] = "rad"
+            h5file.create_dataset("surface_m", data=self.surface_m)
+            h5file.create_dataset(
+                "surface_distribution", data=self.surface_distribution
+            )
+            h5file.create_dataset(
+                "m_distribution", data=self.m_distribution.encode("ascii", "ignore")
+            )
+            h5file.create_dataset("elastic_axis", data=self.elastic_axis)
+            h5file.create_dataset(
+                "airfoil_distribution", data=self.airfoil_distribution
+            )
+            h5file.create_dataset("sweep", data=self.sweep)
 
-            h5file.create_dataset('aero_node', data=self.aero_node)
-            chord_input = h5file.create_dataset('chord', data=self.chord)
-            chord_input .attrs['units'] = 'm'
-            twist_input = h5file.create_dataset('twist', data=self.twist)
-            twist_input.attrs['units'] = 'rad'
-            h5file.create_dataset('surface_m', data=self.surface_m)
-            h5file.create_dataset('surface_distribution', data=self.surface_distribution)
-            h5file.create_dataset('m_distribution', data=self.m_distribution.encode('ascii', 'ignore'))
-            h5file.create_dataset('elastic_axis', data=self.elastic_axis)
-            h5file.create_dataset('airfoil_distribution', data=self.airfoil_distribution)
-            h5file.create_dataset('sweep', data=self.sweep)
-           
-            h5file.create_dataset('first_twist', data=np.array(self.first_twist))
+            h5file.create_dataset("first_twist", data=np.array(self.first_twist))
 
-            airfoils_group = h5file.create_group('airfoils')
+            airfoils_group = h5file.create_group("airfoils")
             for iairfoil in range(len(self.airfoils)):
-                airfoils_group.create_dataset("%d" % iairfoil, data=self.airfoils[iairfoil, :, :])
+                airfoils_group.create_dataset(
+                    "%d" % iairfoil, data=self.airfoils[iairfoil, :, :]
+                )
 
             if self.polars is not None:
-                polars_group = h5file.create_group('polars')
+                polars_group = h5file.create_group("polars")
                 for iairfoil in range(len(self.airfoils)):
-                    polars_group.create_dataset("%d" % iairfoil, data=self.polars[iairfoil])
+                    polars_group.create_dataset(
+                        "%d" % iairfoil, data=self.polars[iairfoil]
+                    )
 
-            if self.m_distribution.lower() == 'user_defined':
-                udmd_group = h5file.create_group('user_defined_m_distribution')
+            if self.m_distribution.lower() == "user_defined":
+                udmd_group = h5file.create_group("user_defined_m_distribution")
                 for isurf in range(len(self.user_defined_m_distribution)):
-                    udmd_group.create_dataset("%d" % isurf, data=self.user_defined_m_distribution[isurf])
+                    udmd_group.create_dataset(
+                        "%d" % isurf, data=self.user_defined_m_distribution[isurf]
+                    )
 
             # control_surface_input = h5file.create_dataset('control_surface', data=control_surface)
             # control_surface_deflection_input = h5file.create_dataset('control_surface_deflection', data=control_surface_deflection)
@@ -1512,7 +1829,7 @@ class AerodynamicInformation():
 ######################################################################
 ###############  BLADE AEROELASTIC INFORMATION  ######################
 ######################################################################
-class AeroelasticInformation():
+class AeroelasticInformation:
     """
     AeroelasticInformation
 
@@ -1581,31 +1898,39 @@ class AeroelasticInformation():
             icon = 0
             jcon = 0
             found = False
-            while ((icon < connectivities.shape[0]) and (not found)):
+            while (icon < connectivities.shape[0]) and (not found):
                 jcon = 0
-                while ((jcon < connectivities.shape[1]) and (not found)):
+                while (jcon < connectivities.shape[1]) and (not found):
                     if connectivities[icon, jcon] == iprev_node:
                         found = True
                     jcon += 1
                 icon += 1
-            return icon-1, jcon-1
+            return icon - 1, jcon - 1
 
-        replace_matrix = (
-                np.zeros((self.StructuralInformation.num_node, 4), dtype=int) -
-                 np.array([1, 1, 1, 0]))
+        replace_matrix = np.zeros(
+            (self.StructuralInformation.num_node, 4), dtype=int
+        ) - np.array([1, 1, 1, 0])
         # Fill the first three columns
         for inode in range(self.StructuralInformation.num_node):
             for iprev_node in range(inode):
-                if ((np.linalg.norm(
-                    self.StructuralInformation.coordinates[inode, :] -
-                    self.StructuralInformation.coordinates[iprev_node, :]) < tol) and (
-                       inode not in skip)):
-                    cout.cout_wrap(("WARNING: Replacing node %d by node %d" % (inode, iprev_node)), 3)
+                if (
+                    np.linalg.norm(
+                        self.StructuralInformation.coordinates[inode, :]
+                        - self.StructuralInformation.coordinates[iprev_node, :]
+                    )
+                    < tol
+                ) and (inode not in skip):
+                    cout.cout_wrap(
+                        "WARNING: Replacing node %d by node %d" % (inode, iprev_node),
+                        3,
+                    )
                     replace_matrix[inode, 0] = iprev_node
-                    replace_matrix[inode, 1], replace_matrix[inode, 2] = (
-                        find_connectivities_index(
-                                self.StructuralInformation.connectivities,
-                                                                    iprev_node))
+                    (
+                        replace_matrix[inode, 1],
+                        replace_matrix[inode, 2],
+                    ) = find_connectivities_index(
+                        self.StructuralInformation.connectivities, iprev_node
+                    )
                     break
 
         # Fill the last column
@@ -1623,8 +1948,9 @@ class AeroelasticInformation():
         nodes_to_keep = replace_matrix[:, 0] == -1
 
         # Delete the structural variables associated to the node
-        self.StructuralInformation.coordinates = (
-                self.StructuralInformation.coordinates[nodes_to_keep, :])
+        self.StructuralInformation.coordinates = self.StructuralInformation.coordinates[
+            nodes_to_keep, :
+        ]
         # self.StructuralInformation.elem_stiffness = (
         #         self.StructuralInformation.elem_stiffness[nodes_to_keep])
         # self.StructuralInformation.elem_mass = (
@@ -1632,27 +1958,34 @@ class AeroelasticInformation():
         # self.StructuralInformation.structural_twist = (
         #         self.StructuralInformation.structural_twist[nodes_to_keep])
         self.StructuralInformation.boundary_conditions = (
-                self.StructuralInformation.boundary_conditions[nodes_to_keep])
+            self.StructuralInformation.boundary_conditions[nodes_to_keep]
+        )
         # self.StructuralInformation.beam_number = (
         #         self.StructuralInformation.beam_number[nodes_to_keep])
-        self.StructuralInformation.app_forces = (
-                self.StructuralInformation.app_forces[nodes_to_keep, :])
+        self.StructuralInformation.app_forces = self.StructuralInformation.app_forces[
+            nodes_to_keep, :
+        ]
         # self.StructuralInformation.frame_of_reference_delta = (
         # self.StructuralInformation.frame_of_reference_delta[nodes_to_keep,:,:])
-        self.AerodynamicInformation.aero_node = (
-                self.AerodynamicInformation.aero_node[nodes_to_keep])
+        self.AerodynamicInformation.aero_node = self.AerodynamicInformation.aero_node[
+            nodes_to_keep
+        ]
 
         # Delete lumped masses
         if isinstance(self.StructuralInformation.lumped_mass_nodes, np.ndarray):
             lumped_to_keep = nodes_to_keep[self.StructuralInformation.lumped_mass_nodes]
             self.StructuralInformation.lumped_mass_nodes = (
-                self.StructuralInformation.lumped_mass_nodes[lumped_to_keep])
+                self.StructuralInformation.lumped_mass_nodes[lumped_to_keep]
+            )
             self.StructuralInformation.lumped_mass = (
-                self.StructuralInformation.lumped_mass[lumped_to_keep])
+                self.StructuralInformation.lumped_mass[lumped_to_keep]
+            )
             self.StructuralInformation.lumped_mass_inertia = (
-                self.StructuralInformation.lumped_mass_inertia[lumped_to_keep])
+                self.StructuralInformation.lumped_mass_inertia[lumped_to_keep]
+            )
             self.StructuralInformation.lumped_mass_position = (
-                self.StructuralInformation.lumped_mass_position[lumped_to_keep, :])
+                self.StructuralInformation.lumped_mass_position[lumped_to_keep, :]
+            )
 
         # Modify connectivities and matrices in ielem,inode_in_elem shape
         for icon in range(self.StructuralInformation.num_elem):
@@ -1660,30 +1993,60 @@ class AeroelasticInformation():
                 inode = self.StructuralInformation.connectivities[icon, jcon]
                 if not replace_matrix[inode, 0] == -1:
                     # inode to be replaced
-                    self.StructuralInformation.connectivities[icon, jcon] = self.StructuralInformation.connectivities[replace_matrix[inode, 1], replace_matrix[inode, 2]]
-                    self.StructuralInformation.structural_twist[icon, jcon] = (
-                        self.StructuralInformation.structural_twist[replace_matrix[inode, 1], replace_matrix[inode, 2]])
-                    self.AerodynamicInformation.chord[icon, jcon] = (
-                        self.AerodynamicInformation.chord[replace_matrix[inode, 1], replace_matrix[inode, 2]])
-                    self.AerodynamicInformation.twist[icon, jcon] = (
-                        self.AerodynamicInformation.twist[replace_matrix[inode, 1], replace_matrix[inode, 2]])
-                    self.AerodynamicInformation.sweep[icon, jcon] = (
-                        self.AerodynamicInformation.sweep[replace_matrix[inode, 1], replace_matrix[inode, 2]])
-                    self.AerodynamicInformation.elastic_axis[icon, jcon] = (
-                        self.AerodynamicInformation.elastic_axis[replace_matrix[inode, 1], replace_matrix[inode, 2]])
-                    self.AerodynamicInformation.airfoil_distribution[icon, jcon] = (
-                        self.AerodynamicInformation.airfoil_distribution[replace_matrix[inode, 1], replace_matrix[inode, 2]])
+                    self.StructuralInformation.connectivities[
+                        icon, jcon
+                    ] = self.StructuralInformation.connectivities[
+                        replace_matrix[inode, 1], replace_matrix[inode, 2]
+                    ]
+                    self.StructuralInformation.structural_twist[
+                        icon, jcon
+                    ] = self.StructuralInformation.structural_twist[
+                        replace_matrix[inode, 1], replace_matrix[inode, 2]
+                    ]
+                    self.AerodynamicInformation.chord[
+                        icon, jcon
+                    ] = self.AerodynamicInformation.chord[
+                        replace_matrix[inode, 1], replace_matrix[inode, 2]
+                    ]
+                    self.AerodynamicInformation.twist[
+                        icon, jcon
+                    ] = self.AerodynamicInformation.twist[
+                        replace_matrix[inode, 1], replace_matrix[inode, 2]
+                    ]
+                    self.AerodynamicInformation.sweep[
+                        icon, jcon
+                    ] = self.AerodynamicInformation.sweep[
+                        replace_matrix[inode, 1], replace_matrix[inode, 2]
+                    ]
+                    self.AerodynamicInformation.elastic_axis[
+                        icon, jcon
+                    ] = self.AerodynamicInformation.elastic_axis[
+                        replace_matrix[inode, 1], replace_matrix[inode, 2]
+                    ]
+                    self.AerodynamicInformation.airfoil_distribution[
+                        icon, jcon
+                    ] = self.AerodynamicInformation.airfoil_distribution[
+                        replace_matrix[inode, 1], replace_matrix[inode, 2]
+                    ]
                 else:
                     # inode NOT to be replace
-                    self.StructuralInformation.connectivities[icon, jcon] -= replace_matrix[inode, 3]
+                    self.StructuralInformation.connectivities[
+                        icon, jcon
+                    ] -= replace_matrix[inode, 3]
 
         if isinstance(self.StructuralInformation.lumped_mass_nodes, np.ndarray):
             for ilumped in range(len(self.StructuralInformation.lumped_mass_nodes)):
                 inode = self.StructuralInformation.lumped_mass_nodes[ilumped]
                 if not replace_matrix[inode, 0] == -1:
-                    self.StructuralInformation.lumped_mass_nodes[ilumped] = self.StructuralInformation.connectivities[replace_matrix[inode, 1], replace_matrix[inode, 2]]
+                    self.StructuralInformation.lumped_mass_nodes[
+                        ilumped
+                    ] = self.StructuralInformation.connectivities[
+                        replace_matrix[inode, 1], replace_matrix[inode, 2]
+                    ]
                 else:
-                    self.StructuralInformation.lumped_mass_nodes[ilumped] -= replace_matrix[inode, 3]
+                    self.StructuralInformation.lumped_mass_nodes[
+                        ilumped
+                    ] -= replace_matrix[inode, 3]
 
         self.StructuralInformation.num_node = nodes_to_keep.sum()
 
@@ -1706,12 +2069,13 @@ class AeroelasticInformation():
         return copied
 
     def check(self):
-
         default = AeroelasticInformation()
 
         for attr, value in self.__dict__.items():
             if not hasattr(default, attr):
-                raise RuntimeError(("AeroelasticInformation has no attribute named '%s'" % attr))
+                raise RuntimeError(
+                    "AeroelasticInformation has no attribute named '%s'" % attr
+                )
 
     def generate_h5_files(self, route, case_name):
         """
@@ -1721,13 +2085,15 @@ class AeroelasticInformation():
         """
         self.check()
         self.StructuralInformation.generate_fem_file(route, case_name)
-        self.AerodynamicInformation.generate_aero_file(route, case_name, self.StructuralInformation)
+        self.AerodynamicInformation.generate_aero_file(
+            route, case_name, self.StructuralInformation
+        )
 
 
 ######################################################################
 ######################  SOLVERS INFORMATION  #########################
 ######################################################################
-class SimulationInformation():
+class SimulationInformation:
     """
     SimulationInformation
 
@@ -1759,27 +2125,30 @@ class SimulationInformation():
 
         self.solvers = dict()
         aux_solvers = solver_interface.dictionary_of_solvers(print_info=False)
-        aux_solvers.update(generator_interface.dictionary_of_generators(print_info=False))
-        aux_solvers.update(controller_interface.dictionary_of_controllers(print_info=False))
+        aux_solvers.update(
+            generator_interface.dictionary_of_generators(print_info=False)
+        )
+        aux_solvers.update(
+            controller_interface.dictionary_of_controllers(print_info=False)
+        )
 
         for solver in aux_solvers:
-            if solver == 'PreSharpy':
-                solver_name = 'SHARPy'
+            if solver == "PreSharpy":
+                solver_name = "SHARPy"
             else:
                 solver_name = solver
             self.solvers[solver_name] = deepcopy(aux_solvers[solver])
-            
 
     def check(self):
-
         default = SimulationInformation()
         default.set_default_values()
 
-        for solver in self.solvers['SHARPy']['flow']:
+        for solver in self.solvers["SHARPy"]["flow"]:
             for key in self.solvers[solver]:
                 if key not in default.solvers[solver]:
-                    raise RuntimeError(("solver '%s' has no key named '%s'" % (solver, key)))
-
+                    raise RuntimeError(
+                        "solver '%s' has no key named '%s'" % (solver, key)
+                    )
 
     def define_num_steps(self, num_steps):
         """
@@ -1792,11 +2161,10 @@ class SimulationInformation():
         """
 
         for solver in self.solvers:
-            if 'n_time_steps' in self.solvers[solver]:
-                self.solvers[solver]['n_time_steps'] = num_steps
-            if 'num_steps' in self.solvers[solver]:
-                self.solvers[solver]['num_steps'] = num_steps
-
+            if "n_time_steps" in self.solvers[solver]:
+                self.solvers[solver]["n_time_steps"] = num_steps
+            if "num_steps" in self.solvers[solver]:
+                self.solvers[solver]["num_steps"] = num_steps
 
     def define_uinf(self, unit_vector, norm):
         """
@@ -1809,19 +2177,18 @@ class SimulationInformation():
             norm (float): Norm of the inflow velocity
         """
         # Make sure
-        uinf = unit_vector*norm
+        uinf = unit_vector * norm
         norm = np.linalg.norm(uinf)
         unit_vector = uinf / norm
 
-        self.solvers['AerogridLoader']['freestream_dir'] = unit_vector
-        self.solvers['AerogridPlot']['u_inf'] = norm
-        self.solvers['SteadyVelocityField']['u_inf'] = norm
-        self.solvers['SteadyVelocityField']['u_inf_direction'] = unit_vector
+        self.solvers["AerogridLoader"]["freestream_dir"] = unit_vector
+        self.solvers["AerogridPlot"]["u_inf"] = norm
+        self.solvers["SteadyVelocityField"]["u_inf"] = norm
+        self.solvers["SteadyVelocityField"]["u_inf_direction"] = unit_vector
         # self.solvers['StaticUvlm']['velocity_field_input'] = {'u_inf': norm,
         #                                                     'u_inf_direction': unit_vector}
         # self.solvers['StepUvlm']['velocity_field_input'] = {'u_inf': norm,
         #                                                     'u_inf_direction': unit_vector}
-
 
     def set_variable_all_dicts(self, variable, set_value):
         """
@@ -1850,12 +2217,17 @@ class SimulationInformation():
         self.check()
 
         config = configobj.ConfigObj()
-        config.filename = self.solvers['SHARPy']['route'] + '/' + self.solvers['SHARPy']['case'] + '.sharpy'
-        config['SHARPy'] = self.solvers['SHARPy']
+        config.filename = (
+            self.solvers["SHARPy"]["route"]
+            + "/"
+            + self.solvers["SHARPy"]["case"]
+            + ".sharpy"
+        )
+        config["SHARPy"] = self.solvers["SHARPy"]
         # for k, v in self.solvers['SHARPy'].items():
         #     config[k] = v
         # Loop through the solvers defined in "flow" and write them
-        for solver in self.solvers['SHARPy']['flow']:
+        for solver in self.solvers["SHARPy"]["flow"]:
             config[solver] = self.solvers[solver]
         config.write()
 
@@ -1871,23 +2243,26 @@ class SimulationInformation():
             num_steps (int): number of steps
         """
 
-        with h5.File(self.solvers['SHARPy']['route'] + '/' + self.solvers['SHARPy']['case'] + '.dyn.h5', 'a') as h5file:
+        with h5.File(
+            self.solvers["SHARPy"]["route"]
+            + "/"
+            + self.solvers["SHARPy"]["case"]
+            + ".dyn.h5",
+            "a",
+        ) as h5file:
             if self.with_dynamic_forces:
-                h5file.create_dataset(
-                    'dynamic_forces', data=self.dynamic_forces)
+                h5file.create_dataset("dynamic_forces", data=self.dynamic_forces)
             if self.with_forced_vel:
                 # TODO: check coherence velocity-acceleration
-                h5file.create_dataset(
-                    'for_vel', data=self.for_vel)
-                h5file.create_dataset(
-                    'for_acc', data=self.for_acc)
-            h5file.create_dataset(
-                'num_steps', data=num_steps)
+                h5file.create_dataset("for_vel", data=self.for_vel)
+                h5file.create_dataset("for_acc", data=self.for_acc)
+            h5file.create_dataset("num_steps", data=num_steps)
 
 
 ######################################################################
 #########################  CLEAN FILES  ##############################
 ######################################################################
+
 
 def clean_test_files(route, case_name):
     """
@@ -1900,27 +2275,27 @@ def clean_test_files(route, case_name):
         case_name (string): name of the case
 
     """
-    fem_file_name = route + '/' + case_name + '.fem.h5'
+    fem_file_name = route + "/" + case_name + ".fem.h5"
     if os.path.isfile(fem_file_name):
         os.remove(fem_file_name)
 
-    dyn_file_name = route + '/' + case_name + '.dyn.h5'
+    dyn_file_name = route + "/" + case_name + ".dyn.h5"
     if os.path.isfile(dyn_file_name):
         os.remove(dyn_file_name)
 
-    aero_file_name = route + '/' + case_name + '.aero.h5'
+    aero_file_name = route + "/" + case_name + ".aero.h5"
     if os.path.isfile(aero_file_name):
         os.remove(aero_file_name)
 
-    lagrange_file_name = route + '/' + case_name + '.mb.h5'
+    lagrange_file_name = route + "/" + case_name + ".mb.h5"
     if os.path.isfile(lagrange_file_name):
         os.remove(lagrange_file_name)
 
-    solver_file_name = route + '/' + case_name + '.sharpy'
+    solver_file_name = route + "/" + case_name + ".sharpy"
     if os.path.isfile(solver_file_name):
         os.remove(solver_file_name)
 
-    flightcon_file_name = route + '/' + case_name + '.flightcon.txt'
+    flightcon_file_name = route + "/" + case_name + ".flightcon.txt"
     if os.path.isfile(flightcon_file_name):
         os.remove(flightcon_file_name)
 
@@ -1928,10 +2303,8 @@ def clean_test_files(route, case_name):
 ######################################################################
 #####################  MULTIBODY INFORMATION  ########################
 ######################################################################
-class BodyInformation():
-
+class BodyInformation:
     def __init__(self):
-
         self.body_number = None
         self.FoR_position = None
         self.FoR_velocity = None
@@ -1940,7 +2313,6 @@ class BodyInformation():
         self.quat = None
 
     def copy(self):
-
         copied = BodyInformation()
         copied.body_number = self.body_number
         copied.FoR_position = self.FoR_position.astype(dtype=float, copy=True)
@@ -1950,18 +2322,15 @@ class BodyInformation():
         copied.quat = self.quat.astype(dtype=float, copy=True)
 
     def check(self):
-
         default = BodyInformation()
 
         for attr, value in self.__dict__.items():
             if not hasattr(default, attr):
-                raise RuntimeError(("BodyInformation has no attribute named '%s'" % attr))
+                raise RuntimeError("BodyInformation has no attribute named '%s'" % attr)
 
 
-class LagrangeConstraint():
-
+class LagrangeConstraint:
     def __init__(self):
-
         # Shared by all boundary conditions
         self.behaviour = None
         # Each BC will have its own variables
@@ -1974,39 +2343,50 @@ class LagrangeConstraint():
             try:
                 getattr(self, param)
             except:
-                raise RuntimeError(("'%s' parameter required in '%s' lagrange constraint" % (param, self.behaviour)))
+                raise RuntimeError(
+                    "'%s' parameter required in '%s' lagrange constraint"
+                    % (param, self.behaviour)
+                )
         has_behaviour = False
         for param, value in self.__dict__.items():
-            if not param in ['behaviour', 'scalingFactor', 'penaltyFactor']:
+            if not param in ["behaviour", "scalingFactor", "penaltyFactor"]:
                 if param not in required_parameters:
-                    raise RuntimeError(("'%s' parameter is not required in '%s' lagrange constraint" % (param, self.behaviour)))
-            if param == 'behaviour':
+                    raise RuntimeError(
+                        "'%s' parameter is not required in '%s' lagrange constraint"
+                        % (param, self.behaviour)
+                    )
+            if param == "behaviour":
                 has_behaviour = True
 
         if not has_behaviour:
-            raise RuntimeError(("'behaviour' parameter is required in '%s' lagrange constraint" % self.behaviour))
+            raise RuntimeError(
+                (
+                    "'behaviour' parameter is required in '%s' lagrange constraint"
+                    % self.behaviour
+                )
+            )
 
 
 def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_name):
-
     # Check
     for body in list_Bodies:
         body.check()
     for lc in list_LagrangeConstraints:
         lc.check()
 
-    with h5.File(route + '/' + case_name + '.mb.h5', 'a') as h5file:
-
+    with h5.File(route + "/" + case_name + ".mb.h5", "a") as h5file:
         # Write the constraints
-        h5file.create_dataset('num_constraints', data=len(list_LagrangeConstraints))
+        h5file.create_dataset("num_constraints", data=len(list_LagrangeConstraints))
 
         iconstraint = 0
         for constraint in list_LagrangeConstraints:
             # Create the group associated to the constraint
-            constraint_id = h5file.create_group('constraint_%02d' % iconstraint)
+            constraint_id = h5file.create_group("constraint_%02d" % iconstraint)
 
             # Write general parameters
-            constraint_id.create_dataset("behaviour", data=constraint.behaviour.encode('ascii', 'ignore'))
+            constraint_id.create_dataset(
+                "behaviour", data=constraint.behaviour.encode("ascii", "ignore")
+            )
 
             # Write parameters associated to the specific type of boundary condition
             default = lagrangeconstraints.lc_from_string(constraint.behaviour)
@@ -2015,25 +2395,27 @@ def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_n
             for param in required_parameters:
                 constraint_id.create_dataset(param, data=getattr(constraint, param))
             try:
-                constraint_id.create_dataset("scalingFactor",
-                                             data=getattr(constraint, "scalingFactor"))
+                constraint_id.create_dataset(
+                    "scalingFactor", data=getattr(constraint, "scalingFactor")
+                )
             except:
                 pass
             try:
-                constraint_id.create_dataset("penaltyFactor",
-                                             data=getattr(constraint, "penaltyFactor"))
+                constraint_id.create_dataset(
+                    "penaltyFactor", data=getattr(constraint, "penaltyFactor")
+                )
             except:
                 pass
 
             iconstraint += 1
 
         # Write the body information
-        h5file.create_dataset('num_bodies', data=len(list_Bodies))
+        h5file.create_dataset("num_bodies", data=len(list_Bodies))
 
         ibody = 0
         for body in list_Bodies:
             # Create the group associated to the body
-            body_id = h5file.create_group('body_%02d' % ibody)
+            body_id = h5file.create_group("body_%02d" % ibody)
 
             # Write general parameters
             body_id.create_dataset("body_number", data=body.body_number)

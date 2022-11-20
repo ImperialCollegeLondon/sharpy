@@ -63,15 +63,15 @@ def qs_derivs(x_ea_perc, x_fh_perc):
     th = np.arccos(-nu_fh)
 
     # pitch/pitch rate related quantities
-    CLa = 2. * np.pi  # ok
-    CLda = np.pi * (1. - 2. * nu_ea)
+    CLa = 2.0 * np.pi  # ok
+    CLda = np.pi * (1.0 - 2.0 * nu_ea)
     CMda = -0.25 * np.pi
 
     # flap related quantities
-    CLb = 2. * (np.pi - th + np.sin(th))
-    CLdb = (0.5 - nu_fh) * 2. * (np.pi - th) + (2. - nu_fh) * np.sin(th)
+    CLb = 2.0 * (np.pi - th + np.sin(th))
+    CLdb = (0.5 - nu_fh) * 2.0 * (np.pi - th) + (2.0 - nu_fh) * np.sin(th)
     CMb = -0.5 * (1 + nu_fh) * np.sin(th)
-    CMdb = -.25 * (np.pi - th + 2. / 3. * np.sin(th) * (0.5 - nu_fh) * (2. + nu_fh))
+    CMdb = -0.25 * (np.pi - th + 2.0 / 3.0 * np.sin(th) * (0.5 - nu_fh) * (2.0 + nu_fh))
 
     return CLa, CLda, CLb, CLdb, CMda, CMb, CMdb
 
@@ -96,15 +96,20 @@ def nc_derivs(x_ea_perc, x_fh_perc):
     # pitch/pitch rate related quantities
     CLda = np.pi  # ok
     CLdda = -np.pi * nu_ea
-    CMda = -.25 * np.pi
+    CMda = -0.25 * np.pi
     CMdda = -0.25 * np.pi * (0.25 - nu_ea)
 
     # flap related quantities
     CLdb = np.pi - th - nu_fh * np.sin(th)
-    CLddb = -nu_fh * (np.pi - th) + 1. / 3. * (2. + nu_fh ** 2) * np.sin(th)
-    CMdb = -0.25 * (np.pi - th + (2. / 3. - nu_fh - 2. / 3. * nu_fh ** 2) * np.sin(th))
-    CMddb = -0.25 * ((0.25 - nu_fh) * (np.pi - th) + \
-                     (2. / 3. - 5. / 12. * nu_fh + nu_fh ** 2 / 3. + nu_fh ** 3 / 6.) * np.sin(th))
+    CLddb = -nu_fh * (np.pi - th) + 1.0 / 3.0 * (2.0 + nu_fh**2) * np.sin(th)
+    CMdb = -0.25 * (
+        np.pi - th + (2.0 / 3.0 - nu_fh - 2.0 / 3.0 * nu_fh**2) * np.sin(th)
+    )
+    CMddb = -0.25 * (
+        (0.25 - nu_fh) * (np.pi - th)
+        + (2.0 / 3.0 - 5.0 / 12.0 * nu_fh + nu_fh**2 / 3.0 + nu_fh**3 / 6.0)
+        * np.sin(th)
+    )
 
     return CLda, CLdda, CLdb, CLddb, CMda, CMdda, CMdb, CMddb
 
@@ -116,12 +121,12 @@ def theo_CL_freq_resp(k, x_ea_perc, x_fh_perc):
     The output is a 3 elements array containing the CL frequency response w.r.t.
     to pitch, plunge and flap motion, respectively. Sign conventions are as
     follows:
-    
+
         * plunge: positive when moving upward
 
         * x_ea_perc: position of axis of rotation in percentage of chord (measured
           from LE)
-    
+
         * x_fc_perc: position of flap axis of rotation in percentage of chord
           (measured from LE)
 
@@ -129,29 +134,30 @@ def theo_CL_freq_resp(k, x_ea_perc, x_fh_perc):
         this function uses different input/output w.r.t. theo_lift
     """
 
-    df, ddf = j * k, -k ** 2
+    df, ddf = j * k, -(k**2)
 
     # get quasi-steady derivatives
     CLa_qs, CLda_qs, CLb_qs, CLdb_qs, void, void, void = qs_derivs(x_ea_perc, x_fh_perc)
 
     # quasi-steady lift
-    CLqs = np.array([
-        CLa_qs + CLda_qs * df,
-        CLa_qs * df,
-        CLb_qs + CLdb_qs * df,
-    ])
+    CLqs = np.array(
+        [
+            CLa_qs + CLda_qs * df,
+            CLa_qs * df,
+            CLb_qs + CLdb_qs * df,
+        ]
+    )
 
     # get non-circulatory derivatives
-    CLda_nc, CLdda_nc, CLdb_nc, CLddb_nc, void, void, void, void \
-        = nc_derivs(x_ea_perc, x_fh_perc)
+    CLda_nc, CLdda_nc, CLdb_nc, CLddb_nc, void, void, void, void = nc_derivs(
+        x_ea_perc, x_fh_perc
+    )
 
     # unsteady lift
-    df, ddf = j * k, -k ** 2
-    CLun = np.array([
-        CLda_nc * df + CLdda_nc * ddf,
-        CLda_nc * ddf,
-        CLdb_nc * df + CLddb_nc * ddf
-    ])
+    df, ddf = j * k, -(k**2)
+    CLun = np.array(
+        [CLda_nc * df + CLdda_nc * ddf, CLda_nc * ddf, CLdb_nc * df + CLddb_nc * ddf]
+    )
 
     ### Total response
     Y = theo_fun(k) * CLqs + CLun
@@ -170,28 +176,29 @@ def theo_CM_freq_resp(k, x_ea_perc, x_fh_perc):
     to pitch, plunge and flap motion, respectively.
     """
 
-    df, ddf = j * k, -k ** 2
+    df, ddf = j * k, -(k**2)
 
     # get quasi-steady derivatives
     void, void, void, void, CMda_qs, CMb_qs, CMdb_qs = qs_derivs(x_ea_perc, x_fh_perc)
 
     # quasi-steady lift
-    CMqs = np.array([
-        CMda_qs * df,
-        0.0 * k,
-        CMb_qs + CMdb_qs * df,
-    ])
+    CMqs = np.array(
+        [
+            CMda_qs * df,
+            0.0 * k,
+            CMb_qs + CMdb_qs * df,
+        ]
+    )
 
     # get non-circulatory coefficients
-    void, void, void, void, CMda_nc, CMdda_nc, CMdb_nc, CMddb_nc = \
-        nc_derivs(x_ea_perc, x_fh_perc)
+    void, void, void, void, CMda_nc, CMdda_nc, CMdb_nc, CMddb_nc = nc_derivs(
+        x_ea_perc, x_fh_perc
+    )
 
     # unsteady lift
-    CMun = np.array([
-        CMda_nc * df + CMdda_nc * ddf,
-        CMda_nc * ddf,
-        CMdb_nc * df + CMddb_nc * ddf
-    ])
+    CMun = np.array(
+        [CMda_nc * df + CMdda_nc * ddf, CMda_nc * ddf, CMdb_nc * df + CMddb_nc * ddf]
+    )
 
     ### Total response
     Y = CMqs + CMun
@@ -231,8 +238,21 @@ def theo_lift(w, A, H, c, rhoinf, uinf, x12):
     Ctheo = theo_fun(k)
 
     # Lift: circulatory
-    Lcirc = np.pi * rhoinf * uinf * c * Ctheo * ((uinf + w * j * (0.25 * c + x12)) * A + w * H * j)
-    Lmass = 0.25 * np.pi * rhoinf * c ** 2 * ((j * w * uinf - x12 * w ** 2) * A - H * w ** 2)
+    Lcirc = (
+        np.pi
+        * rhoinf
+        * uinf
+        * c
+        * Ctheo
+        * ((uinf + w * j * (0.25 * c + x12)) * A + w * H * j)
+    )
+    Lmass = (
+        0.25
+        * np.pi
+        * rhoinf
+        * c**2
+        * ((j * w * uinf - x12 * w**2) * A - H * w**2)
+    )
     Ltot = Lcirc + Lmass
 
     return Ltot, Lcirc, Lmass
@@ -263,8 +283,13 @@ def garrick_drag_plunge(w, H, c, rhoinf, uinf, time):
     # compute theodorsen's function
     Ctheo = theo_fun(k)
 
-    Cd = -2. * np.pi * k ** 2 * Hast ** 2 * (
-            Ctheo.imag * np.cos(k * s) + Ctheo.real * np.sin(k * s)) ** 2
+    Cd = (
+        -2.0
+        * np.pi
+        * k**2
+        * Hast**2
+        * (Ctheo.imag * np.cos(k * s) + Ctheo.real * np.sin(k * s)) ** 2
+    )
 
     return Cd
 
@@ -299,15 +324,21 @@ def garrick_drag_pitch(w, A, c, rhoinf, uinf, x12, time):
     a = A * sks
 
     # lift term
-    Cl = np.pi * A * (k * cks
-                      + x12 * k ** 2 * sks
-                      + 2. * F * (sks + (0.5 - x12) * k * cks)
-                      + 2. * G * (cks - (0.5 - x12) * k * sks))
+    Cl = (
+        np.pi
+        * A
+        * (
+            k * cks
+            + x12 * k**2 * sks
+            + 2.0 * F * (sks + (0.5 - x12) * k * cks)
+            + 2.0 * G * (cks - (0.5 - x12) * k * sks)
+        )
+    )
 
     # suction force
-    Y1 = 2. * (F - k * G * (0.5 - x12))
-    Y2 = 2. * (G - k * F * (0.5 - x12)) - k
-    Cs = 0.5 * np.pi * A ** 2 * (Y1 * sks + Y2 * cks) ** 2
+    Y1 = 2.0 * (F - k * G * (0.5 - x12))
+    Y2 = 2.0 * (G - k * F * (0.5 - x12)) - k
+    Cs = 0.5 * np.pi * A**2 * (Y1 * sks + Y2 * cks) ** 2
 
     Cd = a * Cl - Cs
 
@@ -319,8 +350,8 @@ def sears_fun(kg):
     Produces Sears function
     """
 
-    S12 = 2. / np.pi / kg / (scsp.hankel1(0, kg) + 1.j * scsp.hankel1(1, kg))
-    S = np.exp(-1.j * kg) * S12.conj()
+    S12 = 2.0 / np.pi / kg / (scsp.hankel1(0, kg) + 1.0j * scsp.hankel1(1, kg))
+    S = np.exp(-1.0j * kg) * S12.conj()
 
     return S
 
@@ -349,7 +380,14 @@ def sears_lift_sin_gust(w0, L, Uinf, chord, tv):
     S = (J0 - 1.0j * J1) * Ctheo + 1.0j * J1
 
     phase = np.angle(S)
-    CL = 2. * np.pi * w0 / Uinf * np.abs(S) * np.sin(2. * np.pi * Uinf / L * tv + phase)
+    CL = (
+        2.0
+        * np.pi
+        * w0
+        / Uinf
+        * np.abs(S)
+        * np.sin(2.0 * np.pi * Uinf / L * tv + phase)
+    )
 
     return CL
 
@@ -365,11 +403,11 @@ def sears_CL_freq_resp(k):
     H0 = scsp.hankel1(0, k)
 
     # Sear's function
-    S12star = 2. / (np.pi * k * (H0 + 1.j * H1))
+    S12star = 2.0 / (np.pi * k * (H0 + 1.0j * H1))
     S0 = np.exp(-1.0j * k) * S12star.conj(S12star)
 
     # CL frequency response
-    CL = 2. * np.pi * S0
+    CL = 2.0 * np.pi * S0
 
     return CL
 
@@ -381,13 +419,14 @@ def wagner_imp_start(aeff, Uinf, chord, tv):
 
     sv = 2.0 * Uinf / chord * tv
     fiv = 1.0 - 0.165 * np.exp(-0.0455 * sv) - 0.335 * np.exp(-0.3 * sv)
-    CLv = 2. * np.pi * aeff * fiv
+    CLv = 2.0 * np.pi * aeff * fiv
 
     return CLv
 
 
-def flat_plate_analytical(kv, x_ea_perc, x_fh_perc, input_seq, output_seq,
-                          output_scal=None, plunge_deriv=True):
+def flat_plate_analytical(
+    kv, x_ea_perc, x_fh_perc, input_seq, output_seq, output_scal=None, plunge_deriv=True
+):
     r"""
     Computes the analytical frequency response of a plat plate for the input
     output sequences in ``input_seq`` and ``output_seq`` over the frequency points ``kv``,
@@ -440,30 +479,31 @@ def flat_plate_analytical(kv, x_ea_perc, x_fh_perc, input_seq, output_seq,
     CMtheo = theo_CM_freq_resp(kv, x_ea_perc, x_fh_perc)
 
     # scaling
-    if output_scal is None: output_scal = np.ones((Nout,))
+    if output_scal is None:
+        output_scal = np.ones((Nout,))
 
     for oo in range(Nout):
         for ii in range(Nin):
-
             ### Sears
-            if input_seq[ii] == 'gust_sears':
+            if input_seq[ii] == "gust_sears":
                 # Fx,Mz null
-                if output_seq[oo] == 'Fy':
+                if output_seq[oo] == "Fy":
                     Yfreq_an[oo, ii, :] = sears_CL_freq_resp(kv)
 
             ### Theodorsen
-            if input_seq[ii] == 'pitch':
-                if output_seq[oo] == 'Fy':
+            if input_seq[ii] == "pitch":
+                if output_seq[oo] == "Fy":
                     Yfreq_an[oo, ii, :] = CLtheo[0]
-                if output_seq[oo] == 'Mz':
+                if output_seq[oo] == "Mz":
                     Yfreq_an[oo, ii, :] = CMtheo[0]
 
-            if input_seq[ii] == 'plunge':
+            if input_seq[ii] == "plunge":
                 Fact = 1.0
-                if plunge_deriv: Fact = -1.j / kv
-                if output_seq[oo] == 'Fy':
+                if plunge_deriv:
+                    Fact = -1.0j / kv
+                if output_seq[oo] == "Fy":
                     Yfreq_an[oo, ii, :] = Fact * CLtheo[1]
-                if output_seq[oo] == 'Mz':
+                if output_seq[oo] == "Mz":
                     Yfreq_an[oo, ii, :] = Fact * CMtheo[1]
 
         # scale output

@@ -50,12 +50,12 @@
 #   var_type: 'control_surface'
 #   inout: 'out'  # either `in`, `out` or `inout`
 #   position: 0  # control surface index
-# - name: 'control_surface_deflection' 
+# - name: 'control_surface_deflection'
 #   var_type: 'control_surface'
-#   inout: 'out' 
-#   position: 1  
-# - name: 'control_surface_deflection' 
+#   inout: 'out'
+#   position: 1
+# - name: 'control_surface_deflection'
 #   var_type: 'control_surface'
-#   inout: 'out' 
-#   position: 2  
+#   inout: 'out'
+#   position: 2
 ...
