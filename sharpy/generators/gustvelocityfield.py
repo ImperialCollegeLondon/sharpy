@@ -180,6 +180,10 @@ class continuous_sin(BaseGust):
     settings_default['gust_intensity'] = 0.0
     settings_description['gust_intensity'] = 'Intensity of the gust'
 
+    settings_types['gust_component'] = 'int'
+    settings_default['gust_component'] = 2
+    settings_description['gust_component'] = 'Gust velocity component (x,y,z) --> (0, 1, 2)'
+
     setting_table = settings.SettingsTable()
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
                                       header_line=doc_settings_description)
@@ -196,7 +200,7 @@ class continuous_sin(BaseGust):
         if x > 0.0:
             return vel
 
-        vel[2] = 0.5 * gust_intensity * np.sin(2 * np.pi * x / gust_length)
+        vel[self.settings['gust_component']] = 0.5 * gust_intensity * np.sin(2 * np.pi * x / gust_length)
         return vel
 
 
