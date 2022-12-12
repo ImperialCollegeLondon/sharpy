@@ -52,6 +52,10 @@ class GustVanes(generator_interface.BaseGenerator):
     settings_default['1-cosine_discretisation'] = False
     settings_description['1-cosine_discretisation'] = 'If ``True``, gust vanes are discretised in a 1-cosine shape in spanwise direction.'
 
+    settings_types['wingtip_refinement_panels'] = 'int'
+    settings_default['wingtip_refinement_panels'] = 3
+    settings_description['wingtip_refinement_panels'] = 'Number of panels to refine wingtip discretisation for roll-up improvements'
+
 
 
     def __init__(self):
@@ -70,14 +74,15 @@ class GustVanes(generator_interface.BaseGenerator):
         self.vane_info = self.settings['vane_parameters']     
         
         self.set_default_vane_settings()
-        self.init_control_surfaces()             
+        self.init_control_surfaces()      
+        self.get_y_coordinates()       
         self.get_dimensions()
-        self.get_y_coordinates()
 
     def get_y_coordinates(self):
 
         for ivane in range(self.n_vanes):
             if self.settings['1-cosine_discretisation']:
+                # TODO: discretisation in case for symmetry condition
                 domain = np.linspace(0, 1, self.vane_info[ivane]['N']+1)
                 y_coord = 0.5*(1.0 - np.cos(domain*np.pi))
                 y_coord = (y_coord * self.vane_info[ivane]['span']) \
@@ -88,7 +93,28 @@ class GustVanes(generator_interface.BaseGenerator):
                 self.y_coord.append(np.linspace(self.vane_info[ivane]['span']/2,
                     -self.vane_info[ivane]['span']/2*int(not self.settings["symmetry_condition"]),
                     self.vane_info[ivane]['N']+1))
+
+            if self.settings['wingtip_refinement_panels'] > 0:
+                self.refine_wingtip_discretisation(ivane)
             
+
+    def refine_wingtip_discretisation(self, ivane):
+        """
+            Refines the spanwise grid discretisation at the wingtip. The wingtip panel is split 
+            into a specified number of uniform panels to avoid instabilities in the wake roll-up
+            process of the gust vanes.
+        """
+        delta_y_refined = (self.y_coord[ivane][1] - self.y_coord[ivane][0])\
+             / (self.settings['wingtip_refinement_panels'] + 1)
+
+        y_coord_refinement_panels = np.array([self.y_coord[ivane][0] + (i + 1) * delta_y_refined \
+            for i in range(self.settings['wingtip_refinement_panels'])])
+
+        self.y_coord[ivane] = np.insert(self.y_coord[ivane], 1,y_coord_refinement_panels)
+        
+        if not self.settings["symmetry_condition"]:
+            self.y_coord[ivane] = np.insert(self.y_coord[ivane], -1,  -np.flip(y_coord_refinement_panels))
+
 
     def set_default_vane_settings(self):
         # TODO: Find better solution, especially for beam_psi
@@ -115,22 +141,21 @@ class GustVanes(generator_interface.BaseGenerator):
         self.aero_dimensions = np.zeros((self.n_vanes, 2), dtype=int)
         self.aero_dimensions_star = self.aero_dimensions.copy()
         for ivane in range(self.n_vanes):
-            self.aero_dimensions[ivane, :] = [self.vane_info[ivane]['M'], self.vane_info[ivane]['N']]
-            self.aero_dimensions_star[ivane, :] = [self.vane_info[ivane]['M_star'], self.vane_info[ivane]['N']] # Check if correct
-
+            self.aero_dimensions[ivane, :] = [self.vane_info[ivane]['M'], len(self.y_coord[ivane])-1]
+            self.aero_dimensions_star[ivane, :] = [self.vane_info[ivane]['M_star'],  self.aero_dimensions[ivane, 1]]
     def init_control_surfaces(self):
         for ivane in range(self.n_vanes):    
             self.vane_info[ivane]['control_surface'] ={'control_surface_type': 'dynamic',
-                                 'hinge_coords': 0.25,
+                                 'hinge_coords': 0.25,                # TODO: specify by input
                                  'chord': self.vane_info[ivane]['M'], # whole wing is control surface
                                  'deflection':0,
                                  'deflection_dot': 0}
             self.cs_generators.append(generator_interface.generator_from_string('DynamicControlSurface')())
             try:
                 self.cs_generators[ivane].initialise(
-                    self.vane_info[ivane]['control_surface_deflection_generator_settings']) #self.settings['control_surface_deflection_generator_settings'][str(ivane)])
+                    self.vane_info[ivane]['control_surface_deflection_generator_settings']
+                    )
             except KeyError:
-                with_error_initialising_cs = True
                 cout.cout_wrap('Error, unable to locate a settings dictionary for gust vane '
                                 '{:g}'.format(ivane), 4)
 
@@ -138,18 +163,18 @@ class GustVanes(generator_interface.BaseGenerator):
         if iteration > 0:
             self.update_cs_deflection_and_rate(iteration)
         for ivane in range(self.n_vanes):
-            for inode in range(self.vane_info[ivane]['N']+1):
+            for inode in range(self.aero_dimensions[ivane, 1] + 1):
                 self.vane_info[ivane]['beam_coord'][1] = self.y_coord[ivane][inode]
                 if self.settings['vertical']:
                     self.vane_info[ivane]['beam_coord'][1:] = np.flip(self.vane_info[ivane]['beam_coord'][1:])
-       
+
                 (aero_tstep.zeta[aero_tstep.n_surf - self.n_vanes + ivane][:, :, inode],
                         aero_tstep.zeta_dot[aero_tstep.n_surf - self.n_vanes + ivane][:, :, inode]) = (
                             generate_strip(self.vane_info[ivane],
                                             airfoil_db,
                                             orientation_in=freestream_dir, #TODO: Check if this changes
                                             calculate_zeta_dot=True)) #TODO: Check effect of zeta dot on wake later
-        
+
     def update_cs_deflection_and_rate(self, iteration):
         for ivane in range(self.n_vanes):
             self.vane_info[ivane]['control_surface']['deflection'], self.vane_info[ivane]['control_surface']['deflection_dot'] = \
