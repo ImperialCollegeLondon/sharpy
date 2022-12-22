@@ -1,5 +1,5 @@
 from sharpy.utils.solver_interface import solver
-import sharpy.aero.models.nonlifting_body_grid as nonlifting_body_grid
+import sharpy.aero.models.nonliftingbodygrid as nonliftingbodygrid
 import sharpy.utils.settings as settings_utils
 from sharpy.solvers.gridloader import GridLoader
 
@@ -36,7 +36,7 @@ class NonliftingbodygridLoader(GridLoader):
         self.nonlifting_body = None
 
     def run(self):
-        self.data.nonlifting_body = nonlifting_body_grid.Nonlifting_body_grid()
+        self.data.nonlifting_body = nonliftingbodygrid.NonliftingBodyGrid()
         self.data.nonlifting_body.generate(self.data_dict,
                                            self.data.structure,
                                            self.settings,

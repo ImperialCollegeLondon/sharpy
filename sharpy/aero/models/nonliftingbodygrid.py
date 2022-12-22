@@ -10,7 +10,7 @@ from scipy.optimize import fsolve
 import sharpy.utils.algebra as algebra
 
 
-class Nonlifting_body_grid(Grid):
+class NonliftingBodyGrid(Grid):
     """
     ``Nonlifting Body Grid`` is the main object containing information of the
         nonlifting bodygrid, consisting of triangular and quadrilateral panels.
