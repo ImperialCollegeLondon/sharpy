@@ -40,6 +40,10 @@ class SaveData(BaseSolver):
     settings_default['save_aero'] = True
     settings_description['save_aero'] = 'Save aerodynamic classes.'
 
+    settings_types['save_nonlifting'] = 'bool'
+    settings_default['save_nonlifting'] = True
+    settings_description['save_nonlifting'] = 'Save aerodynamic classes.'
+
     settings_types['save_struct'] = 'bool'
     settings_default['save_struct'] = True
     settings_description['save_struct'] = 'Save structural classes.'
@@ -172,6 +176,11 @@ class SaveData(BaseSolver):
                     self.settings['skip_attr'].append('dist_to_orig')
                     self.settings['skip_attr'].append('wake_conv_vel')
 
+
+            if self.settings['save_nonlifting']:
+                self.ClassesToSave += (sharpy.aero.models.nonliftingbodygrid.NonliftingBodyGrid,
+                                       sharpy.utils.datastructures.NonliftingBodyTimeStepInfo,)
+
             if self.settings['save_struct']:
                 self.ClassesToSave += (
                     sharpy.structure.models.beam.Beam,
@@ -216,6 +225,10 @@ class SaveData(BaseSolver):
                 if self.settings['save_aero']:
                     h5utils.add_as_grp(list(),
                                hdfile['data']['aero'],
+                               grpname='timestep_info')
+                if self.settings['save_nonlifting']:
+                    h5utils.add_as_grp(list(),
+                               hdfile['data']['nonlifting_body'],
                                grpname='timestep_info')
 
                 for it in range(len(self.data.structure.timestep_info)):
@@ -297,6 +310,13 @@ class SaveData(BaseSolver):
                                hdfile['data']['aero']['timestep_info'],
                                grpname=("%05d" % ts),
                                ClassesToSave=(sharpy.utils.datastructures.AeroTimeStepInfo,),
+                               SkipAttr=settings['skip_attr'],
+                               compress_float=settings['compress_float'])
+        if settings['save_nonlifting']:
+            h5utils.add_as_grp(data.nonlifting_body.timestep_info[ts],
+                               hdfile['data']['nonlifting_body']['timestep_info'],
+                               grpname=("%05d" % ts),
+                               ClassesToSave=(sharpy.utils.datastructures.NonliftingBodyTimeStepInfo,),
                                SkipAttr=settings['skip_attr'],
                                compress_float=settings['compress_float'])
         if settings['save_struct']:
