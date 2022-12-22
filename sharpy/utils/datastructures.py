@@ -340,6 +340,12 @@ class NonliftingBodyTimeStepInfo(TimeStepInfo):
             self.sigma_dot.append(np.zeros((dimensions[i_surf, 0],
                                             dimensions[i_surf, 1]),
                                            dtype=ct.c_double))
+
+        self.pressure_coefficients = []
+        for i_surf in range(self.n_surf):
+            self.pressure_coefficients.append(np.zeros((dimensions[i_surf, 0],
+                                        dimensions[i_surf, 1]),
+                                        dtype=ct.c_double))
     def copy(self):
         """
         Returns a copy of a deepcopy of a :class:`~sharpy.utils.datastructures.AeroTimeStepInfo`
@@ -349,12 +355,16 @@ class NonliftingBodyTimeStepInfo(TimeStepInfo):
     def create_placeholder(self, copied):
         super().create_placeholder(copied)
 
-        # allocate sigma star matrices
+        # allocate sigma matrices
         for i_surf in range(copied.n_surf):
             copied.sigma[i_surf] = self.sigma[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
 
         for i_surf in range(copied.n_surf):
             copied.sigma_dot[i_surf] = self.sigma_dot[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
+        for i_surf in range(copied.n_surf):
+            copied.pressure_coefficients[i_surf] = self.pressure_coefficients[i_surf].astype(dtype=ct.c_double, copy=True, order='C')
+
 
         return copied
 
@@ -375,11 +385,16 @@ class NonliftingBodyTimeStepInfo(TimeStepInfo):
         for i_surf in range(self.n_surf):
             self.ct_sigma_dot_list.append(self.sigma_dot[i_surf][:, :].reshape(-1))
 
+        self.ct_pressure_coefficients_list = []
+        for i_surf in range(self.n_surf):
+            self.ct_pressure_coefficients_list.append(self.pressure_coefficients[i_surf][:, :].reshape(-1))
+
         self.ct_p_sigma = ((ct.POINTER(ct.c_double)*len(self.ct_sigma_list))
                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_sigma_list]))
         self.ct_p_sigma_dot = ((ct.POINTER(ct.c_double)*len(self.ct_sigma_dot_list))
-                                (* [np.ctypeslib.as_ctypes(array) for array in self.ct_sigma_dot_list]))
-
+                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_sigma_list]))
+        self.ct_p_pressure_coefficients = ((ct.POINTER(ct.c_double)*len(self.ct_pressure_coefficients_list))
+                                (* [np.ctypeslib.as_ctypes(array) for array in self.ct_pressure_coefficients_list]))
 
     def remove_ctypes_pointers(self):
         """
@@ -395,6 +410,12 @@ class NonliftingBodyTimeStepInfo(TimeStepInfo):
             del self.ct_p_sigma_dot
         except AttributeError:
             pass
+
+        try:
+            del self.ct_p_pressure_coefficients
+        except AttributeError:
+            pass
+
 
 
 class AeroTimeStepInfo(TimeStepInfo):

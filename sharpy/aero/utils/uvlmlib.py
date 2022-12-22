@@ -286,7 +286,8 @@ def vlm_solver_nonlifting_body(ts_info, options):
                        ts_info.ct_p_zeta,
                        ts_info.ct_p_u_ext,
                        ts_info.ct_p_sigma,
-                       ts_info.ct_p_forces)
+                       ts_info.ct_p_forces,
+                       ts_info.ct_p_pressure_coefficients)
     ts_info.remove_ctypes_pointers()
 
 def vlm_solver_lifting_and_nonlifting_bodies(ts_info_lifting, ts_info_nonlifting, options):
@@ -322,6 +323,7 @@ def vlm_solver_lifting_and_nonlifting_bodies(ts_info_lifting, ts_info_nonlifting
             ts_info_nonlifting.ct_p_u_ext,
             ts_info_nonlifting.ct_p_sigma,
             ts_info_nonlifting.ct_p_forces,
+            ts_info_nonlifting.ct_p_pressure_coefficients,
             p_rbm_vel_g,
             p_centre_rot)
 
@@ -443,6 +445,7 @@ def uvlm_solver_lifting_and_nonlifting(i_iter, ts_info, ts_info_nonlifting, stru
              ts_info_nonlifting.ct_p_u_ext,
              ts_info_nonlifting.ct_p_sigma,
              ts_info_nonlifting.ct_p_forces,
+             ts_info_nonlifting.ct_p_pressure_coefficients,
              p_rbm_vel,
              p_centre_rot)
 
