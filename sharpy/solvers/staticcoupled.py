@@ -77,9 +77,9 @@ class StaticCoupled(BaseSolver):
                                                  'The dictionary values are dictionaries with the settings ' \
                                                  'needed by each generator.'
     
-    settings_types['nonlifting_body_interaction'] = 'bool'
-    settings_default['nonlifting_body_interaction'] = False
-    settings_description['nonlifting_body_interaction'] = 'Consider forces induced by nonlifting bodies'
+    settings_types['nonlifting_body_interactions'] = 'bool'
+    settings_default['nonlifting_body_interactions'] = False
+    settings_description['nonlifting_body_interactions'] = 'Consider forces induced by nonlifting bodies'
 
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
@@ -197,17 +197,19 @@ class StaticCoupled(BaseSolver):
                     self.data.structure.timestep_info[self.data.ts].cag(),
                     self.data.aero.data_dict)
 
-                if self.settings['nonlifting_body_interaction']:
+                if self.settings['nonlifting_body_interactions']:
                     struct_forces += mapping.aero2struct_force_mapping(
-                    self.data.nonlifting_body.timestep_info[self.data.ts].forces,
-                    self.data.nonlifting_body.struct2aero_mapping,
-                    self.data.nonlifting_body.timestep_info[self.data.ts].zeta,
-                    self.data.structure.timestep_info[self.data.ts].pos,
-                    self.data.structure.timestep_info[self.data.ts].psi,
-                    self.data.structure.node_master_elem,
-                    self.data.structure.connectivities,
-                    self.data.structure.timestep_info[self.data.ts].cag(),
-                    self.data.nonlifting_body.data_dict)
+                        self.data.nonlifting_body.timestep_info[self.data.ts].forces,
+                        self.data.nonlifting_body.struct2aero_mapping,
+                        self.data.nonlifting_body.timestep_info[self.data.ts].zeta,
+                        self.data.structure.timestep_info[self.data.ts].pos,
+                        self.data.structure.timestep_info[self.data.ts].psi,
+                        self.data.structure.node_master_elem,
+                        self.data.structure.connectivities,
+                        self.data.structure.timestep_info[self.data.ts].cag(),
+                        self.data.nonlifting_body.data_dict,
+                        skip_moments_generated_by_forces = True)
+                        
                 if self.correct_forces:
                     struct_forces = \
                         self.correct_forces_generator.generate(aero_kstep=self.data.aero.timestep_info[self.data.ts],

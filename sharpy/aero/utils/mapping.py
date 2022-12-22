@@ -11,7 +11,8 @@ def aero2struct_force_mapping(aero_forces,
                               master,
                               conn,
                               cag=np.eye(3),
-                              data_dict=None):
+                              data_dict=None,
+                              skip_moments_generated_by_forces = False):
     r"""
     Maps the aerodynamic forces at the lattice to the structural nodes
 
@@ -69,10 +70,11 @@ def aero2struct_force_mapping(aero_forces,
                 cbg = np.dot(cab.T, cag)
 
                 for i_m in range(n_m):
-                    chi_g = zeta[i_surf][:, i_m, i_n] - np.dot(cag.T, pos_def[i_global_node, :])
                     struct_forces[i_global_node, 0:3] += np.dot(cbg, aero_forces[i_surf][0:3, i_m, i_n])
                     struct_forces[i_global_node, 3:6] += np.dot(cbg, aero_forces[i_surf][3:6, i_m, i_n])
-                    struct_forces[i_global_node, 3:6] += np.dot(cbg, algebra.cross3(chi_g, aero_forces[i_surf][0:3, i_m, i_n]))
+                    if not skip_moments_generated_by_forces:
+                        chi_g = zeta[i_surf][:, i_m, i_n] - np.dot(cag.T, pos_def[i_global_node, :])
+                        struct_forces[i_global_node, 3:6] += np.dot(cbg, algebra.cross3(chi_g, aero_forces[i_surf][0:3, i_m, i_n]))
 
     return struct_forces
 
