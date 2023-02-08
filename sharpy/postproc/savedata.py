@@ -41,7 +41,7 @@ class SaveData(BaseSolver):
     settings_description['save_aero'] = 'Save aerodynamic classes.'
 
     settings_types['save_nonlifting'] = 'bool'
-    settings_default['save_nonlifting'] = True
+    settings_default['save_nonlifting'] = False
     settings_description['save_nonlifting'] = 'Save aerodynamic classes.'
 
     settings_types['save_struct'] = 'bool'
