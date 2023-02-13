@@ -196,6 +196,13 @@ class StaticCoupled(BaseSolver):
                     self.data.structure.connectivities,
                     self.data.structure.timestep_info[self.data.ts].cag(),
                     self.data.aero.data_dict)
+                        
+                if self.correct_forces:
+                    struct_forces = \
+                        self.correct_forces_generator.generate(aero_kstep=self.data.aero.timestep_info[self.data.ts],
+                                                               structural_kstep=self.data.structure.timestep_info[self.data.ts],
+                                                               struct_forces=struct_forces,
+                                                               ts=0)
 
                 if self.settings['nonlifting_body_interactions']:
                     struct_forces += mapping.aero2struct_force_mapping(
@@ -209,13 +216,7 @@ class StaticCoupled(BaseSolver):
                         self.data.structure.timestep_info[self.data.ts].cag(),
                         self.data.nonlifting_body.data_dict,
                         skip_moments_generated_by_forces = True)
-                        
-                if self.correct_forces:
-                    struct_forces = \
-                        self.correct_forces_generator.generate(aero_kstep=self.data.aero.timestep_info[self.data.ts],
-                                                               structural_kstep=self.data.structure.timestep_info[self.data.ts],
-                                                               struct_forces=struct_forces,
-                                                               ts=0)
+
                 self.data.aero.timestep_info[self.data.ts].aero_steady_forces_beam_dof = struct_forces
                 self.data.structure.timestep_info[self.data.ts].postproc_node['aero_steady_forces'] = struct_forces  # B
                 
