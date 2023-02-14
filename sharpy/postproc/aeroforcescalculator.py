@@ -271,29 +271,35 @@ class AeroForcesCalculator(BaseSolver):
             i += 1
 
             # Steady forces/moments G
-            force_matrix[ts, i:i+3] = aero_tstep.total_steady_inertial_forces[:3]
-            moment_matrix[ts, i:i+3] = aero_tstep.total_steady_inertial_forces[3:]
+            if self.settings["lifting_surfaces"]:
+                force_matrix[ts, i:i+3] = aero_tstep.total_steady_inertial_forces[:3]
+                moment_matrix[ts, i:i+3] = aero_tstep.total_steady_inertial_forces[3:]
             if self.settings["nonlifting_body"]:
                 force_matrix[ts, i:i+3] += self.data.nonlifting_body.timestep_info[ts].total_steady_inertial_forces[:3]
                 moment_matrix[ts, i:i+3] += self.data.nonlifting_body.timestep_info[ts].total_steady_inertial_forces[3:]
             i += 3
 
             # Unsteady forces/moments G
-            force_matrix[ts, i:i+3] = aero_tstep.total_unsteady_inertial_forces[:3]
-            moment_matrix[ts, i:i+3] = aero_tstep.total_unsteady_inertial_forces[3:]
+
+            if self.settings["lifting_surfaces"]:
+                force_matrix[ts, i:i+3] = aero_tstep.total_unsteady_inertial_forces[:3]
+                moment_matrix[ts, i:i+3] = aero_tstep.total_unsteady_inertial_forces[3:]
             i += 3
 
             # Steady forces/moments A
-            force_matrix[ts, i:i+3] = aero_tstep.total_steady_body_forces[:3]
-            moment_matrix[ts, i:i+3] = aero_tstep.total_steady_body_forces[3:]
+
+            if self.settings["lifting_surfaces"]:
+                force_matrix[ts, i:i+3] = aero_tstep.total_steady_body_forces[:3]
+                moment_matrix[ts, i:i+3] = aero_tstep.total_steady_body_forces[3:]
             if self.settings["nonlifting_body"]:
                 force_matrix[ts, i:i+3] += self.data.nonlifting_body.timestep_info[ts].total_steady_body_forces[:3]
                 moment_matrix[ts, i:i+3] += self.data.nonlifting_body.timestep_info[ts].total_steady_body_forces[3:]
             i += 3
 
             # Unsteady forces/moments A
-            force_matrix[ts, i:i+3] = aero_tstep.total_unsteady_body_forces[:3]
-            moment_matrix[ts, i:i+3] = aero_tstep.total_unsteady_body_forces[3:]
+            if self.settings["lifting_surfaces"]:
+                force_matrix[ts, i:i+3] = aero_tstep.total_unsteady_body_forces[:3]
+                moment_matrix[ts, i:i+3] = aero_tstep.total_unsteady_body_forces[3:]
 
 
         header = ''
