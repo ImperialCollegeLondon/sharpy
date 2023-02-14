@@ -127,9 +127,12 @@ class AeroForcesCalculator(BaseSolver):
             self.data.aero.timestep_info[ts].body_steady_forces[i_surf, 0:3],
             self.data.aero.timestep_info[ts].body_unsteady_forces[i_surf, 0:3]
             ) = self.calculate_forces_for_isurf_in_g_frame(force[i_surf], unsteady_force=unsteady_force[i_surf])
-
+        
         # Convert to forces in B frame
-        steady_forces_b = self.map_forces_beam_dof(self.data.aero, ts, force, nonlifting=False) 
+        try:
+            steady_forces_b = self.data.structure.timestep_info[ts].postproc_node['aero_steady_forces']
+        except KeyError:
+            steady_forces_b = self.map_forces_beam_dof(self.data.aero, ts, force, nonlifting=False) 
         try:
             unsteady_forces_b = self.data.structure.timestep_info[ts].postproc_node['aero_unsteady_forces']
         except KeyError:
@@ -207,7 +210,6 @@ class AeroForcesCalculator(BaseSolver):
         # Forces per surface in G frame
         total_steady_force = np.zeros((3,))
         total_unsteady_force = np.zeros((3,))
-        print(force.shape)
         _, n_rows, n_cols = force.shape
         for i_m in range(n_rows):
             for i_n in range(n_cols):
