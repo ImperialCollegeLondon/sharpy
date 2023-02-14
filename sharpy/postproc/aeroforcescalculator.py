@@ -6,6 +6,7 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
 import sharpy.aero.utils.mapping as mapping
+import warnings
 
 
 @solver
@@ -116,8 +117,9 @@ class AeroForcesCalculator(BaseSolver):
             self.file_output(self.settings['text_file_name'])
         return self.data
  
-    def calculate_forces_lifting(self, ts):
+    def calculate_forces(self, ts):
         # Forces per surface in G frame
+        self.rot = algebra.quat2rotation(self.data.structure.timestep_info[ts].quat)
         force = self.data.aero.timestep_info[ts].forces
         unsteady_force = self.data.aero.timestep_info[ts].dynamic_forces
         for i_surf in range(self.data.aero.n_surf):
@@ -128,15 +130,28 @@ class AeroForcesCalculator(BaseSolver):
             self.data.aero.timestep_info[ts].body_unsteady_forces[i_surf, 0:3]
             ) = self.calculate_forces_for_isurf_in_g_frame(force[i_surf], unsteady_force=unsteady_force[i_surf])
         
+        print(self.settings["nonlifting_body"])
+        if self.settings["nonlifting_body"]:
+            print(self.data.nonlifting_body.n_surf)
+            for i_surf in range(self.data.nonlifting_body.n_surf):
+                print(i_surf)
+                (
+                self.data.nonlifting_body.timestep_info[ts].inertial_steady_forces[i_surf, 0:3], 
+                self.data.nonlifting_body.timestep_info[ts].body_steady_forces[i_surf, 0:3],
+                ) = self.calculate_forces_for_isurf_in_g_frame(self.data.nonlifting_body.timestep_info[ts].forces[i_surf], nonlifting=True)
+        
         # Convert to forces in B frame
         try:
             steady_forces_b = self.data.structure.timestep_info[ts].postproc_node['aero_steady_forces']
         except KeyError:
-            steady_forces_b = self.map_forces_beam_dof(self.data.aero, ts, force, nonlifting=False) 
+            if self.settings["nonlifting_body"]:
+                warnings.warn('Nonlifting forces are not considered in aero forces calculation since forces cannot not be retrieved from postproc node.')
+            steady_forces_b = self.map_forces_beam_dof(self.data.aero, ts, force)
+
         try:
             unsteady_forces_b = self.data.structure.timestep_info[ts].postproc_node['aero_unsteady_forces']
         except KeyError:
-            unsteady_forces_b = self.map_forces_beam_dof(self.data.aero, ts, unsteady_force, nonlifting=False)
+            unsteady_forces_b = self.map_forces_beam_dof(self.data.aero, ts, unsteady_force)
         # Convert to forces in A frame
         steady_forces_a = self.data.structure.nodal_b_for_2_a_for(steady_forces_b,
                                                                   self.data.structure.timestep_info[ts])                                
@@ -165,44 +180,6 @@ class AeroForcesCalculator(BaseSolver):
                       [np.zeros((3, 3)), self.rot]]).dot(
                 self.data.aero.timestep_info[ts].total_unsteady_body_forces)
 
-    def calculate_forces_nonlifting(self, ts):
-        # Forces per surface in G frame
-        force = self.data.nonlifting_body.timestep_info[ts].forces
-        n_surf = len(force)
-        for i_surf in range(n_surf):
-            total_steady_force = np.zeros((3,))
-            _, n_rows, n_cols = force[i_surf].shape
-            for i_m in range(n_rows):
-                for i_n in range(n_cols):
-                    total_steady_force += force[i_surf][0:3, i_m, i_n]
-            self.data.nonlifting_body.timestep_info[ts].inertial_steady_forces[i_surf, 0:3] = total_steady_force
-            self.data.nonlifting_body.timestep_info[ts].body_steady_forces[i_surf, 0:3] = np.dot(self.rot.T, total_steady_force)
-
-        # Convert to B frame
-        steady_forces_b = self.map_forces_beam_dof(self.data.nonlifting_body, ts, force, nonlifting=True)
-        # Convert to A frame
-        steady_forces_a = self.data.structure.nodal_b_for_2_a_for(steady_forces_b,
-                                                                self.data.structure.timestep_info[ts])
-        # Express total forces in A frame
-        self.data.nonlifting_body.timestep_info[ts].total_steady_body_forces = \
-            mapping.total_forces_moments(steady_forces_a,
-                                        self.data.structure.timestep_info[ts].pos,
-                                        ref_pos=self.moment_reference_location)
-
-        # Express total forces in G frame
-        self.data.nonlifting_body.timestep_info[ts].total_steady_inertial_forces = \
-            np.block([[self.rot, np.zeros((3, 3))],
-                    [np.zeros((3, 3)), self.rot]]).dot(
-                self.data.nonlifting_body.timestep_info[ts].total_steady_body_forces)
-
-    def calculate_forces(self, ts):
-        self.rot = algebra.quat2rotation(self.data.structure.timestep_info[ts].quat)
-        # Forces per surface in G frame
-        if self.settings["lifting_surfaces"]:
-            self.calculate_forces_lifting(ts)
-        if self.settings["nonlifting_body"]:
-            self.calculate_forces_nonlifting(ts)
-
     def calculate_forces_for_isurf_in_g_frame(self, force, unsteady_force = None, nonlifting = False):
         """
             Forces for a surface in G frame
@@ -222,7 +199,7 @@ class AeroForcesCalculator(BaseSolver):
             return total_steady_force, np.dot(self.rot.T, total_steady_force)
 
 
-    def map_forces_beam_dof(self, aero_data, ts, force, nonlifting=False):
+    def map_forces_beam_dof(self, aero_data, ts, force):
         struct_tstep = self.data.structure.timestep_info[ts]
         aero_forces_beam_dof = mapping.aero2struct_force_mapping(force,
                                                                  aero_data.struct2aero_mapping,
@@ -231,8 +208,7 @@ class AeroForcesCalculator(BaseSolver):
                                                                  struct_tstep.psi,
                                                                  None,
                                                                  self.data.structure.connectivities,
-                                                                 struct_tstep.cag(),
-                                                                 skip_moments_generated_by_forces=nonlifting)
+                                                                 struct_tstep.cag())
         return aero_forces_beam_dof
 
     def calculate_coefficients(self, fx, fy, fz, mx, my, mz):
@@ -245,14 +221,9 @@ class AeroForcesCalculator(BaseSolver):
         forces  = np.zeros(3)
         moments  = np.zeros(3)
 
-        if self.settings["lifting_surfaces"]:
-            aero_tstep = self.data.aero.timestep_info[ts]
-            forces += aero_tstep.total_steady_inertial_forces[:3] + aero_tstep.total_unsteady_inertial_forces[:3]
-            moments += aero_tstep.total_steady_inertial_forces[3:] + aero_tstep.total_unsteady_inertial_forces[3:]
-
-        if self.settings["nonlifting_body"]:
-            forces += self.data.nonlifting_body.timestep_info[ts].total_steady_inertial_forces[:3] 
-            moments += self.data.nonlifting_body.timestep_info[ts].total_steady_inertial_forces[3:]
+        aero_tstep = self.data.aero.timestep_info[ts]
+        forces += aero_tstep.total_steady_inertial_forces[:3] + aero_tstep.total_unsteady_inertial_forces[:3]
+        moments += aero_tstep.total_steady_inertial_forces[3:] + aero_tstep.total_unsteady_inertial_forces[3:]
 
         if self.settings['coefficients']: # TODO: Check if coefficients have to be computed differently for fuselages
             Cfx, Cfy, Cfz, Cmx, Cmy, Cmz = self.calculate_coefficients(*forces, *moments)
@@ -273,35 +244,23 @@ class AeroForcesCalculator(BaseSolver):
             i += 1
 
             # Steady forces/moments G
-            if self.settings["lifting_surfaces"]:
-                force_matrix[ts, i:i+3] = aero_tstep.total_steady_inertial_forces[:3]
-                moment_matrix[ts, i:i+3] = aero_tstep.total_steady_inertial_forces[3:]
-            if self.settings["nonlifting_body"]:
-                force_matrix[ts, i:i+3] += self.data.nonlifting_body.timestep_info[ts].total_steady_inertial_forces[:3]
-                moment_matrix[ts, i:i+3] += self.data.nonlifting_body.timestep_info[ts].total_steady_inertial_forces[3:]
+            force_matrix[ts, i:i+3] = aero_tstep.total_steady_inertial_forces[:3]
+            moment_matrix[ts, i:i+3] = aero_tstep.total_steady_inertial_forces[3:]
             i += 3
 
             # Unsteady forces/moments G
-
-            if self.settings["lifting_surfaces"]:
-                force_matrix[ts, i:i+3] = aero_tstep.total_unsteady_inertial_forces[:3]
-                moment_matrix[ts, i:i+3] = aero_tstep.total_unsteady_inertial_forces[3:]
+            force_matrix[ts, i:i+3] = aero_tstep.total_unsteady_inertial_forces[:3]
+            moment_matrix[ts, i:i+3] = aero_tstep.total_unsteady_inertial_forces[3:]
             i += 3
 
             # Steady forces/moments A
-
-            if self.settings["lifting_surfaces"]:
-                force_matrix[ts, i:i+3] = aero_tstep.total_steady_body_forces[:3]
-                moment_matrix[ts, i:i+3] = aero_tstep.total_steady_body_forces[3:]
-            if self.settings["nonlifting_body"]:
-                force_matrix[ts, i:i+3] += self.data.nonlifting_body.timestep_info[ts].total_steady_body_forces[:3]
-                moment_matrix[ts, i:i+3] += self.data.nonlifting_body.timestep_info[ts].total_steady_body_forces[3:]
+            force_matrix[ts, i:i+3] = aero_tstep.total_steady_body_forces[:3]
+            moment_matrix[ts, i:i+3] = aero_tstep.total_steady_body_forces[3:]
             i += 3
 
             # Unsteady forces/moments A
-            if self.settings["lifting_surfaces"]:
-                force_matrix[ts, i:i+3] = aero_tstep.total_unsteady_body_forces[:3]
-                moment_matrix[ts, i:i+3] = aero_tstep.total_unsteady_body_forces[3:]
+            force_matrix[ts, i:i+3] = aero_tstep.total_unsteady_body_forces[:3]
+            moment_matrix[ts, i:i+3] = aero_tstep.total_unsteady_body_forces[3:]
 
 
         header = ''
