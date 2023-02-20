@@ -53,6 +53,11 @@ class StaticUvlm(BaseSolver):
     settings_types['only_nonlifting'] = 'bool'
     settings_default['only_nonlifting'] = False
     settings_description['only_nonlifting'] = 'Consider only nonlifting bodies'
+
+    settings_types['phantom_wing_test'] = 'bool'
+    settings_default['phantom_wing_test'] = False
+    settings_description['phantom_wing_test'] = 'Debug option'
+
     settings_types['num_cores'] = 'int'
     settings_default['num_cores'] = 0
     settings_description['num_cores'] = 'Number of cores to use in the VLM lib'

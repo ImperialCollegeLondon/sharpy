@@ -64,7 +64,8 @@ class VMopts(ct.Structure):
                 ("vortex_radius", ct.c_double),
                 ("vortex_radius_wake_ind", ct.c_double),
                 ("centre_rot_g", ct.c_double * 3),
-                ("rbm_vel_g", ct.c_double * 6)]
+                ("rbm_vel_g", ct.c_double * 6),
+                ("phantom_wing_test", ct.c_bool)]
     
 
 
@@ -94,6 +95,7 @@ class VMopts(ct.Structure):
         self.vortex_radius_wake_ind = ct.c_double(vortex_radius_def)
         self.centre_rot_g = np.ctypeslib.as_ctypes(np.zeros((3)))
         self.rbm_vel_g = np.ctypeslib.as_ctypes(np.zeros((6)))
+        self.phantom_wing_test = ct.c_bool(False)
 
 
     def set_options(self, options, n_surfaces = 0, n_surfaces_nonlifting = 0, rbm_vel_g = np.zeros(6)):
@@ -115,6 +117,7 @@ class VMopts(ct.Structure):
 
         self.only_nonlifting = ct.c_bool(options["only_nonlifting"])
         self.only_lifting = ct.c_bool(not options["nonlifting_body_interactions"])
+        self.phantom_wing_test = ct.c_bool(options["phantom_wing_test"])
 
         for i in range(len(options["centre_rot_g"])):
             self.centre_rot_g[i] = ct.c_double(options["centre_rot_g"][i])
@@ -150,7 +153,8 @@ class UVMopts(ct.Structure):
                 ("quasi_steady", ct.c_bool),
                 ("centre_rot_g", ct.c_double * 3),
                 ("rbm_vel_g", ct.c_double * 6),
-                ("num_spanwise_panels_wo_induced_velocity", ct.c_uint)]
+                ("num_spanwise_panels_wo_induced_velocity", ct.c_uint),
+                ("phantom_wing_test", ct.c_bool)]
 
     def __init__(self):
         ct.Structure.__init__(self)
@@ -173,6 +177,7 @@ class UVMopts(ct.Structure):
         self.centre_rot_g = np.ctypeslib.as_ctypes(np.zeros((3)))
         self.rbm_vel_g = np.ctypeslib.as_ctypes(np.zeros((6)))
         self.num_spanwise_panels_wo_induced_velocity = ct.c_uint(0)
+        self.phantom_wing_test = ct.c_bool(False)
 
     def set_options(self, 
                     options, 
@@ -207,6 +212,7 @@ class UVMopts(ct.Structure):
  
         self.only_nonlifting = ct.c_bool(options["only_nonlifting"])
         self.only_lifting = ct.c_bool(not options["nonlifting_body_interactions"])
+        self.phantom_wing_test = ct.c_bool(options["phantom_wing_test"])
         self.num_spanwise_panels_wo_induced_velocity = n_span_panels_wo_u_ind
 
         for i in range(len(options["centre_rot_g"])):

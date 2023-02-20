@@ -133,13 +133,17 @@ class StepUvlm(BaseSolver):
     settings_default['quasi_steady'] = False
     settings_description['quasi_steady'] = 'Use quasi-steady approximation in UVLM'
     
+    settings_types['only_nonlifting'] = 'bool'
+    settings_default['only_nonlifting'] = False
+    settings_description['only_nonlifting'] = 'Consider nonlifting body interactions'
+
     settings_types['nonlifting_body_interactions'] = 'bool'
     settings_default['nonlifting_body_interactions'] = False
     settings_description['nonlifting_body_interactions'] = 'Consider nonlifting body interactions'
 
-    settings_types['only_nonlifting'] = 'bool'
-    settings_default['only_nonlifting'] = False
-    settings_description['only_nonlifting'] = 'Consider only nonlifting bodies'
+    settings_types['phantom_wing_test'] = 'bool'
+    settings_default['phantom_wing_test'] = False
+    settings_description['phantom_wing_test'] = 'Debug option'
 
     settings_types['centre_rot_g'] = 'list(float)'
     settings_default['centre_rot_g'] = [0., 0., 0.]
