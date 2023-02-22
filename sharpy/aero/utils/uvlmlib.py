@@ -50,6 +50,7 @@ class VMopts(ct.Structure):
                 ("Rollup", ct.c_bool),
                 ("only_lifting", ct.c_bool),
                 ("only_nonlifting", ct.c_bool),
+                ("phantom_wing_test", ct.c_bool),
                 ("NumCores", ct.c_uint),
                 ("NumSurfaces", ct.c_uint),
                 ("NumSurfacesNonlifting", ct.c_uint),
@@ -64,8 +65,7 @@ class VMopts(ct.Structure):
                 ("vortex_radius", ct.c_double),
                 ("vortex_radius_wake_ind", ct.c_double),
                 ("centre_rot_g", ct.c_double * 3),
-                ("rbm_vel_g", ct.c_double * 6),
-                ("phantom_wing_test", ct.c_bool)]
+                ("rbm_vel_g", ct.c_double * 6)]
     
 
 
@@ -132,7 +132,8 @@ class UVMopts(ct.Structure):
                 ("NumSurfaces", ct.c_uint),
                 ("NumSurfacesNonlifting", ct.c_uint),            
                 ("only_lifting", ct.c_bool),
-                ("only_nonlifting", ct.c_bool),  
+                ("only_nonlifting", ct.c_bool),
+                ("phantom_wing_test", ct.c_bool),  
                 # ("steady_n_rollup", ct.c_uint),
                 # ("steady_rollup_tolerance", ct.c_double),
                 # ("steady_rollup_aic_refresh", ct.c_uint),
@@ -153,8 +154,7 @@ class UVMopts(ct.Structure):
                 ("quasi_steady", ct.c_bool),
                 ("centre_rot_g", ct.c_double * 3),
                 ("rbm_vel_g", ct.c_double * 6),
-                ("num_spanwise_panels_wo_induced_velocity", ct.c_uint),
-                ("phantom_wing_test", ct.c_bool)]
+                ("num_spanwise_panels_wo_induced_velocity", ct.c_uint)]
 
     def __init__(self):
         ct.Structure.__init__(self)
