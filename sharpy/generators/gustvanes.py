@@ -52,10 +52,13 @@ class GustVanes(generator_interface.BaseGenerator):
     settings_default['1-cosine_discretisation'] = False
     settings_description['1-cosine_discretisation'] = 'If ``True``, gust vanes are discretised in a 1-cosine shape in spanwise direction.'
 
+    settings_types['consider_zeta_dot'] = 'bool'
+    settings_default['consider_zeta_dot'] = False
+    settings_description['consider_zeta_dot'] = 'If ``True``, gust vanes consider the velocity of the lifting surfaces in the UVLM.'
+
     settings_types['wingtip_refinement_panels'] = 'int'
     settings_default['wingtip_refinement_panels'] = 3
     settings_description['wingtip_refinement_panels'] = 'Number of panels to refine wingtip discretisation for roll-up improvements'
-
 
 
     def __init__(self):
@@ -182,7 +185,7 @@ class GustVanes(generator_interface.BaseGenerator):
                             generate_strip(self.vane_info[ivane],
                                             airfoil_db,
                                             orientation_in=freestream_dir, #TODO: Check if this changes
-                                            calculate_zeta_dot=True)) #TODO: Check effect of zeta dot on wake later
+                                            calculate_zeta_dot=self.settings['consider_zeta_dot']))
 
     def update_cs_deflection_and_rate(self, iteration):
         for ivane in range(self.n_vanes):
