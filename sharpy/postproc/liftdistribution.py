@@ -58,12 +58,8 @@ class LiftDistribution(BaseSolver):
                                self.data.aero.timestep_info[self.data.ts])
         return self.data
 
-    def lift_distribution(self):
+    def lift_distribution(self, struct_tstep, aero_tstep):
         # Force mapping
-
-        aero_tstep = self.data.aero.timestep_info[self.ts]
-        struct_tstep = self.data.structure.timestep_info[self.ts]
-        
         forces = mapping.aero2struct_force_mapping(
             aero_tstep.forces + aero_tstep.dynamic_forces,
             self.data.aero.struct2aero_mapping,
