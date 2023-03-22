@@ -91,6 +91,7 @@ def set_final_settings(ws, dynamic = False, output_folder='/output/', symmetry_c
         'print_info': 'on',
         'horseshoe': 'on',
         'symmetry_condition': symmetry_condition,
+        'symmetry_plane': 1,
         'num_cores': 4,
         'n_rollup': 0,
         'rollup_aic_refresh': 0,
@@ -126,7 +127,8 @@ def set_final_settings(ws, dynamic = False, output_folder='/output/', symmetry_c
                 'u_inf': ws.u_inf,
                 'u_inf_direction': ws.u_inf_direction},
             'vortex_radius': 1e-9,
-            'symmetry_condition': symmetry_condition,},
+            'symmetry_condition': symmetry_condition,
+            'symmetry_plane': 1,},
         'structural_solver': 'NonLinearStatic',
         'structural_solver_settings': settings['NonLinearStatic']}
 
@@ -166,6 +168,7 @@ def set_final_settings(ws, dynamic = False, output_folder='/output/', symmetry_c
                         'n_time_steps': 20,
                         'dt': ws.dt,
                         'symmetry_condition': symmetry_condition,
+                        'symmetry_plane': 1,
                         }
 
         settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'on',
