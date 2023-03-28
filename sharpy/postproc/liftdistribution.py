@@ -70,18 +70,18 @@ class LiftDistribution(BaseSolver):
             self.data.structure.connectivities,
             struct_tstep.cag(),
             self.data.aero.aero_dict)
-        # Prepare output matrix and file 
+        # Prepare output matrix and file
         N_nodes = self.data.structure.num_node
-        numb_col = 4
-        header = "x,y,z,fz"
+        numb_col = 6
+        header = "x,y,z,fx,fy,fz"
         # get aero forces
         lift_distribution = np.zeros((N_nodes, numb_col))
         # get rotation matrix
         cga = algebra.quat2rotation(struct_tstep.quat)
         if self.settings["coefficients"]:
             # TODO: add nondimensional spanwise column y/s
-            header += ", y/s, cl"
-            numb_col += 2
+            header += ", cl"
+            numb_col += 1
             lift_distribution = np.concatenate((lift_distribution, np.zeros((N_nodes, 2))), axis=1)
 
         for inode in range(N_nodes):
@@ -102,23 +102,22 @@ class LiftDistribution(BaseSolver):
                 dir_span, span, dir_chord, chord = aeroutils.span_chord(local_node, aero_tstep.zeta[i_surf])
                 # Stability axes - projects forces in B onto S
                 c_bs = aeroutils.local_stability_axes(cgb.T.dot(dir_urel), cgb.T.dot(dir_chord))
-                lift_force = c_bs.T.dot(forces[inode, :3])[2]
+                forces = c_bs.T.dot(forces[inode, :3])
                 # Store data in export matrix
-                lift_distribution[inode, 3] = lift_force
+                lift_distribution[inode, 3:6] = forces
                 lift_distribution[inode, 2] = struct_tstep.pos[inode, 2]  # z
                 lift_distribution[inode, 1] = struct_tstep.pos[inode, 1]  # y
                 lift_distribution[inode, 0] = struct_tstep.pos[inode, 0]  # x
                 if self.settings["coefficients"]:
-                    # Get non-dimensional spanwise coordinate y/s
-                    lift_distribution[inode, 4] = lift_distribution[inode, 1]/span
                     # Get lift coefficient
-                    lift_distribution[inode, 5] = np.sign(lift_force) * np.linalg.norm(lift_force) \
-                                                  / (0.5 * self.settings['rho'] \
-                                                     * np.linalg.norm(urel) ** 2 * span * chord)  # strip_area[i_surf][local_node])
-                    # Check if shared nodes from different surfaces exist (e.g. two wings joining at symmetry plane)
-                    # Leads to error since panel area just donates for half the panel size while lift forces is summed up
-                    lift_distribution[inode, 5] /= len(self.data.aero.struct2aero_mapping[inode])
+                    for idim in range(3):
+                        lift_distribution[inode, 6+idim] = np.sign(forces[idim]) * np.linalg.norm(forces[idim]) \
+                                                    / (0.5 * self.settings['rho'] \
+                                                        * np.linalg.norm(urel) ** 2 * span * chord)  # strip_area[i_surf][local_node])
+                        # Check if shared nodes from different surfaces exist (e.g. two wings joining at symmetry plane)
+                        # Leads to error since panel area just donates for half the panel size while lift forces is summed up
+                        lift_distribution[inode, 6+idim] /= len(self.data.aero.struct2aero_mapping[inode])
 
         # Export lift distribution data
-        np.savetxt(os.path.join(self.folder, self.settings['text_file_name']), lift_distribution,
+        np.savetxt(os.path.join(self.folder,  'ts_' + str(self.data.ts) + self.settings['text_file_name']), lift_distribution,
                    fmt='%10e,' * (numb_col - 1) + '%10e', delimiter=", ", header=header)
