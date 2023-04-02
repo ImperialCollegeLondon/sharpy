@@ -138,7 +138,7 @@ class NetworkLoader:
 
     def __init__(self):
         self.settings = None
-
+        self.tcp_conn = None # For TCP connection
         self.byte_ordering = '<'
 
     def initialise(self, in_settings):
@@ -213,6 +213,14 @@ class Network:
     settings_default['port'] = 65000
     settings_description['port'] = 'Own port.'
 
+    settings_types['destination_address'] = 'str'
+    settings_default['destination_address'] = '127.0.0.1'
+    settings_description['destination_address'] = 'Client network address.'
+
+    settings_types['TCP'] = 'bool'
+    settings_default['TCP'] = False
+    settings_description['TCP'] = 'Uses a TCP instead of a UDP connection.'
+
     settings_table = settings.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -258,10 +266,18 @@ class Network:
                                  no_ctype=True)
         self.addr = (self.settings['address'], self.settings['port'])
 
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind(self.addr)
+        if self.settings['TCP']:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        else:            
+            # UDP
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind(self.addr) 
         logger.info('Bound socket to {}'.format(self.addr))
         events = get_events(mode)
+
+        if self.settings['TCP']:
+            logger.info('Setup TCP connection...')
+            self.connect_to_tcp_client()
         self.sock.setblocking(False)
         sel.register(self.sock, events, data=self)
 
@@ -277,16 +293,23 @@ class Network:
 
     def _sendto(self, msg, address):
         logger.debug('Network - Sending')
-        self.sock.sendto(msg, address)
-        logger.info('Network - Sent data packet to {}'.format(address))
+        if self.settings['TCP']:
+            self.sock.send(msg)
+            logger.info('Network - Sent data packet to TCP client.')
+        else:
+            self.sock.sendto(msg, address)
+            logger.info('Network - Sent data packet to {}'.format(address))
 
     def receive(self, msg_length=1024):
-        r_msg, client_addr = self.sock.recvfrom(msg_length)  # adapt message length
-        logger.info('Received a {}-byte long data packet from {}'.format(len(r_msg), client_addr))
-        self.add_client(client_addr)
-        # r_msg = struct.unpack('f', r_msg)  # need to move decoding to dedicated message processing
+        if self.settings["TCP"]:
+            r_msg = self.tcp_conn.recv(msg_length)
+            logger.info('Received a {}-byte long data packet from the TCP client'.format(len(r_msg)))
+        else:
+            r_msg, client_addr = self.sock.recvfrom(msg_length)  # adapt message length
+            logger.info('Received a {}-byte long data packet from  UDP client{}'.format(len(r_msg), client_addr))
+            self.add_client(client_addr)
+            # r_msg = struct.unpack('f', r_msg)  # need to move decoding to dedicated message processing
         return r_msg
-        # return recv_data
 
     def process_events(self, mask):  # should only have the relevant queue
         logger.debug('Should not be here')
@@ -304,11 +327,29 @@ class Network:
             self.clients.append(client_addr)
             logger.info('Added new client to list {}'.format(client_addr))
 
+    def connect_to_tcp_client(self):
+        logger.idebugnfo('TCP server starts listening for a client')
+
+        self.sock.setblocking(True)
+        while True:
+            # TODO: Add timeout
+            self.sock.listen() # allow the TCP server to listen to only one client simultaneously TODO: maybe add more in case a reconnection must be made
+            logger.debug('TCP starts accepting new connection')
+            self.tcp_conn, tcp_address = self.sock.accept()
+            self.add_client(tcp_address)
+            self.sock.settimeout(60*5) # TODO: add another setting, so many settings  
+            logger.debug('TCP server accepted successfully the client {}'.format(tcp_address))
+            break
+        
+        self.sock.setblocking(False)
+
+
     def close(self):
         self.sel.unregister(self.sock)
         logger.info('Unregistered socket from selectors')
         self.sock.close()
         logger.info('Closed socket')
+
 
 
 class OutNetwork(Network):
@@ -338,6 +379,10 @@ class OutNetwork(Network):
     settings_default['send_on_demand'] = True
     settings_description['send_on_demand'] = 'Waits for a signal demanding the output data. Else, sends to destination' \
                                              ' buffer'
+
+    settings_types['TCP'] = 'bool'
+    settings_default['TCP'] = False
+    settings_description['TCP'] = 'Uses a TCP instead of a UDP connection.'
 
     settings_types['destination_address'] = 'list(str)'
     settings_default['destination_address'] = list()  # add check to raise error if send_on_demand false and this is empty

@@ -489,14 +489,28 @@ class DynamicCoupled(BaseSolver):
         while not finish_event.is_set():
 
             # selector version
+            self.logger.debug("Previous queue empty: {} ".format(bool(previous_queue_empty)))
+            self.logger.debug("In queue empty: {} ".format(bool(in_network.queue.empty())))
+            self.logger.debug("Out queue empty: {} ".format(bool(out_network.queue.empty())))
             events = network_interface.sel.select(timeout=1)
             if out_network.queue.empty() and not previous_queue_empty:
+                self.logger.debug('Try to read OutNetwork')
                 out_network.set_selector_events_mask('r')
                 previous_queue_empty = True
             elif not out_network.queue.empty() and previous_queue_empty:
                 out_network.set_selector_events_mask('w')
                 previous_queue_empty = False
 
+            if in_network.queue.empty() and not previous_queue_empty:
+                self.logger.debug('Try to read InNetwork')
+                in_network.set_selector_events_mask('r')
+                previous_queue_empty = True
+            elif not in_network.queue.empty() and previous_queue_empty:
+                in_network.set_selector_events_mask('w')
+                previous_queue_empty = False
+                
+            in_network.set_selector_events_mask('r')
+            in_network.process_events(True)
             try:
                 for key, mask in events:
                     key.data.process_events(mask)
