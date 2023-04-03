@@ -380,10 +380,6 @@ class OutNetwork(Network):
     settings_description['send_on_demand'] = 'Waits for a signal demanding the output data. Else, sends to destination' \
                                              ' buffer'
 
-    settings_types['TCP'] = 'bool'
-    settings_default['TCP'] = False
-    settings_description['TCP'] = 'Uses a TCP instead of a UDP connection.'
-
     settings_types['destination_address'] = 'list(str)'
     settings_default['destination_address'] = list()  # add check to raise error if send_on_demand false and this is empty
     settings_description['destination_address'] = 'List of addresses to send output data. If ``send_on_demand`` is ' \
@@ -419,12 +415,9 @@ class OutNetwork(Network):
             # value = self.queue.get()  # check that it waits for the queue not to be empty
             set_of_vars = self.queue.get()  # always gets latest time step info
             logger.debug('Out Network - got message from queue')
-            # for out_idx in set_of_vars.out_variables:
-            #     value = set_of_vars[out_idx].value
             value = set_of_vars.encode()
             logger.info('Message of length {} bytes ready to send'.format(len(value)))
             self.send(value, self.clients)
-                # self.send(value, self.clients)
 
 
 class InNetwork(Network):
