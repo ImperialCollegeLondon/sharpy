@@ -328,18 +328,14 @@ class Network:
             logger.info('Added new client to list {}'.format(client_addr))
 
     def connect_to_tcp_client(self):
-        logger.idebugnfo('TCP server starts listening for a client')
-
+        logger.debug('TCP server starts listening for a client')
         self.sock.setblocking(True)
-        while True:
-            # TODO: Add timeout
-            self.sock.listen() # allow the TCP server to listen to only one client simultaneously TODO: maybe add more in case a reconnection must be made
-            logger.debug('TCP starts accepting new connection')
-            self.tcp_conn, tcp_address = self.sock.accept()
-            self.add_client(tcp_address)
-            self.sock.settimeout(60*5) # TODO: add another setting, so many settings  
-            logger.debug('TCP server accepted successfully the client {}'.format(tcp_address))
-            break
+        self.sock.listen() # allow the TCP server to listen to only one client simultaneously TODO: maybe add more in case a reconnection must be made
+        self.tcp_conn, tcp_address = self.sock.accept()
+        self.add_client(tcp_address)
+        # self.sock.settimeout(60*5) # TODO: add another setting, so many settings  
+        logger.debug('TCP server accepted successfully the client {}'.format(tcp_address))
+            
         
         self.sock.setblocking(False)
 
