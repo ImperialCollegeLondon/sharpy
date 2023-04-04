@@ -110,9 +110,9 @@ class LiftDistribution(BaseSolver):
                 if self.settings["coefficients"]:
                     # Get lift coefficient
                     for idim in range(3):
-                        lift_distribution[inode, 6+idim] = np.sign(forces[idim]) * np.linalg.norm(forces[idim]) \
+                        lift_distribution[inode, 6+idim] = np.sign(aero_forces[idim]) * np.linalg.norm(aero_forces[idim]) \
                                                     / (0.5 * self.settings['rho'] \
-                                                        * np.linalg.norm(urel) ** 2 * span * chord)  # strip_area[i_surf][local_node])
+                                                        * np.linalg.norm(urel) ** 2 * span * chord)  
                         # Check if shared nodes from different surfaces exist (e.g. two wings joining at symmetry plane)
                         # Leads to error since panel area just donates for half the panel size while lift forces is summed up
                         lift_distribution[inode, 6+idim] /= len(self.data.aero.struct2aero_mapping[inode])
