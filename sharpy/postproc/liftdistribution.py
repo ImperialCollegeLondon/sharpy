@@ -75,14 +75,13 @@ class LiftDistribution(BaseSolver):
         numb_col = 6
         header = "x,y,z,fx,fy,fz"
         # get aero forces
-        lift_distribution = np.zeros((N_nodes, numb_col))
         # get rotation matrix
         cga = algebra.quat2rotation(struct_tstep.quat)
         if self.settings["coefficients"]:
             # TODO: add nondimensional spanwise column y/s
-            header += ", cl"
-            numb_col += 1
-            lift_distribution = np.concatenate((lift_distribution, np.zeros((N_nodes, 2))), axis=1)
+            header += ", cfx, cfy, cfz"
+            numb_col += 3
+        lift_distribution = np.zeros((N_nodes, numb_col))
 
         for inode in range(N_nodes):
             if self.data.aero.aero_dict['aero_node'][inode]:
@@ -102,9 +101,9 @@ class LiftDistribution(BaseSolver):
                 dir_span, span, dir_chord, chord = aeroutils.span_chord(local_node, aero_tstep.zeta[i_surf])
                 # Stability axes - projects forces in B onto S
                 c_bs = aeroutils.local_stability_axes(cgb.T.dot(dir_urel), cgb.T.dot(dir_chord))
-                forces = c_bs.T.dot(forces[inode, :3])
+                aero_forces = c_bs.T.dot(forces[inode, :3])
                 # Store data in export matrix
-                lift_distribution[inode, 3:6] = forces
+                lift_distribution[inode, 3:6] = aero_forces
                 lift_distribution[inode, 2] = struct_tstep.pos[inode, 2]  # z
                 lift_distribution[inode, 1] = struct_tstep.pos[inode, 1]  # y
                 lift_distribution[inode, 0] = struct_tstep.pos[inode, 0]  # x

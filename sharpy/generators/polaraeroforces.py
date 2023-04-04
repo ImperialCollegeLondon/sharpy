@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
 import sharpy.utils.algebra as algebra
@@ -234,6 +235,76 @@ class PolarCorrection(generator_interface.BaseGenerator):
 
         return new_struct_forces
     
+
+    def correct_surface_area(self, inode, struct2aero_mapping, zeta_ts, area):
+        '''
+        Corrects the surface area if the structural node is shared  by multiple surfaces or is a wingtip. 
+
+        For example, when the wing is split into right and left wing both surfaces share the center node.
+        Necessary for cl calculation as the force on the node is already the sum of the forces generated 
+        at the adjacent panels of each surface. For wingtips the span has to be simply doubled.
+        
+        Args:
+            inode (int): global node id
+            struct2aero_mapping (list of dicts): maps the structural (global) nodes to aero surfaces and nodes
+            zeta_ts (array): zeta of current aero timestep
+
+        Returns:
+            float: corrected surface area of other surfaces
+        '''
+        if self.flag_shared_node_by_surfaces:
+            n_surfaces_shared_by_node = len(struct2aero_mapping[inode])
+            # add area for all other surfaces connected to this node
+            for isurf in range(1,n_surfaces_shared_by_node):
+                shared_surf = struct2aero_mapping[inode][isurf]['i_surf']
+                i_n_shared_surf = struct2aero_mapping[inode][isurf]['i_n']
+                _, span_shared_surf, _, chord_shared_surf = span_chord(i_n_shared_surf, zeta_ts[shared_surf])
+                area += span_shared_surf * chord_shared_surf
+        elif self.flag_wingtip_node:
+            area *= 2.
+        return area
+        
+    def check_for_special_cases(self, aerogrid):
+        '''
+        Checks if the outboard node is shared by multiple surfaces or single wingtip panel. 
+
+        Args:
+            aerogrid :class:`~sharpy.aero.models.AerogridLoader
+        '''
+        # check if outboard node of aerosurface
+        self.flag_shared_node_by_surfaces, self.flag_wingtip_node = np.zeros((self.n_node,1)), np.zeros((self.n_node,1))
+        for inode in range(self.n_node):
+            if aerogrid.aero_dict['aero_node'][inode]:
+                i_n = aerogrid.struct2aero_mapping[inode][0]['i_n']                
+                isurf = aerogrid.struct2aero_mapping[inode][0]['i_surf']
+                N = aerogrid.aero_dimensions[isurf, 1]
+                if i_n in [0, N]:
+                    if len(aerogrid.struct2aero_mapping[inode]) > 1:
+                        self.flag_shared_node_by_surfaces = 1
+                    else:
+                        self.flag_wingtip_node = 1
+      
+
+
+    def write_induced_aoa_of_each_node(self,ts, folder,list_aoa_induced):
+        '''
+        Writes induced aoa of each node to txt file for each timestep. 
+
+        Args:
+            ts (int): simulation timestep 
+            folder (str): output folder to which indced aoa files shall be exported
+            list_aoa_induced (list(float)): list with induced aoa of each node
+        '''
+        if ts == 0 and not os.path.exists(folder):
+            os.makedirs(folder)
+            
+        np.savetxt(folder + '/aoa_induced_ts_{}.txt'.format(ts),
+                   np.transpose(np.transpose(np.array(list_aoa_induced))),
+                   fmt='%10e',
+                   delimiter=',',
+                   header='aoa_induced',
+                   comments='#')
+                   
 
     def compute_aoa_cl0_from_airfoil_data(self, aerogrid):
         """
