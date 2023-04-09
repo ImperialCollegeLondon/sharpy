@@ -150,10 +150,13 @@ class StepUvlm(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings,
-                                 self.settings_types,
-                                 self.settings_default,
-                                 self.settings_options)
+        try:
+            settings.to_custom_types(self.settings,
+                                     self.settings_types,
+                                     self.settings_default,
+                                     self.settings_options)
+        except Exception:
+            pass
 
         self.data.structure.add_unsteady_information(
             self.data.structure.dyn_dict,

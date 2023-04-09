@@ -99,7 +99,6 @@ class one_minus_cos(BaseGust):
     def gust_shape(self, x, y, z, time=0):
         gust_length = self.settings['gust_length']
         gust_intensity = self.settings['gust_intensity']
-
         vel = np.zeros((3,))
         if x > 0.0 or x < -gust_length:
             return vel
@@ -191,7 +190,6 @@ class continuous_sin(BaseGust):
     def gust_shape(self, x, y, z, time=0):
         gust_length = self.settings['gust_length']
         gust_intensity = self.settings['gust_intensity']
-
         vel = np.zeros((3,))
         if x > 0.0:
             return vel
@@ -484,7 +482,6 @@ class GustVelocityField(generator_interface.BaseGenerator):
         for i_surf in range(len(zeta)):
             if override:
                 uext[i_surf].fill(0.0)
-
             for i in range(zeta[i_surf].shape[1]):
                 for j in range(zeta[i_surf].shape[2]):
                     total_offset_val = self.settings['offset']

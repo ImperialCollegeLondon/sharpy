@@ -2,6 +2,7 @@
 """
 import numpy as np
 
+
 def second_order_fd(history, n_calls, dt):
     # history is ordered such that the last element is the most recent one (t), and thus
     # it goes [(t - 2), (t - 1), (t)]
@@ -11,7 +12,7 @@ def second_order_fd(history, n_calls, dt):
         pass
 
     elif n_calls == 2:
-    # else:
+        # else:
         # first order derivative
         coefficients[1:3] = [-1.0, 1.0]
 
@@ -20,8 +21,9 @@ def second_order_fd(history, n_calls, dt):
         coefficients[:] = [1.0, -4.0, 3.0]
         coefficients *= 0.5
 
-    derivative = np.dot(coefficients, history)/dt
+    derivative = np.dot(coefficients, history) / dt
     return derivative
+
 
 class PID(object):
     """
@@ -43,6 +45,7 @@ class PID(object):
     #     state[i] = np.sum(feedback[:i])
     #     controller.set_point(set_point[i])
     #     feedback[i] = controller(state[i])
+
     def __init__(self, gain_p, gain_i, gain_d, dt):
         self._kp = gain_p
         self._ki = gain_i
@@ -53,11 +56,11 @@ class PID(object):
         self._dt = dt
 
         self._accumulated_integral = 0.0
-        self._integral_limits = np.array([-1., 1.])*10000
+        self._integral_limits = np.array([-1., 1.]) * 10000
         self._error_history = np.zeros((3,))
 
         self._derivator = second_order_fd
-        self._derivative_limits = np.array([-1, 1])*10000
+        self._derivative_limits = np.array([-1, 1]) * 10000
 
         self._n_calls = 0
 
@@ -74,27 +77,28 @@ class PID(object):
         # displace previous errors one position to the left
         self._error_history = np.roll(self._error_history, -1)
         self._error_history[-1] = error
+        # print(self._error_history, self._point, state, error)
 
         detailed = np.zeros((3,))
         # Proportional gain
-        actuation += error*self._kp
-        detailed[0] = error*self._kp
+        actuation += error * self._kp
+        detailed[0] = error * self._kp
 
         # Derivative gain
         derivative = self._derivator(self._error_history, self._n_calls, self._dt)
         derivative = max(derivative, self._derivative_limits[0])
         derivative = min(derivative, self._derivative_limits[1])
-        actuation += derivative*self._kd
-        detailed[2] = derivative*self._kd
+        actuation += derivative * self._kd
+        detailed[2] = derivative * self._kd
 
         # Integral gain
-        self._accumulated_integral += error*self._dt
+        self._accumulated_integral += error * self._dt
         if self._accumulated_integral < self._integral_limits[0]:
             self._accumulated_integral = self._integral_limits[0]
         elif self._accumulated_integral > self._integral_limits[1]:
             self._accumulated_integral = self._integral_limits[1]
 
-        actuation += self._accumulated_integral*self._ki
-        detailed[1] = self._accumulated_integral*self._ki
+        actuation += self._accumulated_integral * self._ki
+        detailed[1] = self._accumulated_integral * self._ki
 
         return actuation, detailed

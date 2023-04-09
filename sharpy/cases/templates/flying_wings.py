@@ -538,7 +538,7 @@ class FlyingWing():
         config['DynamicCoupled'] = {'print_info': 'on',
                                     'structural_substeps': 0,
                                     'dynamic_relaxation': 'on',
-                                    'clean_up_previous_solution': 'on',
+                                    'cleanup_previous_solution': 'on',
                                     'structural_solver': 'NonLinearDynamicPrescribedStep',
                                     'structural_solver_settings': settings['NonLinearDynamicPrescribedStep'],
                                     'aero_solver': 'StepUvlm',
@@ -1043,6 +1043,13 @@ class GolandControlSurface(Goland):
                             eta,
                             self.root_airfoil_M, self.root_airfoil_P,
                             self.tip_airfoil_M, self.tip_airfoil_P)))
+            # control surface
+            for i_elem in range(num_elem_surf):
+                for i_local_node in range(self.num_node_elem):
+                    if i_elem <= int(num_elem_surf // 2 * (1- pct_flap)):
+                        control_surface[i_elem, i_local_node] = 0  # Right flap
+                    elif (num_elem_surf - i_elem) <= int(num_elem_surf // 2 * (1- pct_flap)):
+                        control_surface[i_elem, i_local_node] = 0  # Left flap
             airfoil_distribution_surf = self.conn_surf[:num_elem_surf // 2, :]
             airfoil_distribution = np.concatenate([
                 airfoil_distribution_surf[::-1, [1, 0, 2]],
