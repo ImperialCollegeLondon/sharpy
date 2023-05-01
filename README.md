@@ -15,7 +15,7 @@ College London. It can be used for the structural, aerodynamic and aeroelastic a
 
 ### Contact
 
-For more information on the [research team](http://www.imperial.ac.uk/aeroelastics/softwrae/) developing SHARPy or to get 
+For more information on the [research team](http://www.imperial.ac.uk/aeroelastics/software/) developing SHARPy or to get 
 in touch, [visit our homepage](http://www.imperial.ac.uk/aeroelastics).
 
 ## Physical Models
