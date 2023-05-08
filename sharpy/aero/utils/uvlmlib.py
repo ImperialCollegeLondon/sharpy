@@ -395,7 +395,12 @@ def uvlm_calculate_total_induced_velocity_at_points(ts_info,
                                                     target_triads,
                                                     vortex_radius,
                                                     for_pos=np.zeros((6)),
-                                                    ncores=ct.c_uint(1)):
+                                                    ncores=ct.c_uint(1),
+                                                    symmetry_condition=False,
+                                                    symmetry_plane=1,
+                                                    num_gust_vanes=2,
+                                                    consider_only_gust_vane_singularities = False,
+                                                    consider_only_wing_singularities=False):
     """
     uvlm_calculate_total_induced_velocity_at_points
 
@@ -420,7 +425,18 @@ def uvlm_calculate_total_induced_velocity_at_points(ts_info,
     uvmopts.ImageMethod = ct.c_bool(False)
     uvmopts.NumCores = ct.c_uint(ncores)
     uvmopts.vortex_radius = ct.c_double(vortex_radius)
+    uvmopts.symmetry_condition = ct.c_bool(symmetry_condition)
+    uvmopts.symmetry_plane = ct.c_int(symmetry_plane)
+    p_skip_wing_surfaces = ct.c_bool(consider_only_gust_vane_singularities)
+    p_skip_gust_vane_surfaces = ct.c_bool(False)
+    p_num_gust_vanes = ct.c_int(num_gust_vanes)
 
+    # TODO: nicer!
+    if consider_only_gust_vane_singularities and consider_only_wing_singularities:
+        raise
+
+    # TODO: use list for skipped surfaces and num surfaces to be skipped as input! more general
+    # pointer_list_skip_surfaces = list_skip_surfaces.ctypes.data_as(ct.POINTER(ct.c_int))
     npoints = target_triads.shape[0]
     uind = np.zeros((npoints, 3), dtype=ct.c_double)
 
@@ -454,7 +470,10 @@ def uvlm_calculate_total_induced_velocity_at_points(ts_info,
                               ts_info_copy.ct_p_gamma_star,
                               p_target_triads,
                               p_uind,
-                              ct.c_uint(npoints))
+                              ct.c_uint(npoints),
+                              p_skip_wing_surfaces,
+                              p_skip_gust_vane_surfaces,
+                              p_num_gust_vanes)
     ts_info_copy.remove_ctypes_pointers()
     del p_uind
     del p_target_triads
