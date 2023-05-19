@@ -7,13 +7,13 @@ The following step by step tutorial will guide you through the installation proc
 
 __Operating System Requirements__
 
-SHARPy is being developed and tested on the following operating systems:
+```SHARPy``` is being developed and tested on the following operating systems:
 + CentOS 7 and CentOS 8
 + Ubuntu 18.04 LTS
 + Debian 10
 + MacOS Mojave and Catalina
 
-Windows users can also run it by first installing the Windows Subsystem for Linux (https://learn.microsoft.com/en-us/windows/wsl/install) and a XServer such as GWSL, which can be installed through the Microsoft Store SHARPy is also available to the vast majority of operating systems that are supported by Docker
+Windows users can also run it by first installing the Windows Subsystem for Linux (https://learn.microsoft.com/en-us/windows/wsl/install) and a XServer such as GWSL, which can be installed through the Microsoft Store. SHARPy is also available to the vast majority of operating systems that are supported by Docker
 
 __Required Distributions__
 
