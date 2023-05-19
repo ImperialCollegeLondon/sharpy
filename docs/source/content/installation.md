@@ -1,5 +1,5 @@
 # SHARPy v2.0 Installation Guide
-__Last revision 1 July 2022__
+__Last revision 10 May 2023__
 
 The following step by step tutorial will guide you through the installation process of SHARPy. This is the updated process valid from v2.0.
 
@@ -13,12 +13,11 @@ SHARPy is being developed and tested on the following operating systems:
 + Debian 10
 + MacOS Mojave and Catalina
 
-It is also available to the vast majority of operating systems that are supported
-by Docker, including Windows!
+Windows users can also run it by first installing the Windows Subsystem for Linux (https://learn.microsoft.com/en-us/windows/wsl/install) and a XServer such as GWSL, which can be installed through the Microsoft Store SHARPy is also available to the vast majority of operating systems that are supported by Docker
 
 __Required Distributions__
 
-+ Anaconda Python 3.7
++ Anaconda Python 3.10
 + GCC 6.0 or higher (recommended). C++ and Fortran.
 
 __Recommended Software__
@@ -72,24 +71,22 @@ or running any SHARPy cases.
     python --version
     ```
 
-3. Create the conda environment that SHARPy will use. Change `environment_linux.yml` to read `environment_macos.yml`
+3. Create the conda environment that SHARPy will use. Change `environment_new.yml` to read `environment_macos.yml`
 file if you are installing SHARPy on Mac OS X
     ```bash
     cd sharpy/utils
-    conda env create -f environment_linux.yml
+    conda env create -f environment_new.yml
     cd ../..
     ```
     We also provide a light-weight environment with the minimum required dependencies. If you'd like to use it,
     create the conda environment using `environment_minimal.yml`.
 
-4. Activate the `sharpy_env` conda environment
+4. Activate the `sharpy` conda environment
     ```bash
-    conda activate sharpy_env
+    conda activate sharpy
     ```
     you need to do this before you compile the `xbeam` and `uvlm` libraries, as
     some dependencies are included in the conda environment.
-
-    If you would like to use the minimal environment you can run `conda activate sharpy_minimal`.
 
 
 ### Quick install
@@ -102,12 +99,12 @@ you would like to install a develop build or modify the compilation settings of 
 
 1. Ensure that the SHARPy environment is active in the session. Your terminal prompt line should begin with
     ```bash
-    (sharpy_env) [usr@host] $
+    (sharpy) [usr@host] $
     ```
 
     If it is not the case, activate the environment. Otherwise xbeam and UVLM will not compile
     ```bash
-    conda activate sharpy_env
+    conda activate sharpy
     ```
 
 1. Create a directory `build` that will be used during CMake's building process and `cd` into it:
@@ -150,17 +147,17 @@ are used for what kind of features have a look at the [Contributing](contributin
     ```
     This command will check out the `develop` branch and set it to track the remote origin. It will also set the submodules (xbeam and UVLM) to the right commit.
 
-2. Create the conda environment that SHARPy will use. Change `environment_linux.yml` to read `environment_macos.yml`
+2. Create the conda environment that SHARPy will use. Change `environment_new.yml` to read `environment_macos.yml`
 file if you are installing SHARPy on Mac OS X
     ```bash
     cd sharpy/utils
-    conda env create -f environment_linux.yml
+    conda env create -f environment_new.yml
     cd ../..
     ```
 
-3. Activate the `sharpy_env` conda environment
+3. Activate the `sharpy` conda environment
     ```bash
-    conda activate sharpy_env
+    conda activate sharpy
     ```
 
 4. Create a directory `build` that will be used during CMake's building process and `cd` into it:
@@ -271,7 +268,7 @@ In order to run SHARPy, you need to load the conda environment. Therefore, __bef
 
 1. Activate the SHARPy conda environment
     ```bash
-    conda activate sharpy_env
+    conda activate sharpy
     ```
 
 You are now ready to run SHARPy cases from the terminal.
