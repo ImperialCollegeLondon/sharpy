@@ -7,32 +7,27 @@ The following step by step tutorial will guide you through the installation proc
 
 __Operating System Requirements__
 
-```SHARPy``` is being developed and tested on the following operating systems:
-+ CentOS 7 and CentOS 8
-+ Ubuntu 18.04 LTS
-+ Debian 10
-+ MacOS Mojave and Catalina
+`SHARPy` is being developed and tested on the following operating systems:
+* CentOS 7 and CentOS 8
+* Ubuntu 18.04 LTS
+* Debian 10
+* MacOS Mojave and Catalina
 
 Windows users can also run it by first installing the Windows Subsystem for Linux (https://learn.microsoft.com/en-us/windows/wsl/install) and a XServer such as GWSL, which can be installed through the Microsoft Store. SHARPy is also available to the vast majority of operating systems that are supported by Docker
 
 __Required Distributions__
 
-+ Anaconda Python 3.10
-+ GCC 6.0 or higher (recommended). C++ and Fortran.
+* Anaconda Python 3.10
+* GCC 6.0 or higher (recommended). C++ and Fortran.
 
 __Recommended Software__
 
 You may find the applications below useful, we recommend you use them but cannot provide any direct support.
 
-+ [HDFView](https://portal.hdfgroup.org/display/HDFVIEW/HDFView) to read and view `.h5` files. HDF5 is the SHARPy
+* [HDFView](https://portal.hdfgroup.org/display/HDFVIEW/HDFView) to read and view `.h5` files. HDF5 is the SHARPy
 input file format.
+* [Paraview](https://www.paraview.org/) to visualise SHARPy's output.
 
-+ [Paraview](https://www.paraview.org/) to visualise SHARPy's output.
-
-
-__GitHub Repository__
-
-+ [SHARPy](https://github.com/imperialcollegelondon/sharpy/tree/master)
 
 SHARPy can be installed from the source code available on GitHub or you can get it packed in a Docker container.
 If what you want is to give it a go and run some static or simple dynamic cases (and are familiar with Docker),
@@ -66,12 +61,17 @@ or running any SHARPy cases.
 
 1. If you still do not have it in your system, install the [Anaconda](https://conda.io/docs/) Python 3 distribution
 
-2. Make sure your Python version is at least 3.7:
+2. Check that your Python version is at least 3.10:
     ```bash
     python --version
     ```
+3. If python 3.10 is needed, use
 
-3. Create the conda environment that SHARPy will use. Change `environment_new.yml` to read `environment_macos.yml`
+   ```bash
+   conda install python=3.10
+   ```
+   
+4. Create the conda environment that SHARPy will use. Change `environment_new.yml` to read `environment_macos.yml`
 file if you are installing SHARPy on Mac OS X
     ```bash
     cd sharpy/utils
@@ -81,7 +81,7 @@ file if you are installing SHARPy on Mac OS X
     We also provide a light-weight environment with the minimum required dependencies. If you'd like to use it,
     create the conda environment using `environment_minimal.yml`.
 
-4. Activate the `sharpy` conda environment
+5. Activate the `sharpy` conda environment
     ```bash
     conda activate sharpy
     ```
