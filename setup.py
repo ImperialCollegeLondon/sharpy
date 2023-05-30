@@ -8,14 +8,22 @@ import os
 
 class CMakeBuildExt(build_ext):
     """Custom command to build Submodules packages during installation."""
+
+    # def copy_extensions_to_source(self):
+    #     "Override the method to prevent copying package files"
+    #     pass
     
+    def finalize_options(self):
+        super().finalize_options()
+        # Process and use os.environ['CUSTOM_CONFIG_SETTINGS'] as needed
+        self.pip_nobuild = os.environ.get('PIP_NOBUILD')
+
     def run(self):
-        
+
         package_dir = os.path.dirname(os.path.abspath(__file__))
         build_dir = package_dir + "/build"
-        config_settings = getattr(self, 'config_settings', {})
         cmake_args = []
-        if 'build_subm' in config_settings.keys() and config_settings['build_subm']=='no':
+        if self.pip_nobuild=="yes":
             pass
         else:
             if not os.path.isdir(build_dir):
