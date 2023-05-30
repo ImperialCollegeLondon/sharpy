@@ -2,5 +2,5 @@
 requires = [
     "setuptools",
     #"scikit-build>=0.13",
-    "cmake==3.14.3"
+    "cmake>=3.14.3"
     ]
