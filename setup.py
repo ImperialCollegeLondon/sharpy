@@ -99,8 +99,44 @@ setup(
         include=['sharpy*'],
         exclude=['tests']
         ),
+    # data_files=[
+    #     ("./lib/UVLM/lib", ["libuvlm.so"]),
+    #     ("./lib/xbeam/lib", ["libxbeam.so"])
+    #     ],
+    python_requires=">=3.8",
     install_requires=[
+        "numpy",
+        "configobj",
+        "h5py",
+        "scipy",
+        "sympy",
+        "matplotlib",
+        "colorama",
+        "dill",
+        "jupyterlab",
+        "mayavi", #tvtk
+        "pandas",
+        "control",
+        # For pandas excel reader.
+        "openpyxl>=3.0.10",
+        "lxml>=4.4.1",
+        "PySocks",
+        "PyYAML"
     ],
+    extras_require={
+        "docs": [
+            "sphinx",
+            "recommonmark>=0.6.0",
+            "sphinx_rtd_theme>=0.4.3",
+            "nbsphinx>=0.4.3"
+                 ],
+        "all": [
+            "sphinx",
+            "recommonmark>=0.6.0",
+            "sphinx_rtd_theme>=0.4.3",
+            "nbsphinx>=0.4.3"
+                 ],
+    },
     classifiers=[
         "Operating System :: Linux, Mac OS",
         "Programming Language :: Python, C++",
