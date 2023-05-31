@@ -2,8 +2,8 @@ import sharpy.utils.solver_interface as solver_interface
 import os
 import numpy as np
 import sharpy.utils.cout_utils as cout
-import sharpy.utils.settings as settings
-from sharpy.linear.utils.derivatives import Derivatives, DerivativeSet
+import sharpy.utils.settings as settings_utils
+from sharpy.linear.utils.derivatives import Derivatives
 
 
 @solver_interface.solver
@@ -40,7 +40,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
     settings_default['c_ref'] = 1.
     settings_description['c_ref'] = 'Reference chord'
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -57,7 +57,7 @@ class StabilityDerivatives(solver_interface.BaseSolver):
 
         self.coefficients = dict  # type: dict # name: scaling coefficient
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
 
         if custom_settings:
@@ -65,9 +65,11 @@ class StabilityDerivatives(solver_interface.BaseSolver):
         else:
             self.settings = self.data.settings[self.solver_id]
 
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
-                                 options=self.settings_options,
-                                 no_ctype=True)
+        settings_utils.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default,
+                           options=self.settings_options,
+                           no_ctype=True)
         self.caller = caller
         self.folder = data.output_folder + '/derivatives/'
         if not os.path.isdir(self.folder):
@@ -101,7 +103,10 @@ class StabilityDerivatives(solver_interface.BaseSolver):
                                                                   static_state=self.steady_aero_forces(),
                                                                   target_system='aeroelastic')
 
-    def run(self, online=False):
+
+    def run(self, **kwargs):
+        
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
 
         # TODO: consider running all required solvers inside this one to keep the correct settings
         # i.e: run Modal, Linear Assembly

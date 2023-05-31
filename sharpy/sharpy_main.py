@@ -5,6 +5,7 @@ import warnings
 import sys
 import dill as pickle
 import sharpy.utils.cout_utils as cout
+from .version import __version__
 
 
 def main(args=None, sharpy_input_dict=None):
@@ -56,12 +57,14 @@ def main(args=None, sharpy_input_dict=None):
         if sharpy_input_dict is None:
             parser = argparse.ArgumentParser(prog='SHARPy', description=
             """This is the executable for Simulation of High Aspect Ratio Planes.\n
-            Imperial College London 2021""")
+            Imperial College London 2022""")
             parser.add_argument('input_filename', help='path to the *.sharpy input file', type=str, default='')
             parser.add_argument('-r', '--restart', help='restart the solution with a given snapshot', type=str,
                                 default=None)
             parser.add_argument('-d', '--docs', help='generates the solver documentation in the specified location. '
                                                      'Code does not execute if running this flag', action='store_true')
+            parser.add_argument('-v', '--version', action='version', 
+                version='Running %(prog)s version {version}'.format(version=__version__))
             if args is not None:
                 args = parser.parse_args(args[1:])
             else:
@@ -84,18 +87,32 @@ def main(args=None, sharpy_input_dict=None):
         if args.input_filename == '':
             parser.error('input_filename is a required argument of SHARPy.')
         settings = input_arg.read_settings(args)
+        missing_solvers = False
         if args.restart is None:
             # run preSHARPy
             data = PreSharpy(settings)
+            solvers = dict()
+            restart = False
         else:
             try:
                 with open(args.restart, 'rb') as restart_file:
                     data = pickle.load(restart_file)
+                    try:
+                        solvers = pickle.load(restart_file)
+                    except EOFError:
+                        # For backwards compatibility
+                        missing_solvers = True
+                        solvers = dict()
+                        cout.cout_wrap('Solvers not found in Pickle file. Using the settings in *.sharpy file.')
+                    if "UpdatePickle" in solvers.keys():
+                        # For backwards compatibility
+                        missing_solvers = True
+                        solvers = dict()
             except FileNotFoundError:
                 raise FileNotFoundError('The file specified for the snapshot \
                     restart (-r) does not exist. Please check.')
 
-
+            restart = True
             # update the settings
             data.update_settings(settings)
 
@@ -108,11 +125,22 @@ def main(args=None, sharpy_input_dict=None):
             # for it in range(self.num_steps):
             #     data.structure.dynamic_input.append(dict())
 
+            # Restart the solvers
+            old_solvers_list = list(solvers.keys())
+            for old_solver_name in old_solvers_list:
+                if old_solver_name not in settings['SHARPy']['flow']:
+                    del solvers[old_solver_name] 
+
         # Loop for the solvers specified in *.sharpy['SHARPy']['flow']
         for solver_name in settings['SHARPy']['flow']:
-            solver = solver_interface.initialise_solver(solver_name)
-            solver.initialise(data)
-            data = solver.run()
+            if (args.restart is None) or (solver_name not in solvers.keys()) or (missing_solvers):
+                solvers[solver_name] = solver_interface.initialise_solver(solver_name)
+            if missing_solvers:
+                solvers[solver_name].initialise(data, restart=False)
+            else:
+                solvers[solver_name].initialise(data, restart=restart)
+            data = solvers[solver_name].run(solvers=solvers)
+            solvers[solver_name].teardown()
 
         cpu_time = time.process_time() - t
         wall_time = time.perf_counter() - t0_wall

@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 
 
 @solver
@@ -92,7 +92,7 @@ class WriteVariablesTime(BaseSolver):
     settings_default['vel_field_points'] = np.array([0., 0., 0.])
     settings_description['vel_field_points'] = 'List of coordinates of the control points as x1, y1, z1, x2, y2, z2 ...'
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -105,13 +105,13 @@ class WriteVariablesTime(BaseSolver):
         self.caller = None
         self.velocity_generator = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.folder = data.output_folder + '/WriteVariablesTime/'
         if not os.path.isdir(self.folder):
@@ -193,7 +193,9 @@ class WriteVariablesTime(BaseSolver):
                 # For coupled solvers
                 self.velocity_generator = self.caller.aero_solver.velocity_generator
 
-    def run(self, online=False):
+    def run(self, **kwargs):
+    
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
 
         if online:
             self.data = self.write(-1)

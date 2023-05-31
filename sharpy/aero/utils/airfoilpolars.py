@@ -1,6 +1,7 @@
 import numpy as np
 # import sharpy.utils.algebra as algebra
 from sharpy.utils.constants import deg2rad
+from scipy.interpolate import interp1d
 
 
 class Polar:
@@ -23,7 +24,7 @@ class Polar:
         """
         # Store the table
         if (np.diff(table[:, 0]) > 0.).all():
-            self.table = table
+            self.table = table[~np.isnan(table).any(axis=1), :]
         else:
             raise RuntimeError("ERROR: angles of attack not ordered")
 
@@ -51,17 +52,22 @@ class Polar:
                 iaoacl0 = imin
         self.aoa_cl0_deg = matches[iaoacl0]
 
+        self.cl_interp = interp1d(self.table[:, 0], self.table[:, 1])
+        self.cd_interp = interp1d(self.table[:, 0], self.table[:, 2])
+        self.cm_interp = interp1d(self.table[:, 0], self.table[:, 3])
+
     def get_coefs(self, aoa_deg):
 
-        cl = np.interp(aoa_deg, self.table[:, 0], self.table[:, 1])
-        cd = np.interp(aoa_deg, self.table[:, 0], self.table[:, 2])
-        cm = np.interp(aoa_deg, self.table[:, 0], self.table[:, 3])
+        cl = self.cl_interp(aoa_deg)
+        cd = self.cd_interp(aoa_deg)
+        cm = self.cm_interp(aoa_deg)
 
         return cl, cd, cm
 
     def get_aoa_deg_from_cl_2pi(self, cl):
 
         return cl/2/np.pi/deg2rad + self.aoa_cl0_deg
+
 
     def redefine_aoa(self, new_aoa):
 
