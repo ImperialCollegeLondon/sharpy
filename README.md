@@ -1,9 +1,9 @@
 # Simulation of High Aspect Ratio aeroplanes in Python [SHARPy]
 
-![Version badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmaster%2F.version.json)
+![Version badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmain%2F.version.json)
 ![Build Status](https://github.com/ImperialCollegeLondon/sharpy/actions/workflows/sharpy_tests.yaml/badge.svg)
-[![Documentation Status](https://readthedocs.org/projects/ic-sharpy/badge/?version=master)](https://ic-sharpy.readthedocs.io/en/master/?badge=master)
-[![codecov](https://codecov.io/gh/ImperialCollegeLondon/sharpy/branch/master/graph/badge.svg)](https://codecov.io/gh/ImperialCollegeLondon/sharpy)
+[![Documentation Status](https://readthedocs.org/projects/ic-sharpy/badge/?version=main)](https://ic-sharpy.readthedocs.io/en/main/?badge=main)
+[![codecov](https://codecov.io/gh/ImperialCollegeLondon/sharpy/branch/main/graph/badge.svg)](https://codecov.io/gh/ImperialCollegeLondon/sharpy)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![status](https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9/status.svg)](https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3531965.svg)](https://doi.org/10.5281/zenodo.3531965)
@@ -115,7 +115,7 @@ journal = {Journal of Open Source Software}
 SHARPy uses Continuous Integration to control the integrity of its code. The status in the release and develop branches
 is:
 
-Master
+Main
 ![Build Status](https://github.com/ImperialCollegeLondon/sharpy/actions/workflows/sharpy_tests.yaml/badge.svg)
 ![Docker Status](https://github.com/ImperialCollegeLondon/sharpy/actions/workflows/docker_build.yaml/badge.svg)
 

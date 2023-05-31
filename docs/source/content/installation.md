@@ -223,14 +223,14 @@ If this works, you're good to go!
 
 First, obtain the SHARPy docker container:
 ```
-docker pull ghcr.io/imperialcollegelondon/sharpy:master
+docker pull ghcr.io/imperialcollegelondon/sharpy:main
 ```
 You can obtain other versions as well, check those available in the [containers](https://github.com/ImperialCollegeLondon/sharpy/pkgs/container/sharpy) page.
 
 This will donwload a Docker image of SHARPy to your machine, from where you can create and run Docker containers. To create and run a container from the downloaded image use:
 
 ```
-docker run --name sharpy -it -p 8080:8080 ghcr.io/imperialcollegelondon/sharpy:master
+docker run --name sharpy -it -p 8080:8080 ghcr.io/imperialcollegelondon/sharpy:main
 ```
 
 A few details about the above command, although if in doubt please check the Docker documentation. The `--name` argument gives a name to the container. Note you can create multiple containers from a single image. 
@@ -241,7 +241,7 @@ The `-p 8080:8080` argument connects the container to your machine through port 
 
 Once you run it, you should see a welcome dialog such as:
 ```
->>>> docker run --name sharpy -it -p 8080:8080 ghcr.io/imperialcollegelondon/sharpy:master
+>>>> docker run --name sharpy -it -p 8080:8080 ghcr.io/imperialcollegelondon/sharpy:main
 SHARPy added to PATH from the directory: /sharpy_dir/bin
 =======================================================================
 Welcome to the Docker image of SHARPy

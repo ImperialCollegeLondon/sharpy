@@ -1,5 +1,5 @@
 {
-  "@context": "https://raw.githubusercontent.com/codemeta/codemeta/master/codemeta.jsonld",
+  "@context": "https://raw.githubusercontent.com/codemeta/codemeta/main/codemeta.jsonld",
   "@type": "Code",
   "author": [
     "Alfonso del Carre",

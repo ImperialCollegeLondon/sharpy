@@ -128,7 +128,7 @@ end
 # TODO: this is currently a static template (written out here). It would be good
 # to do something smarter here.
 output = {
-  "@context" => "https://raw.githubusercontent.com/codemeta/codemeta/master/codemeta.jsonld",
+  "@context" => "https://raw.githubusercontent.com/codemeta/codemeta/main/codemeta.jsonld",
   "@type" => "Code",
   "author" => output_authors,
   "identifier" => details['doi'],

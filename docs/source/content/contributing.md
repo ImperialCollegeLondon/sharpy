@@ -189,7 +189,7 @@ branching model summarised by the schematic
 _Credit: Vincent Driessen https://nvie.com/posts/a-successful-git-branching-model/_
 
 Therefore, attending to this model our branches have the following versions of the code:
-* `master`: latest stable release - paired with the appropriate tag.
+* `main`: latest stable release - paired with the appropriate tag.
 * `develop`: latest stable development build. Features get merged to develop.
 * `rc-**`: release candidate branch. Prior to releasing tests are performed on this branch.
 * `dev_doc`: documentation development branch. All work relating to documentation gets done here.
@@ -216,9 +216,9 @@ In the release candidate branch:
 
 4. Commit, push and wait for tests to pass
 
-5. Merge release candidate branch into `master` branch
+5. Merge release candidate branch into `main` branch
 
-In the `master` branch:
+In the `main` branch:
 
 1. Run the [github_changelog_generator](https://github.com/github-changelog-generator/github-changelog-generator) tool locally with the following parameters:
   ```
