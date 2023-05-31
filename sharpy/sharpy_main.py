@@ -57,7 +57,7 @@ def main(args=None, sharpy_input_dict=None):
         if sharpy_input_dict is None:
             parser = argparse.ArgumentParser(prog='SHARPy', description=
             """This is the executable for Simulation of High Aspect Ratio Planes.\n
-            Imperial College London 2022""")
+            Imperial College London 2023""")
             parser.add_argument('input_filename', help='path to the *.sharpy input file', type=str, default='')
             parser.add_argument('-r', '--restart', help='restart the solution with a given snapshot', type=str,
                                 default=None)
