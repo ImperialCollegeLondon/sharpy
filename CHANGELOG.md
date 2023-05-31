@@ -4,9 +4,28 @@
 
 [Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/2.0...2.0.1)
 
+**Implemented enhancements:**
+
+- SHARPy Docker now releases to GitHub Packages  [\#218](https://github.com/ImperialCollegeLondon/sharpy/pull/218) ([ngoiz](https://github.com/ngoiz))
+- Some Enhancements and Fixes for the Polar Correction, Wake Discretisation, and Gust Velocity Field Generator [\#217](https://github.com/ImperialCollegeLondon/sharpy/pull/217) ([sduess](https://github.com/sduess))
+- Collective blade pitch PID control of wind turbines [\#176](https://github.com/ImperialCollegeLondon/sharpy/pull/176) ([ArturoMS13](https://github.com/ArturoMS13))
+
+**Fixed bugs:**
+
+- Handle absolute tolerance for structural convergence tests as input settings and increase default value [\#221](https://github.com/ImperialCollegeLondon/sharpy/pull/221) ([sduess](https://github.com/sduess))
+- Fix horseshoe wake handling in UVLM [\#204](https://github.com/ImperialCollegeLondon/sharpy/pull/204) ([sduess](https://github.com/sduess))
+
 **Closed issues:**
 
 - Twist direction inconsistent [\#212](https://github.com/ImperialCollegeLondon/sharpy/issues/212)
+
+**Merged pull requests:**
+
+- Updates to Goland wing example [\#234](https://github.com/ImperialCollegeLondon/sharpy/pull/234) ([rafapalacios](https://github.com/rafapalacios))
+- A bit of clean-up of the readme file of the repo [\#231](https://github.com/ImperialCollegeLondon/sharpy/pull/231) ([rafapalacios](https://github.com/rafapalacios))
+- Dev internals [\#223](https://github.com/ImperialCollegeLondon/sharpy/pull/223) ([ACea15](https://github.com/ACea15))
+- updating from python 3.7 to 3.10 [\#222](https://github.com/ImperialCollegeLondon/sharpy/pull/222) ([kccwing](https://github.com/kccwing))
+- Fix typo in setting [\#206](https://github.com/ImperialCollegeLondon/sharpy/pull/206) ([sduess](https://github.com/sduess))
 
 ## [2.0](https://github.com/imperialcollegelondon/sharpy/tree/2.0) (2022-07-04)
 
