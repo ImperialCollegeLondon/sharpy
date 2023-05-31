@@ -1,7 +1,5 @@
 # Changelog
 
-# Changelog
-
 ## [2.1](https://github.com/imperialcollegelondon/sharpy/tree/2.1) (2023-05-31)
 
 [Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/2.0...2.1)
@@ -18,11 +16,14 @@
 - Fix horseshoe wake handling in UVLM [\#204](https://github.com/ImperialCollegeLondon/sharpy/pull/204) ([sduess](https://github.com/sduess))
 
 **Closed issues:**
+
 - No such file or directory during: source bin/sharpy\_vars.sh [\#233](https://github.com/ImperialCollegeLondon/sharpy/issues/233)
 - Twist direction inconsistent [\#212](https://github.com/ImperialCollegeLondon/sharpy/issues/212)
 
 **Merged pull requests:**
 
+- Version number updates for 2.1 from develop [\#237](https://github.com/ImperialCollegeLondon/sharpy/pull/237) ([kccwing](https://github.com/kccwing))
+- Merge to main for version 2.0.1 release [\#236](https://github.com/ImperialCollegeLondon/sharpy/pull/236) ([kccwing](https://github.com/kccwing))
 - Updates to Goland wing example [\#234](https://github.com/ImperialCollegeLondon/sharpy/pull/234) ([rafapalacios](https://github.com/rafapalacios))
 - A bit of clean-up of the readme file of the repo [\#231](https://github.com/ImperialCollegeLondon/sharpy/pull/231) ([rafapalacios](https://github.com/rafapalacios))
 - Dev internals [\#223](https://github.com/ImperialCollegeLondon/sharpy/pull/223) ([ACea15](https://github.com/ACea15))
