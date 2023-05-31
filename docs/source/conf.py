@@ -74,7 +74,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'SHARPy'
-copyright = '2022, LoCA Lab ICL'
+copyright = '2023, LoCA Lab ICL'
 author = 'Aeroelastics Lab, Imperial College London'
 
 # The version info for the project you're documenting, acts as replacement for
