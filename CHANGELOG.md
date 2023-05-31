@@ -1,8 +1,10 @@
 # Changelog
 
-## [2.0.1](https://github.com/imperialcollegelondon/sharpy/tree/2.0.1) (2023-05-31)
+# Changelog
 
-[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/2.0...2.0.1)
+## [2.1](https://github.com/imperialcollegelondon/sharpy/tree/2.1) (2023-05-31)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/2.0...2.1)
 
 **Implemented enhancements:**
 
@@ -16,7 +18,7 @@
 - Fix horseshoe wake handling in UVLM [\#204](https://github.com/ImperialCollegeLondon/sharpy/pull/204) ([sduess](https://github.com/sduess))
 
 **Closed issues:**
-
+- No such file or directory during: source bin/sharpy\_vars.sh [\#233](https://github.com/ImperialCollegeLondon/sharpy/issues/233)
 - Twist direction inconsistent [\#212](https://github.com/ImperialCollegeLondon/sharpy/issues/212)
 
 **Merged pull requests:**
