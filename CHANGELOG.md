@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.1](https://github.com/imperialcollegelondon/sharpy/tree/2.0.1) (2023-05-31)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/2.0...2.0.1)
+
+**Closed issues:**
+
+- Twist direction inconsistent [\#212](https://github.com/ImperialCollegeLondon/sharpy/issues/212)
+
 ## [2.0](https://github.com/imperialcollegelondon/sharpy/tree/2.0) (2022-07-04)
 
 [Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/1.3...2.0)
@@ -102,11 +110,16 @@
 - Simple post-processor to save simulation parameters for batch runs [\#91](https://github.com/ImperialCollegeLondon/sharpy/pull/91) ([ngoiz](https://github.com/ngoiz))
 - SHARPy support for external inputs via UDP network [\#90](https://github.com/ImperialCollegeLondon/sharpy/pull/90) ([ngoiz](https://github.com/ngoiz))
 - Vortex radius as input parameter [\#86](https://github.com/ImperialCollegeLondon/sharpy/pull/86) ([ArturoMS13](https://github.com/ArturoMS13))
+- Enhanced Frequency Response post-processor and linear system input/output options [\#83](https://github.com/ImperialCollegeLondon/sharpy/pull/83) ([ngoiz](https://github.com/ngoiz))
+- Pazi wing added to flying\_wing template [\#82](https://github.com/ImperialCollegeLondon/sharpy/pull/82) ([outoforderdev](https://github.com/outoforderdev))
+- Several new aerodynamic enhancements [\#79](https://github.com/ImperialCollegeLondon/sharpy/pull/79) ([ArturoMS13](https://github.com/ArturoMS13))
 
 **Fixed bugs:**
 
 - libss.py disc2cont doesn't accept SISO systems [\#88](https://github.com/ImperialCollegeLondon/sharpy/issues/88)
 - Dimension mismatch when assembling linear UVLM with "shortened" wake [\#71](https://github.com/ImperialCollegeLondon/sharpy/issues/71)
+- Fix bug wake shape generator StaticCoupled [\#85](https://github.com/ImperialCollegeLondon/sharpy/pull/85) ([ArturoMS13](https://github.com/ArturoMS13))
+- Rework of direct balancing [\#74](https://github.com/ImperialCollegeLondon/sharpy/pull/74) ([outoforderdev](https://github.com/outoforderdev))
 
 **Closed issues:**
 
@@ -130,6 +143,9 @@
 - New SHARPy examples in the documentation [\#94](https://github.com/ImperialCollegeLondon/sharpy/pull/94) ([ArturoMS13](https://github.com/ArturoMS13))
 - Add support for offline use of UDPout postproc [\#93](https://github.com/ImperialCollegeLondon/sharpy/pull/93) ([ngoiz](https://github.com/ngoiz))
 - Option to transform rigid modes given at A FoR to centre of gravity and aligned with principal axes of inertia [\#92](https://github.com/ImperialCollegeLondon/sharpy/pull/92) ([ngoiz](https://github.com/ngoiz))
+- Pazy wing modified to include the tip weight [\#87](https://github.com/ImperialCollegeLondon/sharpy/pull/87) ([outoforderdev](https://github.com/outoforderdev))
+- Minor output clean up [\#81](https://github.com/ImperialCollegeLondon/sharpy/pull/81) ([ngoiz](https://github.com/ngoiz))
+- Fixes assembly of linUVLM after plotting wake with minus m\_star  [\#72](https://github.com/ImperialCollegeLondon/sharpy/pull/72) ([ngoiz](https://github.com/ngoiz))
 
 ## [v1.1.1](https://github.com/imperialcollegelondon/sharpy/tree/v1.1.1) (2020-02-03)
 
@@ -153,6 +169,10 @@
 - Error log file created when program encounters exceptions [\#64](https://github.com/ImperialCollegeLondon/sharpy/pull/64) ([ngoiz](https://github.com/ngoiz))
 - Update README.md [\#63](https://github.com/ImperialCollegeLondon/sharpy/pull/63) ([rafapalacios](https://github.com/rafapalacios))
 - Clean up linear SHARPy's interface with UVLM [\#60](https://github.com/ImperialCollegeLondon/sharpy/pull/60) ([ngoiz](https://github.com/ngoiz))
+
+## [v1.1.0-2](https://github.com/imperialcollegelondon/sharpy/tree/v1.1.0-2) (2019-12-12)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.1.0...v1.1.0-2)
 
 ## [v1.1.0](https://github.com/imperialcollegelondon/sharpy/tree/v1.1.0) (2019-12-12)
 
@@ -213,6 +233,70 @@
 **Merged pull requests:**
 
 - Version v1.0.1 released [\#29](https://github.com/ImperialCollegeLondon/sharpy/pull/29) ([fonsocarre](https://github.com/fonsocarre))
+
+## [1.0.0](https://github.com/imperialcollegelondon/sharpy/tree/1.0.0) (2019-11-07)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v1.0.0-rc...1.0.0)
+
+**Implemented enhancements:**
+
+- WriteVariablesTime output global beam variables and consistent out dir [\#19](https://github.com/ImperialCollegeLondon/sharpy/pull/19) ([ngoiz](https://github.com/ngoiz))
+- Autodocumenter [\#16](https://github.com/ImperialCollegeLondon/sharpy/pull/16) ([ngoiz](https://github.com/ngoiz))
+
+**Closed issues:**
+
+- Tests not passing due to them being outdated + test refactoring. [\#11](https://github.com/ImperialCollegeLondon/sharpy/issues/11)
+
+**Merged pull requests:**
+
+- Release of v1.0.0!!! [\#20](https://github.com/ImperialCollegeLondon/sharpy/pull/20) ([fonsocarre](https://github.com/fonsocarre))
+- Documentation fixes/updates [\#18](https://github.com/ImperialCollegeLondon/sharpy/pull/18) ([ngoiz](https://github.com/ngoiz))
+- Fix dynamic control surface and settings for aerogridloader [\#15](https://github.com/ImperialCollegeLondon/sharpy/pull/15) ([ngoiz](https://github.com/ngoiz))
+
+## [v1.0.0-rc](https://github.com/imperialcollegelondon/sharpy/tree/v1.0.0-rc) (2019-08-22)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/V0.2.1...v1.0.0-rc)
+
+**Closed issues:**
+
+- Output table [\#10](https://github.com/ImperialCollegeLondon/sharpy/issues/10)
+
+**Merged pull requests:**
+
+- Remove H5pyDeprecationWarning [\#14](https://github.com/ImperialCollegeLondon/sharpy/pull/14) ([ArturoMS13](https://github.com/ArturoMS13))
+- Lagrange multipliers for Catapult Take Off works + clean tests [\#13](https://github.com/ImperialCollegeLondon/sharpy/pull/13) ([fonsocarre](https://github.com/fonsocarre))
+
+## [V0.2.1](https://github.com/imperialcollegelondon/sharpy/tree/V0.2.1) (2019-03-14)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v0.2...V0.2.1)
+
+## [v0.2](https://github.com/imperialcollegelondon/sharpy/tree/v0.2) (2019-03-14)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/v0.1...v0.2)
+
+**Closed issues:**
+
+- Add recovery options [\#9](https://github.com/ImperialCollegeLondon/sharpy/issues/9)
+
+## [v0.1](https://github.com/imperialcollegelondon/sharpy/tree/v0.1) (2018-09-03)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/bd2b65974d57d2d6486ea90cdb68ef6324efbac8...v0.1)
+
+**Implemented enhancements:**
+
+- Hinge definition for control surface [\#8](https://github.com/ImperialCollegeLondon/sharpy/issues/8)
+- sharpy\_main.main does not return output [\#5](https://github.com/ImperialCollegeLondon/sharpy/issues/5)
+
+**Fixed bugs:**
+
+- Aerofoil data associated to the nodes instead of the elements [\#6](https://github.com/ImperialCollegeLondon/sharpy/issues/6)
+
+**Merged pull requests:**
+
+- Trimming routine working [\#4](https://github.com/ImperialCollegeLondon/sharpy/pull/4) ([fonsocarre](https://github.com/fonsocarre))
+- Feature coupled dynamic [\#3](https://github.com/ImperialCollegeLondon/sharpy/pull/3) ([fonsocarre](https://github.com/fonsocarre))
+- Refactored storage finished [\#2](https://github.com/ImperialCollegeLondon/sharpy/pull/2) ([fonsocarre](https://github.com/fonsocarre))
+- Settings files are ConfigObjs now, not ConfigParser anymore [\#1](https://github.com/ImperialCollegeLondon/sharpy/pull/1) ([fonsocarre](https://github.com/fonsocarre))
 
 
 
