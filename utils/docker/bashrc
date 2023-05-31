@@ -27,7 +27,6 @@ unset __conda_setup
 # <<< conda initialize <<<
 
 conda activate sharpy_minimal
-source /sharpy_dir/bin/sharpy_vars.sh
 
 # custom prompt
 PS1="SHARPy> "

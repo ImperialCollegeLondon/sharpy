@@ -97,7 +97,7 @@ you would like to install a develop build or modify the compilation settings of 
     cd sharpy
     ```
 
-1. Ensure that the SHARPy environment is active in the session. Your terminal prompt line should begin with
+2. Ensure that the SHARPy environment is active in the session. Your terminal prompt line should begin with
     ```bash
     (sharpy) [usr@host] $
     ```
@@ -107,28 +107,33 @@ you would like to install a develop build or modify the compilation settings of 
     conda activate sharpy
     ```
 
-1. Create a directory `build` that will be used during CMake's building process and `cd` into it:
+3. Create a directory `build` that will be used during CMake's building process and `cd` into it:
     ```bash
     mkdir build
     cd build
     ```
 
-2. Prepare UVLM and xbeam for compilation using `gfortran` and `g++` in their release builds running. If you'd like to
+4. Prepare UVLM and xbeam for compilation using `gfortran` and `g++` in their release builds running. If you'd like to
 change compilers see the Custom Installation.
     ```bash
     cmake ..
     ```
 
-3. Compile the libraries
+5. Compile the libraries
     ```bash
     make install -j 4
     ```
     where the number after the `-j` flag will specify how many cores to use during installation.
 
-4. Finally, leave the build directory and install SHARPy
+6. Finally, leave the build directory and install SHARPy
     ```bash
     cd ..
     pip install .
+    ```
+
+7. You can check the version of SHARPy you are running with
+    ```bash
+    sharpy --version
     ```
 
 __You are ready to run SHARPy__. Continue reading the [Running SHARPy](#running-sharpy) section.
@@ -218,16 +223,25 @@ If this works, you're good to go!
 
 First, obtain the SHARPy docker container:
 ```
-docker pull fonsocarre/sharpy:stable
+docker pull ghcr.io/imperialcollegelondon/sharpy:master
+```
+You can obtain other versions as well, check those available in the [containers](https://github.com/ImperialCollegeLondon/sharpy/pkgs/container/sharpy) page.
+
+This will donwload a Docker image of SHARPy to your machine, from where you can create and run Docker containers. To create and run a container from the downloaded image use:
+
+```
+docker run --name sharpy -it -p 8080:8080 ghcr.io/imperialcollegelondon/sharpy:master
 ```
 
-Now you can run it:
+A few details about the above command, although if in doubt please check the Docker documentation. The `--name` argument gives a name to the container. Note you can create multiple containers from a single image. 
+
+The `-it` is an important command as it runs the container in interactive mode with a terminal attached. Thus you can use it an navigate it. Otherwise the container will finish as soon as it is created. 
+
+The `-p 8080:8080` argument connects the container to your machine through port `8080` (it could be any other) which may be useful for some applications. For instance, running SHARPy as hardware-in-the-loop through UDP.
+
+Once you run it, you should see a welcome dialog such as:
 ```
-docker run --name sharpy -it fonsocarre/sharpy:stable
-```
-You should see a welcome dialog such as:
-```
->>>> docker run -it fonsocarre/sharpy:stable
+>>>> docker run --name sharpy -it -p 8080:8080 ghcr.io/imperialcollegelondon/sharpy:master
 SHARPy added to PATH from the directory: /sharpy_dir/bin
 =======================================================================
 Welcome to the Docker image of SHARPy
@@ -238,6 +252,11 @@ Copyright Imperial College London. Released under BSD 3-Clause license.
 SHARPy>
 ```
 You are now good to go.
+
+You can check the version of SHARPy you are running with
+```
+sharpy --version
+```
 
 It is important to note that a docker container runs as an independent
 operating system with no access to your hard drive. If you want to copy your own
@@ -253,11 +272,6 @@ You can run the test suite once inside the container as:
 cd sharpy_dir
 python -m unittest
 ```
-
-We make available two different releases: `stable` and `experimental`. The former is the latest SHARPy
-release. The latter is our latest development work which will include new features but with higher chances
-of encountering some bugs along the way. To obtain the experimental build, follow the instructions
-above replacing the `stable` tag for `experimental`.
 
 **Enjoy!**
 
