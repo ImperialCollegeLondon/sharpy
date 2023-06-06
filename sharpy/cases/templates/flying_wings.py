@@ -1024,7 +1024,7 @@ class GolandControlSurface(Goland):
                             if i_surf == 0:
                                 control_surface[ws_elem + i_elem, i_local_node] = 0  # Right flap
                             else:
-                                control_surface[ws_elem + i_elem, i_local_node] = 0  # Left flap
+                                control_surface[ws_elem + i_elem, i_local_node] = 1  # Left flap
                 ws_elem += num_elem_surf
                         # control_surface[i_elem, i_local_node] = 0
 
@@ -1311,7 +1311,8 @@ class PazyControlSurface(Pazy):
                  physical_time=2,
                  route='.',
                  case_name='pazy',
-                 RollNodes=False):
+                 RollNodes=False,
+                 cs_type=0):
 
         super().__init__(M=M, N=N,
                          Mstar_fact=Mstar_fact,
@@ -1343,7 +1344,8 @@ class PazyControlSurface(Pazy):
         for i in range(len(cs_deflection)):
             self.control_surface_deflection[i] = cs_deflection[i] * np.pi/180
         self.control_surface_chord = M // 2 * np.ones(self.n_control_surfaces, dtype=int)
-        self.control_surface_type = np.zeros(self.n_control_surfaces, dtype=int)
+        self.control_surface_type = np.zeros(self.n_control_surfaces, dtype=int) + cs_type
+        self.control_surface_hinge_coord = np.zeros_like(self.control_surface_type, dtype=int)
         # other
         self.c_ref = main_chord
         self.pct_flap = pct_flap
@@ -1381,7 +1383,7 @@ class PazyControlSurface(Pazy):
                             if i_surf == 0:
                                 control_surface[ws_elem + i_elem, i_local_node] = 0  # Right flap
                             else:
-                                control_surface[ws_elem + i_elem, i_local_node] = 0  # Left flap
+                                control_surface[ws_elem + i_elem, i_local_node] = 1  # Left flap
                 ws_elem += num_elem_surf
                         # control_surface[i_elem, i_local_node] = 0
 
