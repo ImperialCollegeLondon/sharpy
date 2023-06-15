@@ -89,8 +89,8 @@ def run_controller(case_name):
 
     # setup network and data output
     logger = init_logger()
-    file_path_sensor =  output_folder + case_name + "/{}_{}".format(case_name, "sensor_measurement")
-    file_path_control = output_folder + case_name + "./{}_{}".format(case_name, "control_input")
+    file_path_sensor =  os.path.join(output_folder, case_name, "{}_{}".format(case_name, "sensor_measurement"))
+    file_path_control = os.path.join(output_folder, case_name, "{}_{}".format(case_name, "control_input"))
 
     PID =  PID_Controller(10., 0., 0., target=reference_deflection)
     control_input = init_cs_deflection
