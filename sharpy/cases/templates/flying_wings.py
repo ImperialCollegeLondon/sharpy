@@ -940,7 +940,8 @@ class GolandControlSurface(Goland):
                  Mstar_fact,
                  u_inf,  # flight cond
                  alpha,
-                 cs_deflection=[0],
+                 initial_cs_deflection=0,
+                 n_control_surfaces=2,
                  rho=1.02,
                  b_ref=2. * 6.096,  # geometry
                  main_chord=1.8288,
@@ -952,6 +953,7 @@ class GolandControlSurface(Goland):
                  sweep=0.,
                  n_surfaces=1,
                  physical_time=2,
+                 cs_type=0,
                  route='.',
                  case_name='goland',
                  RollNodes=False):
@@ -979,13 +981,12 @@ class GolandControlSurface(Goland):
         self.main_cg = 0.43
         self.sigma = 1
 
-        self.n_control_surfaces = len(cs_deflection)
+        self.n_control_surfaces = n_control_surfaces
         self.control_surface_deflection = np.zeros(self.n_control_surfaces, dtype=float)
-        for i in range(len(cs_deflection)):
-            self.control_surface_deflection[i] = cs_deflection[i] * np.pi/180
+        self.control_surface_deflection[:] = np.deg2rad(initial_cs_deflection)
         self.control_surface_chord = M // 2 * np.ones(self.n_control_surfaces, dtype=int)
-        self.control_surface_type = np.zeros(self.n_control_surfaces, dtype=int)
-        self.control_surface_hinge_coord = np.zeros_like(self.control_surface_type, dtype=float)
+        self.control_surface_type = np.zeros(self.n_control_surfaces, dtype=int) + cs_type
+        self.control_surface_hinge_coord = np.zeros_like(self.control_surface_type, dtype=int)
         # other
         self.c_ref = 1.8288
         self.pct_flap = pct_flap
@@ -1296,7 +1297,8 @@ class PazyControlSurface(Pazy):
                  Mstar_fact,
                  u_inf,  # flight cond
                  alpha,
-                 cs_deflection=[0],
+                 initial_cs_deflection=0,
+                 n_control_surfaces=2,
                  rho=1.225,
                  tip_rod=True,
                  b_ref= 2. * 0.55,  # geometry
@@ -1339,10 +1341,9 @@ class PazyControlSurface(Pazy):
         self.main_cg = 0.4510
         self.sigma = 1
 
-        self.n_control_surfaces = len(cs_deflection)
+        self.n_control_surfaces = self.n_surfaces
         self.control_surface_deflection = np.zeros(self.n_control_surfaces, dtype=float)
-        for i in range(len(cs_deflection)):
-            self.control_surface_deflection[i] = cs_deflection[i] * np.pi/180
+        self.control_surface_deflection[:] = np.deg2rad(initial_cs_deflection)
         self.control_surface_chord = M // 2 * np.ones(self.n_control_surfaces, dtype=int)
         self.control_surface_type = np.zeros(self.n_control_surfaces, dtype=int) + cs_type
         self.control_surface_hinge_coord = np.zeros_like(self.control_surface_type, dtype=int)
