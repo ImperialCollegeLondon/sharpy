@@ -15,11 +15,11 @@ def create_and_bind_client(ip_addr, port):
     return sock
 
 def setup_udp_network(dict_parameters):
-    server_ip_addr = dict_parameters["server_ip_addr"] #'127.0.0.1' # SHARPy
-    client_ip_addr =  dict_parameters["client_ip_addr"] #'127.0.0.1' # controller
-    port_in_network =  dict_parameters["port_in_network"] #64019
-    port_out_network_client = dict_parameters["port_out_network_client"] # 59009 
-    port_in_network_client = port_out_network_client - 8 # needs to be different from port out network client
+    server_ip_addr = dict_parameters["server_ip_addr"] # SHARPy
+    client_ip_addr =  dict_parameters["client_ip_addr"] # controller
+    port_in_network =  dict_parameters["port_in_network"] 
+    port_out_network_client = dict_parameters["port_out_network_client"] 
+    port_in_network_client = port_out_network_client - 8 # needs to be different from port of network client
 
     sharpy_in_network= (server_ip_addr, port_in_network)
 
@@ -82,7 +82,7 @@ def run_controller(case_name):
     output_folder = dict_simulation_parameters["output_folder"]
 
     init_cs_deflection = dict_simulation_parameters["initial_cs_deflection"]
-    reference_deflection= dict_simulation_parameters["reference_deflection"] #.020137935876846313 #0.09681699577946704
+    reference_deflection= dict_simulation_parameters["reference_deflection"]
     
     # setup udp network components
     sharpy_in_network, in_sock, out_sock = setup_udp_network(dict_simulation_parameters)
