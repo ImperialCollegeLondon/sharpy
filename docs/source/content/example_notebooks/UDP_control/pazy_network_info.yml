@@ -3,9 +3,13 @@
   var_type: 'control_surface'
   inout: 'in'
   position: 0
+- name: 'control_surface_deflection'
+  var_type: 'control_surface'
+  inout: 'in'
+  position: 1
 - name: 'pos'
   inout: 'out'
-  position: 15
+  position: 8
   index: 2
   var_type: 'node'
 ...

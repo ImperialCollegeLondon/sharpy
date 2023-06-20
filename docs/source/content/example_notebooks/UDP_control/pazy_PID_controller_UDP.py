@@ -62,7 +62,7 @@ def receive_sensor_measurements(logger, out_sock, msg_len, num_sensors):
     return results
 
 def send_control_input(logger, in_sock, sharpy_in_network, control_input_to_send):
-    ctrl_value = struct.pack('<5sif', b'RREF0', 0, control_input_to_send)
+    ctrl_value = struct.pack('<5sifif', b'RREF0', 0, control_input_to_send, 1, control_input_to_send)
     logger.info('Sending control input of size {} bytes.'.format(len(ctrl_value)))
     in_sock.sendto(ctrl_value, sharpy_in_network)
     logger.info('Sent control input {} to {}.'.format(control_input_to_send, sharpy_in_network))
