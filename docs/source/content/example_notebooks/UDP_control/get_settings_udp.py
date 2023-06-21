@@ -21,7 +21,7 @@ def get_settings_udp(model, flow, **kwargs):
     model.config['SHARPy'] = {'case': model.case_name,
                         'route': model.route,
                         'flow': flow,
-                        'write_screen': 'on',
+                        'write_screen': kwargs.get('write_screen', 'on'),
                         'write_log': 'on',
                         'save_settings': 'on',
                         'log_folder':  output_folder + '/',
