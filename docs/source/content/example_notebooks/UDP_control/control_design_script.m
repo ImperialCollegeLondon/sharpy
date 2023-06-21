@@ -53,15 +53,15 @@ D_gain = 0;
 
 % open loop
 controller_on = 0;
-out_open_loop = sim("matlab_functions/PID_gla_pazy_design.slx");
+out_open_loop = sim("PID_linear_model.slx");
 % closed loop P = 5
 controller_on = 1;
 P_gain = 5;
-out_PID_5 = sim("PID_gla_pazy_design.slx");
+out_PID_5 = sim("PID_linear_model.slx");
 
 % closed loop P = 10
 P_gain = 10;
-out_PID_10 = sim("PID_gla_pazy_design.slx");
+out_PID_10 = sim("PID_linear_model.slx");
 
 %% Save results
 deflection = [out_PID_5.delta.Data(:,1)...
