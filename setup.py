@@ -37,6 +37,24 @@ class CMakeBuildExt(build_ext):
 
         super().run()
 
+def run():
+
+    pip_nobuild = os.environ.get('PIP_NOBUILD')
+    package_dir = os.path.dirname(os.path.abspath(__file__))
+    build_dir = package_dir + "/build"
+    cmake_args = []
+    if pip_nobuild=="yes":
+        pass
+    else:
+        if not os.path.isdir(build_dir):
+            os.makedirs(build_dir)
+        subprocess.check_call(
+            ["cmake", ".."] + cmake_args, cwd=build_dir
+        )
+        subprocess.check_call(
+            ["make", "install", "-j4"], cwd=build_dir
+        )
+
 class BuildCommand(Command):
     """Custom command to build Submodules packages without installation."""
 
@@ -83,7 +101,7 @@ __version__ = re.findall(
 
 with open(os.path.join(this_directory, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
-
+run()
 setup(
     name="sharpy",
     version=__version__,
@@ -98,8 +116,8 @@ setup(
     author_email="",
     url="https://github.com/ImperialCollegeLondon/sharpy",
     license="BSD 3-Clause License",
-    ext_modules=ext_modules,
-    cmdclass={"build_ext": CMakeBuildExt,
+    #ext_modules=ext_modules,
+    cmdclass={#"build_ext": CMakeBuildExt,
               "build_subm": BuildCommand},
     packages=find_packages(
         where='./',
