@@ -940,7 +940,7 @@ class GolandControlSurface(Goland):
                  Mstar_fact,
                  u_inf,  # flight cond
                  alpha,
-                 initial_cs_deflection=0,
+                 cs_deflection=[0,0],
                  n_control_surfaces=2,
                  rho=1.02,
                  b_ref=2. * 6.096,  # geometry
@@ -983,7 +983,7 @@ class GolandControlSurface(Goland):
 
         self.n_control_surfaces = n_control_surfaces
         self.control_surface_deflection = np.zeros(self.n_control_surfaces, dtype=float)
-        self.control_surface_deflection[:] = np.deg2rad(initial_cs_deflection)
+        self.control_surface_deflection[:] = np.deg2rad(cs_deflection)
         self.control_surface_chord = M // 2 * np.ones(self.n_control_surfaces, dtype=int)
         self.control_surface_type = np.zeros(self.n_control_surfaces, dtype=int) + cs_type
         self.control_surface_hinge_coord = np.zeros_like(self.control_surface_type, dtype=int)
@@ -1297,7 +1297,7 @@ class PazyControlSurface(Pazy):
                  Mstar_fact,
                  u_inf,  # flight cond
                  alpha,
-                 initial_cs_deflection=0,
+                 cs_deflection=0,
                  n_control_surfaces=2,
                  rho=1.225,
                  tip_rod=True,
@@ -1343,7 +1343,7 @@ class PazyControlSurface(Pazy):
 
         self.n_control_surfaces = self.n_surfaces
         self.control_surface_deflection = np.zeros(self.n_control_surfaces, dtype=float)
-        self.control_surface_deflection[:] = np.deg2rad(initial_cs_deflection)
+        self.control_surface_deflection[:] = np.deg2rad(cs_deflection)
         self.control_surface_chord = M // 2 * np.ones(self.n_control_surfaces, dtype=int)
         self.control_surface_type = np.zeros(self.n_control_surfaces, dtype=int) + cs_type
         self.control_surface_hinge_coord = np.zeros_like(self.control_surface_type, dtype=int)
