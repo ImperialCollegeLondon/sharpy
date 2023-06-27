@@ -1,5 +1,5 @@
 # SHARPy v2.0 Installation Guide
-__Last revision 19 May 2023__
+__Last revision 27 June 2023__
 
 The following step by step tutorial will guide you through the installation process of SHARPy. This is the updated process valid from v2.0.
 
@@ -44,7 +44,7 @@ once you initialise SHARPy you will also automatically clone the relevant versio
 
 ### Set up the folder structure
 
-1. Clone `sharpy` in your desired location, if you agree with the license in `license.txt`
+1. Clone `sharpy` in your desired location, if you agree with the license in `license.txt`.
     ```bash
     git clone --recursive http://github.com/ImperialCollegeLondon/sharpy
     ```
@@ -59,55 +59,56 @@ SHARPy uses the Anaconda package manager to provide the necessary Python package
 These are specified in an Anaconda environment that shall be activated prior to compiling the xbeam and UVLM libraries
 or running any SHARPy cases.
 
-1. If you still do not have it in your system, install the [Anaconda](https://conda.io/docs/) Python 3 distribution
+1. If you still do not have it in your system, install the [Anaconda](https://conda.io/docs/) Python 3 distribution.
 
 2. Check that your Python version is at least 3.10:
     ```bash
     python --version
     ```
-3. If python 3.10 is needed, use
+3. If python 3.10 is needed, use:
 
-   ```bash
-   conda install python=3.10
-   ```
+    ```bash
+    conda install python=3.10
+    ```
    
 4. Create the conda environment that SHARPy will use. Change `environment_new.yml` to read `environment_macos.yml`
-file if you are installing SHARPy on Mac OS X
+   if you are installing SHARPy on Mac OS X.
     ```bash
     cd sharpy/utils
     conda env create -f environment_new.yml
     cd ../..
     ```
-    We also provide a light-weight environment with the minimum required dependencies. If you'd like to use it,
+    This will take approximately 15 minutes to complete. We also provide a light-weight environment with the minimum required dependencies. If you'd like to use it,
     create the conda environment using `environment_minimal.yml`.
 
-5. Activate the `sharpy` conda environment
+5. Activate the `sharpy` conda environment:
     ```bash
     conda activate sharpy
     ```
     you need to do this before you compile the `xbeam` and `uvlm` libraries, as
-    some dependencies are included in the conda environment.
+    some dependencies are included in the conda environment. You should now see ```(sharpy)``` on your command line. 
 
 
 ### Quick install
 The quick install is geared towards getting the release build of SHARPy running as quickly and simply as possible. If
 you would like to install a develop build or modify the compilation settings of the libraries skip to the next section.
-1. Move into the cloned repository
+1. Move into the cloned repository:
     ```bash
     cd sharpy
     ```
 
-2. Ensure that the SHARPy environment is active in the session. Your terminal prompt line should begin with
+2. Ensure that the SHARPy environment is active in the session. Your terminal prompt line should begin with:
     ```bash
     (sharpy) [usr@host] $
     ```
 
-    If it is not the case, activate the environment. Otherwise xbeam and UVLM will not compile
+    If this is not the case, activate the environment otherwise xbeam and UVLM will not compile.
     ```bash
     conda activate sharpy
     ```
 
-3. Create a directory `build` that will be used during CMake's building process and `cd` into it:
+3. Create a directory `build` that will be used during CMake's building process and `cd` into it.
+   Ensure it is located in the main ./sharpy folder otherwise the following steps won't work:
     ```bash
     mkdir build
     cd build
@@ -119,19 +120,19 @@ change compilers see the Custom Installation.
     cmake ..
     ```
 
-5. Compile the libraries
+5. Compile the libraries.
     ```bash
     make install -j 4
     ```
-    where the number after the `-j` flag will specify how many cores to use during installation.
+    where the number after the `-j` flag will specify how many cores to use during installation. This will take approximately 5 minutes.
 
-6. Finally, leave the build directory and install SHARPy
+6. Finally, leave the build directory and install SHARPy:
     ```bash
     cd ..
     pip install .
     ```
 
-7. You can check the version of SHARPy you are running with
+7. You can check the version of SHARPy you are running with:
     ```bash
     sharpy --version
     ```
@@ -144,23 +145,23 @@ These steps will show you how to compile the xbeam and UVLM libraries such that 
 to your taste.
 
 1. If you want to use SHARPy's latest release, skip this step. If you would like to use the latest development work,
-you will need to checkout the `develop` branch. For more info on how we structure our development and what branches
-are used for what kind of features have a look at the [Contributing](contributing.html) page.
+   you will need to checkout the `develop` branch. For more info on how we structure our development and what branches
+   are used for what kind of features have a look at the [Contributing](contributing.html) page.
     ```bash
     git checkout develop
     git submodule update --recursive
     ```
-    This command will check out the `develop` branch and set it to track the remote origin. It will also set the submodules (xbeam and UVLM) to the right commit.
+    This command wicall check out the `develop` branch and set it to track the remote origin. It will also set the submodules (xbeam and UVLM) to the right commit.
 
 2. Create the conda environment that SHARPy will use. Change `environment_new.yml` to read `environment_macos.yml`
-file if you are installing SHARPy on Mac OS X
+   if you are installing SHARPy on Mac OS X.
     ```bash
     cd sharpy/utils
     conda env create -f environment_new.yml
     cd ../..
     ```
 
-3. Activate the `sharpy` conda environment
+3. Activate the `sharpy` conda environment:
     ```bash
     conda activate sharpy
     ```
@@ -172,7 +173,7 @@ file if you are installing SHARPy on Mac OS X
     ```
 
 5. Run CMake with custom flags:
-    1. Choose your compilers for Fortran `FC` and C++ `CXX`, for instance
+    1. Choose your compilers for Fortran `FC` and C++ `CXX`, for instance:
         ```bash
         FC=gfortran CXX=g++ cmake ..
         ```
@@ -185,12 +186,12 @@ file if you are installing SHARPy on Mac OS X
         -DCMAKE_BUILD_TYPE=Debug
         ```
 
-6. Compile the libraries and parallelise as you prefer
+6. Compile the libraries and parallelise as you prefer.
     ```bash
     make install -j 4
     ```
 
-7. Finally, leave the build directory and install SHARPy
+7. Finally, leave the build directory and install SHARPy.
     ```bash
     cd ..
     pip install .
