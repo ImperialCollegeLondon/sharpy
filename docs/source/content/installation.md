@@ -78,8 +78,9 @@ or running any SHARPy cases.
     conda env create -f environment_new.yml
     cd ../..
     ```
-    This will take approximately 15 minutes to complete. We also provide a light-weight environment with the minimum required dependencies. If you'd like to use it,
-    create the conda environment using `environment_minimal.yml`.
+    This should take approximately 15 minutes to complete (Tested on Ubuntu 22.04.1). We also provide a 
+    lightweight environment with the minimum required dependencies. If you'd like to use it, create the 
+    conda environment using `environment_minimal.yml`.
 
 5. Activate the `sharpy` conda environment:
     ```bash
@@ -115,7 +116,7 @@ you would like to install a develop build or modify the compilation settings of 
     ```
 
 4. Prepare UVLM and xbeam for compilation using `gfortran` and `g++` in their release builds running. If you'd like to
-change compilers see the Custom Installation.
+   change compilers see the Custom Installation.
     ```bash
     cmake ..
     ```
@@ -124,15 +125,16 @@ change compilers see the Custom Installation.
     ```bash
     make install -j 4
     ```
-    where the number after the `-j` flag will specify how many cores to use during installation. This will take approximately 5 minutes.
+    where the number after the `-j` flag will specify how many cores to use during installation.
+    This should take approximately 5 minutes (Tested on Ubuntu 22.04.1).
 
-6. Finally, leave the build directory and install SHARPy:
+7. Finally, leave the build directory and install SHARPy:
     ```bash
     cd ..
     pip install .
     ```
 
-7. You can check the version of SHARPy you are running with:
+8. You can check the version of SHARPy you are running with:
     ```bash
     sharpy --version
     ```
@@ -151,7 +153,7 @@ to your taste.
     git checkout develop
     git submodule update --recursive
     ```
-    This command wicall check out the `develop` branch and set it to track the remote origin. It will also set the submodules (xbeam and UVLM) to the right commit.
+    This command will check out the `develop` branch and set it to track the remote origin. It will also set the submodules (xbeam and UVLM) to the right commit.
 
 2. Create the conda environment that SHARPy will use. Change `environment_new.yml` to read `environment_macos.yml`
    if you are installing SHARPy on Mac OS X.
