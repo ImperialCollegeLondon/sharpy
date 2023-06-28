@@ -81,7 +81,7 @@ def run_controller(case_name):
     number_timesteps = int(dict_simulation_parameters["simulation_time"] / dt)
     output_folder = dict_simulation_parameters["output_folder"]
 
-    init_cs_deflection = dict_simulation_parameters["initial_cs_deflection"]
+    init_cs_deflection = float(dict_simulation_parameters["initial_cs_deflection"])
     reference_deflection= dict_simulation_parameters["reference_deflection"]
     
     # setup udp network components
