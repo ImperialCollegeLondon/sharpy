@@ -1,29 +1,28 @@
 # Simulation of High Aspect Ratio aeroplanes in Python [SHARPy]
 
-![Version badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmaster%2F.version.json)
+![Version badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmain%2F.version.json)
 ![Build Status](https://github.com/ImperialCollegeLondon/sharpy/actions/workflows/sharpy_tests.yaml/badge.svg)
-[![Documentation Status](https://readthedocs.org/projects/ic-sharpy/badge/?version=master)](https://ic-sharpy.readthedocs.io/en/master/?badge=master)
-[![codecov](https://codecov.io/gh/ImperialCollegeLondon/sharpy/branch/master/graph/badge.svg)](https://codecov.io/gh/ImperialCollegeLondon/sharpy)
+[![Documentation Status](https://readthedocs.org/projects/ic-sharpy/badge/?version=main)](https://ic-sharpy.readthedocs.io/en/main/?badge=main)
+[![codecov](https://codecov.io/gh/ImperialCollegeLondon/sharpy/branch/main/graph/badge.svg)](https://codecov.io/gh/ImperialCollegeLondon/sharpy)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![status](https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9/status.svg)](https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3531965.svg)](https://doi.org/10.5281/zenodo.3531965)
 
-SHARPy is a nonlinear aeroelastic analysis package developed at the Department of Aeronautics, Imperial
-College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible aircraft, flying
-wings and wind turbines.
+SHARPy is a nonlinear aeroelastic analysis package originally developed at the Department of Aeronautics, Imperial
+College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible wings, aircraft and wind turbines.
 
 ![XHALE](./docs/source/_static/XHALE-render.jpg)
 
 ### Contact
 
-For more information on the [research team](http://www.imperial.ac.uk/aeroelastics/people/) developing SHARPy or to get 
+For more information on the [research team](http://www.imperial.ac.uk/aeroelastics/software/) developing SHARPy or to get 
 in touch, [visit our homepage](http://www.imperial.ac.uk/aeroelastics).
 
 ## Physical Models
 
 SHARPy is a modular aeroelastic solver that currently uses two specific models for the structural and aerodynamic response of the system.
 
-For the structural model, SHARPy employs a nonlinear, geometrically-exact displacement and rotation-based composite beam formulation,
+For the structural model, SHARPy employs a geometrically-exact displacement-based composite beam formulation,
 augmented with Lagrange multipliers for additional kinematic constraints.
 This model has the advantage of providing the solution directly in the physical problem's degrees of freedom, making the 
 coupling with the aerodynamic solver simple and not requiring any post-processing. The 1D beam formulation used limits 
@@ -38,8 +37,8 @@ The input problems can be structural, aerodynamic or coupled, yielding an aeroel
 
 ## [Capabilities](http://ic-sharpy.readthedocs.io/en/latest/content/capabilities.html)
 
-At its core, SHARPy is a nonlinear aeroelastic analysis package that can be used on both free-flying aircraft,
-clamped structures and wind turbines. In addition, it supports linearisation of these nonlinear systems about
+The base solver SHARPy is a nonlinear aeroelastic analysis package that can be used on free-flying flexible aircraft,
+wings and wind turbines. In addition, it supports linearisation of these nonlinear systems about
 arbitrary conditions and includes various tools such as: model reduction or frequency analysis.
 
 In short, SHARPy offers (amongst others) the following solutions to the user:
@@ -62,7 +61,7 @@ In short, SHARPy offers (amongst others) the following solutions to the user:
     + Asymptotic stability analysis.
 * Model order reduction:
     + Krylov-subspace reduction methods.
-    + Balancing reduction methods.
+    + Several balancing reduction methods.
 
 ## Documentation
 
@@ -73,7 +72,7 @@ The documentation for SHARPy can be found [here](http://ic-sharpy.readthedocs.io
 For the latest documentation, see the 
 [installation docs](https://ic-sharpy.readthedocs.io/en/latest/content/installation.html).
 
-As of version v1.0.1, SHARPy can also be obtained from Docker Hub to avoid compilation
+SHARPy can also be obtained from Docker Hub to avoid compilation
 and platform-dependant issues. If you are interested, make sure you check 
 the [SHARPy Docker distribution docs](https://ic-sharpy.readthedocs.io/en/latest/content/installation.html#using-sharpy-from-a-docker-container).
 
@@ -116,8 +115,9 @@ journal = {Journal of Open Source Software}
 SHARPy uses Continuous Integration to control the integrity of its code. The status in the release and develop branches
 is:
 
-Master
+Main
 ![Build Status](https://github.com/ImperialCollegeLondon/sharpy/actions/workflows/sharpy_tests.yaml/badge.svg)
+![Docker Status](https://github.com/ImperialCollegeLondon/sharpy/actions/workflows/docker_build.yaml/badge.svg)
 
 Develop
 ![Build Status](https://github.com/ImperialCollegeLondon/sharpy/actions/workflows/sharpy_tests.yaml/badge.svg?branch=develop)

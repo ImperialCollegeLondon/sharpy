@@ -1,14 +1,14 @@
-name: Python package
+name: SHARPy Tests
 
 on:
   push:
     paths:
       - '*.py'
       - 'lib/*'
-      - '.github/workflows/*'
+      - '.github/workflows/sharpy*'
   pull_request:
     branches:
-      - master
+      - main
       - develop
       - 'rc*'
 

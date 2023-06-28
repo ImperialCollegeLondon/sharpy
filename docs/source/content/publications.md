@@ -3,6 +3,24 @@
 SHARPy has been used in many technical papers that have been both published in Journals and presented at conferences.
 Here we present a list of past papers which have used SHARPy for research purposes:
 
+## 2022
+
+* Goizueta, N. (2022). Parametric reduced-order aeroelastic modelling for analysis, dynamic system interpolation and control of flexible aircraft. PhD Thesis. [http://doi.org/10.25560/100137](http://doi.org/10.25560/100137)
+
+* Goizueta, N., Wynn, A., & Palacios, R. (2022). Adaptive sampling for interpolation of reduced-order aeroelastic dynamical systems. AIAA Journal. Article in Advance. [https://doi.org/10.2514/1.J062050](https://doi.org/10.2514/1.J062050)
+
+* Muñoz Simón, A. (2022). Vortex-lattice-based nonlinear aeroservoelastic modelling and analysis of large floating wind turbines. PhD Thesis. [https://doi.org/10.25560/96986](https://doi.org/10.25560/96986)
+
+* Goizueta, N., Wynn, A., Palacios, R., Drachinsky, A., & Raveh, D. E. (2022). Flutter Predictions for Very Flexible Wing Wind Tunnel Test. Journal of Aircraft: 59(4), pp. 1082-1097. [https://doi.org/10.2514/1.C036710](https://doi.org/10.2514/1.C036710)
+
+* Düssler, S., Goizueta, N., Muñoz-Simón, A., &#38; Palacios, R. (2022). Modelling and Numerical Enhancements on a UVLM for Nonlinear Aeroelastic Simulation. AIAA SciTech Forum. [https://doi.org/10.2514/6.2022-2455](https://doi.org/10.2514/6.2022-2455)
+
+* Cea, A., Palacios, R. (2022). Parametric Reduced Order Models for Aeroelastic Design of Very Flexible Aircraft. AIAA SciTech Forum. [https://doi.org/10.2514/6.2022-0727](https://doi.org/10.2514/6.2022-0727)
+
+* Wynn, A., Artola, M., Palacios, R. (2022). Nonlinear optimal control for gust load alleviation with a physics-constrained data-driven internal model. AIAA SciTech Forum. [https://doi.org/10.2514/6.2022-0442](https://doi.org/10.2514/6.2022-0442)
+
+* Goizueta, N., Wynn, A., Palacios, R. (2022). Fast flutter evaluation of very flexible wing using interpolation on an optimal training dataset. In AIAA SciTech Forum, AIAA Paper 2022-1345. [https://doi.org/10.2514/6.2022-1345](https://doi.org/10.2514/6.2022-1345)
+
 ## 2021
 
 * Artola, M., Goizueta, N., Wynn, A., & Palacios, R. (2021). Aeroelastic Control and Estimation with a Minimal 
@@ -19,6 +37,8 @@ flexible wing wind tunnel test. In AIAA SciTech Forum (pp. 1–17).
 models. In AIAA SciTech Forum (pp. 1–25). [https://doi.org/10.2514/6.2021-1798](https://doi.org/10.2514/6.2021-1798)
 
 ## 2020
+
+* del Carre, A. (2020). Aeroelasticity of very flexible aircraft at low altitudes. PhD Thesis. [https://doi.org/10.25560/88269](https://doi.org/10.25560/88269)
 
 * Muñoz-Simón, A., Palacios, R., & Wynn, A. (2020). Benchmarking different fidelities in wind turbine aerodynamics 
 under yaw. Journal of Physics: Conference Series, 1618, 42017. 

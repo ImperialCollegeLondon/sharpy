@@ -1,9 +1,9 @@
-name: Python package
+name: SHARPy Tests
 
 on:
   pull_request:
     branches:
-      - master
+      - main
       - develop
       - 'rc*'
     paths-ignore:
