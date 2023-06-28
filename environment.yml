@@ -8,8 +8,7 @@ dependencies:
   - libblas
   - libcblas
   - liblapack
-  - libgomp
   - libgfortran
-  - libgcc-ng
+  - libgcc
   - libgfortran-ng
   - python=3.10
