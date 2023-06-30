@@ -112,12 +112,8 @@ def plot_timestep(data, tstep=-1, minus_mstar=0, plotly=False, custom_scaling=Fa
             print("Plotly package not found")
             return
 
-# normal part
         fig = go.Figure()
-        
-#another custom part
-
-        
+                
         # Plot aerodynamic grid
         if aero_tstep is not None:
             for isurf in range(aero_tstep.n_surf):
@@ -205,9 +201,7 @@ def plot_timestep(data, tstep=-1, minus_mstar=0, plotly=False, custom_scaling=Fa
                                                mode='lines',
                                                line={'color':'grey'},
                                                showlegend=False))
-
-        
-                                     ##END#######
+                                               
 
         # Plot structure
         # Split into different beams
@@ -246,4 +240,3 @@ def plot_timestep(data, tstep=-1, minus_mstar=0, plotly=False, custom_scaling=Fa
                                              aspectratio=dict(x=rangex,y=rangey,z=z_compression)))
 
     return fig
-
