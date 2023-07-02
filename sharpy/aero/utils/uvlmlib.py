@@ -428,7 +428,7 @@ def uvlm_calculate_total_induced_velocity_at_points(ts_info,
     uvmopts.symmetry_condition = ct.c_bool(symmetry_condition)
     uvmopts.symmetry_plane = ct.c_int(symmetry_plane)
     p_skip_wing_surfaces = ct.c_bool(consider_only_gust_vane_singularities)
-    p_skip_gust_vane_surfaces = ct.c_bool(False)
+    p_skip_gust_vane_surfaces = ct.c_bool(consider_only_wing_singularities)
     p_num_gust_vanes = ct.c_int(num_gust_vanes)
 
     # TODO: nicer!
