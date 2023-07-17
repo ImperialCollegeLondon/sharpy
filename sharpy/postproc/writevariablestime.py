@@ -269,7 +269,7 @@ class WriteVariablesTime(BaseSolver):
 
                 with open(filename, 'a') as fid:
                     var = getattr(self.data.aero.timestep_info[it], self.settings['aero_panels_variables'][ivariable])
-                    self.write_value_to_file(fid, self.data.ts, var.gamma[i_surf][i_m,i_n], self.settings['delimiter'])
+                    self.write_value_to_file(fid, self.data.ts, var[i_surf][i_m,i_n], self.settings['delimiter'])
 
 
         # Aerodynamic variables at nodes
