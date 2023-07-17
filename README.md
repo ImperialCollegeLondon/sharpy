@@ -9,7 +9,7 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3531965.svg)](https://doi.org/10.5281/zenodo.3531965)
 
 SHARPy is a nonlinear aeroelastic analysis package originally developed at the Department of Aeronautics, Imperial
-College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible wings, aircraft and wind turbines.
+College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible wings, aircraft and wind turbines. It is shared here under a BSD 3-Clause permissive license.
 
 ![XHALE](./docs/source/_static/XHALE-render.jpg)
 
