@@ -307,6 +307,8 @@ class NonliftingBodyTimeStepInfo(TimeStepInfo):
         sigma (list(np.ndarray)): Source strength associated to solid panels
           ``[n_surf][3 x radial panel x spanwise panel]``
         sigma_dot (list(np.ndarray)): Time derivative of ``sigma``
+        pressure_coefficients (list(np.ndarray)): Pressure coefficient associated to solid panels
+          ``[n_surf][radial panel x spanwise panel]``
 
         inertial_total_forces (list(np.ndarray)): Total aerodynamic forces in ``G`` FoR ``[n_surf x 6]``
         body_total_forces (list(np.ndarray)): Total aerodynamic forces in ``A`` FoR ``[n_surf x 6]``
