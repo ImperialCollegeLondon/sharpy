@@ -1,7 +1,11 @@
 import numpy as np
 import sharpy.utils.algebra as algebra
 
-def define_simulation_settings(flow, model, alpha_deg, u_inf, rho = 1.225, lifting_only=True, nonlifting_only=False, horseshoe=False, **kwargs):
+def define_simulation_settings(flow, model, alpha_deg, u_inf, rho = 1.225, 
+                               lifting_only=True, 
+                               nonlifting_only=False, 
+                               phantom_test=False,
+                               horseshoe=False, **kwargs):
     gravity = kwargs.get('gravity',True)
     nonlifting_body_interactions = not lifting_only and not nonlifting_only
     wake_length = kwargs.get('wake_length', 10)
@@ -23,7 +27,6 @@ def define_simulation_settings(flow, model, alpha_deg, u_inf, rho = 1.225, lifti
         nonlifting_body_interactions = True
     else:
         nonlifting_body_interactions = False
-        flow.remove("NonliftingbodygridLoader")
     settings = {}
     settings['SHARPy'] = {'case': model.case_name,
                         'route': model.case_route,
@@ -39,7 +42,7 @@ def define_simulation_settings(flow, model, alpha_deg, u_inf, rho = 1.225, lifti
                                                                             np.deg2rad(alpha_deg),
                                                                             0.]))}
 
-
+    settings['BeamLoads']  = {}
     settings['LiftDistribution'] = {'rho': rho,
                                     'coefficients': True}
     
@@ -83,18 +86,20 @@ def define_simulation_settings(flow, model, alpha_deg, u_inf, rho = 1.225, lifti
                                     'dt': dt,
                                 },
                             }
-
-    settings['WriteVariablesTime'] = {
-                'cleanup_old_solution': True,
-                'nonlifting_nodes_variables': ['pressure_coefficients'],                                                                
-                'nonlifting_nodes_isurf': np.zeros((model.n_node - 1,)),
-                'nonlifting_nodes_im':  np.zeros((model.n_node - 1,)),
-                'nonlifting_nodes_in': list(range(model.n_node - 1)),
-    }
+    if 'WriteVariablesTime' in flow:
+        settings['WriteVariablesTime'] = {
+                    'cleanup_old_solution': True,
+                    'nonlifting_nodes_variables': ['pressure_coefficients'],                                                                
+                    'nonlifting_nodes_isurf': np.zeros((model.structure.n_node_fuselage,)),
+                    'nonlifting_nodes_im':  np.zeros((model.structure.n_node_fuselage)),
+                    'nonlifting_nodes_in': list(range(model.structure.n_node_fuselage)),
+        }
 
     settings['NonliftingbodygridLoader'] = {}
 
     settings['AeroForcesCalculator'] = {'coefficients': False}
+    settings['AerogridPlot'] = {'plot_nonlifting_surfaces': nonlifting_body_interactions}
+    settings['BeamPlot'] = {}
 
 
     return settings

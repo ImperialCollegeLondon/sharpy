@@ -1,7 +1,7 @@
 import unittest
 import os
 import numpy as np
-from fuselage import Fuselage
+from fuselage_wing_configuration.fuselage_wing_configuration import Fuselage_Wing_Configuration
 from define_simulation_settings import define_simulation_settings
 
 
@@ -23,24 +23,29 @@ class TestFuselage(unittest.TestCase):
         length_ellipsoid = 2.
         u_inf = 10 
         alpha_deg = 0
-        n_elem = 21
-        num_radial_panels  = 12
-        
+        n_elem = 30
+        num_radial_panels  = 24
+        lifting_only= False
+        fuselage_shape = 'ellipsoid'
+        fuselage_discretisation = 'uniform'
         # define case name and folders
         case_route = self.route_test_dir + '/cases/'
         output_route = self.route_test_dir + '/output/'
-        if not os.path.exists(case_route):
-            os.makedirs(case_route)
         case_name = 'ellipsoid'
+        enforce_uniform_fuselage_discretisation = True
 
         # generate ellipsoid model
-        ellipsoidal_body = Fuselage(case_name, case_route, output_route)
-        ellipsoidal_body.generate(
-            num_radial_panels = num_radial_panels,
-            max_radius = radius_ellipsoid,
-            fuselage_shape = 'ellipsoid',
-            length = length_ellipsoid,
-            n_elem = n_elem)
+        ellipsoidal_body = Fuselage_Wing_Configuration(case_name, case_route, output_route) 
+        ellipsoidal_body.init_aeroelastic(lifting_only=lifting_only,
+                                          max_radius=radius_ellipsoid,
+                                      fuselage_length=length_ellipsoid,
+                                      offset_nose_wing=length_ellipsoid/2,
+                                      n_elem_fuselage=n_elem,
+                                      num_radial_panels=num_radial_panels,
+                                      fuselage_shape=fuselage_shape,
+                                      enforce_uniform_fuselage_discretisation=enforce_uniform_fuselage_discretisation,
+                                      fuselage_discretisation=fuselage_discretisation)
+        ellipsoidal_body.generate()
         
         # define settings
         flow = ['BeamLoader',
@@ -55,8 +60,10 @@ class TestFuselage(unittest.TestCase):
         ellipsoidal_body.run()
 
         # postprocess
-        cp_distribution_SHARPy = self.load_pressure_distribution(output_route + '/' + case_name + '/WriteVariablesTime/', ellipsoidal_body.n_node - 1)
-        x_collocation_points = ellipsoidal_body.x[:-1] + np.diff(ellipsoidal_body.x[:2])/2
+        cp_distribution_SHARPy = self.load_pressure_distribution(output_route + '/' + case_name + '/WriteVariablesTime/', 
+                                                                 ellipsoidal_body.structure.n_node_fuselage)
+        dx = length_ellipsoid/(ellipsoidal_body.structure.n_node_fuselage-1)
+        x_collocation_points = np.linspace(-length_ellipsoid/2+dx/2, length_ellipsoid/2-dx/2, ellipsoidal_body.structure.n_node_fuselage)
         cp_distribution_analytcal = self.get_analytical_pressure_distribution(radius_ellipsoid, x_collocation_points)
 
         # check results
