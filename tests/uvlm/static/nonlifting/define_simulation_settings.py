@@ -63,6 +63,7 @@ def define_simulation_settings(flow, model, alpha_deg, u_inf, rho = 1.225,
                             'rho': rho,
                             'nonlifting_body_interactions': nonlifting_body_interactions,
                             'only_nonlifting': nonlifting_only,
+                            'phantom_wing_test': phantom_test
                             }
 
     settings['StaticCoupled'] = {'print_info': 'off',
