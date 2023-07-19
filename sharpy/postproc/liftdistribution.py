@@ -24,7 +24,7 @@ class LiftDistribution(BaseSolver):
     settings_description = dict()
 
     settings_types['text_file_name'] = 'str'
-    settings_default['text_file_name'] = 'lift_distribution'
+    settings_default['text_file_name'] = 'lift_distribution.txt'
     settings_description['text_file_name'] = 'Text file name'
 
     settings_default['coefficients'] = True
