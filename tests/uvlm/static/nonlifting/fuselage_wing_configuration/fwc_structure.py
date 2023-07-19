@@ -53,8 +53,6 @@ class FWC_Structure:
         self.app_forces[0] = [0, self.thrust, 0, 0, 0, 0]
         
         self.set_beam_properties_fuselage()
-
-        np.savetxt('./coordinates.csv', np.column_stack((self.x, self.y, self.z)))
         self.write_input_file()
 
     def set_element_and_nodes(self):
@@ -201,8 +199,6 @@ class FWC_Structure:
         self.adjust_fuselage_connectivities()
         self.boundary_conditions[self.n_node_wing_total] = -1
         self.boundary_conditions[-1] = -1
-
-        np.savetxt("./conn.csv", self.conn)
 
     def find_index_of_closest_entry(self, array_values, target_value):
         return np.argmin(np.abs(array_values - target_value))
