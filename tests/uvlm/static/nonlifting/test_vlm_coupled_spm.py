@@ -5,10 +5,9 @@ from fuselage_wing_configuration.fuselage_wing_configuration import Fuselage_Win
 from define_simulation_settings import define_simulation_settings
 import json
 
+class TestVlmCoupledWithSourcePanelMethod(unittest.TestCase):
 
-
-class TestPhantomPanels(unittest.TestCase):
-    def test_phantom(self):
+    def test_phantom_panels(self):
         """
             run with and without phantom panels (should give same results).
         """
