@@ -233,10 +233,6 @@ class FWC_Structure:
             Writes previously defined parameters to an .h5 file which serves later as an 
             input file for SHARPy.
         """                
-        np.savetxt('./conn.csv', self.conn)
-        np.savetxt('./bc.csv', self.boundary_conditions)
-        np.savetxt('./elem_stiffness.csv', self.elem_stiffness)
-        np.savetxt('./coordinates.csv', np.column_stack((self.x, self.y, self.z)))
         with h5.File(self.route + '/' + self.case_name + '.fem.h5', 'a') as h5file:
             h5file.create_dataset('coordinates', data=np.column_stack((self.x, self.y, self.z)))
             h5file.create_dataset('connectivities', data=self.conn)
