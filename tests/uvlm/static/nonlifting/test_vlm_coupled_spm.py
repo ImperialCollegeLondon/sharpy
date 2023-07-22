@@ -7,9 +7,15 @@ import json
 
 class TestVlmCoupledWithSourcePanelMethod(unittest.TestCase):
 
+ 
     def test_phantom_panels(self):
         """
-            run with and without phantom panels (should give same results).
+            The lift distribution over a rectangular high-aspect ratio
+            wing is computed. First a wing_only configuration is considered,
+            while second, we activate the phantom panels created within the 
+            fuselage although, the effect of the source panels is omitted. 
+            With the defined interpolation scheme, the same lift distribution 
+            must be obtained.
         """
         self.define_folder()
         
@@ -80,10 +86,14 @@ class TestVlmCoupledWithSourcePanelMethod(unittest.TestCase):
 
 
     def get_geometry_parameters(self, model_name,fuselage_length=10):
-
+        """
+            Geometry parameters are loaded from json init file for the specified model. 
+            Next, final geoemtry parameteres, depending on the fuselage length are 
+            calculated and return within a dict.
+        """
         with open(self.route_test_dir + '/geometry_parameter_models.json', 'r') as fp:
             parameter_models = json.load(fp)[model_name]
-            
+
         geometry_parameters = {
             'fuselage_length': fuselage_length,         
             'max_radius': fuselage_length/parameter_models['length_radius_ratio'],
@@ -100,6 +110,10 @@ class TestVlmCoupledWithSourcePanelMethod(unittest.TestCase):
                        dict_geometry_parameters,
                        dict_discretisation, 
                        lifting_only):
+        """
+            Aircraft model object is generated and structural and aerodynamic (lifting and nonlifting)
+            input files are generated.
+        """
         aircraft_model = Fuselage_Wing_Configuration(case_name, self.case_route, self.output_route)
         aircraft_model.init_aeroelastic(lifting_only=lifting_only,
                                     **dict_discretisation,
@@ -116,6 +130,9 @@ class TestVlmCoupledWithSourcePanelMethod(unittest.TestCase):
                                      horseshoe=True,
                                      nonlifting_only=False,
                                      phantom_test=False):
+        """
+            Simulation settings are defined and written to the ".sharpy" input file.
+        """
         settings = define_simulation_settings(flow, 
                                                 aircraft_model, 
                                                 alpha_deg, 
@@ -126,7 +143,10 @@ class TestVlmCoupledWithSourcePanelMethod(unittest.TestCase):
                                                 horseshoe=horseshoe)
         aircraft_model.create_settings(settings)
 
-    def define_folder(self):
+    def define_folder(self):        
+        """
+            Initializes all folder path needed and creates case folder.
+        """
         self.route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
         self.case_route = self.route_test_dir + '/cases/'
         self.output_route = self.route_test_dir + '/output/'
