@@ -5,10 +5,9 @@ from fuselage_wing_configuration.fuselage_wing_configuration import Fuselage_Win
 from define_simulation_settings import define_simulation_settings
 
 
+class TestSourcePanelMethod(unittest.TestCase):
 
-class TestFuselage(unittest.TestCase):
     route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
-
 
     def test_ellipsoid(self):
         """
