@@ -63,7 +63,7 @@ class TestVlmCoupledWithSourcePanelMethod(unittest.TestCase):
 
             if lifting_only:
                 flow_case.remove('NonliftingbodygridLoader')
-            print(flow_case)
+                
             self.generate_simulation_settings(flow_case, 
                                               phantom_wing, 
                                               alpha_deg, 
