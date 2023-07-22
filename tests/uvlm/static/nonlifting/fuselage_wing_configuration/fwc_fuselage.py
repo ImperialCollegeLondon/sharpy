@@ -33,9 +33,10 @@ class FWC_Fuselage:
 
         self.initialize_parameters()
 
-        self.nonlifting_body_node[0] = True
-        self.nonlifting_body_node[self.structure.n_node_wing_total:] = True
-        self.nonlifting_body_distribution[self.structure.n_elem_per_wing*2:] = 0
+        self.nonlifting_body_node[self.structure.n_node_wing_total:self.structure.n_node_fuselage_tail] = True
+        if self.structure.vertical_wing_position == 0:
+            self.nonlifting_body_node[0] = True
+        self.nonlifting_body_distribution[self.structure.n_elem_per_wing*2:self.structure.n_elem_per_wing*2+self.structure.n_elem_fuselage] = 0
         self.nonlifting_body_m[0] = self.num_radial_panels
 
         self.get_fuselage_geometry()
@@ -61,9 +62,13 @@ class FWC_Fuselage:
             radius_fuselage = self.get_radius_ellipsoid(x_coord_fuselage_sorted.copy(), self.structure.fuselage_length/2, self.max_radius)
         else:
             raise "ERROR Fuselage shape {} unknown.".format(self.fuselage_shape)
-        self.radius[0] = radius_fuselage[self.structure.idx_junction]
-        self.radius[self.structure.n_node_wing_total:] = np.delete(radius_fuselage, self.structure.idx_junction)
+        if self.structure.vertical_wing_position == 0:
+            self.radius[0] = radius_fuselage[self.structure.idx_junction]
+            self.radius[self.structure.n_node_wing_total:] =np.delete(radius_fuselage, self.structure.idx_junction)
+        else:
+            self.radius[self.structure.n_node_wing_total:self.structure.n_node_fuselage_tail] = radius_fuselage
         if self.flag_plot_radius:
+            self.plot_fuselage_radius(self.get_values_at_fuselage_nodes(self.structure.x), self.get_values_at_fuselage_nodes(self.radius))
             self.plot_fuselage_radius(x_coord_fuselage_sorted, radius_fuselage)
 
     def get_values_at_fuselage_nodes(self, array):

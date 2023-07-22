@@ -22,7 +22,7 @@ class FWC_Structure:
         self.half_wingspan = kwargs.get('half_wingspan', 2)
         self.fuselage_length = kwargs.get('fuselage_length', 10)
         self.offset_nose_wing_beam = kwargs.get('offset_nose_wing', self.fuselage_length/2)
-
+        self.vertical_wing_position = kwargs.get('vertical_wing_position', 0.)
         self.n_elem_per_wing = kwargs.get('n_elem_per_wing', 10)
         self.n_elem_fuselage = kwargs.get('n_elem_fuselage', 10)
 
@@ -67,8 +67,13 @@ class FWC_Structure:
         self.n_node_left_wing = self.n_node_right_wing - 1 
 
         self.n_node_wing_total = self.n_node_right_wing + self.n_node_left_wing
+        self.n_node_fuselage_tail = self.n_node_wing_total + self.n_node_fuselage
         self.n_node = self.n_node_fuselage + self.n_node_wing_total
         self.n_elem =self.n_elem_fuselage + 2 * self.n_elem_per_wing
+
+        if not self.vertical_wing_position == 0:
+            self.n_elem += 1
+            self.n_node += 1
 
     def initialize_parameters(self):
         self.x = np.zeros((self.n_node, ))
@@ -126,7 +131,7 @@ class FWC_Structure:
             and twist.
         """     
         self.y[:self.n_node_right_wing] = np.linspace(0, self.half_wingspan, self.n_node_right_wing)
-
+        self.z[:self.n_node_right_wing] += self.vertical_wing_position
         for ielem in range(self.n_elem_per_wing):
             self.conn[ielem, :] = ((np.ones((3, )) * ielem * (self.n_node_elem - 1)) +
                                 [0, 2, 1])               
@@ -155,27 +160,30 @@ class FWC_Structure:
         self.conn[self.n_elem_per_wing, 0] = 0
 
     def set_x_coordinate_fuselage(self):
+        if self.vertical_wing_position == 0:
+            n_nodes_fuselage = self.n_node_fuselage + 1
+        else:
+            n_nodes_fuselage = self.n_node_fuselage
         if self.fuselage_discretisation == 'uniform':
-            x_coord_fuselage = np.linspace(0, self.fuselage_length, self.n_node_fuselage + 1) - self.offset_nose_wing_beam
-        # print(self.x)
+            x_coord_fuselage = np.linspace(0, self.fuselage_length, n_nodes_fuselage) - self.offset_nose_wing_beam
         elif self.fuselage_discretisation == '1-cosine':
-            x_coord_fuselage = np.linspace(0, 1, self.n_node_fuselage + 1) 
+            x_coord_fuselage = np.linspace(0, 1, n_nodes_fuselage) 
             x_coord_fuselage =  0.5*(1.0 - np.cos(x_coord_fuselage*np.pi))
             x_coord_fuselage *= self.fuselage_length
             x_coord_fuselage -= self.offset_nose_wing_beam
         else:
             raise "ERROR Specified fuselage discretisation '{}' unknown".format(self.fuselage_discretisation)
         self.idx_junction = self.find_index_of_closest_entry(x_coord_fuselage, self.x[0])
-        if self.enforce_uniform_fuselage_discretisation:
-            self.x[:self.n_node_wing_total] += x_coord_fuselage[self.idx_junction]
-
-        x_coord_fuselage = np.delete(x_coord_fuselage, self.idx_junction)
-        self.x[self.n_node_wing_total:] = x_coord_fuselage
+        
+        self.idx_junction_global = self.idx_junction + self.n_node_wing_total
+        if self.vertical_wing_position == 0:
+            if self.enforce_uniform_fuselage_discretisation:
+                self.x[:self.n_node_wing_total] += x_coord_fuselage[self.idx_junction]
+            x_coord_fuselage = np.delete(x_coord_fuselage, self.idx_junction)
+        self.x[self.n_node_wing_total:self.n_node_fuselage_tail] = x_coord_fuselage
 
     def adjust_fuselage_connectivities(self):
-        idx_junction_global = self.idx_junction + self.n_node_wing_total
-        idx_in_conn = np.where(self.conn ==  idx_junction_global)
-
+        idx_in_conn = np.where(self.conn ==  self.idx_junction_global)
         self.conn[idx_in_conn[0][0]+1, :] -= 1
         if idx_in_conn[1][0] == 2:
             # if middle node, correct end node of element 
@@ -184,6 +192,17 @@ class FWC_Structure:
             #several matches possible if junction node is not middle node
             self.conn[idx_in_conn[0][i_match], idx_in_conn[1][i_match]] = 0
 
+    def add_additional_element_for_low_wing(self):
+        self.x[-1] = self.x[0]
+        self.y[-1] = self.y[0]
+        self.z[-1] = self.vertical_wing_position / 2
+        self.conn[-1, 0] = 0
+        self.conn[-1, 1] = self.idx_junction_global
+        self.conn[-1, 2] = self.n_node - 1
+        self.elem_stiffness[-1] = 1
+        self.elem_mass[-1] = 1
+        
+        
     def set_beam_properties_fuselage(self):
         self.set_x_coordinate_fuselage()
         
@@ -193,10 +212,12 @@ class FWC_Structure:
             for ilocalnode in range(self.n_node_elem):
                 self.frame_of_reference_delta[ielem, ilocalnode, :] = [0.0, 1.0, 0.0]  
         self.elem_stiffness[self.n_elem_per_wing*2:] = 1
-        self.elem_mass[self.n_elem_per_wing*2:] = 2
+        self.elem_mass[self.n_elem_per_wing*2:] = 1
         
-
-        self.adjust_fuselage_connectivities()
+        if self.vertical_wing_position == 0:
+            self.adjust_fuselage_connectivities()
+        else:
+            self.add_additional_element_for_low_wing()
         self.boundary_conditions[self.n_node_wing_total] = -1
         self.boundary_conditions[-1] = -1
 

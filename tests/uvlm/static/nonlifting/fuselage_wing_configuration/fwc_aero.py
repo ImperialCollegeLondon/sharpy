@@ -51,7 +51,12 @@ class FWC_Aero:
         self.elastic_axis = np.zeros_like(self.twist)
 
         self.junction_boundary_condition_aero = np.zeros((1, self.n_surfaces), dtype=int) - 1
-        
+    
+    def get_y_junction(self):
+        if self.structure.vertical_wing_position == 0:
+            return self.radius_fuselage
+        else:
+            return np.sqrt(self.radius_fuselage**2-self.structure.vertical_wing_position**2)
     def set_wing_properties(self):
         """
             Sets necessary parameters to define the lifting surfaces of one wing (right).
@@ -59,7 +64,7 @@ class FWC_Aero:
         
         self.aero_node[:self.structure.n_node_wing_total] = True
         if not self.lifting_only:
-            self.aero_node[:self.structure.n_node_right_wing] = abs(self.structure.y[:self.structure.n_node_right_wing]) > self.radius_fuselage
+            self.aero_node[:self.structure.n_node_right_wing] = abs(self.structure.y[:self.structure.n_node_right_wing]) > self.get_y_junction()
             self.aero_node[self.structure.n_node_right_wing:self.structure.n_node_wing_total] = self.aero_node[1:self.structure.n_node_right_wing]
 
         self.chord[:2*self.structure.n_elem_per_wing, :] = self.chord_wing

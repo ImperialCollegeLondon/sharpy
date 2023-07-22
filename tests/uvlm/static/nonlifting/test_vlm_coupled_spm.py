@@ -85,6 +85,70 @@ class TestVlmCoupledWithSourcePanelMethod(unittest.TestCase):
             np.testing.assert_array_almost_equal(list_results_lift_distribution[0][3:, 1], list_results_lift_distribution[1][3:, 1], decimal=3)
 
 
+    def test_fuselage_wing_configuration(self):
+        """
+            Lift distribution on a low wing configuration is computed. The final 
+            results are compared to a previous solution (backward compatibility)
+            that matches the experimental lift distribution for this case. 
+        """
+        self.define_folder()
+        model = 'low_wing'
+        fuselage_length = 10
+        dict_geometry_parameters = self.get_geometry_parameters(model,
+                                                                fuselage_length=fuselage_length)
+
+        # Freestream Conditions
+        alpha_deg = 2.9
+        u_inf = 10
+
+        # Discretization
+        dict_discretization = {
+            'n_elem_per_wing': 10,
+            'n_elem_fuselage': 30,
+            'num_chordwise_panels': 8,
+            'num_radial_panels': 36
+        }
+
+        # Simulation settings
+        horseshoe = True
+        phantom_test = False
+        lifting_only = False
+        # Simlation Solver Flow
+        flow = ['BeamLoader',
+                'AerogridLoader',
+                'NonliftingbodygridLoader',
+                'StaticUvlm',
+                'BeamLoads',
+                'LiftDistribution',
+                'AerogridPlot',
+                    ]
+        case_name = model
+        wing_fuselage_model = self.generate_model(case_name, 
+                                            dict_geometry_parameters,
+                                            dict_discretization, 
+                                            lifting_only)
+
+        self.generate_simulation_settings(flow, 
+                                            wing_fuselage_model, 
+                                            alpha_deg, 
+                                            u_inf, 
+                                            lifting_only,
+                                            horseshoe=horseshoe,
+                                            phantom_test=phantom_test)
+        # run simulation
+        wing_fuselage_model.run()
+
+        # get results
+        lift_distribution = self.load_lift_distribution(
+            self.output_route + '/' + case_name,
+            wing_fuselage_model.structure.n_node_right_wing
+            )
+
+        # check results
+        lift_distribution_test = np.loadtxt(self.route_test_dir + "/test_data/results_{}.csv".format(model))
+        with self.subTest('lift distribution'):        
+            np.testing.assert_array_almost_equal(lift_distribution_test, lift_distribution, decimal=3)
+
     def get_geometry_parameters(self, model_name,fuselage_length=10):
         """
             Geometry parameters are loaded from json init file for the specified model. 
@@ -102,7 +166,7 @@ class TestVlmCoupledWithSourcePanelMethod(unittest.TestCase):
         geometry_parameters['chord']=geometry_parameters['max_radius']/parameter_models['radius_chord_ratio']
         geometry_parameters['half_wingspan'] = geometry_parameters['max_radius']/parameter_models['radius_half_wingspan_ratio']
         geometry_parameters['offset_nose_wing'] = parameter_models['length_offset_nose_to_wing_ratio'] * fuselage_length
-
+        geometry_parameters['vertical_wing_position'] = parameter_models['vertical_wing_position'] * geometry_parameters['max_radius']
         return geometry_parameters
 
     def generate_model(self, 
