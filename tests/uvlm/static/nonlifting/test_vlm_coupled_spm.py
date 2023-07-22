@@ -101,7 +101,7 @@ class TestVlmCoupledWithSourcePanelMethod(unittest.TestCase):
         }
         geometry_parameters['chord']=geometry_parameters['max_radius']/parameter_models['radius_chord_ratio']
         geometry_parameters['half_wingspan'] = geometry_parameters['max_radius']/parameter_models['radius_half_wingspan_ratio']
-        geometry_parameters['offset_nose_wing'] = parameter_models['length_offset_nose_to_wing_ratio'] / fuselage_length
+        geometry_parameters['offset_nose_wing'] = parameter_models['length_offset_nose_to_wing_ratio'] * fuselage_length
 
         return geometry_parameters
 
