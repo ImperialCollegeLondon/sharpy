@@ -126,32 +126,39 @@ class TestVlmCoupledWithSourcePanelMethod(unittest.TestCase):
                 'LiftDistribution',
                 'AerogridPlot',
                     ]
-        case_name = model
-        wing_fuselage_model = self.generate_model(case_name, 
-                                            dict_geometry_parameters,
-                                            dict_discretization, 
-                                            lifting_only)
+        for static_coupled_solver in [False, True]:
+            case_name = '{}_coupled_{}'.format(model, int(static_coupled_solver))
+            wing_fuselage_model = self.generate_model(case_name, 
+                                                dict_geometry_parameters,
+                                                dict_discretization, 
+                                                lifting_only)
 
-        self.generate_simulation_settings(flow, 
-                                            wing_fuselage_model, 
-                                            alpha_deg, 
-                                            u_inf, 
-                                            lifting_only,
-                                            horseshoe=horseshoe,
-                                            phantom_test=phantom_test)
-        # run simulation
-        wing_fuselage_model.run()
+            flow_case = flow.copy()
+            if static_coupled_solver:
+                flow_case.remove('StaticUvlm')
+            else:
+                flow_case.remove('StaticCoupled')
+            print(flow_case)
+            self.generate_simulation_settings(flow_case, 
+                                                wing_fuselage_model, 
+                                                alpha_deg, 
+                                                u_inf, 
+                                                lifting_only,
+                                                horseshoe=horseshoe,
+                                                phantom_test=phantom_test)
+            # run simulation
+            wing_fuselage_model.run()
+            # get results
+            lift_distribution = self.load_lift_distribution(
+                self.output_route + '/' + case_name,
+                wing_fuselage_model.structure.n_node_right_wing
+                )
 
-        # get results
-        lift_distribution = self.load_lift_distribution(
-            self.output_route + '/' + case_name,
-            wing_fuselage_model.structure.n_node_right_wing
-            )
+            # check results
+            lift_distribution_test = np.loadtxt(self.route_test_dir + "/test_data/results_{}.csv".format(case_name))
+            with self.subTest('lift distribution and spanwise wing deformation'):        
+                np.testing.assert_array_almost_equal(lift_distribution_test, lift_distribution, decimal=3)
 
-        # check results
-        lift_distribution_test = np.loadtxt(self.route_test_dir + "/test_data/results_{}.csv".format(model))
-        with self.subTest('lift distribution'):        
-            np.testing.assert_array_almost_equal(lift_distribution_test, lift_distribution, decimal=3)
 
     def get_geometry_parameters(self, model_name,fuselage_length=10):
         """
