@@ -1,7 +1,9 @@
 import numpy as np
 import sharpy.utils.algebra as algebra
 
-def define_simulation_settings(flow, model, alpha_deg, u_inf, rho = 1.225, 
+def define_simulation_settings(flow, model, alpha_deg, u_inf, 
+                               dt=1,
+                               rho = 1.225, 
                                lifting_only=True, 
                                nonlifting_only=False, 
                                phantom_test=False,
@@ -11,11 +13,9 @@ def define_simulation_settings(flow, model, alpha_deg, u_inf, rho = 1.225,
     wake_length = kwargs.get('wake_length', 10)
     # Other parameters
     if horseshoe:
-        dt = 1
         mstar = 1 
     else:
-        dt = model.aero.chord_main / model.aero.m / u_inf
-        mstar = wake_length*model.aero.m
+        mstar = wake_length*model.aero.num_chordwise_panels
     # numerics
     n_step = kwargs.get('n_step', 5)
     structural_relaxation_factor = kwargs.get('structural_relaxation_factor', 0.6)
@@ -43,8 +43,7 @@ def define_simulation_settings(flow, model, alpha_deg, u_inf, rho = 1.225,
                                                                             0.]))}
 
     settings['BeamLoads']  = {}
-    settings['LiftDistribution'] = {'rho': rho,
-                                    'coefficients': True}
+    settings['LiftDistribution'] = {'coefficients': True}
     
     settings['NonLinearStatic'] = {'print_info': 'off',
                                 'max_iterations': 150,
