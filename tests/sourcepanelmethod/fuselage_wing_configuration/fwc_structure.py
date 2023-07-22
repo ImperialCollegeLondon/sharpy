@@ -155,7 +155,7 @@ class FWC_Structure:
         self.elem_mass[self.n_elem_per_wing:2*self.n_elem_per_wing] = self.elem_mass[:self.n_elem_per_wing]
 
         self.beam_number[self.n_elem_per_wing:2*self.n_elem_per_wing] = 1
-        self.boundary_conditions[self.n_node_wing_total] = -1 # free tip
+        self.boundary_conditions[self.n_node_wing_total-1] = -1 # free tip
         self.conn[self.n_elem_per_wing:2*self.n_elem_per_wing, :] = self.conn[:self.n_elem_per_wing, :] + self.n_node_right_wing - 1
         self.conn[self.n_elem_per_wing, 0] = 0
 
@@ -201,11 +201,12 @@ class FWC_Structure:
         self.conn[-1, 2] = self.n_node - 1
         self.elem_stiffness[-1] = 1
         self.elem_mass[-1] = 1
+        self.beam_number[-1] = 3
         
         
     def set_beam_properties_fuselage(self):
         self.set_x_coordinate_fuselage()
-        
+        self.beam_number[self.n_elem_per_wing*2:] = 2
         for ielem in range(self.n_elem_per_wing * 2,self.n_elem):
             self.conn[ielem, :] = ((np.ones((3, )) * (ielem-self.n_elem_per_wing * 2) * (self.n_node_elem - 1)) +
                                 [0, 2, 1])  + self.n_node_wing_total
@@ -232,6 +233,10 @@ class FWC_Structure:
             Writes previously defined parameters to an .h5 file which serves later as an 
             input file for SHARPy.
         """                
+        np.savetxt('./conn.csv', self.conn)
+        np.savetxt('./bc.csv', self.boundary_conditions)
+        np.savetxt('./elem_stiffness.csv', self.elem_stiffness)
+        np.savetxt('./coordinates.csv', np.column_stack((self.x, self.y, self.z)))
         with h5.File(self.route + '/' + self.case_name + '.fem.h5', 'a') as h5file:
             h5file.create_dataset('coordinates', data=np.column_stack((self.x, self.y, self.z)))
             h5file.create_dataset('connectivities', data=self.conn)

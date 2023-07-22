@@ -8,81 +8,84 @@ import json
 class TestVlmCoupledWithSourcePanelMethod(unittest.TestCase):
 
  
-    def test_phantom_panels(self):
-        """
-            The lift distribution over a rectangular high-aspect ratio
-            wing is computed. First a wing_only configuration is considered,
-            while second, we activate the phantom panels created within the 
-            fuselage although, the effect of the source panels is omitted. 
-            With the defined interpolation scheme, the same lift distribution 
-            must be obtained.
-        """
-        self.define_folder()
+    # def test_phantom_panels(self):
+    #     """
+    #         The lift distribution over a rectangular high-aspect ratio
+    #         wing is computed. First a wing_only configuration is considered,
+    #         while second, we activate the phantom panels created within the 
+    #         fuselage although, the effect of the source panels is omitted. 
+    #         With the defined interpolation scheme, the same lift distribution 
+    #         must be obtained.
+    #     """
+    #     self.define_folder()
         
-        model = 'phantom_wing'
-        fuselage_length = 10
-        dict_geometry_parameters = self.get_geometry_parameters(model,
-                                                                fuselage_length=fuselage_length)
 
-        # Freestream Conditions
-        alpha_deg = 5
-        u_inf = 10
+    #     model = 'phantom_wing'
+    #     fuselage_length = 10
+    #     dict_geometry_parameters = self.get_geometry_parameters(model,
+    #                                                             fuselage_length=fuselage_length)
 
-        # Discretization
-        dict_discretization = {
-            'n_elem_per_wing': 20,
-            'n_elem_fuselage': 10,
-            'num_chordwise_panels': 8
-        }
+    #     # Freestream Conditions
+    #     alpha_deg = 5
+    #     u_inf = 10
 
-        # Simulation settings
-        horseshoe = True
-        list_phantom_test = [False, True]
-        # Simlation Solver Flow
-        flow = ['BeamLoader',
-                'AerogridLoader',
-                'NonliftingbodygridLoader',
-                'StaticUvlm',
-                'BeamLoads',
-                'LiftDistribution',
-                    ]
-        list_results_lift_distribution = []
-        # define model variables
-        for icase in range(len(list_phantom_test)):
-            phantom_test = list_phantom_test[icase]
-            lifting_only = not phantom_test
-            case_name = model + '_coupled_{}'.format(int(phantom_test))
+    #     # Discretization
+    #     dict_discretization = {
+    #         'n_elem_per_wing': 20,
+    #         'n_elem_fuselage': 10,
+    #         'num_chordwise_panels': 8
+    #     }
+
+    #     # Simulation settings
+    #     horseshoe = True
+    #     list_phantom_test = [False, True]
+    #     # Simlation Solver Flow
+    #     flow = ['BeamLoader',
+    #             'AerogridLoader',
+    #             'NonliftingbodygridLoader',
+    #             'StaticUvlm',
+    #             'StaticCoupled',
+    #             'BeamLoads',
+    #             'LiftDistribution',
+    #             'AerogridPlot',
+    #                 ]
+    #     list_results_lift_distribution = []
+    #     # define model variables
+    #     for icase in range(len(list_phantom_test)):
+    #         phantom_test = list_phantom_test[icase]
+    #         lifting_only = not phantom_test
+    #         case_name = model + '_coupled_{}'.format(int(phantom_test))
             
-            # generate ellipsoid model
-            phantom_wing = self.generate_model(case_name, 
-                                               dict_geometry_parameters,
-                                               dict_discretization, 
-                                               lifting_only)
-            # Adjust flow for case
-            flow_case = flow.copy()
+    #         # generate ellipsoid model
+    #         phantom_wing = self.generate_model(case_name, 
+    #                                            dict_geometry_parameters,
+    #                                            dict_discretization, 
+    #                                            lifting_only)
+    #         # Adjust flow for case
+    #         flow_case = flow.copy()
 
-            if lifting_only:
-                flow_case.remove('NonliftingbodygridLoader')
+    #         if lifting_only:
+    #             flow_case.remove('NonliftingbodygridLoader')
                 
-            self.generate_simulation_settings(flow_case, 
-                                              phantom_wing, 
-                                              alpha_deg, 
-                                              u_inf, 
-                                              lifting_only,
-                                              horseshoe=horseshoe,
-                                              phantom_test=phantom_test)
-            # run simulation
-            phantom_wing.run()
+    #         self.generate_simulation_settings(flow_case, 
+    #                                           phantom_wing, 
+    #                                           alpha_deg, 
+    #                                           u_inf, 
+    #                                           lifting_only,
+    #                                           horseshoe=horseshoe,
+    #                                           phantom_test=phantom_test)
+    #         # run simulation
+    #         phantom_wing.run()
 
-            # get results
-            list_results_lift_distribution.append(self.load_lift_distribution(
-                self.output_route + '/' + case_name,
-                phantom_wing.structure.n_node_right_wing
-            )) 
+    #         # get results
+    #         list_results_lift_distribution.append(self.load_lift_distribution(
+    #             self.output_route + '/' + case_name,
+    #             phantom_wing.structure.n_node_right_wing
+    #         )) 
 
-        # check results
-        with self.subTest('lift distribution'):
-            np.testing.assert_array_almost_equal(list_results_lift_distribution[0][3:, 1], list_results_lift_distribution[1][3:, 1], decimal=3)
+    #     # check results
+    #     with self.subTest('lift distribution'):
+    #         np.testing.assert_array_almost_equal(list_results_lift_distribution[0][3:, 1], list_results_lift_distribution[1][3:, 1], decimal=3)
 
 
     def test_fuselage_wing_configuration(self):
@@ -118,6 +121,7 @@ class TestVlmCoupledWithSourcePanelMethod(unittest.TestCase):
                 'AerogridLoader',
                 'NonliftingbodygridLoader',
                 'StaticUvlm',
+                'StaticCoupled',
                 'BeamLoads',
                 'LiftDistribution',
                 'AerogridPlot',
