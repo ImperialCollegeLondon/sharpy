@@ -61,7 +61,7 @@ class FWC_Structure:
             component and the total number of elements and nodes are defined here.
         """
 
-        self.n_node_fuselage = self.n_elem_fuselage*(self.n_node_elem - 1) + 1
+        self.n_node_fuselage = self.n_elem_fuselage*(self.n_node_elem - 1)
         self.n_node_right_wing = self.n_elem_per_wing*(self.n_node_elem - 1) + 1
         # the left wing beam has one node less than the right one, since they shares the center node
         self.n_node_left_wing = self.n_node_right_wing - 1 
@@ -139,7 +139,7 @@ class FWC_Structure:
                 self.frame_of_reference_delta[ielem, ilocalnode, :] = [-1.0, 0.0, 0.0]  
     
         self.boundary_conditions[0] = 1
-        self.boundary_conditions[self.n_node_right_wing] = -1 # free tip
+        self.boundary_conditions[self.n_node_right_wing-1] = -1 # free tip
 
     def mirror_wing_beam(self):
         """
@@ -184,8 +184,9 @@ class FWC_Structure:
 
     def adjust_fuselage_connectivities(self):
         idx_in_conn = np.where(self.conn ==  self.idx_junction_global)
-        self.conn[idx_in_conn[0][0]+1, :] -= 1
-        if idx_in_conn[1][0] == 2:
+        self.conn[idx_in_conn[0][0]+1:, :] -= 1
+
+        if idx_in_conn[0][0] == 2:
             # if middle node, correct end node of element 
             self.conn[idx_in_conn[0][0], 1] -= 1
         for i_match in range(np.shape(idx_in_conn)[1]):
@@ -219,8 +220,8 @@ class FWC_Structure:
             self.adjust_fuselage_connectivities()
         else:
             self.add_additional_element_for_low_wing()
-        self.boundary_conditions[self.n_node_wing_total] = -1
-        self.boundary_conditions[-1] = -1
+        self.boundary_conditions[self.n_node_wing_total] = -1 # fuselage nose
+        self.boundary_conditions[self.n_node_wing_total + self.n_node_fuselage - 1] = -1 # fuselage tail
 
     def find_index_of_closest_entry(self, array_values, target_value):
         return np.argmin(np.abs(array_values - target_value))

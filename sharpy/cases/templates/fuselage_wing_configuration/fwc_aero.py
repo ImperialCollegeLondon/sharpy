@@ -62,11 +62,11 @@ class FWC_Aero:
             Sets necessary parameters to define the lifting surfaces of one wing (right).
         """
         
-        self.aero_node[:self.structure.n_node_wing_total] = True
         if not self.lifting_only:
             self.aero_node[:self.structure.n_node_right_wing] = abs(self.structure.y[:self.structure.n_node_right_wing]) > self.get_y_junction()
             self.aero_node[self.structure.n_node_right_wing:self.structure.n_node_wing_total] = self.aero_node[1:self.structure.n_node_right_wing]
-
+        else:
+            self.aero_node[:self.structure.n_node_wing_total] = True
         self.chord[:2*self.structure.n_elem_per_wing, :] = self.chord_wing
         self.elastic_axis[:2*self.structure.n_elem_per_wing, :] = self.ea_wing
         # surf distribution 0 for right and 1 for left wing
