@@ -1,0 +1,26 @@
+name: sharpy
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - asn1crypto>=1.2.0      
+  - colorama>=0.4.1        
+  - control>=0.8.4         
+  - dill>=0.3.1.1          
+  - h5py>=2.9.0            
+  - jupyterlab>=1.2.3      
+  - lxml>=4.4.1            
+  - mayavi>=4.7.1          
+  - nbsphinx>=0.4.3        
+  - pandas>=0.25.3         
+  - pyOpenSSL>=19.0.0      
+  - PySocks>=1.7.1         
+  - PyYAML>=5.1.2          
+  - recommonmark>=0.6.0    
+  - slycot>=0.4.0
+  - sphinx_rtd_theme>=0.4.3
+  - wheel>=0.33.6          
+  - xlrd>=1.2.0            
+  - python=3.10
+  - openpyxl>=3.0.10
+  - cmake=3.14.0

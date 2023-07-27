@@ -22,7 +22,8 @@ def alpha_beta_to_direction(alpha, beta):
     return direction
 
 
-def magnitude_and_direction_of_relative_velocity(displacement, displacement_vel, for_vel, cga, uext):
+def magnitude_and_direction_of_relative_velocity(displacement, displacement_vel, for_vel, cga, uext,
+                                                 add_rotation=False, rot_vel_g=np.zeros((3)), centre_rot_g=np.zeros((3))):
     r"""
     Calculates the magnitude and direction of the relative velocity ``u_rel`` at a local section of the wing.
 
@@ -39,6 +40,9 @@ def magnitude_and_direction_of_relative_velocity(displacement, displacement_vel,
         for_vel (np.array): ``A`` frame of reference (FoR) velocity. Expressed in A FoR
         cga (np.array): Rotation vector from FoR ``G`` to FoR ``A``
         uext (np.array): Background flow velocity on solid grid nodes
+        add_rotation (bool): Adds rotation velocity. Probalby needed in steady computations
+        rot_vel_g (np.array): Rotation velocity. Only used if add_rotation = True
+        centre_rot_g (np.array): Centre of rotation. Only used if add_rotation = True
 
     Returns:
         tuple: ``u_rel``, ``dir_u_rel`` expressed in the inertial, ``G`` frame.
@@ -49,6 +53,9 @@ def magnitude_and_direction_of_relative_velocity(displacement, displacement_vel,
     urel = -np.dot(cga, urel)
     urel += np.average(uext, axis=1)
 
+    if add_rotation:
+        urel -= algebra.cross3(rot_vel_g,
+                               np.dot(cga, displacement) - centre_rot_g)
     dir_urel = algebra.unit_vector(urel)
 
     return urel, dir_urel
@@ -123,38 +130,32 @@ def span_chord(i_node_surf, zeta):
     return dir_span, span, dir_chord, chord
 
 
-def find_aerodynamic_solver(settings):
+def find_aerodynamic_solver_settings(settings):
     """
-    Retrieves the name and settings of the first aerodynamic solver used in the solution ``flow``.
+    Retrieves the settings of the first aerodynamic solver used in the solution ``flow``. 
+    
+    For coupled solvers, the aerodynamic solver is found in the aero solver settings. 
+    The StaticTrim solver can either contain a coupled or aero solver in its solver 
+    settings (making it into a possible 3-level Matryoshka).
 
     Args:
         settings (dict): SHARPy settings (usually found in ``data.settings`` )
 
     Returns:
-        tuple: Aerodynamic solver name and solver settings
+        tuple: Aerodynamic solver settings
     """
     flow = settings['SHARPy']['flow']
-    # Look for the aerodynamic solver
-    if 'StaticUvlm' in flow:
-        aero_solver_name = 'StaticUvlm'
-        aero_solver_settings = settings['StaticUvlm']
-    elif 'StaticCoupled' in flow:
-        aero_solver_name = settings['StaticCoupled']['aero_solver']
-        aero_solver_settings = settings['StaticCoupled']['aero_solver_settings']
-    elif 'StaticCoupledRBM' in flow:
-        aero_solver_name = settings['StaticCoupledRBM']['aero_solver']
-        aero_solver_settings = settings['StaticCoupledRBM']['aero_solver_settings']
-    elif 'DynamicCoupled' in flow:
-        aero_solver_name = settings['DynamicCoupled']['aero_solver']
-        aero_solver_settings = settings['DynamicCoupled']['aero_solver_settings']
-    elif 'StepUvlm' in flow:
-        aero_solver_name = 'StepUvlm'
-        aero_solver_settings = settings['StepUvlm']
-    else:
-        raise KeyError("ERROR: aerodynamic solver not found")
+    for solver_name in ['StaticUvlm', 'StaticCoupled', 'StaticTrim', 'DynamicCoupled', 'StepUvlm']:
+        if solver_name in flow:
+            aero_solver_settings = settings[solver_name]
+            if solver_name == 'StaticTrim':
+                aero_solver_settings = aero_solver_settings['solver_settings']['aero_solver_settings']
+            elif 'aero_solver' in settings[solver_name].keys():
+                aero_solver_settings = aero_solver_settings['aero_solver_settings']
+                
+            return aero_solver_settings
 
-    return aero_solver_name, aero_solver_settings
-
+    raise KeyError("ERROR: Aerodynamic solver not found.")
 
 def find_velocity_generator(settings):
     """
@@ -167,7 +168,7 @@ def find_velocity_generator(settings):
     Returns:
         tuple: velocity generator name and velocity generator settings
     """
-    aero_solver_name, aero_solver_settings = find_aerodynamic_solver(settings)
+    aero_solver_settings = find_aerodynamic_solver_settings(settings)
 
     vel_gen_name = aero_solver_settings['velocity_field_generator']
     vel_gen_settings = aero_solver_settings['velocity_field_input']

@@ -2,7 +2,6 @@ import numpy as np
 # import sharpy.utils.algebra as algebra
 from sharpy.utils.constants import deg2rad
 from scipy.interpolate import interp1d
-import warnings
 
 
 class Polar:
@@ -14,7 +13,6 @@ class Polar:
 
         self.table = None
         self.aoa_cl0_deg = None
-        self.aoa_bounds = None
 
     def initialise(self, table):
         """
@@ -54,15 +52,11 @@ class Polar:
                 iaoacl0 = imin
         self.aoa_cl0_deg = matches[iaoacl0]
 
-        self.aoa_bounds = [np.min(self.table[:,0]),np.max(self.table[:,0])]
-
-        self.cl_interp = interp1d(self.table[:, 0], self.table[:, 1],bounds_error=False,fill_value=(self.table[0,1],self.table[-1,1]))
-        self.cd_interp = interp1d(self.table[:, 0], self.table[:, 2],bounds_error=False,fill_value=(self.table[0,2],self.table[-1,2]))
-        self.cm_interp = interp1d(self.table[:, 0], self.table[:, 3],bounds_error=False,fill_value=(self.table[0,3],self.table[-1,3]))
+        self.cl_interp = interp1d(self.table[:, 0], self.table[:, 1])
+        self.cd_interp = interp1d(self.table[:, 0], self.table[:, 2])
+        self.cm_interp = interp1d(self.table[:, 0], self.table[:, 3])
 
     def get_coefs(self, aoa_deg):
-        
-        self.check_bounds(aoa_deg)
 
         cl = self.cl_interp(aoa_deg)
         cd = self.cd_interp(aoa_deg)
@@ -74,11 +68,6 @@ class Polar:
 
         return cl/2/np.pi/deg2rad + self.aoa_cl0_deg
 
-    def check_bounds(self, aoa):
-        if aoa > self.aoa_bounds[1]:
-            warnings.warn("Induced angle of attack %.2f larger than given angle of attack in polar data. Use values for maximum given angle of attack."%(aoa), UserWarning)
-        elif aoa < self.aoa_bounds[0]:
-            warnings.warn("Induced angle of attack %.2f smaller than given angle of attack in polar data. Use values for minimum given angle of attack."%(aoa), UserWarning)
 
     def redefine_aoa(self, new_aoa):
 

@@ -452,3 +452,12 @@ class SettingsTable:
         for i_field in range(self.n_fields):
             string += '{0[' + str(i_field) + ']:<' + str(self.field_length[i_field]) + '}'
         return string
+
+
+def set_value_or_default(dictionary, key, default_val):
+    try:
+        value = dictionary[key]
+    except KeyError:
+        value = default_val
+    return value
+

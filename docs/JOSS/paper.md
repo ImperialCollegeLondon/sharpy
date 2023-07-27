@@ -107,7 +107,7 @@ structural or aerodynamic simulation are supported natively.
 The nonlinear system can also be linearised taking an arbitrary reference condition. The linearised system can be used
 for frequency domain analysis, linear model order reduction methods and controller design.
 
-![Aerodynamic grid and forces in the static aeroelastic equilibrium configuration on the XHALE aircraft [@del2019ifasd]](https://github.com/ImperialCollegeLondon/sharpy/raw/master/docs/source/_static/XHALE-render.jpg)
+![Aerodynamic grid and forces in the static aeroelastic equilibrium configuration on the XHALE aircraft [@del2019ifasd]](https://github.com/ImperialCollegeLondon/sharpy/raw/main/docs/source/_static/XHALE-render.jpg)
 
 
 # Acknowledgements

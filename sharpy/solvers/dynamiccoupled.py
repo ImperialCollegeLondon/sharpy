@@ -13,7 +13,7 @@ import sharpy.utils.cout_utils as cout
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.controller_interface as controller_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.algebra as algebra
 import sharpy.utils.exceptions as exc
 import sharpy.io.network_interface as network_interface
@@ -248,7 +248,7 @@ class DynamicCoupled(BaseSolver):
         """
         self.aero_solver.settings['rho'] = ct.c_double(new_rho)
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
         """
         Controls the initialisation process of the solver, including processing
         the settings and initialising the aero and structural solvers, postprocessors
@@ -259,10 +259,10 @@ class DynamicCoupled(BaseSolver):
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings,
-                                 self.settings_types,
-                                 self.settings_default,
-                                 options=self.settings_options)
+        settings_utils.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default,
+                           options=self.settings_options)
 
         self.original_settings = copy.deepcopy(self.settings)
 
@@ -277,38 +277,58 @@ class DynamicCoupled(BaseSolver):
             # timestep_info[0] and remove the rest
             self.cleanup_timestep_info()
 
-        self.structural_solver = solver_interface.initialise_solver(
-            self.settings['structural_solver'])
+        if not restart:
+            self.structural_solver = solver_interface.initialise_solver(
+                self.settings['structural_solver'])
+            self.aero_solver = solver_interface.initialise_solver(
+                self.settings['aero_solver'])
         self.structural_solver.initialise(
-            self.data, self.settings['structural_solver_settings'])
-        self.aero_solver = solver_interface.initialise_solver(
-            self.settings['aero_solver'])
+            self.data, self.settings['structural_solver_settings'],
+            restart=restart)
         self.aero_solver.initialise(self.structural_solver.data,
-                                    self.settings['aero_solver_settings'])
+                                    self.settings['aero_solver_settings'],
+                                    restart=restart)
         self.data = self.aero_solver.data
 
         # initialise postprocessors
-        self.postprocessors = dict()
         if self.settings['postprocessors']:
             self.with_postprocessors = True
+            # Remove previous postprocessors not required on restart
+            old_list = list(self.postprocessors.keys())
+            for old_list_name in old_list:
+                if old_list_name not in self.settings['postprocessors']:
+                    del self.postprocessors[old_list_name] 
         for postproc in self.settings['postprocessors']:
-            self.postprocessors[postproc] = solver_interface.initialise_solver(
-                postproc)
+            if not postproc in self.postprocessors.keys():
+                self.postprocessors[postproc] = solver_interface.initialise_solver(
+                    postproc)
             self.postprocessors[postproc].initialise(
-                self.data, self.settings['postprocessors_settings'][postproc], caller=self)
+                self.data, self.settings['postprocessors_settings'][postproc], caller=self,
+                restart=restart)
 
         # initialise controllers
-        self.controllers = dict()
         self.with_controllers = False
         if self.settings['controller_id']:
             self.with_controllers = True
+            # Remove previous controllers not required on restart
+            if self.controllers is not None:
+                old_list = list(self.controllers.keys())
+                for old_list_name in old_list:
+                    if old_list_name not in self.settings['controller_id']:
+                        del self.controllers[old_list_name] 
         for controller_id, controller_type in self.settings['controller_id'].items():
-            self.controllers[controller_id] = (
-                controller_interface.initialise_controller(controller_type))
-            self.controllers[controller_id].initialise(
+            if self.controllers is not None:
+                if not controller_id in self.controllers.keys():
+                    self.controllers[controller_id] = (
+                        controller_interface.initialise_controller(controller_type))
+            else:
+                self.controllers = dict()
+                self.controllers[controller_id] = (
+                       controller_interface.initialise_controller(controller_type))
+            self.controllers[controller_id].initialise(self.data,
                     self.settings['controller_settings'][controller_id],
-                    controller_id)
-
+                    controller_id, restart=restart)
+        
         # print information header
         if self.print_info:
             self.residual_table = cout.TablePrinter(8, 12, ['g', 'f', 'g', 'f', 'f', 'f', 'e', 'e'])
@@ -335,13 +355,18 @@ class DynamicCoupled(BaseSolver):
             self.network_loader.initialise(in_settings=self.settings['network_settings'])
 
         # initialise runtime generators
-        self.runtime_generators = dict()
         if self.settings['runtime_generators']:
             self.with_runtime_generators = True
-            for id, param in self.settings['runtime_generators'].items():
-                gen = gen_interface.generator_from_string(id)
-                self.runtime_generators[id] = gen()
-                self.runtime_generators[id].initialise(param, data=self.data)
+            # Remove previous runtime generators not required on restart
+            old_list = list(self.runtime_generators.keys())
+            for old_list_name in old_list:
+                if old_list_name not in self.settings['runtime_generators']:
+                    del self.runtime_generators[old_list_name] 
+        for rg_id, param in self.settings['runtime_generators'].items():
+            if not rg_id in self.runtime_generators.keys():
+                gen = gen_interface.generator_from_string(rg_id)
+                self.runtime_generators[rg_id] = gen()
+            self.runtime_generators[rg_id].initialise(param, data=self.data, restart=restart)
 
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
@@ -399,21 +424,31 @@ class DynamicCoupled(BaseSolver):
                             self.settings['dt']/(
                                 self.settings['structural_substeps'] + 1))
 
-                if info_k == 'structural_solver':
+                elif info_k == 'structural_solver':
                     if info_v is not None:
                         self.structural_solver = solver_interface.initialise_solver(
                             info['structural_solver'])
                         self.structural_solver.initialise(
                             self.data, self.settings['structural_solver_settings'])
 
+            elif info_k == 'rotor_vel':
+                for lc in self.structural_solver.lc_list:
+                    if lc._lc_id == 'hinge_node_FoR_pitch':
+                        lc.set_rotor_vel(info_v)
+
+            elif info_k == 'pitch_vel':
+                for lc in self.structural_solver.lc_list:
+                    if lc._lc_id == 'hinge_node_FoR_pitch':
+                        lc.set_pitch_vel(info_v)
+
         return controlled_state['structural'], controlled_state['aero']
 
-    def run(self):
+    def run(self, **kwargs):
         """
         Run the time stepping procedure with controllers and postprocessors
         included.
         """
-
+        solvers = settings_utils.set_value_or_default(kwargs, 'solvers', None)
         if self.network_loader is not None:
             self.set_of_variables = self.network_loader.get_inout_variables()
 
@@ -423,7 +458,7 @@ class DynamicCoupled(BaseSolver):
             finish_event = threading.Event()
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                 netloop = executor.submit(self.network_loop, incoming_queue, outgoing_queue, finish_event)
-                timeloop = executor.submit(self.time_loop, incoming_queue, outgoing_queue, finish_event)
+                timeloop = executor.submit(self.time_loop, incoming_queue, outgoing_queue, finish_event, solvers)
 
                 # TODO: improve exception handling to get exceptions when they happen from each thread
                 for t1 in [netloop, timeloop]:
@@ -434,7 +469,7 @@ class DynamicCoupled(BaseSolver):
                         raise Exception
 
         else:
-            self.time_loop()
+            self.time_loop(solvers=solvers)
 
         if self.print_info:
             cout.cout_wrap('...Finished', 1)
@@ -477,7 +512,7 @@ class DynamicCoupled(BaseSolver):
         in_network.close()
         out_network.close()
 
-    def time_loop(self, in_queue=None, out_queue=None, finish_event=None):
+    def time_loop(self, in_queue=None, out_queue=None, finish_event=None, solvers=None):
         self.logger.debug('Inside time loop')
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
         for self.data.ts in range(
@@ -511,25 +546,14 @@ class DynamicCoupled(BaseSolver):
                     structural_kstep, aero_kstep = self.process_controller_output(
                         state)
 
-            k = 0
-            # compute unsteady contribution
-            force_coeff = 0.0
-            unsteady_contribution = False
-            if self.settings['include_unsteady_force_contribution']:
-                if self.data.ts > self.settings['steps_without_unsteady_force']:
-                    unsteady_contribution = True
-                    if 0 < self.settings['pseudosteps_ramp_unsteady_force']:
-                        force_coeff = k/self.settings['pseudosteps_ramp_unsteady_force']
-                    else:
-                        force_coeff = 1.
             # Add external forces
             if self.with_runtime_generators:
-                structural_kstep.runtime_generated_forces.fill(0.)
+                structural_kstep.runtime_steady_forces.fill(0.)
+                structural_kstep.runtime_unsteady_forces.fill(0.)
                 params = dict()
                 params['data'] = self.data
                 params['struct_tstep'] = structural_kstep
                 params['aero_tstep'] = aero_kstep
-                params['force_coeff'] = force_coeff
                 params['fsi_substep'] = -1
                 for id, runtime_generator in self.runtime_generators.items():
                     runtime_generator.generate(params)
@@ -573,15 +597,16 @@ class DynamicCoupled(BaseSolver):
                         else:
                             force_coeff = 1.
 
-                previous_runtime_generated_forces = structural_kstep.runtime_generated_forces.astype(dtype=ct.c_double, order='F', copy=True)
+                previous_runtime_steady_forces = structural_kstep.runtime_steady_forces.astype(dtype=ct.c_double, order='F', copy=True)
+                previous_runtime_unsteady_forces = structural_kstep.runtime_unsteady_forces.astype(dtype=ct.c_double, order='F', copy=True)
                 # Add external forces
                 if self.with_runtime_generators:
-                    structural_kstep.runtime_generated_forces.fill(0.)
+                    structural_kstep.runtime_steady_forces.fill(0.)
+                    structural_kstep.runtime_unsteady_forces.fill(0.)
                     params = dict()
                     params['data'] = self.data
                     params['struct_tstep'] = structural_kstep
                     params['aero_tstep'] = aero_kstep
-                    params['force_coeff'] = force_coeff
                     params['fsi_substep'] = k
                     for id, runtime_generator in self.runtime_generators.items():
                         runtime_generator.generate(params)
@@ -604,8 +629,10 @@ class DynamicCoupled(BaseSolver):
 
                 previous_kstep = structural_kstep.copy()
                 structural_kstep = controlled_structural_kstep.copy()
-                structural_kstep.runtime_generated_forces = previous_kstep.runtime_generated_forces.astype(dtype=ct.c_double, order='F', copy=True)
-                previous_kstep.runtime_generated_forces = previous_runtime_generated_forces.astype(dtype=ct.c_double, order='F', copy=True)
+                structural_kstep.runtime_steady_forces = previous_kstep.runtime_steady_forces.astype(dtype=ct.c_double, order='F', copy=True)
+                structural_kstep.runtime_unsteady_forces = previous_kstep.runtime_unsteady_forces.astype(dtype=ct.c_double, order='F', copy=True)
+                previous_kstep.runtime_steady_forces = previous_runtime_steady_forces.astype(dtype=ct.c_double, order='F', copy=True)
+                previous_kstep.runtime_unsteady_forces = previous_runtime_unsteady_forces.astype(dtype=ct.c_double, order='F', copy=True)
 
                 # move the aerodynamic surface according the the structural one
                 self.aero_solver.update_custom_grid(
@@ -660,8 +687,8 @@ class DynamicCoupled(BaseSolver):
                 if self.convergence(k,
                                     structural_kstep,
                                     previous_kstep,
-                                    self.settings['structural_solver'].lower(),
-                                    self.settings['aero_solver'].lower(),
+                                    self.structural_solver,
+                                    self.aero_solver,
                                     self.with_runtime_generators):
                     # move the aerodynamic surface according to the structural one
                     self.aero_solver.update_custom_grid(structural_kstep,
@@ -695,11 +722,13 @@ class DynamicCoupled(BaseSolver):
                                                 structural_kstep.for_vel[2],
                                                 np.sum(structural_kstep.steady_applied_forces[:, 0]),
                                                 np.sum(structural_kstep.steady_applied_forces[:, 2])])
-            self.structural_solver.extract_resultants()
+            (self.data.structure.timestep_info[self.data.ts].total_forces[0:3],
+             self.data.structure.timestep_info[self.data.ts].total_forces[3:6]) = (
+                        self.structural_solver.extract_resultants(self.data.structure.timestep_info[self.data.ts]))
             # run postprocessors
             if self.with_postprocessors:
                 for postproc in self.postprocessors:
-                    self.data = self.postprocessors[postproc].run(online=True)
+                    self.data = self.postprocessors[postproc].run(online=True, solvers=solvers)
 
             # network only
             # put result back in queue
@@ -743,7 +772,8 @@ class DynamicCoupled(BaseSolver):
             if self.base_dqdt == 0:
                 self.base_dqdt = 1.
             if with_runtime_generators:
-                self.base_res_forces = np.linalg.norm(tstep.runtime_generated_forces)
+                self.base_res_forces = np.linalg.norm(tstep.runtime_steady_forces +
+                                                      tstep.runtime_unsteady_forces)
                 if self.base_res_forces == 0:
                     self.base_res_forces = 1.
             return False
@@ -763,9 +793,11 @@ class DynamicCoupled(BaseSolver):
                          self.base_dqdt)
 
         if with_runtime_generators:
-            res_forces = (np.linalg.norm(tstep.runtime_generated_forces -
-                                        previous_tstep.runtime_generated_forces)/
-                         self.base_res_forces)
+            res_forces = (np.linalg.norm(tstep.runtime_steady_forces -
+                                        previous_tstep.runtime_steady_forces +
+                                        tstep.runtime_unsteady_forces -
+                                        previous_tstep.runtime_unsteady_forces)/
+                                        self.base_res_forces)
         else:
             res_forces = 0.
 
@@ -776,8 +808,16 @@ class DynamicCoupled(BaseSolver):
                 return False
 
         # convergence
-        return k > self.settings['minimum_steps'] - 1 and \
-            all(x < self.settings['fsi_tolerance'] for x in (self.res, self.res_dqdt, res_forces))
+        rigid_solver = False
+        if "rigid" in struct_solver.solver_id.lower():
+            rigid_solver = True
+        elif "NonLinearDynamicMultibody" == struct_solver.solver_id.lower() and struct_solver.settings['rigid_bodies']:
+            rigid_solver = True
+        if k > self.settings['minimum_steps'] - 1:
+            if self.res < self.settings['fsi_tolerance'] or rigid_solver:
+                if self.res_dqdt < self.settings['fsi_tolerance']:
+                    if res_forces < self.settings['fsi_tolerance']:
+                        return True
 
 
     def map_forces(self, aero_kstep, structural_kstep, nl_body_kstep = None, unsteady_forces_coeff=1.0):
@@ -818,6 +858,7 @@ class DynamicCoupled(BaseSolver):
         structural_kstep.postproc_node['aero_steady_forces'] = struct_forces
         structural_kstep.postproc_node['aero_unsteady_forces'] = dynamic_struct_forces
 
+<<<<<<<
         # if self.settings['nonlifting_body_interactions']:
         #     struct_forces +=  mapping.aero2struct_force_mapping(
         #         nl_body_kstep.forces,
@@ -841,6 +882,20 @@ class DynamicCoupled(BaseSolver):
         except KeyError:
             structural_kstep.unsteady_applied_forces = (dynamic_struct_forces +
                                                         structural_kstep.runtime_generated_forces)
+=======
+        # prescribed forces + aero forces + runtime generated
+        structural_kstep.steady_applied_forces += struct_forces
+        structural_kstep.steady_applied_forces += self.data.structure.ini_info.steady_applied_forces
+        structural_kstep.steady_applied_forces += structural_kstep.runtime_steady_forces
+>>>>>>>
+
+        structural_kstep.unsteady_applied_forces += dynamic_struct_forces
+        if len(self.data.structure.dynamic_input) > 0:
+            structural_kstep.unsteady_applied_forces += self.data.structure.dynamic_input[max(self.data.ts - 1, 0)]['dynamic_forces']
+        structural_kstep.unsteady_applied_forces += structural_kstep.runtime_unsteady_forces
+
+        # Apply unsteady force coefficient
+        structural_kstep.unsteady_applied_forces *= unsteady_forces_coeff
 
     def relaxation_factor(self, k):
         initial = self.settings['relaxation_factor']
@@ -891,14 +946,30 @@ class DynamicCoupled(BaseSolver):
 
         return out_step
 
+    def teardown(self):
+        
+        self.structural_solver.teardown()
+        self.aero_solver.teardown()
+        if self.with_postprocessors:
+            for pp in self.postprocessors.values():
+                pp.teardown()
+        if self.with_controllers:
+            for cont in self.controllers.values():
+                cont.teardown()
+        if self.with_runtime_generators:
+            for rg in self.runtime_generators.values():
+                rg.teardown()
+
 
 def relax(beam, timestep, previous_timestep, coeff):
     timestep.steady_applied_forces = ((1.0 - coeff)*timestep.steady_applied_forces +
             coeff*previous_timestep.steady_applied_forces)
     timestep.unsteady_applied_forces = ((1.0 - coeff)*timestep.unsteady_applied_forces +
             coeff*previous_timestep.unsteady_applied_forces)
-    timestep.runtime_generated_forces = ((1.0 - coeff)*timestep.runtime_generated_forces +
-            coeff*previous_timestep.runtime_generated_forces)
+    timestep.runtime_steady_forces = ((1.0 - coeff)*timestep.runtime_steady_forces +
+            coeff*previous_timestep.runtime_steady_forces)
+    timestep.runtime_unsteady_forces = ((1.0 - coeff)*timestep.runtime_unsteady_forces +
+            coeff*previous_timestep.runtime_unsteady_forces)
 
 
 def normalise_quaternion(tstep):

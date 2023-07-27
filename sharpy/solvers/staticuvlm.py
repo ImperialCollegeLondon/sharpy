@@ -1,13 +1,10 @@
-import ctypes as ct
-import numpy as np
 
-import sharpy.utils.algebra as algebra
 import sharpy.aero.utils.uvlmlib as uvlmlib
-import sharpy.utils.cout_utils as cout
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.generator_interface as gen_interface
 from sharpy.utils.constants import vortex_radius_def
+import sharpy.aero.utils.mapping as mapping
 
 
 @solver
@@ -63,7 +60,7 @@ class StaticUvlm(BaseSolver):
     settings_description['num_cores'] = 'Number of cores to use in the VLM lib'
 
     settings_types['n_rollup'] = 'int'
-    settings_default['n_rollup'] = 1
+    settings_default['n_rollup'] = 0
     settings_description['n_rollup'] = 'Number of rollup iterations for free wake. Use at least ``n_rollup > 1.1*m_star``'
 
     settings_types['rollup_dt'] = 'float'
@@ -122,7 +119,11 @@ class StaticUvlm(BaseSolver):
     settings_default['centre_rot_g'] = [0., 0., 0.]
     settings_description['centre_rot_g'] = 'Centre of rotation in G FoR around which ``rbm_vel_g`` is applied'
 
-    settings_table = settings.SettingsTable()
+    settings_types['map_forces_on_struct'] = 'bool'
+    settings_default['map_forces_on_struct'] = False
+    settings_description['map_forces_on_struct'] = 'Maps the forces on the structure at the end of the timestep. Only usefull if the solver is used outside StaticCoupled'
+
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -131,13 +132,13 @@ class StaticUvlm(BaseSolver):
         self.settings = None
         self.velocity_generator = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
 
         self.update_step()
 
@@ -145,7 +146,7 @@ class StaticUvlm(BaseSolver):
         velocity_generator_type = gen_interface.generator_from_string(
             self.settings['velocity_field_generator'])
         self.velocity_generator = velocity_generator_type()
-        self.velocity_generator.initialise(self.settings['velocity_field_input'])
+        self.velocity_generator.initialise(self.settings['velocity_field_input'], restart=restart)
 
     def run(self):
         if not self.settings['only_nonlifting']:

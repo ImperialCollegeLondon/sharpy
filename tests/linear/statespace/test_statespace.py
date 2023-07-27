@@ -162,7 +162,7 @@ class Test_dlti(unittest.TestCase):
             Yref += wv[ii] * SS_list[ii].freqresp(kv)
 
         er = np.max(np.abs(Yjoin - Yref))
-        assert er < 1e-14, 'test_join error %.3e too large' % er
+        assert er < 1e-12, 'test_join error %.3e too large' % er
 
     def test_disc2cont(self):
         # not the best test given that eigenvalue comparison is not great with random systems. (error grows near

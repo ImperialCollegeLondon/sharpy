@@ -145,12 +145,9 @@ def quasisteady_mooring(xf, zf, l, w, EA, cb, hf0=None, vf0=None):
         inv_J_est = np.linalg.inv(J_est)
         hf_est += inv_J_est[0, 0]*(xf - xf_est) + inv_J_est[0, 1]*(zf - zf_est)
         vf_est += inv_J_est[1, 0]*(xf - xf_est) + inv_J_est[1, 1]*(zf - zf_est)
-        # hf += (xf - xf_est)/J[0, 0] + (zf - zf_est)/J[1, 0]
-        # vf += (xf - xf_est)/J[0, 1] + (zf - zf_est)/J[1, 1]
 
         xf_est, zf_est = compute_xf_zf(hf_est, vf_est, l, w, EA, cb)
         error = np.maximum(np.abs(xf - xf_est), np.abs(zf - zf_est))
-        # print(error)
         it += 1
     if ((it == max_iter) and (error > tol)):
         cout.cout_wrap(("Mooring system did not converge. error %f" % error), 4)
@@ -185,30 +182,6 @@ def change_of_to_sharpy(matrix_of):
 
     matrix_sharpy = np.dot(C_of_s.T, np.dot(matrix_of, C_of_s))
     return matrix_sharpy
-
-
-# def interp_1st_dim_matrix(A, vec, value):
-#
-#     # Make sure vec is ordered in strictly ascending order
-#     if (np.diff(vec) <= 0).any():
-#         cout.cout_wrap("ERROR: vec should be in strictly increasing order", 4)
-#     if not A.shape[0] == vec.shape[0]:
-#         cout.cout_wrap("ERROR: Incoherent vector and matrix size", 4)
-#
-#     # Compute the positions to interpolate
-#     if value <= vec[0]:
-#         return A[0, ...]
-#     elif ((value >= vec[-1]) or (value > vec[-2] and np.isinf(vec[-1]))):
-#         return A[-1, ...]
-#     else:
-#         i = 0
-#         while value > vec[i]:
-#             i += 1
-#         dist = vec[i] - vec[i - 1]
-#         rel_dist_to_im1 = (value - vec[i - 1])/dist
-#         rel_dist_to_i = (vec[i] - value)/dist
-#
-#     return A[i - 1, ...]*rel_dist_to_i + A[i, ...]*rel_dist_to_im1
 
 
 def rfval(num, den, z):
@@ -247,7 +220,6 @@ def response_freq_dep_matrix(H, omega_H, q, it_, dt):
 
     # Compute the constant component
     if type(H) is np.ndarray:
-        # H_omega = interp_1st_dim_matrix(H, omega_H, omega_fft[0])
         interp_H = interp1d(omega_H, H, axis=0)
         H_omega = interp_H(omega_fft[0])
     elif type(H) is tuple:
@@ -268,8 +240,6 @@ def response_freq_dep_matrix(H, omega_H, q, it_, dt):
 
     # Compute the inverse Fourier tranform
     f[:] = np.real(ifft(fourier_f, axis=0)[it_, :])
-
-    # (T, yout, xout) = lsim(H, q[:it_ + 1, :], T, X0=X0)
 
     return f
 
@@ -357,51 +327,7 @@ def noise_freq_1s(w):
         u2w = u2[iomega]
         wn[iomega] = np.sqrt(-2.*np.log(u1w))*(np.cos(2*np.pi*u2w) +
                              1j*np.sin(2*np.pi*u2w))
-        # wn[iomega] = 1. + 0j
     return wn*sigma
-
-
-def time_wave_forces(Tp, Hs, dt, time, xi, w_xi):
-    """
-    Compute the time evolution of wave forces
-    """
-    # Compute time and frequency discretisations
-    ntime_steps = time.shape[0]
-
-    nomega = ntime_steps//2 + 1
-    w = np.zeros((nomega))
-    w_temp = np.fft.fftfreq(ntime_steps, d=dt)*2.*np.pi
-    w[:ntime_steps//2] = w_temp[:ntime_steps//2]
-    if ntime_steps%2 == 0:
-        w[-1] = -1*w_temp[ntime_steps//2]
-    else:
-        w[-1] = w_temp[ntime_steps//2]
-    nomega_2s = ntime_steps
-
-    # Compute the one-sided spectrums
-    noise_freq = noise_freq_1s(w)
-    jonswap_1s = jonswap_spectrum(Tp, Hs, w)*2.*np.pi
-    jonswap_freq = np.sqrt(2*ntime_steps/dt*jonswap_1s/2) + 0j
-    jonswap_freq[0] = np.sqrt(ntime_steps/dt*jonswap_1s[0]/2) + 0j # The DC values does not have the 2
-
-    # Compute the two-sided spectrum
-    force_freq_2s = np.zeros((nomega_2s, 6), dtype=np.complex)
-    for idim in range(6):
-        for iomega in range(nomega):
-            xi_interp = np.interp(w[iomega], w_xi, xi[:, idim])
-            force_freq_2s[iomega, idim] = (noise_freq[iomega]*
-                                           0.5*jonswap_freq[iomega]*
-                                           xi_interp)
-            if not iomega == 0:
-                if not ((iomega == nomega - 1) and (nomega_2s%2 == 0)):
-                    force_freq_2s[-iomega, idim] = (np.conj(noise_freq[iomega])*
-                                                    0.5*jonswap_freq[iomega]*
-                                                    np.conj(xi_interp))
-
-    # Compute the inverse Fourier transform
-    force_waves = ifft(force_freq_2s, axis=0)
-
-    return force_waves
 
 
 @generator_interface.generator
@@ -446,6 +372,10 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_default['water_density'] = 1025 # kg/m3
     settings_description['water_density'] = 'Water density'
 
+    settings_types['gravity_on'] = 'bool'
+    settings_default['gravity_on'] = True
+    settings_description['gravity_on'] = 'Flag to include gravitational forces'
+
     settings_types['gravity'] = 'float'
     settings_default['gravity'] = 9.81
     settings_description['gravity'] = 'Gravity'
@@ -457,6 +387,18 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_types['floating_file_name'] = 'str'
     settings_default['floating_file_name'] = './oc3.floating.h5'
     settings_description['floating_file_name'] = 'File containing the information about the floating dynamics'
+
+    settings_types['cd_multiplier'] = 'float'
+    settings_default['cd_multiplier'] = 1.
+    settings_description['cd_multiplier'] = 'Multiply the drag coefficient by this number to increase dissipation'
+
+    settings_types['add_damp_diag'] = 'list(float)'
+    settings_default['add_damp_diag'] = [0., 0., 0., 0., 0., 0.]
+    settings_description['add_damp_diag'] = 'Diagonal terms to include in the additional damping matrix'
+
+    settings_types['add_damp_ts'] = 'int'
+    settings_default['add_damp_ts'] = 0
+    settings_description['add_damp_ts'] = 'Timesteps in which ``add_damp_diag`` will be used'
 
     settings_types['method_matrices_freq'] = 'str'
     settings_default['method_matrices_freq'] = 'constant'
@@ -474,6 +416,10 @@ class FloatingForces(generator_interface.BaseGenerator):
     settings_types['added_mass_in_mass_matrix'] = 'bool'
     settings_default['added_mass_in_mass_matrix'] = True
     settings_description['added_mass_in_mass_matrix'] = 'Include the platform added mass in the mass matrix of the system'
+
+    settings_types['concentrate_spar'] = 'bool'
+    settings_default['concentrate_spar'] = False
+    settings_description['concentrate_spar'] = 'Compute CD as if the spar properties were concentrated at the base'
 
     settings_types['method_wave'] = 'str'
     settings_default['method_wave'] = 'sin'
@@ -545,7 +491,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.added_mass_in_mass_matrix = None
 
 
-    def initialise(self, in_dict=None, data=None):
+    def initialise(self, in_dict=None, data=None, restart=False):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict,
                                  self.settings_types,
@@ -559,9 +505,15 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.gravity_dir = self.settings['gravity_dir']
 
         # Platform dofs
-        self.q = np.zeros((self.settings['n_time_steps'] + 1, 6))
-        self.qdot = np.zeros_like(self.q)
-        self.qdotdot = np.zeros_like(self.q)
+        if not restart:
+            self.q = np.zeros((self.settings['n_time_steps'] + 1, 6))
+            self.qdot = np.zeros_like(self.q)
+            self.qdotdot = np.zeros_like(self.q)
+        else:
+            increase_ts = self.settings['n_time_steps'] + 1 - self.q.shape[0]
+            self.q = np.concatenate((self.q, np.zeros((increase_ts, 6))), axis=0)
+            self.qdot = np.concatenate((self.qdot, np.zeros((increase_ts, 6))), axis=0)
+            self.qdotdot = np.concatenate((self.qdotdot, np.zeros((increase_ts, 6))), axis=0)
 
         # Read the file with the floating information
         fid = h5.File(self.settings['floating_file_name'], 'r')
@@ -573,18 +525,20 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.n_mooring_lines = self.floating_data['mooring']['n_lines']
         self.anchor_pos = np.zeros((self.n_mooring_lines, 3))
         self.fairlead_pos_A = np.zeros((self.n_mooring_lines, 3))
-        self.hf_prev = [None]*self.n_mooring_lines
-        self.vf_prev = [None]*self.n_mooring_lines
+        if not restart:
+            self.hf_prev = [None]*self.n_mooring_lines
+            self.vf_prev = [None]*self.n_mooring_lines
 
-        theta = 2.*np.pi/self.n_mooring_lines
-        R = algebra.rotation3d_x(theta)
-        self.anchor_pos[0, 0] = -self.floating_data['mooring']['anchor_depth']
-        self.anchor_pos[0, 2] = self.floating_data['mooring']['anchor_radius']
-        self.fairlead_pos_A[0, 0] = -self.floating_data['mooring']['fairlead_depth']
-        self.fairlead_pos_A[0, 2] = self.floating_data['mooring']['fairlead_radius']
-        for imoor in range(1, self.n_mooring_lines):
-            self.anchor_pos[imoor, :] = np.dot(R, self.anchor_pos[imoor - 1, :])
-            self.fairlead_pos_A[imoor, :] = np.dot(R, self.fairlead_pos_A[imoor - 1, :])
+        if self.n_mooring_lines > 0:
+            theta = 2.*np.pi/self.n_mooring_lines
+            R = algebra.rotation3d_x(theta)
+            self.anchor_pos[0, 0] = -self.floating_data['mooring']['anchor_depth']
+            self.anchor_pos[0, 2] = self.floating_data['mooring']['anchor_radius']
+            self.fairlead_pos_A[0, 0] = -self.floating_data['mooring']['fairlead_depth']
+            self.fairlead_pos_A[0, 2] = self.floating_data['mooring']['fairlead_radius']
+            for imoor in range(1, self.n_mooring_lines):
+                self.anchor_pos[imoor, :] = np.dot(R, self.anchor_pos[imoor - 1, :])
+                self.fairlead_pos_A[imoor, :] = np.dot(R, self.fairlead_pos_A[imoor - 1, :])
 
         # Hydrostatics
         self.buoyancy_node = self.floating_data['hydrostatics']['node']
@@ -595,15 +549,8 @@ class FloatingForces(generator_interface.BaseGenerator):
         self.buoy_rest_mat = self.floating_data['hydrostatics']['buoyancy_restoring_matrix']
 
         # hydrodynamics
+        self.cd = self.floating_data['hydrodynamics']['CD']*self.settings['cd_multiplier']
         if self.settings['method_matrices_freq'] == 'constant':
-            # self.hd_added_mass_const = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['added_mass_matrix'],
-            #                             self.floating_data['hydrodynamics']['ab_freq_rads'],
-            #                             self.settings['matrices_freq'])
-
-            # self.hd_damping_const = interp_1st_dim_matrix(self.floating_data['hydrodynamics']['damping_matrix'],
-            #                             self.floating_data['hydrodynamics']['ab_freq_rads'],
-            #                             self.settings['matrices_freq'])
-
             interp_am = interp1d(self.floating_data['hydrodynamics']['ab_freq_rads'],
                                  self.floating_data['hydrodynamics']['added_mass_matrix'],
                                  axis=0)
@@ -613,13 +560,20 @@ class FloatingForces(generator_interface.BaseGenerator):
                                axis=0)
             self.hd_damping_const = interp_d(self.settings['matrices_freq'])
 
-
         elif self.settings['method_matrices_freq'] == 'rational_function':
             self.hd_added_mass_const = self.floating_data['hydrodynamics']['added_mass_matrix'][-1, :, :]
             self.hd_damping_const = self.floating_data['hydrodynamics']['damping_matrix'][-1, :, :]
 
         self.added_mass_in_mass_matrix = self.settings['added_mass_in_mass_matrix']
-        if self.added_mass_in_mass_matrix:
+        if ((self.added_mass_in_mass_matrix) and (not restart)):
+            cout.cout_wrap(("Including added mass in mass matrix"), 2)
+            if data.structure.lumped_mass_mat is None:
+                data.structure.lumped_mass_mat_nodes = np.array([self.buoyancy_node])
+                data.structure.lumped_mass_mat = np.array([self.hd_added_mass_const])
+            else:
+                data.structure.lumped_mass_mat_nodes = np.concatenate((data.structure.lumped_mass_mat_nodes, np.array([self.buoyancy_node])), axis=0)
+                data.structure.lumped_mass_mat = np.concatenate((data.structure.lumped_mass_mat, np.array([self.hd_added_mass_const])), axis=0)
+
             data.structure.add_lumped_mass_to_element(self.buoyancy_node,
                                                       self.hd_added_mass_const)
             data.structure.generate_fortran()
@@ -640,20 +594,16 @@ class FloatingForces(generator_interface.BaseGenerator):
             self.hd_K = TransferFunction(hd_K_num, hd_K_den)
             self.ab_freq_rads = self.floating_data['hydrodynamics']['ab_freq_rads']
 
-            self.x0_K = [None]*(self.settings['n_time_steps'] + 1)
-            self.x0_K[0] = 0.
+            if restart:
+                self.x0_K.extend([None]*increase_ts)
+            else:
+                self.x0_K = [None]*(self.settings['n_time_steps'] + 1)
+                self.x0_K[0] = 0.
 
 
         # Wave forces
         self.wave_forces_node = self.floating_data['wave_forces']['node']
         if self.settings['method_wave'] == 'sin':
-            # xi_matrix2 = interp_1st_dim_matrix(self.floating_data['wave_forces']['xi'],
-            #                                 self.floating_data['wave_forces']['xi_freq_rads'],
-            #                                 self.settings['wave_freq'])
-            # xi = interp_1st_dim_matrix(xi_matrix2,
-            #                                 self.floating_data['wave_forces']['xi_beta_deg']*deg2rad,
-            #                                 self.settings['wave_incidence'])
-
             interp_x1 = interp1d(self.floating_data['wave_forces']['xi_freq_rads'],
                                  self.floating_data['wave_forces']['xi'],
                                  axis=0,
@@ -661,20 +611,10 @@ class FloatingForces(generator_interface.BaseGenerator):
                                  fill_value=(self.floating_data['wave_forces']['xi'][0, ...],
                                              self.floating_data['wave_forces']['xi'][-1, ...]))
             xi_matrix2 = interp_x1(self.settings['wave_freq'])
-            # xi_matrix2 = interp_x1(self.floating_data['wave_forces']['xi_freq_rads'][2:4])
             interp_x2 = interp1d(self.floating_data['wave_forces']['xi_beta_deg']*deg2rad,
                                  xi_matrix2,
                                  axis=0)
-            xi = interp_x2(self.settings['wave_incidence'])
-            # xi = interp_x2(self.floating_data['wave_forces']['xi_beta_deg'][5]*deg2rad)
-            # print(xi[0, :])
-            # print(self.floating_data['wave_forces']['xi'][2, 5, :])
-            # print(xi[0, :] - self.floating_data['wave_forces']['xi'][2, 5, :])
-
-            phase = self.settings['wave_freq']*np.arange(self.settings['n_time_steps'] + 1)*self.settings['dt']
-            self.wave_forces_g = np.zeros((self.settings['n_time_steps'] + 1, 6))
-            for idim in range(6):
-                self.wave_forces_g[:, idim] = np.real(self.settings['wave_amplitude']*xi[idim]*(np.cos(phase) + 1j*np.sin(phase)))
+            self.xi_interp = interp_x2(self.settings['wave_incidence'])
 
         elif self.settings['method_wave'] == 'jonswap':
 
@@ -683,12 +623,12 @@ class FloatingForces(generator_interface.BaseGenerator):
                                  axis=1)
             xi_matrix = interp_x1(self.settings['wave_incidence'])
 
-            self.wave_forces_g = np.real(time_wave_forces(self.settings['wave_Tp'],
-                                                  self.settings['wave_Hs'],
-                                                  self.settings['dt'],
-                                                  np.arange(self.settings['n_time_steps'] + 1)*self.settings['dt'],
-                                                  xi_matrix,
-                                                  self.floating_data['wave_forces']['xi_freq_rads']))
+            self.freq_wave_forces_variables(self.settings['wave_Tp'],
+                                       self.settings['wave_Hs'],
+                                       self.settings['dt'],
+                                       np.arange(self.settings['n_time_steps'] + 1)*self.settings['dt'],
+                                       xi_matrix,
+                                       self.floating_data['wave_forces']['xi_freq_rads'])
 
         # Log file
         if not os.path.exists(self.settings['folder']):
@@ -700,7 +640,7 @@ class FloatingForces(generator_interface.BaseGenerator):
 
 
     def write_output(self, ts, k, mooring, mooring_yaw, hydrostatic,
-                     hydrodynamic_qdot, hydrodynamic_qdotdot, hd_correct_grav, waves):
+                     hydrodynamic_qdot, hydrodynamic_qdotdot, hd_correct_grav, drag, waves):
 
         output = dict()
         output['ts'] = ts
@@ -714,6 +654,7 @@ class FloatingForces(generator_interface.BaseGenerator):
         output['hydrodynamic_qdot'] = hydrodynamic_qdot
         output['hydrodynamic_qdotdot'] = hydrodynamic_qdotdot
         output['hydrodynamic_correct_grav'] = hd_correct_grav
+        output['drag'] = drag
         output['waves'] = waves
 
         fid = h5.File(self.log_filename, 'a')
@@ -737,6 +678,7 @@ class FloatingForces(generator_interface.BaseGenerator):
             print("hydrodynamic_qdot: ", hydrodynamic_qdot)
             print("hydrodynamic_qdotdot: ", hydrodynamic_qdotdot)
             print("hydrodynamic_correct_grav: ", hd_correct_grav)
+            print("drag: ", drag)
             print("waves: ", waves)
 
         return
@@ -764,11 +706,72 @@ class FloatingForces(generator_interface.BaseGenerator):
         return
 
 
+    def freq_wave_forces_variables(self, Tp, Hs, dt, time, xi, w_xi):
+        """
+        Compute the frequency arrays needed for wave forces
+        """
+        # Compute time and frequency discretisations
+        ntime_steps = time.shape[0]
+
+        nomega = ntime_steps//2 + 1
+        w = np.zeros((nomega))
+        w_temp = np.fft.fftfreq(ntime_steps, d=dt)*2.*np.pi
+        w[:ntime_steps//2] = w_temp[:ntime_steps//2]
+        if ntime_steps%2 == 0:
+            w[-1] = -1*w_temp[ntime_steps//2]
+        else:
+            w[-1] = w_temp[ntime_steps//2]
+        nomega_2s = ntime_steps
+
+        # Compute the one-sided spectrums
+        noise_freq = noise_freq_1s(w)
+        jonswap_1s = jonswap_spectrum(Tp, Hs, w)*2.*np.pi
+        jonswap_freq = np.sqrt(2*ntime_steps/dt*jonswap_1s/2) + 0j
+        jonswap_freq[0] = np.sqrt(ntime_steps/dt*jonswap_1s[0]/2) + 0j # The DC values does not have the 2
+
+        self.noise_freq = noise_freq
+        self.jonswap_freq = jonswap_freq
+        self.omega = w
+        self.nomega_2s = nomega_2s
+
+        self.xi_interp = np.zeros((nomega, 6), dtype=np.complex)
+        for iomega in range(nomega):
+            for idim in range(6):
+                self.xi_interp[iomega, idim] = np.interp(self.omega[iomega], w_xi, xi[:, idim])
+
+
+    def time_wave_forces(self, dx, grav):
+        """
+        Compute the time evolution of wave forces
+        """
+
+        # Compute the two-sided spectrum
+        force_freq_2s = np.zeros((self.nomega_2s, 6), dtype=np.complex)
+        for idim in range(6):
+            for iomega in range(self.omega.shape[0]):
+                k = self.omega[iomega]**2/grav
+                force_freq_2s[iomega, idim] = (self.noise_freq[iomega]*
+                                               0.5*self.jonswap_freq[iomega]*
+                                               self.xi_interp[iomega, idim]*
+                                               np.exp(-1j*k*dx))
+                if not iomega == 0:
+                    if not ((iomega == self.omega.shape[0] - 1) and (self.nomega_2s%2 == 0)):
+                        force_freq_2s[-iomega, idim] = (np.conj(self.noise_freq[iomega])*
+                                                        0.5*self.jonswap_freq[iomega]*
+                                                        np.conj(self.xi_interp[iomega, idim])*
+                                                        np.exp(1j*k*dx))
+
+        # Compute the inverse Fourier transform
+        force_waves = ifft(force_freq_2s, axis=0)
+
+        return np.real(force_waves)
+
+
     def generate(self, params):
         # Renaming for convenience
         data = params['data']
         struct_tstep = params['struct_tstep']
-        force_coeff = params['force_coeff']
+        aero_tstep = params['aero_tstep']
         k = params['fsi_substep']
 
         # Update dof vector
@@ -817,78 +820,90 @@ class FloatingForces(generator_interface.BaseGenerator):
             r_fairlead_G = fairlead_pos_G - mooring_node_pos_G
             force_cl[3:6] = np.cross(r_fairlead_G, force_fl)
 
-            struct_tstep.runtime_generated_forces[self.mooring_node, 0:3] += np.dot(cbg, force_cl[0:3])
-            struct_tstep.runtime_generated_forces[self.mooring_node, 3:6] += np.dot(cbg, force_cl[3:6])
+            struct_tstep.runtime_unsteady_forces[self.mooring_node, 0:3] += np.dot(cbg, force_cl[0:3])
+            struct_tstep.runtime_unsteady_forces[self.mooring_node, 3:6] += np.dot(cbg, force_cl[3:6])
 
         # Yaw moment generated by the mooring system
         yaw = np.array([self.q[data.ts, 3], 0., 0.])
         mooring_yaw = -self.floating_data['mooring']['yaw_spring_stif']*yaw
-        struct_tstep.runtime_generated_forces[self.mooring_node, 3:6] += np.dot(cbg,
+        struct_tstep.runtime_unsteady_forces[self.mooring_node, 3:6] += np.dot(cbg,
                                                                       mooring_yaw)
 
         # Hydrostatic model
-        hs_f_g = self.buoy_F0 - np.dot(self.buoy_rest_mat, self.q[data.ts, :])
-
-        if not force_coeff == 0.:
-            hd_f_qdot_g = -np.dot(self.floating_data['hydrodynamics']['additional_damping'], self.qdot[data.ts, :])
-
-            if ((self.settings['method_matrices_freq'] == 'constant') or
-                 (data.ts < self.settings['steps_constant_matrices'])):
-                hd_f_qdot_g -= np.dot(self.hd_damping_const, self.qdot[data.ts, :])
-                hd_f_qdotdot_g = np.zeros((6))
-
-            elif self.settings['method_matrices_freq'] == 'rational_function':
-                # Damping
-                (T, yout, xout) = forced_response(self.hd_K,
-                                                  T=[0, self.settings['dt']],
-                                                  U=self.qdot[data.ts-1:data.ts+1, :].T,
-                                                  X0=self.x0_K[data.ts-1])
-                                                  # transpose=True)
-                self.x0_K[data.ts] = xout[:, 1]
-                hd_f_qdot_g -= yout[:, 1]
-                hd_f_qdotdot_g = np.zeros((6))
-
-            else:
-                cout.cout_wrap(("ERROR: Unknown method_matrices_freq %s" % self.settings['method_matrices_freq']), 4)
-
-            # Correct gravity forces if needed
-            if self.added_mass_in_mass_matrix:
-                # Correct unreal gravity forces from added mass
-                gravity_b = np.zeros((6,),)
-                gravity_b[0:3] = np.dot(cbg, -self.settings['gravity_dir'])*self.settings['gravity']
-                hd_correct_grav = -np.dot(self.hd_added_mass_const, gravity_b)
-                struct_tstep.runtime_generated_forces[self.buoyancy_node, :] += hd_correct_grav
-            else:
-                hd_correct_grav = np.zeros((6))
-
-        else:
-            hd_f_qdot_g = np.zeros((6))
-            hd_f_qdotdot_g = np.zeros((6))
-            hd_correct_grav = np.zeros((6))
-
         ielem, inode_in_elem = data.structure.node_master_elem[self.buoyancy_node]
         cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
         cbg = np.dot(cab.T, cga.T)
-        struct_tstep.runtime_generated_forces[self.buoyancy_node, 0:3] += np.dot(cbg, hs_f_g[0:3] + force_coeff*(hd_f_qdot_g[0:3] + hd_f_qdotdot_g[0:3]))
-        struct_tstep.runtime_generated_forces[self.buoyancy_node, 3:6] += np.dot(cbg, hs_f_g[3:6] + force_coeff*(hd_f_qdot_g[3:6] + hd_f_qdotdot_g[3:6]))
+
+        hs_f_g = - np.dot(self.buoy_rest_mat, self.q[data.ts, :])
+
+        add_damp = self.floating_data['hydrodynamics']['additional_damping'].copy()
+        if data.ts < self.settings['add_damp_ts']:
+            add_damp += np.diag(self.settings['add_damp_diag'])
+        hd_f_qdot_g = -np.dot(add_damp, self.qdot[data.ts, :])
+
+        if ((self.settings['method_matrices_freq'] == 'constant') or
+             (data.ts < self.settings['steps_constant_matrices'])):
+            hd_f_qdot_g -= np.dot(self.hd_damping_const, self.qdot[data.ts, :])
+            hd_f_qdotdot_g = -np.dot(self.hd_added_mass_const, self.qdotdot[data.ts, :])
+
+        elif self.settings['method_matrices_freq'] == 'rational_function':
+            # Damping
+            (T, yout, xout) = forced_response(self.hd_K,
+                                              T=[0, self.settings['dt']],
+                                              U=self.qdot[data.ts-1:data.ts+1, :].T,
+                                              X0=self.x0_K[data.ts-1])
+                                              # transpose=True)
+            self.x0_K[data.ts] = xout[:, 1]
+            hd_f_qdot_g -= yout[:, 1]
+            hd_f_qdotdot_g = np.zeros((6))
+
+        else:
+            cout.cout_wrap(("ERROR: Unknown method_matrices_freq %s" % self.settings['method_matrices_freq']), 4)
+
+        # Correct gravity forces if needed
+        if self.added_mass_in_mass_matrix and self.settings['gravity_on']:
+            # Correct unreal gravity forces from added mass
+            gravity_b = np.zeros((6,),)
+            gravity_b[0:3] = np.dot(cbg, -self.settings['gravity_dir'])*self.settings['gravity']
+            hd_correct_grav = -np.dot(self.hd_added_mass_const, gravity_b)
+            struct_tstep.runtime_steady_forces[self.buoyancy_node, :] += hd_correct_grav
+        else:
+            hd_correct_grav = np.zeros((6))
+
+        struct_tstep.runtime_steady_forces[self.buoyancy_node, 0:3] += np.dot(cbg, self.buoy_F0[0:3] + hs_f_g[0:3])
+        struct_tstep.runtime_steady_forces[self.buoyancy_node, 3:6] += np.dot(cbg, self.buoy_F0[3:6] + hs_f_g[3:6])
+        struct_tstep.runtime_unsteady_forces[self.buoyancy_node, 0:3] += np.dot(cbg, hd_f_qdot_g[0:3] + hd_f_qdotdot_g[0:3])
+        struct_tstep.runtime_unsteady_forces[self.buoyancy_node, 3:6] += np.dot(cbg, hd_f_qdot_g[3:6] + hd_f_qdotdot_g[3:6])
 
         # Nonlinear drag coefficeint
-        for inode in range(self.floating_data['hydrodynamics']['CD_first_node'], self.floating_data['hydrodynamics']['CD_last_node'] + 1):
+        if self.settings['concentrate_spar']:
+            spar_node_pos = np.zeros((100, 3)) + struct_tstep.pos[self.floating_data['hydrodynamics']['CD_node'], :]
+            spar_node_pos[:, 0] += np.linspace(-self.floating_data['hydrodynamics']['CD_spar_length'], 0, 100)
+            spar_node_pos_dot = np.zeros((100, 3))
+        else:
+            spar_node_pos = struct_tstep.pos[self.floating_data['hydrodynamics']['CD_first_node'] : self.floating_data['hydrodynamics']['CD_last_node'] + 1, :]
+            spar_node_pos_dot = struct_tstep.pos_dot[self.floating_data['hydrodynamics']['CD_first_node'] : self.floating_data['hydrodynamics']['CD_last_node'] + 1, :]
 
-            ielem, inode_in_elem = data.structure.node_master_elem[inode]
+        total_drag_force = np.zeros((6))
+        for inode in range(len(spar_node_pos)):
+
+            if self.settings['concentrate_spar']:
+                ielem, inode_in_elem = data.structure.node_master_elem[self.floating_data['hydrodynamics']['CD_node']]
+            else:
+                ielem, inode_in_elem = data.structure.node_master_elem[inode + self.floating_data['hydrodynamics']['CD_first_node']]
             cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
             cbg = np.dot(cab.T, cga.T)
 
             if inode == 0:
-                delta_x = 0.5*np.linalg.norm(struct_tstep.pos[1, :] - struct_tstep.pos[0, :])
-            elif inode == data.structure.num_node - 1:
-                delta_x = 0.5*np.linalg.norm(struct_tstep.pos[inode, :] - struct_tstep.pos[inode - 1, :])
+                delta_x = 0.5*np.linalg.norm(spar_node_pos[1, :] - spar_node_pos[0, :])
+            elif inode == len(spar_node_pos) - 1:
+                delta_x = 0.5*np.linalg.norm(spar_node_pos[inode, :] - spar_node_pos[inode - 1, :])
             else:
-                delta_x = 0.5*np.linalg.norm(struct_tstep.pos[inode + 1, :] - struct_tstep.pos[inode - 1, :])
+                delta_x = 0.5*np.linalg.norm(spar_node_pos[inode + 1, :] - spar_node_pos[inode - 1, :])
 
             vel_a = (struct_tstep.for_vel[0:3] +
-                     np.cross(struct_tstep.for_vel[3:6], struct_tstep.pos[inode, :]) +
-                     struct_tstep.pos_dot[inode, :])
+                     np.cross(struct_tstep.for_vel[3:6], spar_node_pos[inode, :]) +
+                     spar_node_pos_dot[inode, :])
 
             # Remove velocity along the x axis
             vel_b = np.dot(cab.T, vel_a)
@@ -897,19 +912,42 @@ class FloatingForces(generator_interface.BaseGenerator):
 
             drag_force = (-0.5*self.water_density*np.linalg.norm(vel_g)*vel_g*delta_x*
                           self.floating_data['hydrodynamics']['spar_diameter']*
-                          self.floating_data['hydrodynamics']['CD'])
+                          self.cd)
 
-            struct_tstep.runtime_generated_forces[inode, 0:3] += np.dot(cbg, drag_force)
+            if self.settings['concentrate_spar']:
+                r = spar_node_pos[inode, :] - struct_tstep.pos[self.floating_data['hydrodynamics']['CD_node'], :]
+            else:
+                r = spar_node_pos[inode, :] - struct_tstep.pos[self.floating_data['hydrostatics']['node'], :]
+            drag_moment = np.cross(r, drag_force)
+            total_drag_force[0:3] += drag_force
+            total_drag_force[3:6] += drag_moment
+            if self.settings['concentrate_spar']:
+                struct_tstep.runtime_unsteady_forces[self.floating_data['hydrodynamics']['CD_node'], 0:3] += np.dot(cbg, drag_force)
+                struct_tstep.runtime_unsteady_forces[self.floating_data['hydrodynamics']['CD_node'], 3:6] += np.dot(cbg, drag_moment)
+            else:
+                struct_tstep.runtime_unsteady_forces[inode + self.floating_data['hydrodynamics']['CD_first_node'], 0:3] += np.dot(cbg, drag_force)
 
         # Wave loading
         ielem, inode_in_elem = data.structure.node_master_elem[self.wave_forces_node]
         cab = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem])
         cbg = np.dot(cab.T, cga.T)
 
-        struct_tstep.runtime_generated_forces[self.wave_forces_node, 0:3] += np.dot(cbg, force_coeff*self.wave_forces_g[data.ts, 0:3])
-        struct_tstep.runtime_generated_forces[self.wave_forces_node, 3:6] += np.dot(cbg, force_coeff*self.wave_forces_g[data.ts, 3:6])
+        wave_node_pos = struct_tstep.for_pos[0:3] + np.dot(cga, struct_tstep.pos[self.wave_forces_node, :])
+        dx = (wave_node_pos[1]*np.sin(self.settings['wave_incidence']) +
+              wave_node_pos[2]*np.cos(self.settings['wave_incidence']))
+        wave_forces_g = np.zeros((6))
+        if self.settings['method_wave'] == 'sin':
+            phase = (self.settings['wave_freq']*data.ts*self.settings['dt'] +
+                     dx*self.settings['wave_freq']**2/self.settings['gravity'])
+            for idim in range(6):
+                wave_forces_g[idim] = np.real(self.settings['wave_amplitude']*self.xi_interp[idim]*(np.cos(phase) + 1j*np.sin(phase)))
+        elif self.settings['method_wave'] == 'jonswap':
+            wave_forces_g = self.time_wave_forces(dx, self.settings['gravity'])[data.ts, :]
+
+        struct_tstep.runtime_unsteady_forces[self.wave_forces_node, 0:3] += np.dot(cbg, wave_forces_g[0:3])
+        struct_tstep.runtime_unsteady_forces[self.wave_forces_node, 3:6] += np.dot(cbg, wave_forces_g[3:6])
 
         # Write output
         if self.settings['write_output']:
             self.write_output(data.ts, k, mooring_forces, mooring_yaw, hs_f_g,
-                     hd_f_qdot_g, hd_f_qdotdot_g, hd_correct_grav, self.wave_forces_g[data.ts, :])
+                     hd_f_qdot_g, hd_f_qdotdot_g, hd_correct_grav, total_drag_force, wave_forces_g)

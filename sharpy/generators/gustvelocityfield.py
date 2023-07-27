@@ -97,7 +97,7 @@ class one_minus_cos(BaseGust):
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
                                       header_line=doc_settings_description)
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
@@ -148,7 +148,7 @@ class DARPA(BaseGust):
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
                                       header_line=doc_settings_description)
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
@@ -197,7 +197,7 @@ class continuous_sin(BaseGust):
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
                                       header_line=doc_settings_description)
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
@@ -244,14 +244,14 @@ class time_varying_global(BaseGust):
         self.file_info = None
         self.list_interpolated_velocity_field_functions = []
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.file_info = np.loadtxt(self.settings['file'])
-        self.initialise_inteprolation_functions()
+        self.initialise_interpolation_functions()
     
-    def initialise_inteprolation_functions(self):
+    def initialise_interpolation_functions(self):
         for idim in self.settings['gust_component']:
             self.list_interpolated_velocity_field_functions.append(interp1d(self.file_info[:, 0], self.file_info[:, idim+1], 
                                                                             bounds_error=False,fill_value="extrapolate"))
@@ -274,7 +274,7 @@ class time_varying(time_varying_global):
     """
     gust_id = 'time varying'
     
-    def initialise_inteprolation_functions(self):
+    def initialise_interpolation_functions(self):
         for idim in self.settings['gust_component']:
             self.list_interpolated_velocity_field_functions.append(interp1d(-self.file_info[::-1, 0] * self.u_inf, self.file_info[::-1, idim+1], 
                                                                             bounds_error=False,fill_value="extrapolate"))
@@ -326,7 +326,7 @@ class span_sine(BaseGust):
     __doc__ += setting_table.generate(settings_types, settings_default, settings_description,
                                       header_line=doc_settings_description)
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
@@ -408,7 +408,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
 
         self.implemented_gusts = dict_of_gusts
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.settings = in_dict
         settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
@@ -425,7 +425,7 @@ class GustVelocityField(generator_interface.BaseGenerator):
         self.gust.u_inf = self.u_inf
         self.gust.u_inf_direction = self.u_inf_direction
 
-        self.gust.initialise(self.settings['gust_parameters'])
+        self.gust.initialise(self.settings['gust_parameters'], restart=restart)
 
     def generate(self, params, uext):
         zeta = params['zeta']

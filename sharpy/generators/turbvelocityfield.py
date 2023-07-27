@@ -106,7 +106,7 @@ class TurbVelocityField(generator_interface.BaseGenerator):
         self.vel_holder0 = 3*[None]
         self.vel_holder1 = 3*[None]
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict, self.settings_types, self.settings_default)
         self.settings = self.in_dict
@@ -115,7 +115,7 @@ class TurbVelocityField(generator_interface.BaseGenerator):
 
         if self.extension == '.h5':
             self.read_btl(self.settings['turbulent_field'])
-        if self.extension in '.xdmf':
+        if self.extension == '.xdmf':
             self.read_xdmf(self.settings['turbulent_field'])
 
         if 'z' in self.settings['periodicity']:

@@ -67,7 +67,7 @@ class StraightWake(generator_interface.BaseGenerator):
         self.u_inf_direction = None
         self.dt = None
 
-    def initialise(self, data, in_dict=None):
+    def initialise(self, data, in_dict=None, restart=False):
         self.in_dict = in_dict
 
         # For backwards compatibility
@@ -86,9 +86,6 @@ class StraightWake(generator_interface.BaseGenerator):
             elif 'StaticCoupled' in data.settings:
                 aero_solver_name = data.settings['StaticCoupled']['aero_solver']
                 aero_solver_settings = data.settings['StaticCoupled']['aero_solver_settings']
-            elif 'StaticCoupledRBM' in data.settings:
-                aero_solver_name = data.settings['StaticCoupledRBM']['aero_solver']
-                aero_solver_settings = data.settings['StaticCoupledRBM']['aero_solver_settings']
             elif 'DynamicCoupled' in data.settings:
                 aero_solver_name = data.settings['DynamicCoupled']['aero_solver']
                 aero_solver_settings = data.settings['DynamicCoupled']['aero_solver_settings']

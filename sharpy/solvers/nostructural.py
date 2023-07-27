@@ -1,7 +1,6 @@
 import numpy as np
 
-import sharpy.utils.cout_utils as cout
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 from sharpy.utils.solver_interface import solver, BaseSolver, solver_from_string
 
 _BaseStructural = solver_from_string('_BaseStructural')
@@ -29,22 +28,22 @@ class NoStructural(_BaseStructural):
     settings_types['initial_position'] = 'list(float)'
     settings_default['initial_position'] = np.array([0.0, 0.0, 0.0])
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
         self.data = None
         self.settings = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
-    def run(self):
+    def run(self, **kwargs):
         self.data.structure.timestep_info[self.data.ts].for_pos[0:3] = self.settings['initial_position']
         self.extract_resultants()
         return self.data

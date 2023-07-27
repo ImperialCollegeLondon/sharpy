@@ -3,7 +3,7 @@ import numpy as np
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 import os
 
 
@@ -90,7 +90,7 @@ class StaticTrim(BaseSolver):
     settings_default['save_info'] = False
     settings_description['save_info'] = 'Save trim results to text file'
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -114,13 +114,13 @@ class StaticTrim(BaseSolver):
         self.table = None
         self.folder = None
 
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.solver = solver_interface.initialise_solver(self.settings['solver'])
-        self.solver.initialise(self.data, self.settings['solver_settings'])
+        self.solver.initialise(self.data, self.settings['solver_settings'], restart=restart)
 
         self.folder = data.output_folder + '/statictrim/'
         if not os.path.exists(self.folder):
@@ -135,7 +135,7 @@ class StaticTrim(BaseSolver):
         self.structural_solver.next_step()
         self.aero_solver.next_step()
 
-    def run(self):
+    def run(self, **kwargs):
 
         # In the event the modal solver has been run prior to StaticCoupled (i.e. to get undeformed modes), copy
         # results and then attach to the resulting timestep

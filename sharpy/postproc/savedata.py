@@ -4,7 +4,7 @@ import copy
 import sharpy
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.h5utils as h5utils
 from sharpy.presharpy.presharpy import PreSharpy
 
@@ -94,7 +94,11 @@ class SaveData(BaseSolver):
     settings_description['format'] = 'Save linear state space to hdf5 ``.h5`` or Matlab ``.mat`` format.'
     settings_options['format'] = ['h5', 'mat']
 
-    settings_table = settings.SettingsTable()
+    settings_types['stride'] = 'int'
+    settings_default['stride'] = 1
+    settings_description['stride'] = 'Number of steps between the execution calls when run online'
+
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description,
                                        settings_options=settings_options)
 
@@ -113,15 +117,17 @@ class SaveData(BaseSolver):
         # see initialise and add_as_grp
         self.ClassesToSave = (PreSharpy,)
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
 
-        settings.to_custom_types(self.settings,
-                                 self.settings_types, self.settings_default, options=self.settings_options)
+        settings_utils.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default,
+                           options=self.settings_options)
 
         # Add these anyway - therefore if you add your own skip_attr you don't have to retype all of these
         self.settings['skip_attr'].extend(['fortran',
@@ -150,8 +156,10 @@ class SaveData(BaseSolver):
         self.filename = self.folder + self.data.settings['SHARPy']['case'] + '.data.h5'
         self.filename_linear = self.folder + self.data.settings['SHARPy']['case'] + '.linss.h5'
 
-        if os.path.isfile(self.filename):
-            os.remove(self.filename)
+        # remove old file if it exists
+        for file_path in [self.filename, self.filename_linear]:
+            if os.path.isfile(file_path):
+                os.remove(file_path)
 
         # check that there is a linear system - else return setting to false
         if self.settings['save_linear'] or self.settings['save_linear_uvlm']:
@@ -191,32 +199,35 @@ class SaveData(BaseSolver):
                                        sharpy.linear.assembler.linearaeroelastic.LinearAeroelastic,
                                        sharpy.linear.assembler.linearbeam.LinearBeam,
                                        sharpy.linear.assembler.linearuvlm.LinearUVLM,
-                                       sharpy.linear.src.libss.ss_block,
+                                       sharpy.linear.src.libss.StateSpace,
                                        sharpy.linear.src.lingebm.FlexDynamic,)
 
             if self.settings['save_linear_uvlm']:
                 self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss_block)
         self.caller = caller
 
-    def run(self, online=False):
+    def run(self, **kwargs):
+
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
 
         # Use the following statement in case the ct types are not defined and
         # you need them on uvlm3d
         # self.data.aero.timestep_info[-1].generate_ctypes_pointers()
 
-        if self.settings['format'] == 'h5':
-            file_exists = os.path.isfile(self.filename)
-            hdfile = h5py.File(self.filename, 'a')
+        if ((online and (self.data.ts % self.settings['stride'] == 0)) or (not online)):
+            if self.settings['format'] == 'h5':
+                file_exists = os.path.isfile(self.filename)
+                hdfile = h5py.File(self.filename, 'a')
 
-            if (online and file_exists):
-                self.save_timestep(self.data, self.settings, self.data.ts, hdfile)
-            else:
-                skip_attr_init = copy.deepcopy(self.settings['skip_attr'])
-                skip_attr_init.append('timestep_info')
+                if (online and file_exists):
+                    self.save_timestep(self.data, self.settings, self.data.ts, hdfile)
+                else:
+                    skip_attr_init = copy.deepcopy(self.settings['skip_attr'])
+                    skip_attr_init.append('timestep_info')
 
-                h5utils.add_as_grp(self.data, hdfile, grpname='data',
-                                   ClassesToSave=self.ClassesToSave, SkipAttr=skip_attr_init,
-                                   compress_float=self.settings['compress_float'])
+                    h5utils.add_as_grp(self.data, hdfile, grpname='data',
+                                       ClassesToSave=self.ClassesToSave, SkipAttr=skip_attr_init,
+                                       compress_float=self.settings['compress_float'])
 
                 if self.settings['save_struct']:
                     h5utils.add_as_grp(list(),
@@ -231,75 +242,74 @@ class SaveData(BaseSolver):
                                hdfile['data']['nonlifting_body'],
                                grpname='timestep_info')
 
-                for it in range(len(self.data.structure.timestep_info)):
-                    tstep_p = self.data.structure.timestep_info[it]
-                    if tstep_p is not None:
-                        self.save_timestep(self.data, self.settings, it, hdfile)
+                    for it in range(len(self.data.structure.timestep_info)):
+                        tstep_p = self.data.structure.timestep_info[it]
+                        if tstep_p is not None:
+                            self.save_timestep(self.data, self.settings, it, hdfile)
 
-            hdfile.close()
+                hdfile.close()
 
-            if self.settings['save_linear_uvlm']:
-                linhdffile = h5py.File(self.filename.replace('.data.h5', '.uvlmss.h5'), 'a')
-                h5utils.add_as_grp(self.data.linear.linear_system.uvlm.ss, linhdffile, grpname='ss',
-                                   ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
-                                   compress_float=self.settings['compress_float'])
-                h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linhdffile,
-                                   grpname='linearisation_vectors',
-                                   ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
-                                   compress_float=self.settings['compress_float'])
-                linhdffile.close()
-
-            if self.settings['save_linear']:
-                with h5py.File(self.filename_linear, 'a') as linfile:
-                    h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linfile,
+                if self.settings['save_linear_uvlm']:
+                    linhdffile = h5py.File(self.filename.replace('.data.h5', '.uvlmss.h5'), 'a')
+                    h5utils.add_as_grp(self.data.linear.linear_system.uvlm.ss, linhdffile, grpname='ss',
+                                       ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                       compress_float=self.settings['compress_float'])
+                    h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linhdffile,
                                        grpname='linearisation_vectors',
                                        ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
                                        compress_float=self.settings['compress_float'])
-                    h5utils.add_as_grp(self.data.linear.ss, linfile, grpname='ss',
-                                       ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
-                                       compress_float=self.settings['compress_float'])
+                    linhdffile.close()
 
-            if self.settings['save_rom']:
-                try:
-                    for k, rom in self.data.linear.linear_system.uvlm.rom.items():
-                        rom.save(self.filename.replace('.data.h5', '_{:s}.rom.h5'.format(k.lower())))
-                except AttributeError:
-                    cout.cout_wrap('Could not locate a reduced order model to save')
+                if self.settings['save_linear']:
+                    with h5py.File(self.filename_linear, 'a') as linfile:
+                        h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linfile,
+                                           grpname='linearisation_vectors',
+                                           ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                           compress_float=self.settings['compress_float'])
+                        h5utils.add_as_grp(self.data.linear.ss, linfile, grpname='ss',
+                                           ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                           compress_float=self.settings['compress_float'])
 
-        elif self.settings['format'] == 'mat':
-            from scipy.io import savemat
-            if self.settings['save_linear']:
-                # reference-forces
-                linearisation_vectors = self.data.linear.linear_system.linearisation_vectors
+                if self.settings['save_rom']:
+                    try:
+                        for k, rom in self.data.linear.linear_system.uvlm.rom.items():
+                            rom.save(self.filename.replace('.data.h5', '_{:s}.rom.h5'.format(k.lower())))
+                    except AttributeError:
+                        cout.cout_wrap('Could not locate a reduced order model to save')
 
-                matfilename = self.filename.replace('.data.h5', '.linss.mat')
-                A, B, C, D = self.data.linear.ss.get_mats()
-                savedict = {'A': A,
-                            'B': B,
-                            'C': C,
-                            'D': D}
-                for k, v in linearisation_vectors.items():
-                    savedict[k] = v
-                dt = self.data.linear.ss.dt
-                if dt is not None:
-                    savedict['dt'] = dt
-                savemat(matfilename, savedict)
+            elif self.settings['format'] == 'mat':
+                from scipy.io import savemat
+                if self.settings['save_linear']:
+                    # reference-forces
+                    linearisation_vectors = self.data.linear.linear_system.linearisation_vectors
 
-            if self.settings['save_linear_uvlm']:
-                matfilename = self.filename.replace('.data.h5', '.uvlmss.mat')
-                linearisation_vectors = self.data.linear.linear_system.uvlm.linearisation_vectors
-                A, B, C, D = self.data.linear.linear_system.uvlm.ss.get_mats()
+                    matfilename = self.filename.replace('.data.h5', '.linss.mat')
+                    A, B, C, D = self.data.linear.ss.get_mats()
+                    savedict = {'A': A,
+                                'B': B,
+                                'C': C,
+                                'D': D}
+                    for k, v in linearisation_vectors.items():
+                        savedict[k] = v
+                    dt = self.data.linear.ss.dt
+                    if dt is not None:
+                        savedict['dt'] = dt
+                    savemat(matfilename, savedict)
 
-                savedict = {'A': A,
-                            'B': B,
-                            'C': C,
-                            'D': D}
-                for k, v in linearisation_vectors.items():
-                    savedict[k] = v
-                dt = self.data.linear.linear_system.uvlm.ss.dt
-                if dt is not None:
-                    savedict['dt'] = dt
-                savemat(matfilename, savedict)
+                if self.settings['save_linear_uvlm']:
+                    matfilename = self.filename.replace('.data.h5', '.uvlmss.mat')
+                    linearisation_vectors = self.data.linear.linear_system.uvlm.linearisation_vectors
+                    A, B, C, D = self.data.linear.linear_system.uvlm.ss.get_mats()
+                    savedict = {'A': A,
+                                'B': B,
+                                'C': C,
+                                'D': D}
+                    for k, v in linearisation_vectors.items():
+                        savedict[k] = v
+                    dt = self.data.linear.linear_system.uvlm.ss.dt
+                    if dt is not None:
+                        savedict['dt'] = dt
+                    savemat(matfilename, savedict)
 
         return self.data
 

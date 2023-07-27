@@ -1,12 +1,11 @@
-import ctypes as ct
 import sys
 import numpy as np
 
 import sharpy.aero.utils.mapping as mapping
 import sharpy.utils.cout_utils as cout
-import sharpy.utils.solver_interface as solver_interface
-from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
+
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.algebra as algebra
 import sharpy.utils.generator_interface as gen_interface
 
@@ -81,7 +80,7 @@ class StaticCoupled(BaseSolver):
     settings_default['nonlifting_body_interactions'] = False
     settings_description['nonlifting_body_interactions'] = 'Consider forces induced by nonlifting bodies'
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
@@ -101,23 +100,24 @@ class StaticCoupled(BaseSolver):
         self.runtime_generators = dict()
         self.with_runtime_generators = False
 
-    def initialise(self, data, input_dict=None):
+    def initialise(self, data, input_dict=None, restart=False):
         self.data = data
         if input_dict is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = input_dict
-        settings.to_custom_types(self.settings,
-                                 self.settings_types,
-                                 self.settings_default,
-                                 options=self.settings_options)
+        settings_utils.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default,
+                           options=self.settings_options,
+                           no_ctype=True)
 
         self.print_info = self.settings['print_info']
 
-        self.structural_solver = solver_interface.initialise_solver(self.settings['structural_solver'])
-        self.structural_solver.initialise(self.data, self.settings['structural_solver_settings'])
-        self.aero_solver = solver_interface.initialise_solver(self.settings['aero_solver'])
-        self.aero_solver.initialise(self.structural_solver.data, self.settings['aero_solver_settings'])
+        self.structural_solver = initialise_solver(self.settings['structural_solver'])
+        self.structural_solver.initialise(self.data, self.settings['structural_solver_settings'], restart=restart)
+        self.aero_solver = initialise_solver(self.settings['aero_solver'])
+        self.aero_solver.initialise(self.structural_solver.data, self.settings['aero_solver_settings'], restart=restart)
         self.data = self.aero_solver.data
 
         if self.print_info:
@@ -142,10 +142,10 @@ class StaticCoupled(BaseSolver):
         self.runtime_generators = dict()
         if self.settings['runtime_generators']:
             self.with_runtime_generators = True
-            for id, param in self.settings['runtime_generators'].items():
-                gen = gen_interface.generator_from_string(id)
-                self.runtime_generators[id] = gen()
-                self.runtime_generators[id].initialise(param, data=self.data)
+            for rg_id, param in self.settings['runtime_generators'].items():
+                gen = gen_interface.generator_from_string(rg_id)
+                self.runtime_generators[rg_id] = gen()
+                self.runtime_generators[rg_id].initialise(param, data=self.data, restart=restart)
 
     def increase_ts(self):
         self.data.ts += 1
@@ -165,7 +165,7 @@ class StaticCoupled(BaseSolver):
 
         self.data.ts = 0
 
-    def run(self):
+    def run(self, **kwargs):
         for i_step in range(self.settings['n_load_steps'] + 1):
             if (i_step == self.settings['n_load_steps'] and
                     self.settings['n_load_steps'] > 0):
@@ -222,17 +222,18 @@ class StaticCoupled(BaseSolver):
                 
                 # Add external forces
                 if self.with_runtime_generators:
-                    self.data.structure.timestep_info[self.data.ts].runtime_generated_forces.fill(0.)
+                    self.data.structure.timestep_info[self.data.ts].runtime_steady_forces.fill(0.)
+                    self.data.structure.timestep_info[self.data.ts].runtime_unsteady_forces.fill(0.)
                     params = dict()
                     params['data'] = self.data
                     params['struct_tstep'] = self.data.structure.timestep_info[self.data.ts]
                     params['aero_tstep'] = self.data.aero.timestep_info[self.data.ts]
-                    params['force_coeff'] = 0.
                     params['fsi_substep'] = -i_iter
                     for id, runtime_generator in self.runtime_generators.items():
                         runtime_generator.generate(params)
 
-                    struct_forces += self.data.structure.timestep_info[self.data.ts].runtime_generated_forces
+                    struct_forces += self.data.structure.timestep_info[self.data.ts].runtime_steady_forces
+                    struct_forces += self.data.structure.timestep_info[self.data.ts].runtime_unsteady_forces
 
                 if not self.settings['relaxation_factor'] == 0.:
                     if i_iter == 0:
@@ -373,3 +374,14 @@ class StaticCoupled(BaseSolver):
 
     def extract_resultants(self, tstep=None):
         return self.structural_solver.extract_resultants(tstep)
+    
+
+    def teardown(self):
+        
+        self.structural_solver.teardown()
+        self.aero_solver.teardown()
+        if self.with_runtime_generators:
+            for rg in self.runtime_generators.values():
+                rg.teardown()
+
+

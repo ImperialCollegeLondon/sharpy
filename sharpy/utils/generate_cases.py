@@ -28,6 +28,7 @@ from copy import deepcopy
 import sharpy.utils.algebra as algebra
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.generator_interface as generator_interface
+import sharpy.utils.controller_interface as controller_interface
 import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
 import sharpy.utils.cout_utils as cout
 
@@ -312,6 +313,29 @@ def list_methods(class_instance, print_info=True, clean=True):
             print(str)
 
     return list
+
+
+def set_variable_dict(dictionary, variable, set_value):
+
+    if variable in dictionary:
+        dictionary[variable] = set_value
+
+    for key, value in dictionary.items():
+        if isinstance(value, dict):
+            set_variable_dict(value, variable, set_value)
+
+
+def define_or_concatenate(variable, value, axis=0):
+    """
+    if variable is None, value is assigned
+    If variable is an array, value is concatenated along axis
+    """
+    if variable is None:
+        variable = value
+    else:
+        variable = np.concatenate((variable, value), axis=axis)
+    
+    return variable
 
 
 ######################################################################
@@ -827,6 +851,38 @@ class StructuralInformation():
         self.boundary_conditions = np.zeros((self.num_node), dtype=int)
 
 
+    def add_lumped_mass(self, node, mass=None, inertia=None, pos=None, mat=None):
+        """
+        Add lumped mass to structure
+        
+        node(int): Node where the lumped mass is to be placed
+
+        For lumped masses:
+        mass(float): Mass
+        inertia(np.array): 3x3 inertia matrix
+        pos(np.array): 3 coordinates of the mass position
+        
+        For lumped masses described as a 6x6 matrix:
+        mat(np.array): 6x6 mass and inertia matrix
+        """
+
+        if (mass is not None) and (inertia is not None):
+            if pos is None:
+                pos = np.zeros((3))
+            if mat is not None:
+                raise ValueError("mass, inertia and mat cannot be defined at the same time")
+
+            self.lumped_mass_nodes = define_or_concatenate(self.lumped_mass_nodes, np.array([node]), axis=0)
+            self.lumped_mass = define_or_concatenate(self.lumped_mass, np.array([mass]), axis=0)
+            self.lumped_mass_inertia = define_or_concatenate(self.lumped_mass_inertia, np.array([inertia]), axis=0)
+            self.lumped_mass_position = define_or_concatenate(self.lumped_mass_position, np.array([pos]), axis=0)
+
+        elif (mat is not None):
+            
+            self.lumped_mass_mat_nodes = define_or_concatenate(self.lumped_mass_mat_nodes, np.array([node]), axis=0)
+            self.lumped_mass_mat = define_or_concatenate(self.lumped_mass_mat, np.array([mat]), axis=0)
+
+
     def assembly_structures(self, *args):
         """
         assembly_structures
@@ -1006,6 +1062,7 @@ class AerodynamicInformation():
         # self.control_surface_chord = None
         # self.control_surface_hinge_coords = None
         self.polars = None
+        self.first_twist = [None]
 
     def copy(self):
         """
@@ -1031,6 +1088,7 @@ class AerodynamicInformation():
         copied.user_defined_m_distribution = self.user_defined_m_distribution.copy()
         if self.polars is not None:
             copied.polars = self.polars.copy()
+        copied.first_twist = self.first_twist.copy()
 
         return copied
 
@@ -1063,6 +1121,7 @@ class AerodynamicInformation():
         self.airfoils = np.zeros((num_airfoils, num_points_camber, 2), dtype=float)
         for iairfoil in range(num_airfoils):
             self.airfoils[iairfoil, :, 0] = np.linspace(0.0, 1.0, num_points_camber)
+        self.first_twist = [True]
 
     def generate_full_aerodynamics(self,
                                    aero_node,
@@ -1074,7 +1133,8 @@ class AerodynamicInformation():
                                    m_distribution,
                                    elastic_axis,
                                    airfoil_distribution,
-                                   airfoils):
+                                   airfoils,
+                                   first_twist):
         """
         generate_full_aerodynamics
 
@@ -1091,6 +1151,7 @@ class AerodynamicInformation():
             elastic_axis (np.array): position of the elastic axis in the chord
             airfoil_distribution (np.array): airfoil at each element node
             airfoils (np.array): coordinates of the camber lines of the airfoils
+            first_twist (list(bool)): Apply the twist rotation before the sweep
         """
 
         self.aero_node = aero_node
@@ -1103,6 +1164,7 @@ class AerodynamicInformation():
         self.elastic_axis = elastic_axis
         self.airfoil_distribution = airfoil_distribution
         self.airfoils = airfoils
+        self.first_twist = first_twist
 
     def create_aerodynamics_from_vec(self,
                                      StructuralInformation,
@@ -1116,7 +1178,8 @@ class AerodynamicInformation():
                                      vec_elastic_axis,
                                      vec_airfoil_distribution,
                                      airfoils,
-                                     user_defined_m_distribution=None):
+                                     user_defined_m_distribution=None,
+                                     first_twist=True):
         """
         create_aerodynamics_from_vec
 
@@ -1134,6 +1197,7 @@ class AerodynamicInformation():
             vec_elastic_axis (np.array): position of the elastic axis in the chord
             vec_airfoil_distribution (np.array): airfoil at each element node
             airfoils (np.array): coordinates of the camber lines of the airfoils
+            first_twist (bool): Apply the twist rotation before the sweep
         """
         self.aero_node = vec_aero_node
 
@@ -1154,6 +1218,8 @@ class AerodynamicInformation():
             udmd_by_elements = from_node_array_to_elem_matrix(user_defined_m_distribution, StructuralInformation.connectivities)
             self.user_defined_m_distribution = [udmd_by_elements]
 
+        self.first_twist = [first_twist]
+
     def create_one_uniform_aerodynamics(self,
                                      StructuralInformation,
                                      chord,
@@ -1163,7 +1229,8 @@ class AerodynamicInformation():
                                      m_distribution,
                                      elastic_axis,
                                      num_points_camber,
-                                     airfoil):
+                                     airfoil,
+                                     first_twist=True):
         """
         create_one_uniform_aerodynamics
 
@@ -1179,6 +1246,7 @@ class AerodynamicInformation():
             elastic_axis (float): position of the elastic axis in the chord
             num_points_camber (int): Number of points to define the camber line
             airfoils (np.array): coordinates of the camber lines of the airfoils
+            first_twist (bool): Apply the twist rotation before the sweep
         """
         num_node = StructuralInformation.num_node
         num_node_elem = StructuralInformation.num_node_elem
@@ -1201,6 +1269,8 @@ class AerodynamicInformation():
         if m_distribution == 'user_defined':
             self.user_defined_m_distribution = []
             self.user_defined_m_distribution.append(np.zeros((num_chord_panels + 1, num_elem, num_node_elem)))
+
+        self.first_twist = [first_twist]
 
     def change_airfoils_discretezation(self, airfoils, new_num_nodes):
         """
@@ -1277,6 +1347,7 @@ class AerodynamicInformation():
             # total_num_surfaces += len(aerodynamics_to_add.surface_m)
             total_num_surfaces += np.sum(aerodynamics_to_add.surface_m != -1)
 
+            self.first_twist.extend(aerodynamics_to_add.first_twist)
         # self.num_airfoils = total_num_airfoils
         # self.num_surfaces = total_num_surfaces
 
@@ -1415,6 +1486,8 @@ class AerodynamicInformation():
             h5file.create_dataset('elastic_axis', data=self.elastic_axis)
             h5file.create_dataset('airfoil_distribution', data=self.airfoil_distribution)
             h5file.create_dataset('sweep', data=self.sweep)
+           
+            h5file.create_dataset('first_twist', data=np.array(self.first_twist))
 
             airfoils_group = h5file.create_group('airfoils')
             for iairfoil in range(len(self.airfoils)):
@@ -1685,11 +1758,11 @@ class SimulationInformation():
         """
 
         self.solvers = dict()
-        aux_names = solver_interface.dictionary_of_solvers(print_info=False)
-        aux_names.update(generator_interface.dictionary_of_generators(print_info=False))
+        aux_solvers = solver_interface.dictionary_of_solvers(print_info=False)
+        aux_solvers.update(generator_interface.dictionary_of_generators(print_info=False))
+        aux_solvers.update(controller_interface.dictionary_of_controllers(print_info=False))
 
-        # TODO: I am sure this can be done in a better way
-        for solver in aux_names:
+        for solver in aux_solvers:
             if solver == 'PreSharpy':
                 solver_name = 'SHARPy'
             else:
@@ -1705,21 +1778,6 @@ class SimulationInformation():
                 # TODO: remove this try/except when generators are rewriten as solvers with class attributes instead of instance attributes
                 aux_solver.__init__(aux_solver)
 
-            if aux_solver.settings_default == {}:
-                aux_solver.__init__(aux_solver)
-
-            for key, value in aux_solver.settings_default.items():
-                self.solvers[solver_name][key] = deepcopy(value)
-
-        # # MAIN
-        # self.solvers['SHARPy'] = {'flow': '',
-        #                           'case': 'default_case_name',
-        #                           'route': '',
-        #                           'write_screen': 'on',
-        #                           'write_log': 'off',
-        #                           'log_folder': './output',
-        #                           'log_file': 'log'}
-
     def check(self):
 
         default = SimulationInformation()
@@ -1729,6 +1787,7 @@ class SimulationInformation():
             for key in self.solvers[solver]:
                 if key not in default.solvers[solver]:
                     raise RuntimeError(("solver '%s' has no key named '%s'" % (solver, key)))
+
 
     def define_num_steps(self, num_steps):
         """
@@ -1740,44 +1799,12 @@ class SimulationInformation():
             num_steps (int): number of steps
         """
 
-        solver_names = solver_interface.dictionary_of_solvers(print_info=False)
-        for solver in solver_names:
-            if not solver == 'PreSharpy':
-                if 'n_time_steps' in self.solvers[solver]:
-                    self.solvers[solver]['n_time_steps'] = num_steps
-                if 'num_steps' in self.solvers[solver]:
-                    self.solvers[solver]['num_steps'] = num_steps
+        for solver in self.solvers:
+            if 'n_time_steps' in self.solvers[solver]:
+                self.solvers[solver]['n_time_steps'] = num_steps
+            if 'num_steps' in self.solvers[solver]:
+                self.solvers[solver]['num_steps'] = num_steps
 
-        # TODO:Maybe it would be convenient to use the same name for all the solvers
-        # try:
-        #     self.solvers["DynamicCoupled"]['n_time_steps'] = num_steps
-        # except KeyError:
-        #     pass
-        # # self.solvers["DynamicPrescribedCoupled"]['n_time_steps'] = num_steps
-        # try:
-        #     self.solvers["StepUvlm"]['n_time_steps'] = num_steps
-        # except KeyError:
-        #     pass
-        # try:
-        #     self.solvers['NonLinearDynamicMultibody']['num_steps'] = num_steps
-        # except KeyError:
-        #     pass
-        # try:
-        #     self.solvers['NonLinearDynamicCoupledStep']['num_steps'] = num_steps
-        # except KeyError:
-        #     pass
-        # try:
-        #     self.solvers['NonLinearDynamicPrescribedStep']['num_steps'] = num_steps
-        # except KeyError:
-        #     pass
-        # try:
-        #     self.solvers['RigidDynamicPrescribedStep']['num_steps'] = num_steps
-        # except KeyError:
-        #     pass
-        # try:
-        #     self.solvers['SteadyHelicoidalWake']['n_time_steps'] = num_steps
-        # except KeyError:
-        #     pass
 
     def define_uinf(self, unit_vector, norm):
         """
@@ -1803,7 +1830,8 @@ class SimulationInformation():
         # self.solvers['StepUvlm']['velocity_field_input'] = {'u_inf': norm,
         #                                                     'u_inf_direction': unit_vector}
 
-    def set_variable_all_dicts(self, variable, value):
+
+    def set_variable_all_dicts(self, variable, set_value):
         """
         set_variable_all_dicts
 
@@ -1811,11 +1839,9 @@ class SimulationInformation():
 
         Args:
             variable (str): variable name
-            value ( ): value
+            set_value ( ): value
         """
-        for solver in self.solvers:
-            if variable in self.solvers[solver]:
-                self.solvers[solver][variable] = value
+        set_variable_dict(self.solvers, variable, set_value)
 
     def generate_solver_file(self):
         """

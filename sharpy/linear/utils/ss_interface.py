@@ -56,7 +56,7 @@ def sys_list_from_path(cwd):
     onlyfiles = [f for f in os.listdir(cwd) if os.path.isfile(os.path.join(cwd, f))]
 
     for i_file in range(len(onlyfiles)):
-        if ".py" in onlyfiles[i_file]:
+        if onlyfiles[i_file].split('.')[-1] == 'py': # support autosaved files in the folder
             if onlyfiles[i_file] == "__init__.py":
                 onlyfiles[i_file] = ""
                 continue
@@ -475,7 +475,8 @@ class LinearVector:
             raise KeyError(f'Unknown variable type {variable_type}. Must be either InputVariable, OutputVariable '
                            f'or StateVariable')
         for ith_variable in range(n_variables):
-            name = variables_data['names'][ith_variable].astype('U13')  # decode to unicode
+            # name = variables_data['names'][ith_variable].astype('U13')  # decode to unicode
+            name = str(variables_data['names'][ith_variable], 'utf8')  # decode to unicode
             list_of_variables.append(var_class(name,
                                                size=variables_data['sizes'][ith_variable],
                                                index=variables_data['indices'][ith_variable]),

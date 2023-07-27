@@ -102,7 +102,8 @@ class AerogridLoader(GridLoader):
             self.settings['wake_shape_generator'])
         self.wake_shape_generator = wake_shape_generator_type()
         self.wake_shape_generator.initialise(data,
-                                             self.settings['wake_shape_generator_input'])
+                                             self.settings['wake_shape_generator_input'],
+                                             restart=restart)
 
     def run(self):
         self.data.aero = aerogrid.Aerogrid()

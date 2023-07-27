@@ -3,7 +3,7 @@ import os
 
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.algebra as algebra
 import sharpy.aero.utils.mapping as mapping
 import warnings
@@ -63,7 +63,7 @@ class AeroForcesCalculator(BaseSolver):
     settings_default['c_ref'] = 1
     settings_description['c_ref'] = 'Reference chord'
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -79,11 +79,11 @@ class AeroForcesCalculator(BaseSolver):
         self.rot = None
         self.moment_reference_location = np.array([0., 0., 0.])
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
         self.ts_max = len(self.data.structure.timestep_info)
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.caller = caller
 
         self.folder = data.output_folder + '/forces/'
@@ -98,7 +98,9 @@ class AeroForcesCalculator(BaseSolver):
                 self.table = cout.TablePrinter(7, field_length=12, field_types=['g'] + 6 * ['e'])
                 self.table.print_header(['tstep', 'fx_g', 'fy_g', 'fz_g', 'mx_g', 'my_g', 'mz_g'])
 
-    def run(self, online=False):
+    def run(self, **kwargs):
+
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
 
         if online:
             self.ts_max = len(self.data.structure.timestep_info)
@@ -155,9 +157,13 @@ class AeroForcesCalculator(BaseSolver):
         # Convert to forces in A frame
         steady_forces_a = self.data.structure.nodal_b_for_2_a_for(steady_forces_b,
                                                                   self.data.structure.timestep_info[ts])                                
+            unsteady_forces_b = self.map_forces_beam_dof(ts, unsteady_force)
 
-        unsteady_forces_a = self.data.structure.nodal_b_for_2_a_for(unsteady_forces_b,
-                                                                    self.data.structure.timestep_info[ts])
+        steady_forces_a = self.data.structure.timestep_info[ts].nodal_b_for_2_a_for(steady_forces_b,
+                                                                                    self.data.structure)
+
+        unsteady_forces_a = self.data.structure.timestep_info[ts].nodal_b_for_2_a_for(unsteady_forces_b,
+                                                                                      self.data.structure)
 
         # Express total forces in A frame
         self.data.aero.timestep_info[ts].total_steady_body_forces = \
