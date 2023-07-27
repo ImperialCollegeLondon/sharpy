@@ -1337,7 +1337,7 @@ class FlexDynamic():
     def cont2disc(self, dt=None):
         """Convert continuous-time SS model into """
 
-        assert self.discr_method is not 'newmark', \
+        assert self.discr_method != 'newmark', \
             'For Newmark-beta discretisation, use assemble method directly.'
 
         if dt is not None:

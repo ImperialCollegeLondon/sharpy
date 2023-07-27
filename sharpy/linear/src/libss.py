@@ -1782,12 +1782,12 @@ def Hnorm_from_freq_resp(gv, method):
     Warning: only use for SISO systems! For MIMO definitions are different
     """
 
-    if method is 'H2':
+    if method == 'H2':
         Nk = len(gv)
         gvsq = gv * gv.conj()
         Gnorm = np.sqrt(np.trapz(gvsq / (Nk - 1.)))
 
-    elif method is 'Hinf':
+    elif method == 'Hinf':
         Gnorm = np.linalg.norm(gv, np.inf)
 
     if np.abs(Gnorm.imag / Gnorm.real) > 1e-16:
