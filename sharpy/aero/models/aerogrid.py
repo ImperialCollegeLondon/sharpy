@@ -161,8 +161,8 @@ class Aerogrid(Grid):
             self.data_dict['sweep'] = np.zeros_like(self.data_dict['twist'])
 
         # Define first_twist for backwards compatibility
-        if 'first_twist' not in self.aero_dict:     
-            self.aero_dict['first_twist'] = [True]*self.aero_dict['surface_m'].shape[0]
+        if 'first_twist' not in self.data_dict:     
+            self.data_dict['first_twist'] = [True]*self.data_dict['surface_m'].shape[0]
         
         # one surface per element
         for i_elem in range(self.n_elem):
