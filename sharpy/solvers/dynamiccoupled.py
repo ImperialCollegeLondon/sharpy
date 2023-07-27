@@ -183,7 +183,7 @@ class DynamicCoupled(BaseSolver):
     settings_default['nonlifting_body_interactions'] = False
     settings_description['nonlifting_body_interactions'] = 'Effect of Nonlifting Bodies on Lifting bodies are considered'
     
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
