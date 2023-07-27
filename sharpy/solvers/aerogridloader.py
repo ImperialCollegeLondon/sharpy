@@ -95,7 +95,7 @@ class AerogridLoader(GridLoader):
         self.aero = None
         self.wake_shape_generator = None
 
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         super().initialise(data)
 
         wake_shape_generator_type = gen_interface.generator_from_string(
