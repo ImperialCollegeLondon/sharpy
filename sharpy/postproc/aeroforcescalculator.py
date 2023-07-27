@@ -157,7 +157,7 @@ class AeroForcesCalculator(BaseSolver):
         # Convert to forces in A frame
         steady_forces_a = self.data.structure.nodal_b_for_2_a_for(steady_forces_b,
                                                                   self.data.structure.timestep_info[ts])                                
-            unsteady_forces_b = self.map_forces_beam_dof(ts, unsteady_force)
+        unsteady_forces_b = self.map_forces_beam_dof(ts, unsteady_force)
 
         steady_forces_a = self.data.structure.timestep_info[ts].nodal_b_for_2_a_for(steady_forces_b,
                                                                                     self.data.structure)
