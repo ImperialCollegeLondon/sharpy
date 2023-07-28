@@ -2,14 +2,15 @@ import unittest
 import os
 import numpy as np
 from sharpy.cases.templates.fuselage_wing_configuration.fuselage_wing_configuration import Fuselage_Wing_Configuration
-from define_simulation_settings import define_simulation_settings
+from .define_simulation_settings import define_simulation_settings
 import json
 
-class TestVlmCoupledWithSourcePanelMethod(unittest.TestCase):
+class TestUvlmCoupledWithSourcePanelMethod(unittest.TestCase):
 
  
     def test_phantom_panels(self):
         """
+            Phantom Panel Test (Steady and Dynamic)
             The lift distribution over a rectangular high-aspect ratio
             wing is computed. First a wing_only configuration is considered,
             while second, we activate the phantom panels created within the 

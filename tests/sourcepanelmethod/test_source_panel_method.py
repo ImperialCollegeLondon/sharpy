@@ -1,7 +1,8 @@
 import unittest
 import os
 import numpy as np
-from fuselage_wing_configuration.fuselage_wing_configuration import Fuselage_Wing_Configuration
+from sharpy.cases.templates.fuselage_wing_configuration.fuselage_wing_configuration import Fuselage_Wing_Configuration
+
 from define_simulation_settings import define_simulation_settings
 
 
