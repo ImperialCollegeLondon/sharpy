@@ -232,42 +232,13 @@ class TimeStepInfo(object):
 
     def remove_ctypes_pointers(self):
         """
-        Removes the pointers to aerodynamic variables used to interface the C++ library ``uvlmlib``
+            Removes the pointers to aerodynamic variables used to interface the C++ library ``uvlmlib``
         """
-        try:
-            del self.ct_p_dimensions
-        except AttributeError:
-            pass
 
-        try:
-            del self.ct_p_zeta
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_zeta_dot
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_u_ext
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_normals
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_forces
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_dynamic_forces
-        except AttributeError:
-            pass
+        list_class_attributes = list(self.__dict__.keys()).copy()
+        for name_attribute in list_class_attributes:
+            if "ct_p_" in name_attribute:
+                self.__delattr__(name_attribute)
 
         for k in list(self.postproc_cell.keys()):
             if 'ct_list' in k:
@@ -397,26 +368,6 @@ class NonliftingBodyTimeStepInfo(TimeStepInfo):
                             (* [np.ctypeslib.as_ctypes(array) for array in self.ct_sigma_list]))
         self.ct_p_pressure_coefficients = ((ct.POINTER(ct.c_double)*len(self.ct_pressure_coefficients_list))
                                 (* [np.ctypeslib.as_ctypes(array) for array in self.ct_pressure_coefficients_list]))
-
-    def remove_ctypes_pointers(self):
-        """
-        Removes the pointers to aerodynamic variables used to interface the C++ library ``uvlmlib``
-        """
-        super().remove_ctypes_pointers()
-        try:
-            del self.ct_p_sigma
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_sigma_dot
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_pressure_coefficients
-        except AttributeError:
-            pass
 
 
 
@@ -632,49 +583,6 @@ class AeroTimeStepInfo(TimeStepInfo):
                            (* [np.ctypeslib.as_ctypes(array) for array in self.ct_wake_conv_vel_list]))
         self.ct_p_flag_zeta_phantom = np.ctypeslib.as_ctypes(self.ct_flag_zeta_phantom_list)
  
-
-    def remove_ctypes_pointers(self):
-        super().remove_ctypes_pointers()
-        try:
-            del self.ct_p_dimensions_star
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_zeta_star
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_u_ext_star
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_gamma
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_gamma_dot
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_gamma_star
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_dist_to_orig
-        except AttributeError:
-            pass
-
-        for k in list(self.postproc_cell.keys()):
-            if 'ct_list' in k:
-                del self.postproc_cell[k]
-            elif 'ct_pointer' in k:
-                del self.postproc_cell[k]
 
 
 def init_matrix_structure(dimensions, with_dim_dimension, added_size=0):
