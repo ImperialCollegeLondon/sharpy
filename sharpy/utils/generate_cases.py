@@ -1767,16 +1767,10 @@ class SimulationInformation():
                 solver_name = 'SHARPy'
             else:
                 solver_name = solver
-            self.solvers[solver_name] = {}
+            self.solvers[solver_name] = deepcopy(aux_solvers[solver])
             if solver in ['GridLoader', 'NonliftingbodygridLoader']:
                 # Skip this solver as no default values for GridLoader exist. 
                 continue
-            try:
-                aux_solver = solver_interface.solver_from_string(solver)
-            except:
-                aux_solver = generator_interface.generator_from_string(solver)
-                # TODO: remove this try/except when generators are rewriten as solvers with class attributes instead of instance attributes
-                aux_solver.__init__(aux_solver)
 
     def check(self):
 

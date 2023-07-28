@@ -670,15 +670,11 @@ class AeroTimeStepInfo(TimeStepInfo):
         except AttributeError:
             pass
 
-        try:
-            del self.ct_p_wake_conv_vel
-        except AttributeError:
-            pass
-
-        try:
-            del self.ct_p_flag_zeta_phantom
-        except AttributeError:
-            pass
+        for k in list(self.postproc_cell.keys()):
+            if 'ct_list' in k:
+                del self.postproc_cell[k]
+            elif 'ct_pointer' in k:
+                del self.postproc_cell[k]
 
 
 def init_matrix_structure(dimensions, with_dim_dimension, added_size=0):
