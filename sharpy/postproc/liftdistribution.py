@@ -24,7 +24,7 @@ class LiftDistribution(BaseSolver):
     settings_description = dict()
 
     settings_types['text_file_name'] = 'str'
-    settings_default['text_file_name'] = 'lift_distribution.csv'
+    settings_default['text_file_name'] = 'liftdistribution'
     settings_description['text_file_name'] = 'Text file name'
 
     settings_default['coefficients'] = True
@@ -69,7 +69,7 @@ class LiftDistribution(BaseSolver):
             self.data.structure.node_master_elem,
             self.data.structure.connectivities,
             struct_tstep.cag(),
-            self.data.aero.aero_dict)
+            self.data.aero.data_dict)
         # Prepare output matrix and file
         N_nodes = self.data.structure.num_node
         numb_col = 6
@@ -84,7 +84,7 @@ class LiftDistribution(BaseSolver):
         lift_distribution = np.zeros((N_nodes, numb_col))
 
         for inode in range(N_nodes):
-            if self.data.aero.aero_dict['aero_node'][inode]:
+            if self.data.aero.data_dict['aero_node'][inode]:
                 local_node = self.data.aero.struct2aero_mapping[inode][0]["i_n"]
                 ielem, inode_in_elem = self.data.structure.node_master_elem[inode]
                 i_surf = int(self.data.aero.surface_distribution[ielem])
@@ -118,5 +118,5 @@ class LiftDistribution(BaseSolver):
                         lift_distribution[inode, 6+idim] /= len(self.data.aero.struct2aero_mapping[inode])
 
         # Export lift distribution data
-        np.savetxt(os.path.join(self.folder,  'ts_' + str(self.data.ts) + self.settings['text_file_name']), lift_distribution,
+        np.savetxt(os.path.join(self.folder,  self.settings['text_file_name'] + '_ts{}'.format(str(self.data.ts)) + '.txt'), lift_distribution,
                    fmt='%10e,' * (numb_col - 1) + '%10e', delimiter=", ", header=header)
