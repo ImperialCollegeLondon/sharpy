@@ -178,7 +178,6 @@ class DynamicCoupled(BaseSolver):
                                                  'The dictionary values are dictionaries with the settings ' \
                                                  'needed by each generator.'
 
-
     settings_types['nonlifting_body_interactions'] = 'bool'
     settings_default['nonlifting_body_interactions'] = False
     settings_description['nonlifting_body_interactions'] = 'Effect of Nonlifting Bodies on Lifting bodies are considered'
@@ -681,8 +680,8 @@ class DynamicCoupled(BaseSolver):
                         coeff=coeff)
 
                     self.data = self.structural_solver.run(
-                        structural_step=structural_kstep) #,
-                        # dt=self.substep_dt)
+                        structural_step=structural_kstep,
+                        dt=self.substep_dt)
 
                 self.time_struc += time.perf_counter() - ini_time_struc
 
@@ -782,8 +781,8 @@ class DynamicCoupled(BaseSolver):
             return False
 
         # Check the special case of no aero and no runtime generators
-        if (aero_solver.lower() == "noaero"\
-             or struct_solver.lower()  == "nostructural")\
+        if (aero_solver.solver_id.lower() == "noaero"\
+             or struct_solver.solver_id.lower()  == "nostructural")\
             and not with_runtime_generators:
             return True
 
@@ -861,7 +860,6 @@ class DynamicCoupled(BaseSolver):
         structural_kstep.postproc_node['aero_steady_forces'] = struct_forces
         structural_kstep.postproc_node['aero_unsteady_forces'] = dynamic_struct_forces
 
-<<<<<<<
         # if self.settings['nonlifting_body_interactions']:
         #     struct_forces +=  mapping.aero2struct_force_mapping(
         #         nl_body_kstep.forces,
@@ -874,23 +872,10 @@ class DynamicCoupled(BaseSolver):
         #         structural_kstep.cag(),
         #         self.data.nonlifting_body.data_dict)
         # prescribed forces + aero forces
-        structural_kstep.steady_applied_forces = (
-            (struct_forces + self.data.structure.ini_info.steady_applied_forces).
-            astype(dtype=ct.c_double, order='F', copy=True))
-        try:
-            structural_kstep.unsteady_applied_forces = (
-                (dynamic_struct_forces + self.data.structure.dynamic_input[max(self.data.ts - 1, 0)]['dynamic_forces'] +
-                 structural_kstep.runtime_generated_forces).
-                astype(dtype=ct.c_double, order='F', copy=True))
-        except KeyError:
-            structural_kstep.unsteady_applied_forces = (dynamic_struct_forces +
-                                                        structural_kstep.runtime_generated_forces)
-=======
         # prescribed forces + aero forces + runtime generated
         structural_kstep.steady_applied_forces += struct_forces
         structural_kstep.steady_applied_forces += self.data.structure.ini_info.steady_applied_forces
         structural_kstep.steady_applied_forces += structural_kstep.runtime_steady_forces
->>>>>>>
 
         structural_kstep.unsteady_applied_forces += dynamic_struct_forces
         if len(self.data.structure.dynamic_input) > 0:

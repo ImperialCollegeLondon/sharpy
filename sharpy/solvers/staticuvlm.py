@@ -148,23 +148,58 @@ class StaticUvlm(BaseSolver):
         self.velocity_generator = velocity_generator_type()
         self.velocity_generator.initialise(self.settings['velocity_field_input'], restart=restart)
 
-    def run(self):
+    def add_step(self):
+        self.data.aero.add_timestep()
+        if self.settings['nonlifting_body_interactions']:
+            self.data.nonlifting_body.add_timestep()
+            
+
+    def update_grid(self, beam):
+
         if not self.settings['only_nonlifting']:
+            self.data.aero.generate_zeta(beam,
+                                        self.data.aero.aero_settings,
+                                        -1,
+                                        beam_ts=-1)
+        if self.settings['nonlifting_body_interactions'] or self.settings['only_nonlifting']:
+            self.data.nonlifting_body.generate_zeta(beam,
+                                                    self.data.nonlifting_body.aero_settings,
+                                                    -1,
+                                                    beam_ts=-1)
+
+    def update_custom_grid(self, structure_tstep, aero_tstep, nonlifting_tstep=None):
+        self.data.aero.generate_zeta_timestep_info(structure_tstep,
+                                                   aero_tstep,
+                                                   self.data.structure,
+                                                   self.data.aero.aero_settings,
+                                                   dt=self.settings['rollup_dt'])
+        if self.settings['nonlifting_body_interactions']:
+            self.data.nonlifting_body.generate_zeta_timestep_info(structure_tstep,
+                                                    nonlifting_tstep,
+                                                    self.data.structure,
+                                                    self.data.nonlifting_body.aero_settings)
+
+    def run(self, **kwargs):
+
+        structure_tstep = settings_utils.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[self.data.ts])
+        
+        if not self.settings['only_nonlifting']:
+            aero_tstep = settings_utils.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[self.data.ts])
             if not self.data.aero.timestep_info[self.data.ts].zeta:
                 return self.data
 
             # generate the wake because the solid shape might change
-            aero_tstep = self.data.aero.timestep_info[self.data.ts]
             self.data.aero.wake_shape_generator.generate({'zeta': aero_tstep.zeta,
                                                 'zeta_star': aero_tstep.zeta_star,
                                                 'gamma': aero_tstep.gamma,
                                                 'gamma_star': aero_tstep.gamma_star,
                                                 'dist_to_orig': aero_tstep.dist_to_orig})
+        
             if self.settings['nonlifting_body_interactions']:
                 # generate uext
                 self.velocity_generator.generate({'zeta': self.data.nonlifting_body.timestep_info[self.data.ts].zeta,
                                                 'override': True,
-                                                'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
+                                                'for_pos': structure_tstep.for_pos[0:3]},
                                                 self.data.nonlifting_body.timestep_info[self.data.ts].u_ext)
                 # generate uext
                 self.velocity_generator.generate({'zeta': self.data.aero.timestep_info[self.data.ts].zeta,
@@ -192,7 +227,7 @@ class StaticUvlm(BaseSolver):
                                             'for_pos': self.data.structure.timestep_info[self.data.ts].for_pos[0:3]},
                                             self.data.nonlifting_body.timestep_info[self.data.ts].u_ext)
             uvlmlib.vlm_solver_nonlifting_body(self.data.nonlifting_body.timestep_info[self.data.ts],
-                                               self.settings)
+                                            self.settings)
 
         return self.data
 

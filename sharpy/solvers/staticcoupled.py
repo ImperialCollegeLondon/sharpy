@@ -59,7 +59,6 @@ class StaticCoupled(BaseSolver):
     settings_default['relaxation_factor'] = 0.
     settings_description['relaxation_factor'] = 'Relaxation parameter in the FSI iteration. 0 is no relaxation and -> 1 is very relaxed'
 
-
     settings_types['correct_forces_method'] = 'str'
     settings_default['correct_forces_method'] = ''
     settings_description['correct_forces_method'] = 'Function used to correct aerodynamic forces. ' \
@@ -206,6 +205,7 @@ class StaticCoupled(BaseSolver):
                                                                struct_forces=struct_forces,
                                                                ts=0)
 
+                # map nonlifting forces to structural nodes
                 if self.settings['nonlifting_body_interactions']:
                     struct_forces += mapping.aero2struct_force_mapping(
                         self.data.nonlifting_body.timestep_info[self.data.ts].forces,

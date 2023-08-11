@@ -198,14 +198,7 @@ class StepUvlm(BaseSolver):
             self.settings['velocity_field_input'],
             restart=restart)
 
-    def run(self,
-            aero_tstep=None,
-            structure_tstep=None,
-            convect_wake=True,
-            dt=None,
-            t=None,
-            unsteady_contribution=False,
-            nl_body_tstep = None):
+    def run(self, **kwargs):
         """
         Runs a step of the aerodynamics as implemented in UVLM.
         """
@@ -264,9 +257,9 @@ class StepUvlm(BaseSolver):
             uvlmlib.uvlm_solver(self.data.ts,
                                 aero_tstep,
                                 structure_tstep,
-                            self.settings,
-                            convect_wake=convect_wake,
-                            dt=dt)
+                                self.settings,
+                                convect_wake=convect_wake,
+                                dt=dt)
 
         if unsteady_contribution and not self.settings['quasi_steady']:
             # calculate unsteady (added mass) forces:
@@ -320,7 +313,7 @@ class StepUvlm(BaseSolver):
             self.data.nonlifting_body.generate_zeta_timestep_info(structure_tstep,
                                                                   nl_body_tstep,
                                                                   self.data.structure,
-                                                                  self.data.aero.aero_settings,
+                                                                  self.data.nonlifting_body.aero_settings,
                                                                   dt = self.settings['dt'])
 
     @staticmethod
