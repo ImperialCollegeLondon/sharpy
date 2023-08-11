@@ -2,7 +2,7 @@ import unittest
 import os
 import numpy as np
 from sharpy.cases.templates.fuselage_wing_configuration.fuselage_wing_configuration import Fuselage_Wing_Configuration
-from .define_simulation_settings import define_simulation_settings
+from sharpy.cases.templates.fuselage_wing_configuration.fwc_get_settings import define_simulation_settings
 import json
 
 class TestUvlmCoupledWithSourcePanelMethod(unittest.TestCase):

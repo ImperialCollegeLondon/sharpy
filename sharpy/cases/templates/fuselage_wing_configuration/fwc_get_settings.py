@@ -20,7 +20,7 @@ def define_simulation_settings(flow, model, alpha_deg, u_inf,
     n_step = kwargs.get('n_step', 5)
     structural_relaxation_factor = kwargs.get('structural_relaxation_factor', 0.6)
     tolerance = kwargs.get('tolerance', 1e-6)
-    fsi_tolerance = kwargs.get('fsi_tolerance', 1e-4)
+    fsi_tolerance = kwargs.get('fsi_tolerance', 1e-6)
     num_cores = kwargs.get('num_cores',2)
 
     if not lifting_only:
@@ -100,6 +100,49 @@ def define_simulation_settings(flow, model, alpha_deg, u_inf,
     settings['AeroForcesCalculator'] = {'coefficients': False}
     settings['AerogridPlot'] = {'plot_nonlifting_surfaces': nonlifting_body_interactions}
     settings['BeamPlot'] = {}
+
+    settings['NoStructural'] = {}
+    settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'off',
+                                            'max_iterations': 950,
+                                            'delta_curved': 1e-1,
+                                            'min_delta': 1e-6,
+                                            'newmark_damp': 1e-4,
+                                            'gravity_on': gravity,
+                                            'gravity': 9.81,
+                                            'num_steps': kwargs.get('n_tstep',10),
+                                            'dt': dt,
+                                            }
+    settings['StepUvlm'] = {'print_info': 'on',
+                                'num_cores': 4,
+                                'convection_scheme': 3,
+                                'velocity_field_input': {'u_inf': u_inf,
+                                                            'u_inf_direction': [1., 0., 0.]},
+                                'rho': rho,
+                                'n_time_steps': kwargs.get('n_tstep',10),
+                                'dt': dt,
+                                'phantom_wing_test': phantom_test,
+                                'nonlifting_body_interactions': not lifting_only,
+                                'gamma_dot_filtering': 3}
+    dynamic_structural_solver = kwargs.get('structural_solver','NonLinearDynamicPrescribedStep')
+    settings['DynamicCoupled'] = {'structural_solver': dynamic_structural_solver,
+                                    'structural_solver_settings': settings[dynamic_structural_solver],
+                                    'aero_solver': 'StepUvlm',
+                                    'aero_solver_settings': settings['StepUvlm'],
+                                    'fsi_substeps': 200,
+                                    'fsi_tolerance': fsi_tolerance,
+                                    'relaxation_factor': 0.1,
+                                    'minimum_steps': 1,
+                                    'relaxation_steps': 150,
+                                    'final_relaxation_factor': 0.05,
+                                    'n_time_steps': kwargs.get('n_tstep',10),
+                                    'dt': dt,
+                                    'nonlifting_body_interactions': not lifting_only,
+                                    'include_unsteady_force_contribution': kwargs.get('unsteady_force_distribution', True), 
+                                    'postprocessors': ['BeamLoads'],
+                                    'postprocessors_settings': {
+                                                                'BeamLoads': {'csv_output': 'off'},
+                                                                },
+                                }
 
 
     return settings
