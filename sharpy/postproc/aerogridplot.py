@@ -140,7 +140,6 @@ class AerogridPlot(BaseSolver):
                     self.plot_body()
                     self.plot_wake()
                     if self.settings['plot_nonlifting_surfaces']:
-                        print("Plot Nonlifting Surface")
                         self.plot_nonlifting_surfaces()
             cout.cout_wrap('...Finished', 1)
         elif (self.data.ts % self.settings['stride'] == 0):
