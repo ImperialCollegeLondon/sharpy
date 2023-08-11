@@ -12,13 +12,6 @@ class TestCoupledDynamic(unittest.TestCase):
     - Gust response of the hale aircraft
     """
 
-    @classmethod
-    def setUpClass(cls):
-        # run all the cases generators
-        case = 'hale'
-        mod = importlib.import_module('tests.coupled.dynamic.' + case + '.generate_' + case)
-        pass
-
     def test_hale_dynamic(self):
         """
         Case and results from:
@@ -27,7 +20,8 @@ class TestCoupledDynamic(unittest.TestCase):
         :return:
         """
         import sharpy.sharpy_main
-
+        import hale.generate_hale
+        
         case_name = 'hale'
         route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
         cases_folder = os.path.join(route_test_dir, case_name)
@@ -66,3 +60,7 @@ class TestCoupledDynamic(unittest.TestCase):
             for extension in list_file_extensions:
                 os.remove(os.path.join(file_path, case + extension))
         pass
+
+
+if __name__ == '__main__':
+    unittest.main()
