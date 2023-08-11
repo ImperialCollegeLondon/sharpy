@@ -1,8 +1,6 @@
 import numpy as np
-import importlib
 import unittest
 import os
-import sharpy.utils.cout_utils as cout
 
 
 class TestCoupledDynamic(unittest.TestCase):
@@ -20,7 +18,10 @@ class TestCoupledDynamic(unittest.TestCase):
         :return:
         """
         import sharpy.sharpy_main
-        import hale.generate_hale
+        try:
+            import hale.generate_hale
+        except:
+            import tests.coupled.dynamic.hale.generate_hale
         
         case_name = 'hale'
         route_test_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
