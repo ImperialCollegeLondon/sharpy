@@ -314,8 +314,6 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
                         n_surfaces_nonlifting = 0, 
                         dt = dt, 
                         convect_wake = convect_wake, 
-                        rbm_vel_g = rbm_vel,
-                        image_method = False,
                         n_span_panels_wo_u_ind=0)
 
 
@@ -363,8 +361,6 @@ def uvlm_solver_lifting_and_nonlifting(i_iter, ts_info, ts_info_nonlifting, stru
                         n_surfaces_nonlifting = ts_info_nonlifting.n_surf, 
                         dt = dt, 
                         convect_wake = convect_wake, 
-                        rbm_vel_g = rbm_vel,
-                        image_method = False,
                         n_span_panels_wo_u_ind=4)
     uvmopts.only_lifting = ct.c_bool(False)
     run_UVLM = UvlmLib.run_UVLM_lifting_and_nonlifting
