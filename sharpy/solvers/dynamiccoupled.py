@@ -615,18 +615,11 @@ class DynamicCoupled(BaseSolver):
 
                 # run the solver
                 ini_time_aero = time.perf_counter()
-                if self.settings['nonlifting_body_interactions']:
-                    self.data = self.aero_solver.run(aero_kstep,
-                                                    structural_kstep,
-                                                    convect_wake=True,
-                                                    unsteady_contribution=unsteady_contribution,
-                                                    nl_body_tstep = nl_body_kstep)
-                
-                else:
-                    self.data = self.aero_solver.run(aero_kstep,
-                                                    structural_kstep,
-                                                    convect_wake=True,
-                                                    unsteady_contribution=unsteady_contribution)
+                self.data = self.aero_solver.run(aero_step=aero_kstep,
+                                                 structural_step=structural_kstep,
+                                                 convect_wake=True,
+                                                 unsteady_contribution=unsteady_contribution,
+                                                 nl_body_tstep = nl_body_kstep)
                 self.time_aero += time.perf_counter() - ini_time_aero
 
                 previous_kstep = structural_kstep.copy()
@@ -641,15 +634,11 @@ class DynamicCoupled(BaseSolver):
                         structural_kstep,
                         aero_kstep,
                         nl_body_kstep)
-                if self.settings['nonlifting_body_interactions']:
-                    self.map_forces(aero_kstep,
-                                structural_kstep,
-                                nl_body_kstep = nl_body_kstep,
-                                unsteady_forces_coeff = force_coeff)
-                else:
-                    self.map_forces(aero_kstep,
-                                    structural_kstep,
-                                    unsteady_forces_coeff = force_coeff)
+                
+                self.map_forces(aero_kstep,
+                            structural_kstep,
+                            nl_body_kstep = nl_body_kstep,
+                            unsteady_forces_coeff = force_coeff)
 
                 # relaxation
                 relax_factor = self.relaxation_factor(k)
