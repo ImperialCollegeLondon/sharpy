@@ -370,16 +370,19 @@ class DynamicCoupled(BaseSolver):
 
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
-            # copy last info to first
-            self.data.aero.timestep_info[0] = self.data.aero.timestep_info[-1]
-            self.data.structure.timestep_info[0] = self.data.structure.timestep_info[-1]
-            # delete all the rest
-            while len(self.data.aero.timestep_info) - 1:
-                del self.data.aero.timestep_info[-1]
-            while len(self.data.structure.timestep_info) - 1:
-                del self.data.structure.timestep_info[-1]
+            self.remove_old_timestep_info(self.data.structure.timestep_info)
+            self.remove_old_timestep_info(self.data.aero.timestep_info)            
+            if self.settings['nonlifting_body_interactions']:
+                self.remove_old_timestep_info(self.data.nonlifting_body.timestep_info)
 
         self.data.ts = 0
+
+    def remove_old_timestep_info(self, tstep_info):
+        # copy last info to first
+        tstep_info[0] = tstep_info[-1].copy()
+        # delete all the rest
+        while len(tstep_info) - 1:
+            del tstep_info[-1]
 
     def process_controller_output(self, controlled_state):
         """
