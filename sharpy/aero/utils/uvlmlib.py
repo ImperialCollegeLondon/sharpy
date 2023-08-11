@@ -34,11 +34,8 @@ class VMopts(ct.Structure):
             unsigned int NumCores;
             unsigned int NumSurfaces;
             unsigned int NumSurfacesNonlifting;
-            bool cfl1;
             double vortex_radius;
             double vortex_radius_wake_ind;
-            double* centre_rot_g[3];
-            double* rbm_vel_g[6];
         };
     """
     _fields_ = [("ImageMethod", ct.c_bool),
@@ -61,11 +58,8 @@ class VMopts(ct.Structure):
                 ("iterative_solver", ct.c_bool),
                 ("iterative_tol", ct.c_double),
                 ("iterative_precond", ct.c_bool),
-                ("cfl1", ct.c_bool),
                 ("vortex_radius", ct.c_double),
-                ("vortex_radius_wake_ind", ct.c_double),
-                ("centre_rot_g", ct.c_double * 3),
-                ("rbm_vel_g", ct.c_double * 6)]
+                ("vortex_radius_wake_ind", ct.c_double)]
     
 
 
@@ -90,15 +84,12 @@ class VMopts(ct.Structure):
         self.iterative_solver = ct.c_bool(False)
         self.iterative_tol = ct.c_double(0)
         self.iterative_precond = ct.c_bool(False)
-        self.cfl1 = ct.c_bool(True)
         self.vortex_radius = ct.c_double(vortex_radius_def)
         self.vortex_radius_wake_ind = ct.c_double(vortex_radius_def)
-        self.centre_rot_g = np.ctypeslib.as_ctypes(np.zeros((3)))
-        self.rbm_vel_g = np.ctypeslib.as_ctypes(np.zeros((6)))
         self.phantom_wing_test = ct.c_bool(False)
 
 
-    def set_options(self, options, n_surfaces = 0, n_surfaces_nonlifting = 0, rbm_vel_g = np.zeros(6)):
+    def set_options(self, options, n_surfaces = 0, n_surfaces_nonlifting = 0):
         self.Steady = ct.c_bool(True)
         self.NumSurfaces = ct.c_uint(n_surfaces)
         self.NumSurfacesNonlifting = ct.c_uint(n_surfaces_nonlifting)
@@ -111,7 +102,6 @@ class VMopts(ct.Structure):
         self.iterative_solver = ct.c_bool(options['iterative_solver'])
         self.iterative_tol = ct.c_double(options['iterative_tol'])
         self.iterative_precond = ct.c_bool(options['iterative_precond'])
-        self.cfl1 = ct.c_bool(options['cfl1'])
         self.vortex_radius = ct.c_double(options['vortex_radius'])
         self.vortex_radius_wake_ind = ct.c_double(options['vortex_radius_wake_ind'])
 
@@ -119,10 +109,6 @@ class VMopts(ct.Structure):
         self.only_lifting = ct.c_bool(not options["nonlifting_body_interactions"])
         self.phantom_wing_test = ct.c_bool(options["phantom_wing_test"])
 
-        for i in range(len(options["centre_rot_g"])):
-            self.centre_rot_g[i] = ct.c_double(options["centre_rot_g"][i])
-        for i in range(len(rbm_vel_g)):            
-            self.rbm_vel_g[i] = ct.c_double(rbm_vel_g[i])
 
 class UVMopts(ct.Structure):
     # TODO: add set_options function
@@ -133,12 +119,8 @@ class UVMopts(ct.Structure):
                 ("NumSurfacesNonlifting", ct.c_uint),            
                 ("only_lifting", ct.c_bool),
                 ("only_nonlifting", ct.c_bool),
-                ("phantom_wing_test", ct.c_bool),  
-                # ("steady_n_rollup", ct.c_uint),
-                # ("steady_rollup_tolerance", ct.c_double),
-                # ("steady_rollup_aic_refresh", ct.c_uint),
+                ("phantom_wing_test", ct.c_bool),
                 ("convection_scheme", ct.c_uint),
-                # ("Mstar", ct.c_uint),
                 ("ImageMethod", ct.c_bool),
                 ("iterative_solver", ct.c_bool),
                 ("iterative_tol", ct.c_double),
@@ -152,8 +134,6 @@ class UVMopts(ct.Structure):
                 ("interp_method", ct.c_uint),
                 ("yaw_slerp", ct.c_double),
                 ("quasi_steady", ct.c_bool),
-                ("centre_rot_g", ct.c_double * 3),
-                ("rbm_vel_g", ct.c_double * 6),
                 ("num_spanwise_panels_wo_induced_velocity", ct.c_uint)]
 
     def __init__(self):
@@ -163,7 +143,6 @@ class UVMopts(ct.Structure):
         self.NumSurfaces = ct.c_uint(1)
         self.NumSurfacesNonlifting = ct.c_uint(1)
         self.convection_scheme = ct.c_uint(2)
-        # self.Mstar = ct.c_uint(10)
         self.ImageMethod = ct.c_bool(False)
         self.iterative_solver = ct.c_bool(False)
         self.iterative_tol = ct.c_double(0)
@@ -174,8 +153,6 @@ class UVMopts(ct.Structure):
         self.vortex_radius_wake_ind = ct.c_double(vortex_radius_def)
         self.yaw_slerp = ct.c_double(0.)
         self.quasi_steady = ct.c_bool(False)
-        self.centre_rot_g = np.ctypeslib.as_ctypes(np.zeros((3)))
-        self.rbm_vel_g = np.ctypeslib.as_ctypes(np.zeros((6)))
         self.num_spanwise_panels_wo_induced_velocity = ct.c_uint(0)
         self.phantom_wing_test = ct.c_bool(False)
 
@@ -185,8 +162,6 @@ class UVMopts(ct.Structure):
                     n_surfaces_nonlifting = 0, 
                     dt = None, 
                     convect_wake = False, 
-                    rbm_vel_g = np.zeros(6),
-                    image_method = False,
                      n_span_panels_wo_u_ind = 0):
         if dt is None:
             self.dt = ct.c_double(options["dt"])
@@ -215,10 +190,6 @@ class UVMopts(ct.Structure):
         self.phantom_wing_test = ct.c_bool(options["phantom_wing_test"])
         self.num_spanwise_panels_wo_induced_velocity = n_span_panels_wo_u_ind
 
-        for i in range(len(options["centre_rot_g"])):
-            self.centre_rot_g[i] = ct.c_double(options["centre_rot_g"][i])
-        for i in range(len(rbm_vel_g)):     
-            self.rbm_vel_g[i] = ct.c_double(rbm_vel_g[i])       
 
 class FlightConditions(ct.Structure):
     _fields_ = [("uinf", ct.c_double),
@@ -228,17 +199,6 @@ class FlightConditions(ct.Structure):
 
     def __init__(self):
         ct.Structure.__init__(self)
-
-    # def __init__(self, fc_dict):
-    #     ct.Structure.__init__(self)
-    #     self.uinf = fc_dict['FlightCon']['u_inf']
-    #     alpha = fc_dict['FlightCon']['alpha']
-    #     beta = fc_dict['FlightCon']['beta']
-    #     uinf_direction_temp = np.array([1, 0, 0], dtype=ct.c_double)
-    #     self.uinf_direction = np.ctypeslib.as_ctypes(uinf_direction_temp)
-    #     self.rho = fc_dict['FlightCon']['rho_inf']
-    #     self.c_ref = fc_dict['FlightCon']['c_ref']
-
 
 # type for 2d integer matrix
 t_2int = ct.POINTER(ct.c_int)*2
@@ -383,14 +343,12 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
              ts_info.ct_p_gamma,
              ts_info.ct_p_gamma_star,
              ts_info.ct_p_dist_to_orig,
-             # previous_ts_info.ct_p_gamma,
              ts_info.ct_p_normals,
              ts_info.ct_p_forces,
              ts_info.ct_p_dynamic_forces,
              p_rbm_vel,
              p_centre_rot)
     ts_info.remove_ctypes_pointers()
-    # previous_ts_info.remove_ctypes_pointers()
 
 def uvlm_solver_lifting_and_nonlifting(i_iter, ts_info, ts_info_nonlifting, struct_ts_info, options, convect_wake=True, dt=None):
     rbm_vel = struct_ts_info.for_vel.copy()
