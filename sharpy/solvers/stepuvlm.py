@@ -235,8 +235,8 @@ class StepUvlm(BaseSolver):
                                               'is_wake': True},
                                              aero_tstep.u_ext_star)
         if self.settings['nonlifting_body_interactions']:
-            if nl_body_tstep is None:
-                nl_body_tstep = self.data.nonlifting_body.timestep_info[-1]
+
+            nl_body_tstep = settings_utils.set_value_or_default(kwargs, 'nl_body_tstep', self.data.nonlifting_body.timestep_info[-1])
             self.velocity_generator.generate({'zeta': nl_body_tstep.zeta,
                                               'override': True,
                                               'ts': self.data.ts,
