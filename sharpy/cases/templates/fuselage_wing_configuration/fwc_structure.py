@@ -9,7 +9,6 @@ class FWC_Structure:
         and discretisation and makes it accessible for SHARPy.
     """
     def __init__(self, case_name, case_route, **kwargs):
-        self.sigma = kwargs.get('sigma', 1)
         self.n_elem_multiplier = kwargs.get('n_elem_multiplier', 1)
 
         self.route = case_route
@@ -26,8 +25,8 @@ class FWC_Structure:
         self.n_elem_per_wing = kwargs.get('n_elem_per_wing', 10)
         self.n_elem_fuselage = kwargs.get('n_elem_fuselage', 10)
 
-        self.sigma = kwargs.get('sigma', 1)
-        self.sigma_fuselage = kwargs.get('sigma_fuselage', 10.)
+        self.sigma = kwargs.get('sigma', 10)
+        self.sigma_fuselage = kwargs.get('sigma_fuselage', 100.)
 
 
 

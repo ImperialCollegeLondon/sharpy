@@ -19,6 +19,7 @@ class FWC_Aero:
         self.ea_wing = kwargs.get('elastic_axis',0.5)
         self.num_chordwise_panels = kwargs.get('num_chordwise_panels', 4)
         self.chord_wing = kwargs.get('chord', 1.)
+        self.alpha_zero_deg = kwargs.get('alpha_zero_deg', 0.)
         self.n_surfaces = 2
         self.radius_fuselage = kwargs.get('max_radius', 0.5)
         self.lifting_only = kwargs.get('lifting_only', True)
@@ -63,12 +64,14 @@ class FWC_Aero:
         """
         
         if not self.lifting_only:
-            self.aero_node[:self.structure.n_node_right_wing] = abs(self.structure.y[:self.structure.n_node_right_wing]) > self.get_y_junction()
+            print(self.structure.y[:self.structure.n_node_right_wing])
+            self.aero_node[:self.structure.n_node_right_wing] = abs(self.structure.y[:self.structure.n_node_right_wing]) > self.get_y_junction() - 0.05
             self.aero_node[self.structure.n_node_right_wing:self.structure.n_node_wing_total] = self.aero_node[1:self.structure.n_node_right_wing]
         else:
             self.aero_node[:self.structure.n_node_wing_total] = True
         self.chord[:2*self.structure.n_elem_per_wing, :] = self.chord_wing
         self.elastic_axis[:2*self.structure.n_elem_per_wing, :] = self.ea_wing
+        self.twist [:2*self.structure.n_elem_per_wing, :] = -np.deg2rad(self.alpha_zero_deg)
         # surf distribution 0 for right and 1 for left wing
         self.surface_distribution[self.structure.n_elem_per_wing:2*self.structure.n_elem_per_wing] = 1
 
