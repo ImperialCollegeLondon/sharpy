@@ -69,7 +69,7 @@ def check_fem_dict(fem_dict):
         print(' PASSED')
 
 
-def check_data_dict(data_dict):
+def check_aero_dict(aero_dict):
     pass
 
 

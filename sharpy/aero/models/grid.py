@@ -20,7 +20,7 @@ class Grid(object):
 
     """
     def __init__(self):
-        self.data_dict = None
+        self.aero_dict = None
         self.beam = None
         self.aero_settings = None
         self.timestep_info = []
@@ -41,27 +41,27 @@ class Grid(object):
         self.aero2struct_mapping = []
 
 
-    def generate(self, data_dict, beam, aero_settings, ts):
+    def generate(self, aero_dict, beam, aero_settings, ts):
 
 
-        self.data_dict = data_dict
+        self.aero_dict = aero_dict
         self.beam = beam
         self.aero_settings = aero_settings
         # key words = safe in aero_settings? --> grid_type
         # number of total nodes (structural + aero&struc)
-        self.n_node = len(data_dict[self.grid_type + '_node']) # gridtype + '_node'
+        self.n_node = len(aero_dict[self.grid_type + '_node']) # gridtype + '_node'
         # number of elements
-        self.n_elem = len(data_dict['surface_distribution'])
+        self.n_elem = len(aero_dict['surface_distribution'])
         # surface distribution
-        self.surface_distribution = data_dict['surface_distribution']
+        self.surface_distribution = aero_dict['surface_distribution']
         # number of surfaces
-        temp = set(data_dict['surface_distribution'])
+        temp = set(aero_dict['surface_distribution'])
         #TO-DO: improve: avoid for loops
         self.n_surf = sum(1 for i in temp if i >= 0)
         # number of chordwise panels
-        self.surface_m = data_dict['surface_m']
+        self.surface_m = aero_dict['surface_m']
         # number of aero nodes
-        self.n_aero_node = sum(data_dict[self.grid_type + '_node'])
+        self.n_aero_node = sum(aero_dict[self.grid_type + '_node'])
 
 
         # get N per surface
@@ -96,7 +96,7 @@ class Grid(object):
                     continue
                 else:
                     nodes_in_surface[i_surf].append(i_global_node)
-                if self.data_dict[self.grid_type + '_node'][i_global_node]:
+                if self.aero_dict[self.grid_type + '_node'][i_global_node]:
                     self.dimensions[i_surf, 1] += 1
 
         # accounting for N+1 nodes -> N panels
@@ -131,7 +131,7 @@ class Grid(object):
             if i_surf == -1:
                 continue
             for i_global_node in self.beam.elements[i_elem].reordered_global_connectivities:
-                if not self.data_dict[self.grid_type + '_node'][i_global_node]:
+                if not self.aero_dict[self.grid_type + '_node'][i_global_node]:
                     continue
 
                 if i_global_node in nodes_in_surface[i_surf]:

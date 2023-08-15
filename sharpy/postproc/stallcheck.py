@@ -103,7 +103,7 @@ class StallCheck(BaseSolver):
 
         for i_elem in range(self.data.structure.num_elem):
             for i_local_node in range(self.data.structure.num_node_elem):
-                airfoil_id = self.data.aero.data_dict['airfoil_distribution'][i_elem, i_local_node]
+                airfoil_id = self.data.aero.aero_dict['airfoil_distribution'][i_elem, i_local_node]
                 if self.settings['airfoil_stall_angles']:
                     i_global_node = self.data.structure.connectivities[i_elem, i_local_node]
                     for i_dict in self.data.aero.struct2aero_mapping[i_global_node]:

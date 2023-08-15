@@ -25,8 +25,8 @@ class BeamLoader(BaseSolver):
         data (ProblemData): class containing the data for the problem
         fem_file_name (str): name of the ``.fem.h5`` HDF5 file
         dyn_file_name (str): name of the ``.dyn.h5`` HDF5 file
-        fem_data_dict (dict): key-value pairs of FEM data
-        dyn_data_dict (dict): key-value pairs of data for dynamic problems
+        fem_aero_dict (dict): key-value pairs of FEM data
+        dyn_aero_dict (dict): key-value pairs of data for dynamic problems
         structure (None): Empty attribute
 
     Notes:
@@ -68,9 +68,9 @@ class BeamLoader(BaseSolver):
         self.fem_file_name = ''
         self.dyn_file_name = ''
         # storage of file contents
-        self.fem_data_dict = dict()
-        self.dyn_data_dict = dict()
-        self.mb_data_dict = dict()
+        self.fem_aero_dict = dict()
+        self.dyn_aero_dict = dict()
+        self.mb_aero_dict = dict()
 
         # structure storage
         self.structure = None
@@ -101,13 +101,13 @@ class BeamLoader(BaseSolver):
         # read and store the hdf5 files
         with h5.File(self.fem_file_name, 'r') as fem_file_handle:
             # store files in dictionary
-            self.fem_data_dict = h5utils.load_h5_in_dict(fem_file_handle)
+            self.fem_aero_dict = h5utils.load_h5_in_dict(fem_file_handle)
             # TODO implement fem file validation
             # self.validate_fem_file()
         if self.settings['unsteady']:
             with h5.File(self.dyn_file_name, 'r') as dyn_file_handle:
                 # store files in dictionary
-                self.dyn_data_dict = h5utils.load_h5_in_dict(dyn_file_handle)
+                self.dyn_aero_dict = h5utils.load_h5_in_dict(dyn_file_handle)
                 # TODO implement dyn file validation
                 # self.validate_dyn_file()
 
@@ -116,13 +116,13 @@ class BeamLoader(BaseSolver):
         if os.path.isfile(self.mb_file_name):
             # h5utils.check_file_exists(self.mb_file_name)
             with h5.File(self.mb_file_name, 'r') as mb_file_handle:
-                self.mb_data_dict = h5utils.load_h5_in_dict(mb_file_handle)
+                self.mb_aero_dict = h5utils.load_h5_in_dict(mb_file_handle)
 
             # Need to redefine strings to remove the "b" at the beginning
-            for iconstraint in range(self.mb_data_dict['num_constraints']):
-                self.mb_data_dict["constraint_%02d" % iconstraint]['behaviour'] = self.mb_data_dict["constraint_%02d" % iconstraint]['behaviour'].decode()
-            for ibody in range(self.mb_data_dict['num_bodies']):
-                self.mb_data_dict["body_%02d" % ibody]['FoR_movement'] = self.mb_data_dict["body_%02d" % ibody]['FoR_movement'].decode()
+            for iconstraint in range(self.mb_aero_dict['num_constraints']):
+                self.mb_aero_dict["constraint_%02d" % iconstraint]['behaviour'] = self.mb_aero_dict["constraint_%02d" % iconstraint]['behaviour'].decode()
+            for ibody in range(self.mb_aero_dict['num_bodies']):
+                self.mb_aero_dict["body_%02d" % ibody]['FoR_movement'] = self.mb_aero_dict["body_%02d" % ibody]['FoR_movement'].decode()
 
     def validate_fem_file(self):
         raise NotImplementedError('validation of the fem file in beamloader is not yet implemented!')
@@ -132,9 +132,9 @@ class BeamLoader(BaseSolver):
 
     def run(self, **kwargs):
         self.data.structure = beam.Beam()
-        self.data.structure.ini_mb_dict = self.mb_data_dict
-        self.data.structure.generate(self.fem_data_dict, self.settings)
-        self.data.structure.dyn_dict = self.dyn_data_dict
+        self.data.structure.ini_mb_dict = self.mb_aero_dict
+        self.data.structure.generate(self.fem_aero_dict, self.settings)
+        self.data.structure.dyn_dict = self.dyn_aero_dict
 
         # Change the beam description to the local FoR for multibody
         # if (self.data.structure.num_bodies > 1):

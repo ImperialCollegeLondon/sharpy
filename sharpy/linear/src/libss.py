@@ -428,22 +428,22 @@ class StateSpace:
         """
 
         with h5py.File(h5_file_name, 'r') as f:
-            data_dict = h5utils.load_h5_in_dict(f)
+            aero_dict = h5utils.load_h5_in_dict(f)
 
-        new_ss = cls(data_dict['a'],
-                     data_dict['b'],
-                     data_dict['c'],
-                     data_dict['d'],
-                     dt=data_dict.get('dt'))
+        new_ss = cls(aero_dict['a'],
+                     aero_dict['b'],
+                     aero_dict['c'],
+                     aero_dict['d'],
+                     dt=aero_dict.get('dt'))
 
-        input_variables = data_dict.get('InputVariable')
+        input_variables = aero_dict.get('InputVariable')
         if input_variables is not None:
             new_ss.input_variables = LinearVector.load_from_h5_file('InputVariable',
-                                                                    data_dict['InputVariable'])
+                                                                    aero_dict['InputVariable'])
             new_ss.output_variables = LinearVector.load_from_h5_file('OutputVariable',
-                                                                     data_dict['OutputVariable'])
+                                                                     aero_dict['OutputVariable'])
             new_ss.state_variables = LinearVector.load_from_h5_file('StateVariable',
-                                                                    data_dict['StateVariable'])
+                                                                    aero_dict['StateVariable'])
 
             return new_ss
         else:
@@ -692,35 +692,35 @@ class Gain:
             Gain: instance of a Gain
         """
         with h5py.File(h5_file_name, 'r') as f:
-            data_dict = h5utils.load_h5_in_dict(f)
+            aero_dict = h5utils.load_h5_in_dict(f)
 
-        return cls.load_from_dict(data_dict)
+        return cls.load_from_dict(aero_dict)
 
     @classmethod
-    def load_from_dict(cls, data_dict):
+    def load_from_dict(cls, aero_dict):
         """
 
         Returns a Gain from a dictionary of data, useful for loading from a group of gains in a single
         .h5 file
 
         Args:
-            data_dict (dict): Dictionary with keys: ``gain`` and (if available) ``InputVariable``
+            aero_dict (dict): Dictionary with keys: ``gain`` and (if available) ``InputVariable``
               and ``OutputVariable``.
 
         Returns:
             Gain: instance of Gain
         """
-        input_variables = data_dict.get('InputVariable')
+        input_variables = aero_dict.get('InputVariable')
         if input_variables is not None:
             input_variables = LinearVector.load_from_h5_file('InputVariable',
-                                                             data_dict['InputVariable'])
+                                                             aero_dict['InputVariable'])
             output_variables = LinearVector.load_from_h5_file('OutputVariable',
-                                                              data_dict['OutputVariable'])
+                                                              aero_dict['OutputVariable'])
 
-            return cls(data_dict['gain'], input_vars=input_variables,
+            return cls(aero_dict['gain'], input_vars=input_variables,
                        output_vars=output_variables)
         else:
-            return cls(data_dict['gain'])
+            return cls(aero_dict['gain'])
 
     @classmethod
     def save_multiple_gains(cls, h5_file_name, *gains_names_tuple):
@@ -749,10 +749,10 @@ class Gain:
             dict: Dictionary of loaded gains in a gain_name: Gain dictionary
         """
         with h5py.File(h5_file_name, 'r') as f:
-            data_dict = h5utils.load_h5_in_dict(f)
+            aero_dict = h5utils.load_h5_in_dict(f)
 
         out_gains = {}
-        for gain_name, gain_data in data_dict.items():
+        for gain_name, gain_data in aero_dict.items():
             out_gains[gain_name] = cls.load_from_dict(gain_data)
 
         return out_gains

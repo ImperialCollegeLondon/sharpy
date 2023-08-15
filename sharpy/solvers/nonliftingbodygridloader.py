@@ -21,7 +21,7 @@ class NonliftingbodygridLoader(GridLoader):
         data (ProblemData): class structure
         file_name (str): name of the ``.nonlifting_body.h5`` HDF5 file
         aero: empty attribute
-        aero_data_dict (dict): key-value pairs of aerodynamic data
+        aero_dict (dict): key-value pairs of aerodynamic data
 
 
     """
@@ -37,7 +37,7 @@ class NonliftingbodygridLoader(GridLoader):
 
     def run(self):
         self.data.nonlifting_body = nonliftingbodygrid.NonliftingBodyGrid()
-        self.data.nonlifting_body.generate(self.data_dict,
+        self.data.nonlifting_body.generate(self.aero_dict,
                                            self.data.structure,
                                            self.settings,
                                            self.data.ts)

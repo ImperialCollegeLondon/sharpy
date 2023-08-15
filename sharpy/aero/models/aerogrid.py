@@ -34,8 +34,8 @@ class Aerogrid(Grid):
 
         self.cs_generators = []
 
-    def generate(self, data_dict, beam, settings, ts):
-        super().generate(data_dict, beam, settings, ts)
+    def generate(self, aero_dict, beam, settings, ts):
+        super().generate(aero_dict, beam, settings, ts)
 
         # write grid info to screen
         self.output_info()
@@ -49,10 +49,10 @@ class Aerogrid(Grid):
         for i_elem in range(self.n_elem):
             for i_local_node in range(self.beam.num_node_elem):
                 try:
-                    self.airfoil_db[self.data_dict['airfoil_distribution'][i_elem, i_local_node]]
+                    self.airfoil_db[self.aero_dict['airfoil_distribution'][i_elem, i_local_node]]
                 except KeyError:
-                    airfoil_coords = self.data_dict['airfoils'][str(self.data_dict['airfoil_distribution'][i_elem, i_local_node])]
-                    self.airfoil_db[self.data_dict['airfoil_distribution'][i_elem, i_local_node]] = (
+                    airfoil_coords = self.aero_dict['airfoils'][str(self.aero_dict['airfoil_distribution'][i_elem, i_local_node])]
+                    self.airfoil_db[self.aero_dict['airfoil_distribution'][i_elem, i_local_node]] = (
                         scipy.interpolate.interp1d(airfoil_coords[:, 0],
                                                    airfoil_coords[:, 1],
                                                    kind='quadratic',
@@ -60,7 +60,7 @@ class Aerogrid(Grid):
                                                    fill_value='extrapolate',
                                                    assume_sorted=True))
         try:
-            self.n_control_surfaces = np.sum(np.unique(self.data_dict['control_surface']) >= 0)
+            self.n_control_surfaces = np.sum(np.unique(self.aero_dict['control_surface']) >= 0)
         except KeyError:
             pass
 
@@ -85,7 +85,7 @@ class Aerogrid(Grid):
             else:
                 cout.cout_wrap('Initialising Control Surface {:g} generator'.format(i_cs), 1)
                 # check that the control surface is not static
-                if self.data_dict['control_surface_type'][i_cs] == 0:
+                if self.aero_dict['control_surface_type'][i_cs] == 0:
                     raise TypeError('Control surface {:g} is defined as static but there is a control surface generator'
                                     'associated with it'.format(i_cs))
                 generator_type = gen_interface.generator_from_string(
@@ -107,13 +107,13 @@ class Aerogrid(Grid):
         self.generate_mapping()
         self.generate_zeta(self.beam, self.aero_settings, ts)
 
-        if 'polars' in self.data_dict:
+        if 'polars' in self.aero_dict:
             import sharpy.aero.utils.airfoilpolars as ap
             self.polars = []
-            nairfoils = np.amax(self.data_dict['airfoil_distribution']) + 1
+            nairfoils = np.amax(self.aero_dict['airfoil_distribution']) + 1
             for iairfoil in range(nairfoils):
                 new_polar = ap.Polar()
-                new_polar.initialise(data_dict['polars'][str(iairfoil)])
+                new_polar.initialise(aero_dict['polars'][str(iairfoil)])
                 self.polars.append(new_polar)
 
     def output_info(self):
@@ -149,24 +149,24 @@ class Aerogrid(Grid):
 
         # check that we have control surface information
         try:
-            self.data_dict['control_surface']
+            self.aero_dict['control_surface']
             with_control_surfaces = True
         except KeyError:
             with_control_surfaces = False
 
         # check that we have sweep information
         try:
-            self.data_dict['sweep']
+            self.aero_dict['sweep']
         except KeyError:
-            self.data_dict['sweep'] = np.zeros_like(self.data_dict['twist'])
+            self.aero_dict['sweep'] = np.zeros_like(self.aero_dict['twist'])
 
         # Define first_twist for backwards compatibility
-        if 'first_twist' not in self.data_dict:     
-            self.data_dict['first_twist'] = [True]*self.data_dict['surface_m'].shape[0]
+        if 'first_twist' not in self.aero_dict:     
+            self.aero_dict['first_twist'] = [True]*self.aero_dict['surface_m'].shape[0]
         
         # one surface per element
         for i_elem in range(self.n_elem):
-            i_surf = self.data_dict['surface_distribution'][i_elem]
+            i_surf = self.aero_dict['surface_distribution'][i_elem]
             # check if we have to generate a surface here
             if i_surf == -1:
                 continue
@@ -175,7 +175,7 @@ class Aerogrid(Grid):
                 i_global_node = self.beam.elements[i_elem].global_connectivities[i_local_node]
                 # i_global_node = self.beam.elements[i_elem].global_connectivities[
                 #     self.beam.elements[i_elem].ordering[i_local_node]]
-                if not self.data_dict['aero_node'][i_global_node]:
+                if not self.aero_dict['aero_node'][i_global_node]:
                     continue
                 if i_global_node in global_node_in_surface[i_surf]:
                     continue
@@ -203,23 +203,23 @@ class Aerogrid(Grid):
                 control_surface_info = None
                 if with_control_surfaces:
                 # 1) check that this node and elem have a control surface
-                    if self.data_dict['control_surface'][i_elem, i_local_node] >= 0:
-                        i_control_surface = self.data_dict['control_surface'][i_elem, i_local_node]
+                    if self.aero_dict['control_surface'][i_elem, i_local_node] >= 0:
+                        i_control_surface = self.aero_dict['control_surface'][i_elem, i_local_node]
                 # 2) type of control surface + write info
                         control_surface_info = dict()
-                        if self.data_dict['control_surface_type'][i_control_surface] == 0:
+                        if self.aero_dict['control_surface_type'][i_control_surface] == 0:
                             control_surface_info['type'] = 'static'
-                            control_surface_info['deflection'] = self.data_dict['control_surface_deflection'][i_control_surface]
-                            control_surface_info['chord'] = self.data_dict['control_surface_chord'][i_control_surface]
+                            control_surface_info['deflection'] = self.aero_dict['control_surface_deflection'][i_control_surface]
+                            control_surface_info['chord'] = self.aero_dict['control_surface_chord'][i_control_surface]
                             try:
-                                control_surface_info['hinge_coords'] = self.data_dict['control_surface_hinge_coords'][i_control_surface]
+                                control_surface_info['hinge_coords'] = self.aero_dict['control_surface_hinge_coords'][i_control_surface]
                             except KeyError:
                                 control_surface_info['hinge_coords'] = None
-                        elif self.data_dict['control_surface_type'][i_control_surface] == 1:
+                        elif self.aero_dict['control_surface_type'][i_control_surface] == 1:
                             control_surface_info['type'] = 'dynamic'
-                            control_surface_info['chord'] = self.data_dict['control_surface_chord'][i_control_surface]
+                            control_surface_info['chord'] = self.aero_dict['control_surface_chord'][i_control_surface]
                             try:
-                                control_surface_info['hinge_coords'] = self.data_dict['control_surface_hinge_coords'][i_control_surface]
+                                control_surface_info['hinge_coords'] = self.aero_dict['control_surface_hinge_coords'][i_control_surface]
                             except KeyError:
                                 control_surface_info['hinge_coords'] = None
 
@@ -227,7 +227,7 @@ class Aerogrid(Grid):
                             control_surface_info['deflection'], control_surface_info['deflection_dot'] = \
                                 self.cs_generators[i_control_surface](params)
 
-                        elif self.data_dict['control_surface_type'][i_control_surface] == 2:
+                        elif self.aero_dict['control_surface_type'][i_control_surface] == 2:
                             control_surface_info['type'] = 'controlled'
 
                             try:
@@ -236,12 +236,12 @@ class Aerogrid(Grid):
                                 try:
                                     old_deflection = aero_tstep.control_surface_deflection[i_control_surface]
                                 except IndexError:
-                                    old_deflection = self.data_dict['control_surface_deflection'][i_control_surface]
+                                    old_deflection = self.aero_dict['control_surface_deflection'][i_control_surface]
 
                             try:
                                 control_surface_info['deflection'] = aero_tstep.control_surface_deflection[i_control_surface]
                             except IndexError:
-                                control_surface_info['deflection'] = self.data_dict['control_surface_deflection'][i_control_surface]
+                                control_surface_info['deflection'] = self.aero_dict['control_surface_deflection'][i_control_surface]
 
                             if dt is not None:
                                 control_surface_info['deflection_dot'] = (
@@ -249,14 +249,14 @@ class Aerogrid(Grid):
                             else:
                                 control_surface_info['deflection_dot'] = 0.0
 
-                            control_surface_info['chord'] = self.data_dict['control_surface_chord'][i_control_surface]
+                            control_surface_info['chord'] = self.aero_dict['control_surface_chord'][i_control_surface]
 
                             try:
-                                control_surface_info['hinge_coords'] = self.data_dict['control_surface_hinge_coords'][i_control_surface]
+                                control_surface_info['hinge_coords'] = self.aero_dict['control_surface_hinge_coords'][i_control_surface]
                             except KeyError:
                                 control_surface_info['hinge_coords'] = None
                         else:
-                            raise NotImplementedError(str(self.data_dict['control_surface_type'][i_control_surface]) +
+                            raise NotImplementedError(str(self.aero_dict['control_surface_type'][i_control_surface]) +
                                 ' control surfaces are not yet implemented')
 
 
@@ -264,13 +264,13 @@ class Aerogrid(Grid):
                 node_info = dict()
                 node_info['i_node'] = i_global_node
                 node_info['i_local_node'] = i_local_node
-                node_info['chord'] = self.data_dict['chord'][i_elem, i_local_node]
-                node_info['eaxis'] = self.data_dict['elastic_axis'][i_elem, i_local_node]
-                node_info['twist'] = self.data_dict['twist'][i_elem, i_local_node]
-                node_info['sweep'] = self.data_dict['sweep'][i_elem, i_local_node]
+                node_info['chord'] = self.aero_dict['chord'][i_elem, i_local_node]
+                node_info['eaxis'] = self.aero_dict['elastic_axis'][i_elem, i_local_node]
+                node_info['twist'] = self.aero_dict['twist'][i_elem, i_local_node]
+                node_info['sweep'] = self.aero_dict['sweep'][i_elem, i_local_node]
                 node_info['M'] = self.dimensions[i_surf, 0]
-                node_info['M_distribution'] = self.data_dict['m_distribution'].decode('ascii')
-                node_info['airfoil'] = self.data_dict['airfoil_distribution'][i_elem, i_local_node]
+                node_info['M_distribution'] = self.aero_dict['m_distribution'].decode('ascii')
+                node_info['airfoil'] = self.aero_dict['airfoil_distribution'][i_elem, i_local_node]
                 node_info['control_surface'] = control_surface_info
                 node_info['beam_coord'] = structure_tstep.pos[i_global_node, :]
                 node_info['pos_dot'] = structure_tstep.pos_dot[i_global_node, :]
@@ -282,7 +282,7 @@ class Aerogrid(Grid):
                 node_info['cga'] = structure_tstep.cga()
                 if node_info['M_distribution'].lower() == 'user_defined':
                     ielem_in_surf = i_elem - np.sum(self.surface_distribution < i_surf)
-                    node_info['user_defined_m_distribution'] = self.data_dict['user_defined_m_distribution'][str(i_surf)][:, ielem_in_surf, i_local_node]
+                    node_info['user_defined_m_distribution'] = self.aero_dict['user_defined_m_distribution'][str(i_surf)][:, ielem_in_surf, i_local_node]
                 (aero_tstep.zeta[i_surf][:, :, i_n],
                  aero_tstep.zeta_dot[i_surf][:, :, i_n]) = (
                     generate_strip(node_info,
@@ -291,14 +291,14 @@ class Aerogrid(Grid):
                                    orientation_in=self.aero_settings['freestream_dir'],
                                    calculate_zeta_dot=True))
         # set junction boundary conditions for later phantom cell creation in UVLM
-        if "junction_boundary_condition" in self.data_dict:
-            if np.any(self.data_dict["junction_boundary_condition"] >= 0):
+        if "junction_boundary_condition" in self.aero_dict:
+            if np.any(self.aero_dict["junction_boundary_condition"] >= 0):
                 self.generate_phantom_panels_at_junction(aero_tstep)
 
 
     def generate_phantom_panels_at_junction(self, aero_tstep):
         for i_surf in range(self.n_surf):
-                aero_tstep.flag_zeta_phantom[0, i_surf] = self.data_dict["junction_boundary_condition"][0,i_surf] 
+                aero_tstep.flag_zeta_phantom[0, i_surf] = self.aero_dict["junction_boundary_condition"][0,i_surf] 
 
 
 
