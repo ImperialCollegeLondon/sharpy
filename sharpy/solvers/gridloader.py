@@ -24,7 +24,7 @@ class GridLoader(BaseSolver):
         data (ProblemData): class structure
         afile_name (str): name of the HDF5 file, e.g. ``.aero.h5``
         aero: empty attribute
-        aero_dict (dict): key-value pairs of aerodynamic data
+        data_dict (dict): key-value pairs of aerodynamic data
 
     """
     solver_id = 'GridLoader'
@@ -39,7 +39,7 @@ class GridLoader(BaseSolver):
         self.data = None
         self.settings = None
         self.file_name = ''
-        self.aero_dict = dict()
+        self.data_dict = dict()
 
     def initialise(self, data):
         self.data = data
@@ -61,4 +61,4 @@ class GridLoader(BaseSolver):
 
         #  read and store the hdf5 file in dictionary
         with h5.File(self.file_name, 'r') as file_handle:
-            self.aero_dict = h5utils.load_h5_in_dict(file_handle)
+            self.data_dict = h5utils.load_h5_in_dict(file_handle)

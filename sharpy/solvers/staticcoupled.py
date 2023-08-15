@@ -196,7 +196,7 @@ class StaticCoupled(BaseSolver):
                     self.data.structure.node_master_elem,
                     self.data.structure.connectivities,
                     self.data.structure.timestep_info[self.data.ts].cag(),
-                    self.data.aero.aero_dict)
+                    self.data.aero.data_dict)
                         
                 if self.correct_forces:
                     struct_forces = \
@@ -216,7 +216,7 @@ class StaticCoupled(BaseSolver):
                         self.data.structure.node_master_elem,
                         self.data.structure.connectivities,
                         self.data.structure.timestep_info[self.data.ts].cag(),
-                        self.data.nonlifting_body.aero_dict,
+                        self.data.nonlifting_body.data_dict,
                         skip_moments_generated_by_forces = True)
 
                 self.data.aero.timestep_info[self.data.ts].aero_steady_forces_beam_dof = struct_forces
@@ -365,7 +365,7 @@ class StaticCoupled(BaseSolver):
 
         # tail deflection
         try:
-            self.data.aero.aero_dict['control_surface_deflection'][tail_cs_index] = tail_deflection
+            self.data.aero.data_dict['control_surface_deflection'][tail_cs_index] = tail_deflection
         except KeyError:
             raise Exception('This model has no control surfaces')
         except IndexError:

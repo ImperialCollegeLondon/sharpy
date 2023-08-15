@@ -13,7 +13,7 @@ import ctypes as ct
 import traceback
 
 
-def split_multibody(beam, tstep, mb_aero_dict, ts):
+def split_multibody(beam, tstep, mb_data_dict, ts):
     """
     split_multibody
 
@@ -22,7 +22,7 @@ def split_multibody(beam, tstep, mb_aero_dict, ts):
     Args:
     	beam (:class:`~sharpy.structure.models.beam.Beam`): structural information of the multibody system
     	tstep (:class:`~sharpy.utils.datastructures.StructTimeStepInfo`): timestep information of the multibody system
-        mb_aero_dict (dict): Dictionary including the multibody information
+        mb_data_dict (dict): Dictionary including the multibody information
         ts (int): time step number
 
     Returns:
@@ -47,7 +47,7 @@ def split_multibody(beam, tstep, mb_aero_dict, ts):
         ibody_beam = beam.get_body(ibody = ibody)
         ibody_tstep = tstep.get_body(beam, ibody_beam.num_dof, ibody = ibody)
 
-        ibody_beam.FoR_movement = mb_aero_dict['body_%02d' % ibody]['FoR_movement']
+        ibody_beam.FoR_movement = mb_data_dict['body_%02d' % ibody]['FoR_movement']
 
         ibody_beam.ini_info.compute_psi_local_AFoR(ini_for0_pos, ini_for0_vel, ini_quat0)
         ibody_beam.ini_info.change_to_local_AFoR(ini_for0_pos, ini_for0_vel, ini_quat0)
@@ -60,7 +60,7 @@ def split_multibody(beam, tstep, mb_aero_dict, ts):
 
     return MB_beam, MB_tstep
 
-def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_aero_dict, dt):
+def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_data_dict, dt):
     """
     merge_multibody
 
@@ -73,7 +73,7 @@ def merge_multibody(MB_tstep, MB_beam, beam, tstep, mb_aero_dict, dt):
         MB_tstep (list(:class:`~sharpy.utils.datastructures.StructTimeStepInfo`)): each entry represents a body
     	beam (:class:`~sharpy.structure.models.beam.Beam`): structural information of the multibody system
     	tstep (:class:`~sharpy.utils.datastructures.StructTimeStepInfo`): timestep information of the multibody system
-        mb_aero_dict (dict): Dictionary including the multibody information
+        mb_data_dict (dict): Dictionary including the multibody information
         dt(int): time step
 
     Returns:

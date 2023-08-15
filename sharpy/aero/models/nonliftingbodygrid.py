@@ -22,8 +22,8 @@ class NonliftingBodyGrid(Grid):
         self.grid_type = 'nonlifting_body'
 
 
-    def generate(self, aero_dict, beam, nonlifting_body_settings, ts): ##input?
-        super().generate(aero_dict, beam, nonlifting_body_settings, ts)
+    def generate(self, data_dict, beam, nonlifting_body_settings, ts): ##input?
+        super().generate(data_dict, beam, nonlifting_body_settings, ts)
 
         # allocating initial grid storage
         self.ini_info = NonliftingBodyTimeStepInfo(self.dimensions)
@@ -53,10 +53,10 @@ class NonliftingBodyGrid(Grid):
 
         for node_counter, i_global_node in enumerate(self.aero2struct_mapping[i_surf]):
             # TODO: Adjust for ellipse input
-            if self.aero_dict["shape"] == 'specific':
-                a_ellipse = self.aero_dict["a_ellipse"][i_global_node]
-                b_ellipse = self.aero_dict["b_ellipse"][i_global_node]
-                z_0 =self.aero_dict["z_0_ellipse"][i_global_node]
+            if self.data_dict["shape"] == 'specific':
+                a_ellipse = self.data_dict["a_ellipse"][i_global_node]
+                b_ellipse = self.data_dict["b_ellipse"][i_global_node]
+                z_0 =self.data_dict["z_0_ellipse"][i_global_node]
                 if a_ellipse == 0. or b_ellipse == 0.:
                     radius = 0
                 else:
@@ -64,7 +64,7 @@ class NonliftingBodyGrid(Grid):
                         (b_ellipse*array_cos_phi)**2
                         +(a_ellipse*array_sin_phi)**2)
             else:
-                radius = self.aero_dict["radius"][i_global_node]
+                radius = self.data_dict["radius"][i_global_node]
                 z_0 = 0
             
             

@@ -39,7 +39,7 @@ class AerogridLoader(GridLoader):
         data (ProblemData): class structure
         file_name (str): name of the ``.aero.h5`` HDF5 file
         aero: empty attribute
-        aero_dict (dict): key-value pairs of aerodynamic data
+        data_dict (dict): key-value pairs of aerodynamic data
         wake_shape_generator (class): Wake shape generator
 
     """
@@ -107,7 +107,7 @@ class AerogridLoader(GridLoader):
 
     def run(self):
         self.data.aero = aerogrid.Aerogrid()
-        self.data.aero.generate(self.aero_dict,
+        self.data.aero.generate(self.data_dict,
                                 self.data.structure,
                                 self.settings,
                                 self.data.ts)

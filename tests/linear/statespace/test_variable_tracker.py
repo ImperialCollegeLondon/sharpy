@@ -152,9 +152,9 @@ class TestVariables(unittest.TestCase):
             input_variables.add_to_h5_file(fid)
 
         with h5py.File(h5_file_name, 'r') as fid:
-            aero_dict = h5utils.load_h5_in_dict(fid)
+            data_dict = h5utils.load_h5_in_dict(fid)
 
-        loaded_variable = LinearVector.load_from_h5_file('InputVariable', aero_dict['InputVariable'])
+        loaded_variable = LinearVector.load_from_h5_file('InputVariable', data_dict['InputVariable'])
 
         LinearVector.check_same_vectors(input_variables, loaded_variable)
 

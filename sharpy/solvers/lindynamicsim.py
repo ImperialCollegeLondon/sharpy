@@ -83,7 +83,7 @@ class LinDynamicSim(BaseSolver):
         self.postprocessors = dict()
         self.with_postprocessors = False
 
-        self.input_aero_dict = dict()
+        self.input_data_dict = dict()
         self.input_file_name = ""
 
         self.folder = None
@@ -154,11 +154,11 @@ class LinDynamicSim(BaseSolver):
         ss = self.data.linear.ss
 
         n_steps = self.settings['n_tsteps']
-        x0 = self.input_aero_dict.get('x0', np.zeros(ss.states))
+        x0 = self.input_data_dict.get('x0', np.zeros(ss.states))
         if len(self.settings['input_generators']) != 0:
             u = self.input_vector(ss)
         else:
-            u = self.input_aero_dict['u']
+            u = self.input_data_dict['u']
 
         if len(x0) != ss.states:
             warnings.warn('Number of states in the initial state vector not equal to the number of states')
@@ -254,7 +254,7 @@ class LinDynamicSim(BaseSolver):
             h5utils.check_file_exists(self.input_file_name)
             # Read and store
             with h5.File(self.input_file_name, 'r') as input_file_handle:
-                self.input_aero_dict = h5utils.load_h5_in_dict(input_file_handle)
+                self.input_data_dict = h5utils.load_h5_in_dict(input_file_handle)
         except FileNotFoundError:
             pass
 
