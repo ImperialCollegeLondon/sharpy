@@ -52,8 +52,7 @@ class NonliftingBodyGrid(Grid):
         cga_rotation_matrix = structure_tstep.cga()
 
         for node_counter, i_global_node in enumerate(self.aero2struct_mapping[i_surf]):
-            # TODO: Adjust for ellipse input
-            if self.data_dict["shape"] == 'specific':
+            if self.data_dict["shape"].decode() == 'specific':
                 a_ellipse = self.data_dict["a_ellipse"][i_global_node]
                 b_ellipse = self.data_dict["b_ellipse"][i_global_node]
                 z_0 =self.data_dict["z_0_ellipse"][i_global_node]
