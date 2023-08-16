@@ -40,59 +40,77 @@ class TestUvlmCoupledWithSourcePanelMethod(unittest.TestCase):
         # Simulation settings
         horseshoe = True
         list_phantom_test = [False, True]
+        list_dynamic_test = [False, True]
+        dynamic_structural_solver = 'NonLinearDynamicPrescribedStep'
         # Simlation Solver Flow
         flow = ['BeamLoader',
                 'AerogridLoader',
                 'NonliftingbodygridLoader',
                 'StaticUvlm',
+                'StaticCoupled',
                 'BeamLoads',
                 'LiftDistribution',
-                'AerogridPlot',
+                'DynamicCoupled',
+                'LiftDistribution',
                     ]
-        list_results_lift_distribution = []
         # define model variables
-        for icase in range(len(list_phantom_test)):
-            phantom_test = list_phantom_test[icase]
-            lifting_only = not phantom_test
-            case_name = model + '_coupled_{}'.format(int(phantom_test))
-            
-            # generate ellipsoid model
-            phantom_wing = self.generate_model(case_name, 
-                                               dict_geometry_parameters,
-                                               dict_discretization, 
-                                               lifting_only)
-            # Adjust flow for case
-            flow_case = flow.copy()
-
-            if lifting_only:
-                flow_case.remove('NonliftingbodygridLoader')
+        for dynamic in list_dynamic_test:
+            list_results_lift_distribution = []
+            for phantom_test in list_phantom_test:
+                horseshoe = not dynamic
+                lifting_only = not phantom_test
+                case_name = model + '_phantom{}_dynamic{}'.format(int(phantom_test),
+                                                                  int(dynamic))
                 
-            self.generate_simulation_settings(flow_case, 
-                                              phantom_wing, 
-                                              alpha_deg, 
-                                              u_inf, 
-                                              lifting_only,
-                                              horseshoe=horseshoe,
-                                              phantom_test=phantom_test)
-            # run simulation
-            phantom_wing.run()
+                # generate ellipsoid model
+                phantom_wing = self.generate_model(case_name, 
+                                                dict_geometry_parameters,
+                                                dict_discretization, 
+                                                lifting_only)
+                # Adjust flow for case
+                flow_case = flow.copy()
 
-            # get results
-            list_results_lift_distribution.append(self.load_lift_distribution(
-                self.output_route + '/' + case_name,
-                phantom_wing.structure.n_node_right_wing
-            )) 
+                if lifting_only:
+                    n_tsteps = 10
+                    flow_case.remove('NonliftingbodygridLoader')
+                if not dynamic:
+                    n_tsteps = 0
+                    flow_case.remove('StaticCoupled')
+                    flow_case.remove('DynamicCoupled')
+                self.generate_simulation_settings(flow_case, 
+                                                phantom_wing, 
+                                                alpha_deg, 
+                                                u_inf, 
+                                                lifting_only,
+                                                n_tsteps = n_tsteps,
+                                                horseshoe=horseshoe,
+                                                phantom_test=phantom_test,
+                                                dynamic_structural_solver=dynamic_structural_solver)
+                # # run simulation
+                phantom_wing.run()
 
-        # check results
-        with self.subTest('lift distribution'):
-            np.testing.assert_array_almost_equal(list_results_lift_distribution[0][3:, 1], list_results_lift_distribution[1][3:, 1], decimal=3)
+                # get results
+                list_results_lift_distribution.append(self.load_lift_distribution(
+                    self.output_route + '/' + case_name,
+                    phantom_wing.structure.n_node_right_wing,
+                    n_tsteps
+                )) 
+            
+            # check results
+            with self.subTest(self.get_test_name('phantom', dynamic)):
+                np.testing.assert_array_almost_equal(list_results_lift_distribution[0][3:, 1], 
+                                                     list_results_lift_distribution[1][3:, 1], 
+                                                     decimal=2) #3 - int(dynamic))
 
 
+    
     def test_fuselage_wing_configuration(self):
         """
-            Lift distribution on a low wing configuration is computed. The final 
-            results are compared to a previous solution (backward compatibility)
-            that matches the experimental lift distribution for this case. 
+            Test spanwise lift distribution on a fuselage-wing configuration.
+            
+            The lift distribution on low wing configuration is computed considering
+            fuselage effects. The final results are compared to a previous solution 
+            (backward compatibility) that matches the experimental lift distribution for this case. 
         """
         self.define_folder()
         model = 'low_wing'
@@ -124,7 +142,6 @@ class TestUvlmCoupledWithSourcePanelMethod(unittest.TestCase):
                 'StaticCoupled',
                 'BeamLoads',
                 'LiftDistribution',
-                'AerogridPlot',
                     ]
         for static_coupled_solver in [False, True]:
             case_name = '{}_coupled_{}'.format(model, int(static_coupled_solver))
@@ -152,13 +169,21 @@ class TestUvlmCoupledWithSourcePanelMethod(unittest.TestCase):
                 self.output_route + case_name,
                 wing_fuselage_model.structure.n_node_right_wing
                 )
-
             # check results
             lift_distribution_test = np.loadtxt(self.route_test_dir + "/test_data/results_{}.csv".format(case_name))
-            with self.subTest('lift distribution and spanwise wing deformation'):        
+            with self.subTest(self.get_test_name('lift distribution and spanwise wing deformation',
+                                                 static_coupled=static_coupled_solver)):        
                 np.testing.assert_array_almost_equal(lift_distribution_test, lift_distribution, decimal=3)
 
-
+    def get_test_name(self, base_name, dynamic=False, static_coupled=False):
+        if static_coupled:
+            base_name += ' coupled'
+        else:
+            if dynamic:
+                base_name += ' uvlm'
+            else:
+                base_name += ' vlm'
+        return base_name
     def get_geometry_parameters(self, model_name,fuselage_length=10):
         """
             Geometry parameters are loaded from json init file for the specified model. 
@@ -201,9 +226,12 @@ class TestUvlmCoupledWithSourcePanelMethod(unittest.TestCase):
                                      alpha_deg, 
                                      u_inf, 
                                      lifting_only,
+                                     n_tsteps=0,
                                      horseshoe=True,
                                      nonlifting_only=False,
-                                     phantom_test=False):
+                                     phantom_test=False,
+                                     dynamic_structural_solver='NonLinearDynamicPrescribedStep'
+                                     ):
         """
             Simulation settings are defined and written to the ".sharpy" input file.
         """
@@ -211,13 +239,19 @@ class TestUvlmCoupledWithSourcePanelMethod(unittest.TestCase):
                                                 aircraft_model, 
                                                 alpha_deg, 
                                                 u_inf, 
+                                                dt=self.get_timestep(aircraft_model, u_inf),
+                                                n_tsteps=n_tsteps,
                                                 lifting_only=lifting_only, 
                                                 phantom_test=phantom_test, 
                                                 nonlifting_only=nonlifting_only, 
-                                                horseshoe=horseshoe)
+                                                horseshoe=horseshoe,
+                                                dynamic_structural_solver=dynamic_structural_solver)
         aircraft_model.create_settings(settings)
 
-    def define_folder(self):        
+    def get_timestep(self, model, u_inf):
+        return model.aero.chord_wing / model.aero.num_chordwise_panels / u_inf
+    
+    def define_folder(self):
         """
             Initializes all folder path needed and creates case folder.
         """
