@@ -138,7 +138,6 @@ class TestUvlmCoupledWithSourcePanelMethod(unittest.TestCase):
                 flow_case.remove('StaticUvlm')
             else:
                 flow_case.remove('StaticCoupled')
-            print(flow_case)
             self.generate_simulation_settings(flow_case, 
                                                 wing_fuselage_model, 
                                                 alpha_deg, 
@@ -150,7 +149,7 @@ class TestUvlmCoupledWithSourcePanelMethod(unittest.TestCase):
             wing_fuselage_model.run()
             # get results
             lift_distribution = self.load_lift_distribution(
-                self.output_route + '/' + case_name,
+                self.output_route + case_name,
                 wing_fuselage_model.structure.n_node_right_wing
                 )
 
@@ -229,11 +228,11 @@ class TestUvlmCoupledWithSourcePanelMethod(unittest.TestCase):
         if not os.path.exists(self.case_route):
             os.makedirs(self.case_route)
         
-    def load_lift_distribution(self, output_folder, n_node_wing):
+    def load_lift_distribution(self, output_folder, n_node_wing, n_tsteps=0):
         """
             Loads the resulting pressure coefficients saved in txt-files.
         """
-        lift_distribution = np.loadtxt(output_folder + '/lift_distribution.txt', delimiter=',')
+        lift_distribution = np.loadtxt(output_folder + '/liftdistribution/liftdistribution_ts{}.txt'.format(str(n_tsteps)), delimiter=',')
         return lift_distribution[:n_node_wing,[1,-1]]
 
     def tearDown(self):
