@@ -64,7 +64,6 @@ class FWC_Aero:
         """
         
         if not self.lifting_only:
-            print(self.structure.y[:self.structure.n_node_right_wing])
             self.aero_node[:self.structure.n_node_right_wing] = abs(self.structure.y[:self.structure.n_node_right_wing]) > self.get_y_junction() - 0.05
             self.aero_node[self.structure.n_node_right_wing:self.structure.n_node_wing_total] = self.aero_node[1:self.structure.n_node_right_wing]
         else:
