@@ -87,13 +87,15 @@ def define_simulation_settings(flow, model, alpha_deg, u_inf,
                                 },
                             }
     if 'WriteVariablesTime' in flow:
-        settings['WriteVariablesTime'] = {
-                    'cleanup_old_solution': True,
-                    'nonlifting_nodes_variables': ['pressure_coefficients'],                                                                
-                    'nonlifting_nodes_isurf': np.zeros((model.structure.n_node_fuselage,)),
-                    'nonlifting_nodes_im':  np.zeros((model.structure.n_node_fuselage)),
-                    'nonlifting_nodes_in': list(range(model.structure.n_node_fuselage)),
-        }
+        settings['WriteVariablesTime'] = {'cleanup_old_solution': True}
+        if kwargs.get('writeCpVariables', False):
+            settings['WriteVariablesTime']['nonlifting_nodes_variables'] = ['pressure_coefficients']                                                           
+            settings['WriteVariablesTime']['nonlifting_nodes_isurf'] = np.zeros((model.structure.n_node_fuselage,))
+            settings['WriteVariablesTime']['nonlifting_nodes_im'] =  np.zeros((model.structure.n_node_fuselage))
+            settings['WriteVariablesTime']['nonlifting_nodes_in'] = list(range(model.structure.n_node_fuselage))
+        if kwargs.get('writeWingPosVariables', False):
+            settings['WriteVariablesTime']['structure_variables'] = ['pos']
+            settings['WriteVariablesTime']['structure_nodes'] = list(range(model.structure.n_node-2))
 
     settings['NonliftingbodygridLoader'] = {}
 

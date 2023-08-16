@@ -71,7 +71,7 @@ class FWC_Aero:
             self.aero_node[:self.structure.n_node_wing_total] = True
         self.chord[:2*self.structure.n_elem_per_wing, :] = self.chord_wing
         self.elastic_axis[:2*self.structure.n_elem_per_wing, :] = self.ea_wing
-        self.twist [:2*self.structure.n_elem_per_wing, :] = -np.deg2rad(self.alpha_zero_deg)
+        self.twist[:2*self.structure.n_elem_per_wing, :] = -np.deg2rad(self.alpha_zero_deg)
         # surf distribution 0 for right and 1 for left wing
         self.surface_distribution[self.structure.n_elem_per_wing:2*self.structure.n_elem_per_wing] = 1
 

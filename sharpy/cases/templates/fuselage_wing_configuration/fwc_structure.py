@@ -70,6 +70,7 @@ class FWC_Structure:
         self.n_node = self.n_node_fuselage + self.n_node_wing_total
         self.n_elem =self.n_elem_fuselage + 2 * self.n_elem_per_wing
 
+        # vertical wing offset requires a connection element between wing and fuselage beam
         if not self.vertical_wing_position == 0:
             self.n_elem += 1
             self.n_node += 1
