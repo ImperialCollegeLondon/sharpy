@@ -35,7 +35,8 @@ class VMopts(ct.Structure):
             unsigned int NumSurfaces;
             unsigned int NumSurfacesNonlifting;
             double vortex_radius;
-            double vortex_radius_wake_ind;
+            double vortex_radius_wake_ind;            
+            bool u_ind_by_sources_for_lifting_forces;
         };
     """
     _fields_ = [("ImageMethod", ct.c_bool),
@@ -59,7 +60,8 @@ class VMopts(ct.Structure):
                 ("iterative_tol", ct.c_double),
                 ("iterative_precond", ct.c_bool),
                 ("vortex_radius", ct.c_double),
-                ("vortex_radius_wake_ind", ct.c_double)]
+                ("vortex_radius_wake_ind", ct.c_double),
+                ("consider_u_ind_by_sources_for_lifting_forces", ct.c_bool)]
     
 
 
@@ -87,6 +89,7 @@ class VMopts(ct.Structure):
         self.vortex_radius = ct.c_double(vortex_radius_def)
         self.vortex_radius_wake_ind = ct.c_double(vortex_radius_def)
         self.phantom_wing_test = ct.c_bool(False)
+        self.consider_u_ind_by_sources_for_lifting_forces = ct.c_bool(False)
 
 
     def set_options(self, options, n_surfaces = 0, n_surfaces_nonlifting = 0):
@@ -134,7 +137,8 @@ class UVMopts(ct.Structure):
                 ("interp_method", ct.c_uint),
                 ("yaw_slerp", ct.c_double),
                 ("quasi_steady", ct.c_bool),
-                ("num_spanwise_panels_wo_induced_velocity", ct.c_uint)]
+                ("num_spanwise_panels_wo_induced_velocity", ct.c_uint),
+                ("consider_u_ind_by_sources_for_lifting_forces", ct.c_bool)]
 
     def __init__(self):
         ct.Structure.__init__(self)
@@ -155,6 +159,7 @@ class UVMopts(ct.Structure):
         self.quasi_steady = ct.c_bool(False)
         self.num_spanwise_panels_wo_induced_velocity = ct.c_uint(0)
         self.phantom_wing_test = ct.c_bool(False)
+        self.consider_u_ind_by_sources_for_lifting_forces = ct.c_bool(False)
 
     def set_options(self, 
                     options, 
