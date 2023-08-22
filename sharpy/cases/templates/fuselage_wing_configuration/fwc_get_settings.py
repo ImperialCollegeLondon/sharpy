@@ -31,7 +31,7 @@ def define_simulation_settings(flow, model, alpha_deg, u_inf,
     settings['SHARPy'] = {'case': model.case_name,
                         'route': model.case_route,
                         'flow': flow,
-                        'write_screen': 'on',
+                        'write_screen': 'off',
                         'write_log': 'on',
                         'log_folder': model.output_route,
                         'log_file': model.case_name + '.log'}
