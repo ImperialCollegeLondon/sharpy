@@ -25,11 +25,11 @@ class Fuselage_Wing_Configuration:
 
         self.settings = None
 
-    def init_aeroelastic(self, lifting_only=True, **kwargs):
+    def init_aeroelastic(self, **kwargs):
         self.clean()
         self.init_structure(**kwargs)
         self.init_aero(**kwargs)
-        if not lifting_only:
+        if not kwargs.get('lifting_only', True):
             self.init_fuselage(**kwargs)
 
     def init_structure(self, **kwargs):
