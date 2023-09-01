@@ -357,7 +357,8 @@ class AerogridPlot(BaseSolver):
             filename = (self.nonlifting_filename +
                         '_' +
                         '%02u_' % i_surf +
-                        '%06u' % self.ts)
+                        '%06u' % self.ts+
+                        '.vtu')
 
             dims = nonlifting_tstep.dimensions[i_surf, :]
             point_data_dim = (dims[0]+1)*(dims[1]+1)  # + (dims_star[0]+1)*(dims_star[1]+1)
