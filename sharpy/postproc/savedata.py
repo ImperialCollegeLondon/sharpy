@@ -110,7 +110,6 @@ class SaveData(BaseSolver):
         self.folder = ''
         self.filename = ''
         self.filename_linear = ''
-        self.ts_max = 0
         self.caller = None
 
         ### specify which classes are saved as hdf5 group
@@ -147,7 +146,6 @@ class SaveData(BaseSolver):
                                             'ct_zeta_star_list',
                                             'dynamic_input'])
 
-        self.ts_max = self.data.ts + 1
 
         # create folder for containing files if necessary
         self.folder = data.output_folder + '/savedata/'
@@ -242,10 +240,10 @@ class SaveData(BaseSolver):
                                 hdfile['data']['nonlifting_body'],
                                 grpname='timestep_info')
 
-                        for it in range(len(self.data.structure.timestep_info)):
-                            tstep_p = self.data.structure.timestep_info[it]
-                            if tstep_p is not None:
-                                self.save_timestep(self.data, self.settings, it, hdfile)
+                    for it in range(len(self.data.structure.timestep_info)):
+                        tstep_p = self.data.structure.timestep_info[it]
+                        if tstep_p is not None:
+                            self.save_timestep(self.data, self.settings, it, hdfile)
 
                     hdfile.close()
 
