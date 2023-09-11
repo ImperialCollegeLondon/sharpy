@@ -147,6 +147,10 @@ class StepUvlm(BaseSolver):
     settings_default['centre_rot_g'] = [0., 0., 0.]
     settings_description['centre_rot_g'] = 'Centre of rotation in G FoR around which ``rbm_vel_g`` is applied'
 
+    settings_types['ignore_first_x_nodes_in_force_calculation'] = 'int'
+    settings_default['ignore_first_x_nodes_in_force_calculation'] = 0
+    settings_description['ignore_first_x_nodes_in_force_calculation'] = 'Ignores the forces on the first user-specified number of nodes of all surfaces.'
+
     settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 

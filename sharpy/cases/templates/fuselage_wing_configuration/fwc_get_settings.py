@@ -62,7 +62,8 @@ def define_simulation_settings(flow, model, alpha_deg, u_inf,
                             'rho': rho,
                             'nonlifting_body_interactions': nonlifting_body_interactions,
                             'only_nonlifting': nonlifting_only,
-                            'phantom_wing_test': phantom_test
+                            'phantom_wing_test': phantom_test,
+                            'ignore_first_x_nodes_in_force_calculation': kwargs.get('ignore_first_x_nodes_in_force_calculation', 0),
                             }
 
     settings['StaticCoupled'] = {'print_info': 'off',
@@ -124,7 +125,9 @@ def define_simulation_settings(flow, model, alpha_deg, u_inf,
                                 'dt': dt,
                                 'phantom_wing_test': phantom_test,
                                 'nonlifting_body_interactions': not lifting_only,
-                                'gamma_dot_filtering': 3}
+                                'gamma_dot_filtering': 3,                                
+                                'ignore_first_x_nodes_in_force_calculation': kwargs.get('ignore_first_x_nodes_in_force_calculation', 0),}
+    
     dynamic_structural_solver = kwargs.get('structural_solver','NonLinearDynamicPrescribedStep')
     settings['DynamicCoupled'] = {'structural_solver': dynamic_structural_solver,
                                     'structural_solver_settings': settings[dynamic_structural_solver],

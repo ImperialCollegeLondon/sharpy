@@ -123,6 +123,10 @@ class StaticUvlm(BaseSolver):
     settings_default['map_forces_on_struct'] = False
     settings_description['map_forces_on_struct'] = 'Maps the forces on the structure at the end of the timestep. Only usefull if the solver is used outside StaticCoupled'
 
+    settings_types['ignore_first_x_nodes_in_force_calculation'] = 'int'
+    settings_default['ignore_first_x_nodes_in_force_calculation'] = 0
+    settings_description['ignore_first_x_nodes_in_force_calculation'] = 'Ignores the forces on the first user-specified number of nodes of all surfaces.'
+
     settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 

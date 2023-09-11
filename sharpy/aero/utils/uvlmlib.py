@@ -37,6 +37,7 @@ class VMopts(ct.Structure):
             double vortex_radius;
             double vortex_radius_wake_ind;            
             bool u_ind_by_sources_for_lifting_forces;
+            uint ignore_first_x_nodes_in_force_calculation;
         };
     """
     _fields_ = [("ImageMethod", ct.c_bool),
@@ -61,7 +62,8 @@ class VMopts(ct.Structure):
                 ("iterative_precond", ct.c_bool),
                 ("vortex_radius", ct.c_double),
                 ("vortex_radius_wake_ind", ct.c_double),
-                ("consider_u_ind_by_sources_for_lifting_forces", ct.c_bool)]
+                ("consider_u_ind_by_sources_for_lifting_forces", ct.c_bool),
+                ("ignore_first_x_nodes_in_force_calculation", ct.c_uint)]
     
 
 
@@ -90,6 +92,7 @@ class VMopts(ct.Structure):
         self.vortex_radius_wake_ind = ct.c_double(vortex_radius_def)
         self.phantom_wing_test = ct.c_bool(False)
         self.consider_u_ind_by_sources_for_lifting_forces = ct.c_bool(False)
+        self.ignore_first_x_nodes_in_force_calculation = ct.c_uint(0)
 
 
     def set_options(self, options, n_surfaces = 0, n_surfaces_nonlifting = 0):
@@ -111,6 +114,7 @@ class VMopts(ct.Structure):
         self.only_nonlifting = ct.c_bool(options["only_nonlifting"])
         self.only_lifting = ct.c_bool(not options["nonlifting_body_interactions"])
         self.phantom_wing_test = ct.c_bool(options["phantom_wing_test"])
+        self.ignore_first_x_nodes_in_force_calculation = ct.c_uint(options["ignore_first_x_nodes_in_force_calculation"])
 
 
 class UVMopts(ct.Structure):
@@ -138,7 +142,8 @@ class UVMopts(ct.Structure):
                 ("yaw_slerp", ct.c_double),
                 ("quasi_steady", ct.c_bool),
                 ("num_spanwise_panels_wo_induced_velocity", ct.c_uint),
-                ("consider_u_ind_by_sources_for_lifting_forces", ct.c_bool)]
+                ("consider_u_ind_by_sources_for_lifting_forces", ct.c_bool),
+                ("ignore_first_x_nodes_in_force_calculation", ct.c_uint)]
 
     def __init__(self):
         ct.Structure.__init__(self)
@@ -160,6 +165,7 @@ class UVMopts(ct.Structure):
         self.num_spanwise_panels_wo_induced_velocity = ct.c_uint(0)
         self.phantom_wing_test = ct.c_bool(False)
         self.consider_u_ind_by_sources_for_lifting_forces = ct.c_bool(False)
+        self.ignore_first_x_nodes_in_force_calculation = ct.c_uint(0)
 
     def set_options(self, 
                     options, 
@@ -193,6 +199,7 @@ class UVMopts(ct.Structure):
         self.only_nonlifting = ct.c_bool(options["only_nonlifting"])
         self.only_lifting = ct.c_bool(not options["nonlifting_body_interactions"])
         self.phantom_wing_test = ct.c_bool(options["phantom_wing_test"])
+        self.ignore_first_x_nodes_in_force_calculation = ct.c_uint(options["ignore_first_x_nodes_in_force_calculation"])
         self.num_spanwise_panels_wo_induced_velocity = n_span_panels_wo_u_ind
 
 
@@ -222,7 +229,6 @@ def vlm_solver(ts_info, options):
 
     p_rbm_vel_g = options['rbm_vel_g'].ctypes.data_as(ct.POINTER(ct.c_double))
     p_centre_rot_g = options['centre_rot_g'].ctypes.data_as(ct.POINTER(ct.c_double))
-
     ts_info.generate_ctypes_pointers()
     run_VLM(ct.byref(vmopts),
             ct.byref(flightconditions),
