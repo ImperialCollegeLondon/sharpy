@@ -35,7 +35,7 @@ class NonliftingbodygridLoader(GridLoader):
         # nonlifting_body storage
         self.nonlifting_body = None
 
-    def run(self):
+    def run(self, **kwargs):
         self.data.nonlifting_body = nonliftingbodygrid.NonliftingBodyGrid()
         self.data.nonlifting_body.generate(self.data_dict,
                                            self.data.structure,

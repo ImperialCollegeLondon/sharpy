@@ -41,7 +41,7 @@ class GridLoader(BaseSolver):
         self.file_name = ''
         self.data_dict = dict()
 
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         self.data = data
         self.read_input_files()
         

@@ -44,7 +44,7 @@ class LiftDistribution(BaseSolver):
         self.folder = None
         self.caller = None
 
-    def initialise(self, data, caller=None):
+    def initialise(self, data, custom_settings=None, restart=False, caller=None):
         self.data = data
         self.settings = data.settings[self.solver_id]
         settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
@@ -53,7 +53,7 @@ class LiftDistribution(BaseSolver):
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
 
-    def run(self, online=False):
+    def run(self, **kwargs):
         self.lift_distribution(self.data.structure.timestep_info[self.data.ts],
                                self.data.aero.timestep_info[self.data.ts])
         return self.data
