@@ -6,7 +6,6 @@ Description
 from sharpy.aero.models.grid import Grid
 from sharpy.utils.datastructures import NonliftingBodyTimeStepInfo
 import numpy as np
-from scipy.optimize import fsolve
 import sharpy.utils.algebra as algebra
 
 
