@@ -148,9 +148,6 @@ def find_aerodynamic_solver(settings):
                 
             return aero_solver_settings
 
-    return aero_solver_name, aero_solver_settings
-
-
 def find_velocity_generator(settings):
     """
     Retrieves the name and settings of the fluid velocity generator in the first aerodynamic solver used in the
@@ -162,7 +159,7 @@ def find_velocity_generator(settings):
     Returns:
         tuple: velocity generator name and velocity generator settings
     """
-    aero_solver_name, aero_solver_settings = find_aerodynamic_solver(settings)
+    aero_solver_settings = find_aerodynamic_solver(settings)
 
     vel_gen_name = aero_solver_settings['velocity_field_generator']
     vel_gen_settings = aero_solver_settings['velocity_field_input']
