@@ -125,7 +125,11 @@ def span_chord(i_node_surf, zeta):
 
 def find_aerodynamic_solver(settings):
     """
-    Retrieves the name and settings of the first aerodynamic solver used in the solution ``flow``.
+    Retrieves the settings of the first aerodynamic solver used in the solution ``flow``. 
+    
+    For coupled solvers, the aerodynamic solver is found in the aero solver settings. 
+    The StaticTrim solver can either contain a coupled or aero solver in its solver 
+    settings (making it into a possible 3-level Matryoshka).
 
     Args:
         settings (dict): SHARPy settings (usually found in ``data.settings`` )
@@ -134,24 +138,15 @@ def find_aerodynamic_solver(settings):
         tuple: Aerodynamic solver name and solver settings
     """
     flow = settings['SHARPy']['flow']
-    # Look for the aerodynamic solver
-    if 'StaticUvlm' in flow:
-        aero_solver_name = 'StaticUvlm'
-        aero_solver_settings = settings['StaticUvlm']
-    elif 'StaticCoupled' in flow:
-        aero_solver_name = settings['StaticCoupled']['aero_solver']
-        aero_solver_settings = settings['StaticCoupled']['aero_solver_settings']
-    elif 'StaticCoupledRBM' in flow:
-        aero_solver_name = settings['StaticCoupledRBM']['aero_solver']
-        aero_solver_settings = settings['StaticCoupledRBM']['aero_solver_settings']
-    elif 'DynamicCoupled' in flow:
-        aero_solver_name = settings['DynamicCoupled']['aero_solver']
-        aero_solver_settings = settings['DynamicCoupled']['aero_solver_settings']
-    elif 'StepUvlm' in flow:
-        aero_solver_name = 'StepUvlm'
-        aero_solver_settings = settings['StepUvlm']
-    else:
-        raise KeyError("ERROR: aerodynamic solver not found")
+    for solver_name in ['StaticUvlm', 'StaticCoupled', 'StaticTrim', 'DynamicCoupled', 'StepUvlm']:
+        if solver_name in flow:
+            aero_solver_settings = settings[solver_name]
+            if solver_name == 'StaticTrim':
+                aero_solver_settings = aero_solver_settings['solver_settings']['aero_solver_settings']
+            elif 'aero_solver' in settings[solver_name].keys():
+                aero_solver_settings = aero_solver_settings['aero_solver_settings']
+                
+            return aero_solver_settings
 
     return aero_solver_name, aero_solver_settings
 

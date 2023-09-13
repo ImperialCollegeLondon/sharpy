@@ -146,8 +146,10 @@ class SaveData(BaseSolver):
         self.filename = self.folder + self.data.settings['SHARPy']['case'] + '.data.h5'
         self.filename_linear = self.folder + self.data.settings['SHARPy']['case'] + '.linss.h5'
 
-        if os.path.isfile(self.filename):
-            os.remove(self.filename)
+        # remove old file if it exists
+        for file_path in [self.filename, self.filename_linear]:
+            if os.path.isfile(file_path):
+                os.remove(file_path)
 
         # check that there is a linear system - else return setting to false
         if self.settings['save_linear'] or self.settings['save_linear_uvlm']:
