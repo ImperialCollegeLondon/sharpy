@@ -51,6 +51,8 @@ class NonliftingBodyGrid(Grid):
         cga_rotation_matrix = structure_tstep.cga()
 
         for node_counter, i_global_node in enumerate(self.aero2struct_mapping[i_surf]):
+            # 1) Set B-Frame position
+            # 1a) get cross-sectional fuselage geometry at node
             if self.data_dict["shape"].decode() == 'specific':
                 a_ellipse = self.data_dict["a_ellipse"][i_global_node]
                 b_ellipse = self.data_dict["b_ellipse"][i_global_node]
@@ -65,31 +67,35 @@ class NonliftingBodyGrid(Grid):
                 radius = self.data_dict["radius"][i_global_node]
                 z_0 = 0
             
-            
-            # get nodes position in B frame
+            # 1b) Get nodes position in B frame
             matrix_nodes[1, :, node_counter] = radius*array_cos_phi
             matrix_nodes[2, :, node_counter] = radius*array_sin_phi + z_0
             
-            # convert position from B to A frame
+            # 2) A frame
+            # 2a) Convert structural position from B to A frame 
             i_elem, i_local_node = self.get_elment_and_local_node_id(i_surf, i_global_node)
             psi_node = structure_tstep.psi[i_elem, i_local_node,:]
-            psi_dot_node = structure_tstep.psi_dot[i_elem, i_local_node,:]
-            omega_a = algebra.crv_dot2omega(psi_node, psi_dot_node)
             if not (psi_node == [0, 0, 0]).all():
                 # just perform roation from B to A if psi not 0
                 Cab = algebra.crv2rotation(psi_node)
                 for idx in range(numb_radial_nodes):
                     matrix_nodes[:, idx, node_counter] = np.dot(Cab, matrix_nodes[:, idx, node_counter])
+            # 2b) Add beam displacements (expressed in A-frame)
             for dim in range(3):
                 matrix_nodes[dim, :, node_counter] += structure_tstep.pos[i_global_node,dim]
 
-                # get zeta dot in A frame (velocity due to pos_dot)
+            # 2c) Add structural beam velocities (expressed in A-frame)
+            for dim in range(3):
+                # velocity due to pos_dot
                 matrix_nodes_dot[dim, :, node_counter] += structure_tstep.pos_dot[i_global_node, dim]
-
+            # 2d) Add effect of structural beam rotations an node velocity (expressed in A-frame)
+            psi_dot_node = structure_tstep.psi_dot[i_elem, i_local_node,:]
+            omega_a = algebra.crv_dot2omega(psi_node, psi_dot_node)     
             for idx in range(numb_radial_nodes):
-                # get zeta dot in A frame (velocity due to psi_dot))
                 matrix_nodes_dot[:, idx, node_counter] += (np.dot(algebra.skew(omega_a), matrix_nodes[:, idx, node_counter]))
-                # convert position from A to G frame
+            
+            # 3) Convert position and velocities from A to G frame
+            for idx in range(numb_radial_nodes):
                 matrix_nodes[:, idx, node_counter] = np.dot(cga_rotation_matrix,
                                           matrix_nodes[:, idx, node_counter])
                 matrix_nodes_dot[:, idx, node_counter] = np.dot(cga_rotation_matrix,
