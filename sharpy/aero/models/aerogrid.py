@@ -390,6 +390,9 @@ def generate_strip(node_info, airfoil_db, aligned_grid,
         strip_coordinates_b_frame[1, :] = np.linspace(0.0, 1.0, node_info['M'] + 1)
     elif node_info['M_distribution'] == '1-cos':
         domain = np.linspace(0, 1.0, node_info['M'] + 1)
+        strip_coordinates_b_frame[1, :] = 0.5*(1.0 - np.cos(domain*np.pi))
+    elif node_info['M_distribution'].lower() == 'user_defined':
+        strip_coordinates_b_frame[1,:] = node_info['user_defined_m_distribution']
     else:
         raise NotImplemented('M_distribution is ' + node_info['M_distribution'] +
                              ' and it is not yet supported')
