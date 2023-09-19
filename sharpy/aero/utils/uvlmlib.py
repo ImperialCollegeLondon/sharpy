@@ -246,7 +246,7 @@ def vlm_solver(ts_info, options):
     ts_info.remove_ctypes_pointers()
 
 def vlm_solver_nonlifting_body(ts_info, options):
-    run_VLM_nonlifting = UvlmLib.run_VLM_nonlifting_body
+    run_linear_source_panel_method = UvlmLib.run_linear_source_panel_method_body
 
     vmopts = VMopts()
     vmopts.set_options(options, n_surfaces_nonlifting = ts_info.n_surf)
@@ -257,7 +257,7 @@ def vlm_solver_nonlifting_body(ts_info, options):
     flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
 
     ts_info.generate_ctypes_pointers()
-    run_VLM_nonlifting(ct.byref(vmopts),
+    run_linear_source_panel_method(ct.byref(vmopts),
                        ct.byref(flightconditions),
                        ts_info.ct_p_dimensions,
                        ts_info.ct_p_zeta,
@@ -268,8 +268,8 @@ def vlm_solver_nonlifting_body(ts_info, options):
     ts_info.remove_ctypes_pointers()
 
 def vlm_solver_lifting_and_nonlifting_bodies(ts_info_lifting, ts_info_nonlifting, options):
-    run_VLM_lifting_and_nonlifting = UvlmLib.run_VLM_lifting_and_nonlifting_bodies
-    run_VLM_lifting_and_nonlifting.restype = None
+    run_VLM_coupled_with_LSPM = UvlmLib.run_VLM_coupled_with_LSPM_bodies
+    run_VLM_coupled_with_LSPM.restype = None
 
     vmopts = VMopts()    
     vmopts.set_options(options, n_surfaces = ts_info_lifting.n_surf, n_surfaces_nonlifting = ts_info_nonlifting.n_surf)
@@ -283,7 +283,7 @@ def vlm_solver_lifting_and_nonlifting_bodies(ts_info_lifting, ts_info_nonlifting
     p_centre_rot = options['centre_rot_g'].ctypes.data_as(ct.POINTER(ct.c_double))
     ts_info_lifting.generate_ctypes_pointers()
     ts_info_nonlifting.generate_ctypes_pointers()
-    run_VLM_lifting_and_nonlifting(ct.byref(vmopts),
+    run_VLM_coupled_with_LSPM(ct.byref(vmopts),
             ct.byref(flightconditions),
             ts_info_lifting.ct_p_dimensions,
             ts_info_lifting.ct_p_dimensions_star,
@@ -374,7 +374,7 @@ def uvlm_solver_lifting_and_nonlifting(i_iter, ts_info, ts_info_nonlifting, stru
                         convect_wake = convect_wake, 
                         n_span_panels_wo_u_ind=4)
     uvmopts.only_lifting = ct.c_bool(False)
-    run_UVLM = UvlmLib.run_UVLM_lifting_and_nonlifting
+    run_UVLM = UvlmLib.run_UVLM_coupled_with_LSPM
     run_UVLM.restype = None
 
     flightconditions = FlightConditions()
