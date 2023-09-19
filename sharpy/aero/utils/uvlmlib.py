@@ -4,19 +4,14 @@ import sharpy.utils.ctypes_utils as ct_utils
 import ctypes as ct
 from ctypes import *
 import numpy as np
-import platform
-import os
-from sharpy.utils.constants import NDIM, vortex_radius_def
+from sharpy.utils.constants import vortex_radius_def
 
 try:
     UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/UVLM', 'libuvlm')
 except OSError:
     UvlmLib = ct_utils.import_ctypes_lib(SharpyDir + '/lib/UVLM/lib', 'libuvlm')
 
-
-
 # TODO: Combine VMOpts and UVMOpts (Class + inheritance)?
-# TODO: Combine solver functions (e.g. vlm solver is able to start nonlifting only, lifitng only, nonlifting and lifting coupled) 
 
 class VMopts(ct.Structure):
     """ctypes definition for VMopts class
@@ -118,8 +113,6 @@ class VMopts(ct.Structure):
 
 
 class UVMopts(ct.Structure):
-    # TODO: add set_options function
-    # TODO: possible to combine with VMopts?
     _fields_ = [("dt", ct.c_double),
                 ("NumCores", ct.c_uint),
                 ("NumSurfaces", ct.c_uint),
@@ -209,23 +202,26 @@ class FlightConditions(ct.Structure):
                 ("rho", ct.c_double),
                 ("c_ref", ct.c_double)]
 
-    def __init__(self):
+    def __init__(self, rho, vec_u_inf):
         ct.Structure.__init__(self)
+        self.set_flight_conditions(rho, vec_u_inf)
+
+    def set_flight_conditions(self, rho, vec_u_inf):
+        self.rho = rho
+        self.uinf = np.ctypeslib.as_ctypes(np.linalg.norm(vec_u_inf))
+        self.uinf_direction = np.ctypeslib.as_ctypes(vec_u_inf/self.uinf)
+
 
 # type for 2d integer matrix
 t_2int = ct.POINTER(ct.c_int)*2
 
 def vlm_solver(ts_info, options):
     run_VLM = UvlmLib.run_VLM
-    run_VLM.restype = None
 
     vmopts = VMopts()
     vmopts.set_options(options, n_surfaces = ts_info.n_surf)
 
-    flightconditions = FlightConditions()
-    flightconditions.rho = options['rho']
-    flightconditions.uinf = np.ctypeslib.as_ctypes(np.linalg.norm(ts_info.u_ext[0][:, 0, 0]))
-    flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
+    flightconditions = FlightConditions(options['rho'], ts_info.u_ext[0][:, 0, 0])
 
     p_rbm_vel_g = options['rbm_vel_g'].ctypes.data_as(ct.POINTER(ct.c_double))
     p_centre_rot_g = options['centre_rot_g'].ctypes.data_as(ct.POINTER(ct.c_double))
@@ -251,10 +247,7 @@ def vlm_solver_nonlifting_body(ts_info, options):
     vmopts = VMopts()
     vmopts.set_options(options, n_surfaces_nonlifting = ts_info.n_surf)
 
-    flightconditions = FlightConditions()
-    flightconditions.rho = options['rho']
-    flightconditions.uinf = np.ctypeslib.as_ctypes(np.linalg.norm(ts_info.u_ext[0][:, 0, 0]))
-    flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
+    flightconditions = FlightConditions(options['rho'], ts_info.u_ext[0][:, 0, 0])
 
     ts_info.generate_ctypes_pointers()
     run_VLM_nonlifting(ct.byref(vmopts),
@@ -269,15 +262,11 @@ def vlm_solver_nonlifting_body(ts_info, options):
 
 def vlm_solver_lifting_and_nonlifting_bodies(ts_info_lifting, ts_info_nonlifting, options):
     run_VLM_lifting_and_nonlifting = UvlmLib.run_VLM_lifting_and_nonlifting_bodies
-    run_VLM_lifting_and_nonlifting.restype = None
 
     vmopts = VMopts()    
     vmopts.set_options(options, n_surfaces = ts_info_lifting.n_surf, n_surfaces_nonlifting = ts_info_nonlifting.n_surf)
 
-    flightconditions = FlightConditions()
-    flightconditions.rho = options['rho']
-    flightconditions.uinf = np.ctypeslib.as_ctypes(np.linalg.norm(ts_info_lifting.u_ext[0][:, 0, 0]))
-    flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info_lifting.u_ext[0][:, 0, 0]/flightconditions.uinf)
+    flightconditions = FlightConditions(options['rho'], ts_info_lifting.u_ext[0][:, 0, 0])
 
     p_rbm_vel_g = options['rbm_vel_g'].ctypes.data_as(ct.POINTER(ct.c_double))
     p_centre_rot = options['centre_rot_g'].ctypes.data_as(ct.POINTER(ct.c_double))
@@ -317,7 +306,6 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
 
     
     run_UVLM = UvlmLib.run_UVLM
-    run_UVLM.restype = None
 
     uvmopts = UVMopts()
     uvmopts.set_options(options,
@@ -327,18 +315,10 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
                         convect_wake = convect_wake, 
                         n_span_panels_wo_u_ind=0)
 
+    flightconditions = FlightConditions(options['rho'], ts_info.u_ext[0][:, 0, 0])
 
-    flightconditions = FlightConditions()
-    flightconditions.rho = options['rho']
-    flightconditions.uinf = np.ctypeslib.as_ctypes(np.linalg.norm(ts_info.u_ext[0][:, 0, 0]))
-    # direction = np.array([1.0, 0, 0])
-    flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
-    # flightconditions.uinf_direction = np.ctypeslib.as_ctypes(direction)
-
-    
     i = ct.c_uint(i_iter)
     ts_info.generate_ctypes_pointers()
-    # previous_ts_info.generate_ctypes_pointers()
     run_UVLM(ct.byref(uvmopts),
              ct.byref(flightconditions),
              ts_info.ct_p_dimensions,
@@ -375,14 +355,8 @@ def uvlm_solver_lifting_and_nonlifting(i_iter, ts_info, ts_info_nonlifting, stru
                         n_span_panels_wo_u_ind=4)
     uvmopts.only_lifting = ct.c_bool(False)
     run_UVLM = UvlmLib.run_UVLM_lifting_and_nonlifting
-    run_UVLM.restype = None
 
-    flightconditions = FlightConditions()
-    flightconditions.rho = options['rho']
-    flightconditions.uinf = np.ctypeslib.as_ctypes(np.linalg.norm(ts_info.u_ext[0][:, 0, 0]))
-    # direction = np.array([1.0, 0, 0])
-    flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
-    # flightconditions.uinf_direction = np.ctypeslib.as_ctypes(direction)
+    flightconditions = FlightConditions(options['rho'], ts_info.u_ext[0][:, 0, 0])
 
     rbm_vel = struct_ts_info.for_vel.copy()
     rbm_vel[0:3] = np.dot(struct_ts_info.cga(), rbm_vel[0:3])
@@ -429,7 +403,6 @@ def uvlm_calculate_unsteady_forces(ts_info,
                                    convect_wake=True,
                                    dt=None):
     calculate_unsteady_forces = UvlmLib.calculate_unsteady_forces
-    calculate_unsteady_forces.restype = None
 
     uvmopts = UVMopts()
     if dt is None:
@@ -446,10 +419,8 @@ def uvlm_calculate_unsteady_forces(ts_info,
     uvmopts.convect_wake = ct.c_bool(convect_wake)
     uvmopts.vortex_radius = ct.c_double(options['vortex_radius'])
 
-    flightconditions = FlightConditions()
-    flightconditions.rho = options['rho']
-    flightconditions.uinf = np.ctypeslib.as_ctypes(np.linalg.norm(ts_info.u_ext[0][:, 0, 0]))
-    flightconditions.uinf_direction = np.ctypeslib.as_ctypes(ts_info.u_ext[0][:, 0, 0]/flightconditions.uinf)
+
+    flightconditions = FlightConditions(options['rho'], ts_info.u_ext[0][:, 0, 0])
 
     rbm_vel = struct_ts_info.for_vel.copy()
     rbm_vel[0:3] = np.dot(struct_ts_info.cga(), rbm_vel[0:3])
@@ -478,7 +449,6 @@ def uvlm_calculate_unsteady_forces(ts_info,
 def uvlm_calculate_incidence_angle(ts_info,
                                    struct_ts_info):
     calculate_incidence_angle = UvlmLib.UVLM_check_incidence_angle
-    calculate_incidence_angle.restype = None
 
     rbm_vel = struct_ts_info.for_vel.copy()
     rbm_vel[0:3] = np.dot(struct_ts_info.cga(), rbm_vel[0:3])
@@ -521,7 +491,6 @@ def uvlm_calculate_total_induced_velocity_at_points(ts_info,
 
     """
     calculate_uind_at_points = UvlmLib.total_induced_velocity_at_points
-    calculate_uind_at_points.restype = None
 
     uvmopts = UVMopts()
     uvmopts.NumSurfaces = ct.c_uint(ts_info.n_surf)
@@ -670,7 +639,6 @@ def get_induced_velocity_cpp(maps, zeta, gamma, zeta_target,
 
     """
     call_ind_vel = UvlmLib.call_ind_vel
-    call_ind_vel.restype = None
 
     assert zeta_target.flags['C_CONTIGUOUS'], "Input not C contiguous"
 
