@@ -44,7 +44,7 @@ wings and wind turbines. In addition, it supports linearisation of these nonline
 arbitrary conditions and includes various tools such as: model reduction or frequency analysis.
 
 In short, SHARPy offers (amongst others) the following solutions to the user:
-* Static aerodynamic, structural and aeroelastic solutions
+* Static aerodynamic, structural and aeroelastic solutions including fuselage effects
 * Finding trim conditions for aeroelastic configurations
 * Nonlinear, dynamic time domain simulations under a large number of conditions such as:
     + Prescribed trajectories.

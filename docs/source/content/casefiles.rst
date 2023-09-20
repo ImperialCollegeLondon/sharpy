@@ -321,6 +321,55 @@ Item by item:
     should be included for each airfoil defined. Each entry consists of a 4-column table. The first column corresponds
     to the angle of attack (in radians) and then the ``C_L``, ``C_D`` and ``C_M``. 
 
+Nonlifting Body file
+-----------------
+
+All the nonlifting body data is contained in ``case.nonlifting_body.h5``.
+
+The idea behind the structure of the model definition of nonlifting bodies in SHARPy is similiar to the aerodynamic 
+one for lifting surfaces. Again for each node or element we define several parameters.
+
+Item by item:
+
+* ``shape``: Type of geometrical form of 3D nonlifting body.
+
+    In the ``nonlifting_body.h5`` file, there is a Group called ``shape``. The shape indicates the geometrical form of the 
+    nonlifting body. Common options for this parameter are ``'cylindrical'`` and ``'specific'``. For the former, SHARPy 
+    expects rotational symmetric cross-section for which only a radius is required for each node. For the ``'specific'`` 
+    option, SHARPy can create a more unique nonlifting body geometry by creating an ellipse at each fuselage defined by 
+    :math:`\frac{y^2}{a^2}+\frac{z^2}{b^2}=1` with the given ellipse axis lengths :math:`a`  and :math:`b`. Further, SHARPy 
+    lets define the user to create a vertical offset from the node with :math:`z_0`.
+
+* ``radius [num_node]``: Cross-sectional radius.
+
+    Is an array with the radius of specified for each fuselage node.
+
+* ``a_ellipse [num_node]``: Elliptical axis lengths along the local y-axis.
+
+    Is an array with the length of the elliptical axis along the y-axis.
+
+* ``b_ellipse [num_node]``: Elliptical axis lengths along the local z-axis.
+
+    Is an array with the length of the elliptical axis along the z-axis.
+
+* ``z_0_ellipse [num_node]``: Vertical offset of the ellipse center from the beam node.
+
+    Is an array with the vertical offset of the center of the elliptical cross-sectoin from the fuselage node.
+
+*  ``surface_m [num_surfaces]``: Radial panelling.
+
+    Is an integer array with the number of radial panels for every surface.
+
+*  ``nonlifting_body_node [num_node]``: Nonlifting body node definition.
+
+    Is a boolean (``True`` or ``False``) array that indicates if that node has a nonlifting body
+    attached to it.
+    
+*  ``surface_distribution [num_elem]``:  Nonlifting Surface integer array.
+
+    It contains the index of the surface the element belongs to. Surfaces need to be continuous, so please note 
+    that if your beam numbering is not continuous, you need to make a surface per continuous section.
+
 
 Time-varying force input file (``.dyn.h5``)
 -------------------------------------------
