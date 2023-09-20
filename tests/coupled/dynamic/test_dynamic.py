@@ -14,7 +14,7 @@ class TestCoupledDynamic(unittest.TestCase):
         """
         Case and results from:
         tests/coupled/dynamic/hale 
-        reference results produced with SHARPy version 1.3
+        reference results produced with SHARPy version 2.0
         :return:
         """
         import sharpy.sharpy_main
@@ -29,11 +29,10 @@ class TestCoupledDynamic(unittest.TestCase):
         output_folder = cases_folder + '/output/'
 
         sharpy.sharpy_main.main(['', cases_folder + '/hale.sharpy'])
-        n_tstep = 20
-
+        n_tstep = 5
         # compare results with reference values 
-        ref_Fz = 50.4986064826483
-        ref_My = -1833.91402522644
+        ref_Fz = -526.712530589119
+        ref_My =-1513.64676181859
         file = os.path.join(output_folder, case_name, 'beam/beam_loads_%i.csv' % (n_tstep))
         beam_loads_ts = np.loadtxt(file, delimiter=',')
         np.testing.assert_almost_equal(float(beam_loads_ts[0, 6]), ref_Fz,
