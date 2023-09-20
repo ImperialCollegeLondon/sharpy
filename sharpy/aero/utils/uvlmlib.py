@@ -298,13 +298,10 @@ def vlm_solver_lifting_and_nonlifting_bodies(ts_info_lifting, ts_info_nonlifting
 
 
 def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=None):
-    rbm_vel = struct_ts_info.for_vel.copy()
-    rbm_vel[0:3] = np.dot(struct_ts_info.cga(), rbm_vel[0:3])
-    rbm_vel[3:6] = np.dot(struct_ts_info.cga(), rbm_vel[3:6])
-    p_rbm_vel = rbm_vel.ctypes.data_as(ct.POINTER(ct.c_double))
+
+    p_rbm_vel = get_ctype_pointer_of_rbm_vel_in_G_frame(struct_ts_info.for_vel.copy(), struct_ts_info.cga())
     p_centre_rot = options['centre_rot'].ctypes.data_as(ct.POINTER(ct.c_double))
 
-    
     run_UVLM = UvlmLib.run_UVLM
 
     uvmopts = UVMopts()
@@ -340,10 +337,8 @@ def uvlm_solver(i_iter, ts_info, struct_ts_info, options, convect_wake=True, dt=
     ts_info.remove_ctypes_pointers()
 
 def uvlm_solver_lifting_and_nonlifting(i_iter, ts_info, ts_info_nonlifting, struct_ts_info, options, convect_wake=True, dt=None):
-    rbm_vel = struct_ts_info.for_vel.copy()
-    rbm_vel[0:3] = np.dot(struct_ts_info.cga(), rbm_vel[0:3])
-    rbm_vel[3:6] = np.dot(struct_ts_info.cga(), rbm_vel[3:6])
-    p_rbm_vel = rbm_vel.ctypes.data_as(ct.POINTER(ct.c_double))
+
+    p_rbm_vel = get_ctype_pointer_of_rbm_vel_in_G_frame(struct_ts_info.for_vel.copy(), struct_ts_info.cga())
     p_centre_rot = options['centre_rot'].ctypes.data_as(ct.POINTER(ct.c_double))
 
     uvmopts = UVMopts()
@@ -357,12 +352,6 @@ def uvlm_solver_lifting_and_nonlifting(i_iter, ts_info, ts_info_nonlifting, stru
     run_UVLM = UvlmLib.run_UVLM_coupled_with_LSPM
 
     flightconditions = FlightConditions(options['rho'], ts_info.u_ext[0][:, 0, 0])
-
-    rbm_vel = struct_ts_info.for_vel.copy()
-    rbm_vel[0:3] = np.dot(struct_ts_info.cga(), rbm_vel[0:3])
-    rbm_vel[3:6] = np.dot(struct_ts_info.cga(), rbm_vel[3:6])
-    p_rbm_vel = rbm_vel.ctypes.data_as(ct.POINTER(ct.c_double))
-    p_centre_rot = options['centre_rot'].ctypes.data_as(ct.POINTER(ct.c_double))
 
     i = ct.c_uint(i_iter)
     ts_info.generate_ctypes_pointers()
@@ -422,10 +411,7 @@ def uvlm_calculate_unsteady_forces(ts_info,
 
     flightconditions = FlightConditions(options['rho'], ts_info.u_ext[0][:, 0, 0])
 
-    rbm_vel = struct_ts_info.for_vel.copy()
-    rbm_vel[0:3] = np.dot(struct_ts_info.cga(), rbm_vel[0:3])
-    rbm_vel[3:6] = np.dot(struct_ts_info.cga(), rbm_vel[3:6])
-    p_rbm_vel = rbm_vel.ctypes.data_as(ct.POINTER(ct.c_double))
+    p_rbm_vel = get_ctype_pointer_of_rbm_vel_in_G_frame(struct_ts_info.for_vel.copy(), struct_ts_info.cga())
 
     for i_surf in range(ts_info.n_surf):
         ts_info.dynamic_forces[i_surf].fill(0.0)
@@ -450,10 +436,7 @@ def uvlm_calculate_incidence_angle(ts_info,
                                    struct_ts_info):
     calculate_incidence_angle = UvlmLib.UVLM_check_incidence_angle
 
-    rbm_vel = struct_ts_info.for_vel.copy()
-    rbm_vel[0:3] = np.dot(struct_ts_info.cga(), rbm_vel[0:3])
-    rbm_vel[3:6] = np.dot(struct_ts_info.cga(), rbm_vel[3:6])
-    p_rbm_vel = rbm_vel.ctypes.data_as(ct.POINTER(ct.c_double))
+    p_rbm_vel = get_ctype_pointer_of_rbm_vel_in_G_frame(struct_ts_info.for_vel.copy(), struct_ts_info.cga())
 
     n_surf = ct.c_uint(ts_info.n_surf)
 
@@ -753,3 +736,9 @@ def dvinddzeta_cpp(zetac, surf_in, is_bound,
     )
 
     return der_coll, der_vert
+
+def get_ctype_pointer_of_rbm_vel_in_G_frame(rbm_vel, cga):
+    rbm_vel[0:3] = np.dot(cga, rbm_vel[0:3])
+    rbm_vel[3:6] = np.dot(cga, rbm_vel[3:6])
+    p_rbm_vel = rbm_vel.ctypes.data_as(ct.POINTER(ct.c_double))
+    return p_rbm_vel
