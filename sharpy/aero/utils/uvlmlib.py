@@ -242,7 +242,7 @@ def vlm_solver(ts_info, options):
     ts_info.remove_ctypes_pointers()
 
 def vlm_solver_nonlifting_body(ts_info, options):
-    run_linear_source_panel_method = UvlmLib.run_linear_source_panel_method_body
+    run_linear_source_panel_method = UvlmLib.run_linear_source_panel_method
 
     vmopts = VMopts()
     vmopts.set_options(options, n_surfaces_nonlifting = ts_info.n_surf)
@@ -261,7 +261,7 @@ def vlm_solver_nonlifting_body(ts_info, options):
     ts_info.remove_ctypes_pointers()
 
 def vlm_solver_lifting_and_nonlifting_bodies(ts_info_lifting, ts_info_nonlifting, options):
-    run_VLM_coupled_with_LSPM = UvlmLib.run_VLM_coupled_with_LSPM_bodies
+    run_VLM_coupled_with_LSPM = UvlmLib.run_VLM_coupled_with_LSPM
 
     vmopts = VMopts()    
     vmopts.set_options(options, n_surfaces = ts_info_lifting.n_surf, n_surfaces_nonlifting = ts_info_nonlifting.n_surf)
