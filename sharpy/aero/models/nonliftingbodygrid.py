@@ -21,7 +21,7 @@ class NonliftingBodyGrid(Grid):
         self.grid_type = 'nonlifting_body'
 
 
-    def generate(self, data_dict, beam, nonlifting_body_settings, ts): ##input?
+    def generate(self, data_dict, beam, nonlifting_body_settings, ts):
         super().generate(data_dict, beam, nonlifting_body_settings, ts)
 
         # allocating initial grid storage
