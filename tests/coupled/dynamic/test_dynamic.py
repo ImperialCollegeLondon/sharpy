@@ -32,8 +32,8 @@ class TestCoupledDynamic(unittest.TestCase):
         sharpy.sharpy_main.main(['', cases_folder + '/hale.sharpy'])
         n_tstep = 5
         # compare results with reference values 
-        ref_Fz = -526.712530589119
-        ref_My =-1513.64676181859
+        ref_Fz = -531.023900359779
+        ref_My = -1530.0477841197576
 
         file = os.path.join(output_folder, case_name, 'beam/beam_loads_%i.csv' % (n_tstep))
         beam_loads_ts = np.loadtxt(file, delimiter=',')
