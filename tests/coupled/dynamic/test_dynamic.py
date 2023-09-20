@@ -55,7 +55,7 @@ class TestCoupledDynamic(unittest.TestCase):
         folders = ['hale/output']
         for folder in folders:
             shutil.rmtree(self.route_file_dir + '/' + folder)
-        files = ['hale/hale.aero.h5', 'hale/hale.fem.h5', 'hale.hale.sharpy']
+        files = ['hale/hale.aero.h5', 'hale/hale.fem.h5', 'hale/hale.sharpy']
         for file in files:
             file_dir = self.route_file_dir + '/' + file
             if os.path.isfile(file_dir):
