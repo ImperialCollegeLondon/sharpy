@@ -34,7 +34,7 @@ class TestUvlmCoupledWithSourcePanelMethod(unittest.TestCase):
         dict_discretization = {
             'n_elem_per_wing': 20,
             'n_elem_fuselage': 10,
-            'num_chordwise_panels': 8
+            'num_chordwise_panels': 4
         }
 
         # Simulation settings
@@ -42,6 +42,11 @@ class TestUvlmCoupledWithSourcePanelMethod(unittest.TestCase):
         list_phantom_test = [False, True]
         list_dynamic_test = [False, True]
         dynamic_structural_solver = 'NonLinearDynamicPrescribedStep'
+
+        # Numerical Settings for DynamicCoupled (very small for faster test runs)
+        fsi_substeps = 2
+        fsi_tolerance = 1e-2
+
         # Simlation Solver Flow
         flow = ['BeamLoader',
                 'AerogridLoader',
@@ -71,7 +76,7 @@ class TestUvlmCoupledWithSourcePanelMethod(unittest.TestCase):
                 flow_case = flow.copy()
 
                 if lifting_only:
-                    n_tsteps = 10
+                    n_tsteps = 5
                     flow_case.remove('NonliftingbodygridLoader')
                 if not dynamic:
                     n_tsteps = 0
@@ -85,7 +90,9 @@ class TestUvlmCoupledWithSourcePanelMethod(unittest.TestCase):
                                                 n_tsteps = n_tsteps,
                                                 horseshoe=horseshoe,
                                                 phantom_test=phantom_test,
-                                                dynamic_structural_solver=dynamic_structural_solver)
+                                                dynamic_structural_solver=dynamic_structural_solver,
+                                                fsi_substeps=fsi_substeps,
+                                                fsi_tolerance=fsi_tolerance)
                 # # run simulation
                 phantom_wing.run()
 
@@ -230,7 +237,9 @@ class TestUvlmCoupledWithSourcePanelMethod(unittest.TestCase):
                                      horseshoe=True,
                                      nonlifting_only=False,
                                      phantom_test=False,
-                                     dynamic_structural_solver='NonLinearDynamicPrescribedStep'
+                                     dynamic_structural_solver='NonLinearDynamicPrescribedStep',
+                                     fsi_substeps=200,
+                                     fsi_tolerance=1e-6
                                      ):
         """
             Simulation settings are defined and written to the ".sharpy" input file.
@@ -245,7 +254,9 @@ class TestUvlmCoupledWithSourcePanelMethod(unittest.TestCase):
                                                 phantom_test=phantom_test, 
                                                 nonlifting_only=nonlifting_only, 
                                                 horseshoe=horseshoe,
-                                                dynamic_structural_solver=dynamic_structural_solver)
+                                                dynamic_structural_solver=dynamic_structural_solver,
+                                                fsi_substeps=fsi_substeps,
+                                                fsi_tolerance=fsi_tolerance)
         aircraft_model.create_settings(settings)
 
     def get_timestep(self, model, u_inf):
