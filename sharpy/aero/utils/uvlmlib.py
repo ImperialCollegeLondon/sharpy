@@ -166,7 +166,8 @@ class UVMopts(ct.Structure):
                     n_surfaces_nonlifting = 0, 
                     dt = None, 
                     convect_wake = False, 
-                     n_span_panels_wo_u_ind = 0):
+                     n_span_panels_wo_u_ind = 0,
+                     lifting_only=True):
         if dt is None:
             self.dt = ct.c_double(options["dt"])
         else:
@@ -190,7 +191,7 @@ class UVMopts(ct.Structure):
         self.quasi_steady = ct.c_bool(options['quasi_steady'])
  
         self.only_nonlifting = ct.c_bool(options["only_nonlifting"])
-        self.only_lifting = ct.c_bool(not options["nonlifting_body_interactions"])
+        self.only_lifting = ct.c_bool(lifting_only)
         self.phantom_wing_test = ct.c_bool(options["phantom_wing_test"])
         self.ignore_first_x_nodes_in_force_calculation = ct.c_uint(options["ignore_first_x_nodes_in_force_calculation"])
         self.num_spanwise_panels_wo_induced_velocity = n_span_panels_wo_u_ind
@@ -347,8 +348,8 @@ def uvlm_solver_lifting_and_nonlifting(i_iter, ts_info, ts_info_nonlifting, stru
                         n_surfaces_nonlifting = ts_info_nonlifting.n_surf, 
                         dt = dt, 
                         convect_wake = convect_wake, 
-                        n_span_panels_wo_u_ind=4)
-    uvmopts.only_lifting = ct.c_bool(False)
+                        n_span_panels_wo_u_ind=4,
+                        only_lifting=False)
     run_UVLM = UvlmLib.run_UVLM_coupled_with_LSPM
 
     flightconditions = FlightConditions(options['rho'], ts_info.u_ext[0][:, 0, 0])
@@ -356,7 +357,6 @@ def uvlm_solver_lifting_and_nonlifting(i_iter, ts_info, ts_info_nonlifting, stru
     i = ct.c_uint(i_iter)
     ts_info.generate_ctypes_pointers()
     ts_info_nonlifting.generate_ctypes_pointers()
-    # previous_ts_info.generate_ctypes_pointers()
     run_UVLM(ct.byref(uvmopts),
              ct.byref(flightconditions),
              ts_info.ct_p_dimensions,
