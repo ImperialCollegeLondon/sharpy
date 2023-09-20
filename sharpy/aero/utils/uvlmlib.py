@@ -166,8 +166,8 @@ class UVMopts(ct.Structure):
                     n_surfaces_nonlifting = 0, 
                     dt = None, 
                     convect_wake = False, 
-                     n_span_panels_wo_u_ind = 0,
-                     lifting_only=True):
+                    n_span_panels_wo_u_ind = 0,
+                    only_lifting=True):
         if dt is None:
             self.dt = ct.c_double(options["dt"])
         else:
@@ -191,7 +191,7 @@ class UVMopts(ct.Structure):
         self.quasi_steady = ct.c_bool(options['quasi_steady'])
  
         self.only_nonlifting = ct.c_bool(options["only_nonlifting"])
-        self.only_lifting = ct.c_bool(lifting_only)
+        self.only_lifting = ct.c_bool(only_lifting)
         self.phantom_wing_test = ct.c_bool(options["phantom_wing_test"])
         self.ignore_first_x_nodes_in_force_calculation = ct.c_uint(options["ignore_first_x_nodes_in_force_calculation"])
         self.num_spanwise_panels_wo_induced_velocity = n_span_panels_wo_u_ind
