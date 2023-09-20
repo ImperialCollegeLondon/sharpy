@@ -10,6 +10,8 @@ class TestCoupledDynamic(unittest.TestCase):
     - Gust response of the hale aircraft
     """
 
+    route_file_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+    
     def test_hale_dynamic(self):
         """
         Case and results from:
@@ -24,7 +26,6 @@ class TestCoupledDynamic(unittest.TestCase):
             import tests.coupled.dynamic.hale.generate_hale
         
         case_name = 'hale'
-        self.route_file_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
         cases_folder = os.path.join(self.route_file_dir, case_name)
         output_folder = cases_folder + '/output/'
 
