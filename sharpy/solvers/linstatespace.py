@@ -100,7 +100,7 @@ class LinStateSpace(BaseSolver):
                                 'gain_loads':'ls',
                                 'gain_internalloads':'is'}
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         
         self.data = data
 

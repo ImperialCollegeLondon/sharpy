@@ -138,7 +138,7 @@ class DynamicLoads(BaseSolver):
         self.dt = None
         self.caller = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
 
         if custom_settings is None:
@@ -169,7 +169,7 @@ class DynamicLoads(BaseSolver):
 
         self.caller = caller
 
-    def run(self, online=False):
+    def run(self, online=False, solvers=False):
         """
         Computes the 
 
