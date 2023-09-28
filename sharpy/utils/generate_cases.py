@@ -1342,7 +1342,7 @@ class AerodynamicInformation():
             if self.m_distribution.lower() == 'user_defined':
                 self.user_defined_m_distribution = self.user_defined_m_distribution + aerodynamics_to_add.user_defined_m_distribution
             if self.polars is not None:
-                self.polars = self.polars + aerodynamics_to_add.polars
+                self.polars = np.array([self.polars, aerodynamics_to_add.polars])
             total_num_airfoils += len(aerodynamics_to_add.airfoils[:, 0, 0])
             # total_num_surfaces += len(aerodynamics_to_add.surface_m)
             total_num_surfaces += np.sum(aerodynamics_to_add.surface_m != -1)
