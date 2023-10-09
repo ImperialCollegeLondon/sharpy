@@ -1,5 +1,5 @@
 # SHARPy v2.0 Installation Guide
-__Last revision 27 June 2023__
+__Last revision 9 October 2023__
 
 The following step by step tutorial will guide you through the installation process of SHARPy. This is the updated process valid from v2.0.
 
@@ -11,7 +11,8 @@ SHARPy is being developed and tested on the following operating systems:
 * CentOS 7 and CentOS 8
 * Ubuntu 18.04 LTS
 * Debian 10
-* MacOS Mojave and Catalina
+* MacOS Mojave and Catalina (Intel)
+* MacOS Sonoma (Apple Silicon M2)
 
 Windows users can also run it by first installing the Windows Subsystem for Linux (https://learn.microsoft.com/en-us/windows/wsl/install) and a XServer such as GWSL, which can be installed through the Microsoft Store. SHARPy is also available to the vast majority of operating systems that are supported by Docker
 
@@ -72,7 +73,7 @@ or running any SHARPy cases.
     ```
    
 4. Create the conda environment that SHARPy will use. Change `environment_new.yml` to read `environment_macos.yml`
-   if you are installing SHARPy on Mac OS X.
+   if you are installing SHARPy on MacOS (Intel), or `environment_macos_arm64.yml` if installing on macOS (Apple Silicon).
     ```bash
     cd sharpy/utils
     conda env create -f environment_new.yml
@@ -156,7 +157,7 @@ to your taste.
     This command will check out the `develop` branch and set it to track the remote origin. It will also set the submodules (xbeam and UVLM) to the right commit.
 
 2. Create the conda environment that SHARPy will use. Change `environment_new.yml` to read `environment_macos.yml`
-   if you are installing SHARPy on Mac OS X.
+   if you are installing SHARPy on MacOS (Intel), or `environment_macos_arm64.yml` if installing on macOS (Apple Silicon).
     ```bash
     cd sharpy/utils
     conda env create -f environment_new.yml
