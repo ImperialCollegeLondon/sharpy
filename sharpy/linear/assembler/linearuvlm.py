@@ -425,8 +425,8 @@ class LinearUVLM(ss_interface.BaseElement):
         for i_surf in range(aero_tstep.n_surf):
             # Tuple with dimensions of the aerogrid zeta, which is the same shape for forces
             dimensions = aero_tstep.zeta[i_surf].shape
-            dimensions_gamma = data.aero.aero_dimensions[i_surf]
-            dimensions_wake = data.aero.aero_dimensions_star[i_surf]
+            dimensions_gamma = data.aero.dimensions[i_surf]
+            dimensions_wake = data.aero.dimensions_star[i_surf]
 
             # Number of entries in zeta
             points_in_surface = aero_tstep.zeta[i_surf].size

@@ -178,6 +178,10 @@ class DynamicCoupled(BaseSolver):
                                                  'The dictionary values are dictionaries with the settings ' \
                                                  'needed by each generator.'
 
+    settings_types['nonlifting_body_interactions'] = 'bool'
+    settings_default['nonlifting_body_interactions'] = False
+    settings_description['nonlifting_body_interactions'] = 'Effect of Nonlifting Bodies on Lifting bodies are considered'
+    
     settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
@@ -365,16 +369,19 @@ class DynamicCoupled(BaseSolver):
 
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
-            # copy last info to first
-            self.data.aero.timestep_info[0] = self.data.aero.timestep_info[-1]
-            self.data.structure.timestep_info[0] = self.data.structure.timestep_info[-1]
-            # delete all the rest
-            while len(self.data.aero.timestep_info) - 1:
-                del self.data.aero.timestep_info[-1]
-            while len(self.data.structure.timestep_info) - 1:
-                del self.data.structure.timestep_info[-1]
+            self.remove_old_timestep_info(self.data.structure.timestep_info)
+            self.remove_old_timestep_info(self.data.aero.timestep_info)            
+            if self.settings['nonlifting_body_interactions']:
+                self.remove_old_timestep_info(self.data.nonlifting_body.timestep_info)
 
         self.data.ts = 0
+
+    def remove_old_timestep_info(self, tstep_info):
+        # copy last info to first
+        tstep_info[0] = tstep_info[-1].copy()
+        # delete all the rest
+        while len(tstep_info) - 1:
+            del tstep_info[-1]
 
     def process_controller_output(self, controlled_state):
         """
@@ -525,6 +532,10 @@ class DynamicCoupled(BaseSolver):
 
             structural_kstep = self.data.structure.timestep_info[-1].copy()
             aero_kstep = self.data.aero.timestep_info[-1].copy()
+            if self.settings['nonlifting_body_interactions']:
+                nl_body_kstep = self.data.nonlifting_body.timestep_info[-1].copy()
+            else:
+                nl_body_kstep = None
             self.logger.debug('Time step {}'.format(self.data.ts))
 
             # Add the controller here
@@ -565,14 +576,17 @@ class DynamicCoupled(BaseSolver):
                     cout.cout_wrap(("The FSI solver did not converge!!! residuals: %f %f" % (print_res, print_res_dqdt)))
                     self.aero_solver.update_custom_grid(
                         structural_kstep,
-                        aero_kstep)
+                        aero_kstep,
+                        nl_body_kstep)
                     break
 
                 # generate new grid (already rotated)
                 aero_kstep = controlled_aero_kstep.copy()
+                
                 self.aero_solver.update_custom_grid(
-                    structural_kstep,
-                    aero_kstep)
+                        structural_kstep,
+                        aero_kstep,
+                        nl_body_kstep)
 
                 # compute unsteady contribution
                 force_coeff = 0.0
@@ -604,7 +618,8 @@ class DynamicCoupled(BaseSolver):
                 self.data = self.aero_solver.run(aero_step=aero_kstep,
                                                  structural_step=structural_kstep,
                                                  convect_wake=True,
-                                                 unsteady_contribution=unsteady_contribution)
+                                                 unsteady_contribution=unsteady_contribution,
+                                                 nl_body_tstep = nl_body_kstep)
                 self.time_aero += time.perf_counter() - ini_time_aero
 
                 previous_kstep = structural_kstep.copy()
@@ -615,12 +630,15 @@ class DynamicCoupled(BaseSolver):
                 previous_kstep.runtime_unsteady_forces = previous_runtime_unsteady_forces.astype(dtype=ct.c_double, order='F', copy=True)
 
                 # move the aerodynamic surface according the the structural one
-                self.aero_solver.update_custom_grid(structural_kstep,
-                                                    aero_kstep)
-
+                self.aero_solver.update_custom_grid(
+                        structural_kstep,
+                        aero_kstep,
+                        nl_body_kstep)
+                
                 self.map_forces(aero_kstep,
-                                structural_kstep,
-                                force_coeff)
+                            structural_kstep,
+                            nl_body_kstep = nl_body_kstep,
+                            unsteady_forces_coeff = force_coeff)
 
                 # relaxation
                 relax_factor = self.relaxation_factor(k)
@@ -664,16 +682,20 @@ class DynamicCoupled(BaseSolver):
                                     self.aero_solver,
                                     self.with_runtime_generators):
                     # move the aerodynamic surface according to the structural one
-                    self.aero_solver.update_custom_grid(
-                        structural_kstep,
-                        aero_kstep)
+                    self.aero_solver.update_custom_grid(structural_kstep,
+                                                        aero_kstep,
+                                                        nl_body_tstep = nl_body_kstep)
                     break
 
             # move the aerodynamic surface according the the structural one
-            self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
+            self.aero_solver.update_custom_grid(structural_kstep,
+                                                aero_kstep,
+                                                nl_body_tstep = nl_body_kstep)
 
             self.aero_solver.add_step()
             self.data.aero.timestep_info[-1] = aero_kstep.copy()
+            if self.settings['nonlifting_body_interactions']:
+                self.data.nonlifting_body.timestep_info[-1] = nl_body_kstep.copy()
             self.structural_solver.add_step()
             self.data.structure.timestep_info[-1] = structural_kstep.copy()
 
@@ -748,7 +770,9 @@ class DynamicCoupled(BaseSolver):
             return False
 
         # Check the special case of no aero and no runtime generators
-        if aero_solver.solver_id.lower() == "noaero" and not with_runtime_generators:
+        if (aero_solver.solver_id.lower() == "noaero"\
+             or struct_solver.solver_id.lower()  == "nostructural")\
+            and not with_runtime_generators:
             return True
 
         # relative residuals
@@ -787,7 +811,7 @@ class DynamicCoupled(BaseSolver):
                         return True
 
 
-    def map_forces(self, aero_kstep, structural_kstep, unsteady_forces_coeff=1.0):
+    def map_forces(self, aero_kstep, structural_kstep, nl_body_kstep = None, unsteady_forces_coeff=1.0):
         # set all forces to 0
         structural_kstep.steady_applied_forces.fill(0.0)
         structural_kstep.unsteady_applied_forces.fill(0.0)
@@ -802,8 +826,8 @@ class DynamicCoupled(BaseSolver):
             self.data.structure.node_master_elem,
             self.data.structure.connectivities,
             structural_kstep.cag(),
-            self.data.aero.aero_dict)
-        dynamic_struct_forces = mapping.aero2struct_force_mapping(
+            self.data.aero.data_dict)
+        dynamic_struct_forces = unsteady_forces_coeff*mapping.aero2struct_force_mapping(
             aero_kstep.dynamic_forces,
             self.data.aero.struct2aero_mapping,
             aero_kstep.zeta,
@@ -812,7 +836,7 @@ class DynamicCoupled(BaseSolver):
             self.data.structure.node_master_elem,
             self.data.structure.connectivities,
             structural_kstep.cag(),
-            self.data.aero.aero_dict)
+            self.data.aero.data_dict)
 
         if self.correct_forces:
             struct_forces = \
@@ -825,6 +849,18 @@ class DynamicCoupled(BaseSolver):
         structural_kstep.postproc_node['aero_steady_forces'] = struct_forces
         structural_kstep.postproc_node['aero_unsteady_forces'] = dynamic_struct_forces
 
+        # if self.settings['nonlifting_body_interactions']:
+        #     struct_forces +=  mapping.aero2struct_force_mapping(
+        #         nl_body_kstep.forces,
+        #         self.data.nonlifting_body.struct2aero_mapping,
+        #         nl_body_kstep.zeta,
+        #         structural_kstep.pos,
+        #         structural_kstep.psi,
+        #         self.data.structure.node_master_elem,
+        #         self.data.structure.connectivities,
+        #         structural_kstep.cag(),
+        #         self.data.nonlifting_body.data_dict)
+        # prescribed forces + aero forces
         # prescribed forces + aero forces + runtime generated
         structural_kstep.steady_applied_forces += struct_forces
         structural_kstep.steady_applied_forces += self.data.structure.ini_info.steady_applied_forces
