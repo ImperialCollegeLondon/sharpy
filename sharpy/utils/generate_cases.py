@@ -1768,7 +1768,9 @@ class SimulationInformation():
             else:
                 solver_name = solver
             self.solvers[solver_name] = deepcopy(aux_solvers[solver])
-            
+            if solver in ['GridLoader', 'NonliftingbodygridLoader']:
+                # Skip this solver as no default values for GridLoader exist. 
+                continue
 
     def check(self):
 

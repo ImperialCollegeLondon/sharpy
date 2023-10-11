@@ -33,6 +33,8 @@ vortex ring lattice with the boundary conditions enforced at the collocation poi
 The Kutta condition is also enforced at the trailing edge. The wake can be simulated by either additional vortex rings
 or by infinitely long horseshoe vortices, which are ideally suited for steady simulations only.
 
+The aerodynamic model has recently been extended by a linear source panel method (SPM) to model nonlifting bodies for example fuselages. The SPM and UVLM can be coupled to model fuselage-wing configuration and a junction handling approach, based on phantom panels and circulation interpolation, has been added.
+
 The input problems can be structural, aerodynamic or coupled, yielding an aeroelastic system.
 
 ## [Capabilities](http://ic-sharpy.readthedocs.io/en/latest/content/capabilities.html)
@@ -42,7 +44,7 @@ wings and wind turbines. In addition, it supports linearisation of these nonline
 arbitrary conditions and includes various tools such as: model reduction or frequency analysis.
 
 In short, SHARPy offers (amongst others) the following solutions to the user:
-* Static aerodynamic, structural and aeroelastic solutions
+* Static aerodynamic, structural and aeroelastic solutions including fuselage effects
 * Finding trim conditions for aeroelastic configurations
 * Nonlinear, dynamic time domain simulations under a large number of conditions such as:
     + Prescribed trajectories.

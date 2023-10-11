@@ -40,6 +40,10 @@ class SaveData(BaseSolver):
     settings_default['save_aero'] = True
     settings_description['save_aero'] = 'Save aerodynamic classes.'
 
+    settings_types['save_nonlifting'] = 'bool'
+    settings_default['save_nonlifting'] = False
+    settings_description['save_nonlifting'] = 'Save aerodynamic classes.'
+
     settings_types['save_struct'] = 'bool'
     settings_default['save_struct'] = True
     settings_description['save_struct'] = 'Save structural classes.'
@@ -106,7 +110,6 @@ class SaveData(BaseSolver):
         self.folder = ''
         self.filename = ''
         self.filename_linear = ''
-        self.ts_max = 0
         self.caller = None
 
         ### specify which classes are saved as hdf5 group
@@ -143,7 +146,6 @@ class SaveData(BaseSolver):
                                             'ct_zeta_star_list',
                                             'dynamic_input'])
 
-        self.ts_max = self.data.ts + 1
 
         # create folder for containing files if necessary
         self.folder = data.output_folder + '/savedata/'
@@ -179,6 +181,11 @@ class SaveData(BaseSolver):
                     self.settings['skip_attr'].append('gamma_star')
                     self.settings['skip_attr'].append('dist_to_orig')
                     self.settings['skip_attr'].append('wake_conv_vel')
+
+
+            if self.settings['save_nonlifting']:
+                self.ClassesToSave += (sharpy.aero.models.nonliftingbodygrid.NonliftingBodyGrid,
+                                       sharpy.utils.datastructures.NonliftingBodyTimeStepInfo,)
 
             if self.settings['save_struct']:
                 self.ClassesToSave += (
@@ -222,47 +229,51 @@ class SaveData(BaseSolver):
 
                     if self.settings['save_struct']:
                         h5utils.add_as_grp(list(),
-                                   hdfile['data']['structure'],
-                                   grpname='timestep_info')
+                                hdfile['data']['structure'],
+                                grpname='timestep_info')
                     if self.settings['save_aero']:
                         h5utils.add_as_grp(list(),
-                                   hdfile['data']['aero'],
-                                   grpname='timestep_info')
+                                hdfile['data']['aero'],
+                                grpname='timestep_info')
+                    if self.settings['save_nonlifting']:
+                        h5utils.add_as_grp(list(),
+                                hdfile['data']['nonlifting_body'],
+                                grpname='timestep_info')
 
                     for it in range(len(self.data.structure.timestep_info)):
                         tstep_p = self.data.structure.timestep_info[it]
                         if tstep_p is not None:
                             self.save_timestep(self.data, self.settings, it, hdfile)
 
-                hdfile.close()
+                    hdfile.close()
 
-                if self.settings['save_linear_uvlm']:
-                    linhdffile = h5py.File(self.filename.replace('.data.h5', '.uvlmss.h5'), 'a')
-                    h5utils.add_as_grp(self.data.linear.linear_system.uvlm.ss, linhdffile, grpname='ss',
-                                       ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
-                                       compress_float=self.settings['compress_float'])
-                    h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linhdffile,
-                                       grpname='linearisation_vectors',
-                                       ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
-                                       compress_float=self.settings['compress_float'])
-                    linhdffile.close()
+                    if self.settings['save_linear_uvlm']:
+                        linhdffile = h5py.File(self.filename.replace('.data.h5', '.uvlmss.h5'), 'a')
+                        h5utils.add_as_grp(self.data.linear.linear_system.uvlm.ss, linhdffile, grpname='ss',
+                                        ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                        compress_float=self.settings['compress_float'])
+                        h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linhdffile,
+                                        grpname='linearisation_vectors',
+                                        ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                        compress_float=self.settings['compress_float'])
+                        linhdffile.close()
 
-                if self.settings['save_linear']:
-                    with h5py.File(self.filename_linear, 'a') as linfile:
-                        h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linfile,
-                                           grpname='linearisation_vectors',
-                                           ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
-                                           compress_float=self.settings['compress_float'])
-                        h5utils.add_as_grp(self.data.linear.ss, linfile, grpname='ss',
-                                           ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
-                                           compress_float=self.settings['compress_float'])
+                    if self.settings['save_linear']:
+                        with h5py.File(self.filename_linear, 'a') as linfile:
+                            h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linfile,
+                                            grpname='linearisation_vectors',
+                                            ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                            compress_float=self.settings['compress_float'])
+                            h5utils.add_as_grp(self.data.linear.ss, linfile, grpname='ss',
+                                            ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                            compress_float=self.settings['compress_float'])
 
-                if self.settings['save_rom']:
-                    try:
-                        for k, rom in self.data.linear.linear_system.uvlm.rom.items():
-                            rom.save(self.filename.replace('.data.h5', '_{:s}.rom.h5'.format(k.lower())))
-                    except AttributeError:
-                        cout.cout_wrap('Could not locate a reduced order model to save')
+                    if self.settings['save_rom']:
+                        try:
+                            for k, rom in self.data.linear.linear_system.uvlm.rom.items():
+                                rom.save(self.filename.replace('.data.h5', '_{:s}.rom.h5'.format(k.lower())))
+                        except AttributeError:
+                            cout.cout_wrap('Could not locate a reduced order model to save')
 
             elif self.settings['format'] == 'mat':
                 from scipy.io import savemat
@@ -307,6 +318,13 @@ class SaveData(BaseSolver):
                                hdfile['data']['aero']['timestep_info'],
                                grpname=("%05d" % ts),
                                ClassesToSave=(sharpy.utils.datastructures.AeroTimeStepInfo,),
+                               SkipAttr=settings['skip_attr'],
+                               compress_float=settings['compress_float'])
+        if settings['save_nonlifting']:
+            h5utils.add_as_grp(data.nonlifting_body.timestep_info[ts],
+                               hdfile['data']['nonlifting_body']['timestep_info'],
+                               grpname=("%05d" % ts),
+                               ClassesToSave=(sharpy.utils.datastructures.NonliftingBodyTimeStepInfo,),
                                SkipAttr=settings['skip_attr'],
                                compress_float=settings['compress_float'])
         if settings['save_struct']:
