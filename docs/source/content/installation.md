@@ -72,7 +72,7 @@ or running any SHARPy cases.
     ```
    
 4. Create the conda environment that SHARPy will use. Change `environment_new.yml` to read `environment_macos.yml`
-   if you are installing SHARPy on Mac OS X.
+   if you are installing SHARPy on Mac OS (Intel), or `environment_macos_arm64.yml` if installing on Mac OS (Apple Silicon).
     ```bash
     cd sharpy/utils
     conda env create -f environment_new.yml
