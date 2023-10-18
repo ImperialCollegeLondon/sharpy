@@ -103,8 +103,11 @@ def dictionary_of_solvers(print_info=True):
     import sharpy.postproc
     dictionary = dict()
     for solver in dict_of_solvers:
-        init_solver = initialise_solver(solver, print_info)
-        dictionary[solver] = init_solver.settings_default
+        if solver not in ['GridLoader', 'NonliftingBodyGridLoader']:
+            init_solver = initialise_solver(solver, print_info)
+            dictionary[solver] = init_solver.settings_default
+        else:
+            dictionary[solver] = {}
 
     return dictionary
 

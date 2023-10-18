@@ -11,7 +11,8 @@ def aero2struct_force_mapping(aero_forces,
                               master,
                               conn,
                               cag=np.eye(3),
-                              aero_dict=None):
+                              data_dict=None,
+                              skip_moments_generated_by_forces = False):
     r"""
     Maps the aerodynamic forces at the lattice to the structural nodes
 
@@ -39,7 +40,8 @@ def aero2struct_force_mapping(aero_forces,
         master: Unused
         conn (np.ndarray): Connectivities matrix
         cag (np.ndarray): Transformation matrix between inertial and body-attached reference ``A``
-        aero_dict (dict): Dictionary containing the grid's information.
+        data_dict (dict): Dictionary containing the grid's information.
+        skip_moments_generated_by_forces (bool): Flag to skip local moment calculation.
 
     Returns:
         np.ndarray: structural forces in an ``n_node x 6`` vector
@@ -69,10 +71,18 @@ def aero2struct_force_mapping(aero_forces,
                 cbg = np.dot(cab.T, cag)
 
                 for i_m in range(n_m):
-                    chi_g = zeta[i_surf][:, i_m, i_n] - np.dot(cag.T, pos_def[i_global_node, :])
                     struct_forces[i_global_node, 0:3] += np.dot(cbg, aero_forces[i_surf][0:3, i_m, i_n])
                     struct_forces[i_global_node, 3:6] += np.dot(cbg, aero_forces[i_surf][3:6, i_m, i_n])
-                    struct_forces[i_global_node, 3:6] += np.dot(cbg, algebra.cross3(chi_g, aero_forces[i_surf][0:3, i_m, i_n]))
+                    """
+                        The calculation of the local moment is skipped for fuselage bodies, since this 
+                        leads to noticeably asymmetric aeroforces. This transitional solution makes 
+                        sense since we have only considered the stiff fuselage so far and the pitching 
+                        moment coming from the fuselage is mainly caused by the longitudinal force distribution.
+                        TODO: Correct the calculation of the local moment for the fuselage model.
+                    """
+                    if not skip_moments_generated_by_forces:
+                        chi_g = zeta[i_surf][:, i_m, i_n] - np.dot(cag.T, pos_def[i_global_node, :])
+                        struct_forces[i_global_node, 3:6] += np.dot(cbg, algebra.cross3(chi_g, aero_forces[i_surf][0:3, i_m, i_n]))
 
     return struct_forces
 
