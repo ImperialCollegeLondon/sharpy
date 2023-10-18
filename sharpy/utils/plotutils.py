@@ -32,19 +32,37 @@ def set_axes_equal(ax):
     ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
 
 
-def plot_timestep(data, tstep=-1, minus_mstar=0, plotly=False):
-    ''' This function creates a simple plot with matplotlib of a
+def plot_timestep(data, tstep=-1, minus_mstar=0, plotly=False, custom_scaling=False, z_compression=0.5):
+    '''
+    This function creates a simple plot with matplotlib of a
     timestep in SHARPy.
     Notice that this function is not efficient at all for large surfaces, it just
     aims to provide a simple way of generating simple quick plots.
 
     Input:
-        data (``sharpy.presharpy.presharpy.PreSharpy``): Main data strucuture in SHARPy
-        tstep (int): Time step to plot
-        minus_mstar (int): number of wake panels to remove from the visuallisation (for efficiency)
+        data (``sharpy.presharpy.presharpy.PreSharpy``):
+        Main data strucuture in SHARPy
+        
+        tstep (int):
+        Time step to plot
+        
+        minus_mstar (int):
+        number of wake panels to remove from the visualisation (for efficiency)
+        
+        plotly(bool):
+        calls in the plotly library, graph will not plot if set to false.
+        
+        custom_scaling(bool):
+        aspect ratio of the wing will be modelled realistically if set to true.
+        
+        z_compression(int):
+        if custom scaling is enabled, this decides how much the z axis is compressed.
+
 
     Returns:
-        Plot object: Can be matplotlib.pyplot.plt (plotly=False) or plotly.graph_objects.Figure() (plotly=True)
+        Plot object:
+        Can be matplotlib.pyplot.plt (plotly=False) or
+        plotly.graph_objects.Figure() (plotly=True)
     '''
 
     if len(data.structure.timestep_info) == 0:
@@ -95,6 +113,7 @@ def plot_timestep(data, tstep=-1, minus_mstar=0, plotly=False):
             return
 
         fig = go.Figure()
+                
         # Plot aerodynamic grid
         if aero_tstep is not None:
             for isurf in range(aero_tstep.n_surf):
@@ -182,6 +201,7 @@ def plot_timestep(data, tstep=-1, minus_mstar=0, plotly=False):
                                                mode='lines',
                                                line={'color':'grey'},
                                                showlegend=False))
+                                               
 
         # Plot structure
         # Split into different beams
@@ -200,6 +220,23 @@ def plot_timestep(data, tstep=-1, minus_mstar=0, plotly=False):
                                        marker= {'size':2, 'color':'blue'},
                                        line = {'color':'blue', 'width':4},
                                        showlegend=False))
+                                       
+#I LOVE SEMICOLONS RAAAAH
 
+## Custom Scaling::
+# This changes how the plotly graph is scaled so the aspect ratio of your wing stays realistic.
+# It takes the range of the x and y axes, and scales the graph based on them.
+# z is set to 0.5 by default so the wake 'plane' is not as large as it originally is.
+# This has the effect of making the wing flex less visible.
+# Increase the z_compression value if you want to make it more visible.
+# prints were used to check the min and max values of x and y in the graph while implementing this; if something goes wrong you might want to check those out.
+
+        if custom_scaling==True:
+                    #print(np.max(aero_tstep.zeta_star[isurf][0,:(Mstar - minus_mstar),:]))
+                    #print(np.min(aero_tstep.zeta[isurf][0,:,:]))
+                    #print(np.max(aero_tstep.zeta[isurf][1,:,:]))
+                    #print(np.min(aero_tstep.zeta[isurf][1,:,:]))
+                    rangex=np.max(aero_tstep.zeta_star[isurf][0,:(Mstar - minus_mstar),:])-np.min(aero_tstep.zeta[isurf][0,:,:]);rangey=np.max(aero_tstep.zeta[isurf][1,:,:])-np.min(aero_tstep.zeta[isurf][1,:,:]);fig.update_layout(scene=dict(aspectmode='manual',
+                                             aspectratio=dict(x=rangex,y=rangey,z=z_compression)))
 
     return fig

@@ -73,6 +73,7 @@ or running any SHARPy cases.
     ```
    
 4. Create the conda environment that SHARPy will use:
+
     ```bash
     cd sharpy/utils
     conda env create -f environment.yml
