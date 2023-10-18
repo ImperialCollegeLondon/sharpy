@@ -212,7 +212,7 @@ In the release candidate branch:
 
 2. Update `version.json` file
 
-3. Update version in `sharpy/__init__.py` file
+3. Update version in `sharpy/version.py` file
 
 4. Commit, push and wait for tests to pass
 
