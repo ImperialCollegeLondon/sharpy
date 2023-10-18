@@ -47,6 +47,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'nbsphinx',
     'sphinx.ext.autosectionlabel',
+    'sphinxcontrib.jquery',
     'recommonmark'
 ]
 
