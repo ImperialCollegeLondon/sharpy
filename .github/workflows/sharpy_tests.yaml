@@ -51,7 +51,7 @@ jobs:
           hash -r
           export QT_QPA_PLATFORM='offscreen'
           sudo apt install libeigen3-dev
-          conda env create -f utils/environment_new.yml
+          conda env create -f utils/environment.yml
           conda init bash
           source activate sharpy
           git submodule init

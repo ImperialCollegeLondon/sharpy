@@ -31,7 +31,8 @@ RUN conda init bash && \
     conda config --set always_yes yes --set changeps1 no && \
     conda update -q conda && \
     conda config --set auto_activate_base false && \
-    conda env create -f /sharpy_dir/utils/environment_new.yml && conda clean -afy && \
+    conda env create -f /sharpy_dir/utils/environment.yml && conda clean -afy && \
+
     find /miniconda3/ -follow -type f -name '*.a' -delete && \
     find /miniconda3/ -follow -type f -name '*.pyc' -delete && \
     find /miniconda3/ -follow -type f -name '*.js.map' -delete
