@@ -72,8 +72,7 @@ or running any SHARPy cases.
     conda install python=3.10
     ```
    
-4. Create the conda environment that SHARPy will use. Change `environment_new.yml` to read `environment_macos.yml`
-   if you are installing SHARPy on MacOS (Intel), or `environment_macos_arm64.yml` if installing on macOS (Apple Silicon).
+4. Create the conda environment that SHARPy will use:
     ```bash
     cd sharpy/utils
     conda env create -f environment_new.yml
@@ -156,8 +155,7 @@ to your taste.
     ```
     This command will check out the `develop` branch and set it to track the remote origin. It will also set the submodules (xbeam and UVLM) to the right commit.
 
-2. Create the conda environment that SHARPy will use. Change `environment_new.yml` to read `environment_macos.yml`
-   if you are installing SHARPy on MacOS (Intel), or `environment_macos_arm64.yml` if installing on macOS (Apple Silicon).
+2. Create the conda environment that SHARPy will use:
     ```bash
     cd sharpy/utils
     conda env create -f environment_new.yml
