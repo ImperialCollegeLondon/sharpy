@@ -31,7 +31,8 @@ RUN conda init bash && \
     conda config --set always_yes yes --set changeps1 no && \
     conda update -q conda && \
     conda config --set auto_activate_base false && \
-    conda env create -f /sharpy_dir/utils/environment_minimal.yml && conda clean -afy && \
+    conda env create -f /sharpy_dir/utils/environment.yml && conda clean -afy && \
+
     find /miniconda3/ -follow -type f -name '*.a' -delete && \
     find /miniconda3/ -follow -type f -name '*.pyc' -delete && \
     find /miniconda3/ -follow -type f -name '*.js.map' -delete
@@ -40,7 +41,7 @@ RUN conda init bash && \
 RUN ln -s /sharpy_dir/utils/docker/* /root/
 
 RUN cd sharpy_dir && \
-    conda activate sharpy_minimal && \
+    conda activate sharpy && \
     git submodule update --init --recursive && \
     mkdir build && \
     cd build && \

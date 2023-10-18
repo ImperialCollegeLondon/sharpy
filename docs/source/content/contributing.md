@@ -11,7 +11,7 @@ If you are submitting a bug report:
 same branch.
 
 2. Double check that your python distribution is updated by comparing with 
-the `utils/environment_*.yml` file.
+the `utils/environment.yml` file.
 
 3. Try to assemble a minimal working example that can be run quickly and easily.
 
@@ -212,7 +212,7 @@ In the release candidate branch:
 
 2. Update `version.json` file
 
-3. Update version in `sharpy/__init__.py` file
+3. Update version in `sharpy/version.py` file
 
 4. Commit, push and wait for tests to pass
 

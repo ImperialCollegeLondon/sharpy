@@ -48,6 +48,22 @@ class WriteVariablesTime(BaseSolver):
     settings_default['structure_nodes'] = np.array([-1])
     settings_description['structure_nodes'] = 'Number of the nodes to be writen'
 
+    settings_types['nonlifting_nodes_variables'] = 'list(str)'
+    settings_default['nonlifting_nodes_variables'] = ['']
+    settings_description['nonlifting_nodes_variables'] = 'Variables of :class:`~sharpy.utils.datastructures.NonliftingBodyTimeStepInfo` associated to panels to be writen'
+
+    settings_types['nonlifting_nodes_im'] = 'list(int)'
+    settings_default['nonlifting_nodes_im'] = np.array([0])
+    settings_description['nonlifting_nodes_im'] = 'Chordwise index of the nonlifting panels to be output'
+
+    settings_types['nonlifting_nodes_in'] = 'list(int)'
+    settings_default['nonlifting_nodes_in'] = np.array([0])
+    settings_description['nonlifting_nodes_in'] = 'Spanwise index of the nonlifting panels to be output'
+
+    settings_types['nonlifting_nodes_isurf'] = 'list(int)'
+    settings_default['nonlifting_nodes_isurf'] = np.array([0])
+    settings_description['nonlifting_nodes_isurf'] = "Number of the panels' surface to be output"
+
     settings_types['aero_panels_variables'] = 'list(str)'
     settings_default['aero_panels_variables'] = ['']
     settings_description['aero_panels_variables'] = 'Variables of :class:`~sharpy.utils.datastructures.AeroTimeStepInfo` associated to panels to be writen'
@@ -145,6 +161,17 @@ class WriteVariablesTime(BaseSolver):
             for inode in range(len(self.settings['structure_nodes'])):
                 node = self.settings['structure_nodes'][inode]
                 filename = self.folder + "struct_" + self.settings['structure_variables'][ivariable] + "_node" + str(node) + ".dat"
+                if self.settings['cleanup_old_solution']:
+                    if os.path.isfile(filename):
+                        os.remove(filename)
+
+        # Nonlifting variables at panels
+        for ivariable in range(len(self.settings['nonlifting_nodes_variables'])):
+            for ipanel in range(len(self.settings['nonlifting_nodes_isurf'])):
+                i_surf = self.settings['nonlifting_nodes_isurf'][ipanel]
+                i_m = self.settings['nonlifting_nodes_im'][ipanel]
+                i_n = self.settings['nonlifting_nodes_in'][ipanel]
+                filename = self.folder + "nonlifting_" + self.settings['nonlifting_nodes_variables'][ivariable] + "_panel" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
                 if self.settings['cleanup_old_solution']:
                     if os.path.isfile(filename):
                         os.remove(filename)
@@ -258,6 +285,21 @@ class WriteVariablesTime(BaseSolver):
                             self.write_nparray_to_file(fid, self.data.ts, var[ielem,inode_in_elem,:], self.settings['delimiter'])
 
 
+        # Aerodynamic variables at nonlifting panels
+        for ivariable in range(len(self.settings['nonlifting_nodes_variables'])):
+            if self.settings['nonlifting_nodes_variables'][ivariable] == '':
+                continue
+            
+            for ipanel in range(len(self.settings['nonlifting_nodes_isurf'])):
+                i_surf = self.settings['nonlifting_nodes_isurf'][ipanel]
+                i_m = self.settings['nonlifting_nodes_im'][ipanel]
+                i_n = self.settings['nonlifting_nodes_in'][ipanel]
+                filename = self.folder + "nonlifting_" + self.settings['nonlifting_nodes_variables'][ivariable] + "_panel" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
+
+                with open(filename, 'a') as fid:
+                    var = getattr(self.data.nonlifting_body.timestep_info[it], self.settings['nonlifting_nodes_variables'][ivariable])
+                    self.write_value_to_file(fid, self.data.ts, var[i_surf][i_m,i_n], self.settings['delimiter'])
+
         # Aerodynamic variables at panels
         for ivariable in range(len(self.settings['aero_panels_variables'])):
             if self.settings['aero_panels_variables'][ivariable] == '':
@@ -271,7 +313,7 @@ class WriteVariablesTime(BaseSolver):
 
                 with open(filename, 'a') as fid:
                     var = getattr(self.data.aero.timestep_info[it], self.settings['aero_panels_variables'][ivariable])
-                    self.write_value_to_file(fid, self.data.ts, var.gamma[i_surf][i_m,i_n], self.settings['delimiter'])
+                    self.write_value_to_file(fid, self.data.ts, var[i_surf][i_m,i_n], self.settings['delimiter'])
 
 
         # Aerodynamic variables at nodes

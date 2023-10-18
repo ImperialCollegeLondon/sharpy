@@ -29,7 +29,7 @@ SHARPy is an aeroelastic analysis package currently under development at the Dep
 Imperial College London. It can be used for the structural, aerodynamic, aeroelastic and flight dynamics
 analysis of flexible aircraft, flying wings and wind turbines. Amongst other capabilities_, it offers the following solutions to the user:
 
-* Static aerodynamic, structural and aeroelastic solutions
+* Static aerodynamic, structural and aeroelastic solutions including fuselage effects
 * Finding trim conditions for aeroelastic configurations
 * Nonlinear, dynamic time domain simulations under a large number of conditions such as:
 

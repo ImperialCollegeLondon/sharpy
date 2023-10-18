@@ -10,18 +10,13 @@ route = os.path.dirname(os.path.realpath(__file__)) + '/'
 # EXECUTION
 flow = ['BeamLoader',
         'AerogridLoader',
-        'StaticTrim',
+        'StaticCoupled',
         'DynamicCoupled',
         'BeamLoads'
         ]
 
 # if free_flight is False, the motion of the centre of the wing is prescribed.
 free_flight = True
-if not free_flight:
-    case_name += '_prescribed'
-    amplitude = 0 * np.pi / 180
-    period = 3
-    case_name += '_amp_' + str(amplitude).replace('.', '') + '_period_' + str(period)
 
 # FLIGHT CONDITIONS
 # the simulation is set such that the aircraft flies at a u_inf velocity while
@@ -44,7 +39,7 @@ lambda_dihedral = 20 * np.pi / 180
 # gust settings
 gust_intensity = 0.20
 gust_length = 1 * u_inf
-gust_offset = 0.2 * u_inf
+gust_offset = 0.0 * u_inf
 
 # numerics
 n_step = 5
@@ -101,7 +96,7 @@ chord_fin = 0.5
 # chordiwse panels
 m = 4
 # spanwise elements
-n_elem_multiplier = 2
+n_elem_multiplier = 1
 n_elem_main = int(4 * n_elem_multiplier)
 n_elem_tail = int(2 * n_elem_multiplier)
 n_elem_fin = int(2 * n_elem_multiplier)
@@ -112,7 +107,7 @@ n_surfaces = 5
 physical_time = 30
 tstep_factor = 1.
 dt = 1.0 / m / u_inf * tstep_factor
-n_tstep = 20
+n_tstep = 5
 
 # END OF INPUT-----------------------------------------------------------------
 
@@ -669,15 +664,16 @@ def generate_solver_file():
                                   'structural_solver_settings': settings[solver],
                                   'aero_solver': 'StepUvlm',
                                   'aero_solver_settings': settings['StepUvlm'],
-                                  'fsi_substeps': 200,
-                                  'fsi_tolerance': fsi_tolerance,
-                                  'relaxation_factor': relaxation_factor,
+                                  'fsi_substeps': 3,
+                                  'fsi_tolerance': 1e-3,
+                                  'relaxation_factor': 0,
                                   'minimum_steps': 1,
                                   'relaxation_steps': 150,
                                   'final_relaxation_factor': 0.5,
                                   'n_time_steps': n_tstep,
                                   'dt': dt,
-                                  'include_unsteady_force_contribution': 'on',}
+                                  'include_unsteady_force_contribution': 'on',
+                                  }
     
     settings['BeamLoader'] = {'unsteady': 'on',
                               'orientation': algebra.euler2quat(np.array([roll,
