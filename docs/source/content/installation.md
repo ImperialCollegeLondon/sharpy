@@ -75,12 +75,10 @@ or running any SHARPy cases.
 4. Create the conda environment that SHARPy will use:
     ```bash
     cd sharpy/utils
-    conda env create -f environment_new.yml
+    conda env create -f environment.yml
     cd ../..
     ```
-    This should take approximately 15 minutes to complete (Tested on Ubuntu 22.04.1). We also provide a 
-    lightweight environment with the minimum required dependencies. If you'd like to use it, create the 
-    conda environment using `environment_minimal.yml`.
+    This should take approximately 15 minutes to complete (Tested on Ubuntu 22.04.1). 
 
 5. Activate the `sharpy` conda environment:
     ```bash
@@ -158,7 +156,7 @@ to your taste.
 2. Create the conda environment that SHARPy will use:
     ```bash
     cd sharpy/utils
-    conda env create -f environment_new.yml
+    conda env create -f environment.yml
     cd ../..
     ```
 
