@@ -168,16 +168,12 @@ class BeamPlot(BaseSolver):
             pass
 
         # count number of arguments
-        postproc_cell_keys = tstep.postproc_cell.keys()
-        postproc_cell_vals = tstep.postproc_cell.values()
-        postproc_cell_scalar = []
         postproc_cell_vector = []
         postproc_cell_6vector = []
         for k, v in tstep.postproc_cell.items():
             _, cols = v.shape
             if cols == 1:
                 raise NotImplementedError('scalar cell types not supported in beamplot (Easy to implement)')
-                # postproc_cell_scalar.append(k)
             elif cols == 3:
                 postproc_cell_vector.append(k)
             elif cols == 6:
@@ -185,8 +181,6 @@ class BeamPlot(BaseSolver):
             else:
                 raise AttributeError('Only scalar and 3-vector types supported in beamplot')
         # count number of arguments
-        postproc_node_keys = tstep.postproc_node.keys()
-        postproc_node_vals = tstep.postproc_node.values()
         postproc_node_scalar = []
         postproc_node_vector = []
         postproc_node_6vector = []
