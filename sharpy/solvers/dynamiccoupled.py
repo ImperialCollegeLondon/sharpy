@@ -868,6 +868,7 @@ class DynamicCoupled(BaseSolver):
 
         structural_kstep.unsteady_applied_forces += dynamic_struct_forces
         if len(self.data.structure.dynamic_input) > 0:
+            structural_kstep.dynamic_input_forces = self.data.structure.dynamic_input[max(self.data.ts - 1, 0)]['dynamic_forces']
             structural_kstep.unsteady_applied_forces += self.data.structure.dynamic_input[max(self.data.ts - 1, 0)]['dynamic_forces']
         structural_kstep.unsteady_applied_forces += structural_kstep.runtime_unsteady_forces
 

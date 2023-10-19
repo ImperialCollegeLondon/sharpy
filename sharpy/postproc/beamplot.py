@@ -33,9 +33,9 @@ class BeamPlot(BaseSolver):
     settings_default['include_applied_forces'] = True
     settings_description['include_applied_forces'] = 'Write beam applied forces'
 
-    settings_types['include_unsteady_applied_forces'] = 'bool'
-    settings_default['include_unsteady_applied_forces'] = False
-    settings_description['include_unsteady_applied_forces'] = 'Write beam unsteady applied forces'
+    settings_types['include_dynamic_input_forces'] = 'bool'
+    settings_default['include_dynamic_input_forces'] = False
+    settings_description['include_dynamic_input_forces'] = 'Write beam unsteady applied forces'
 
     settings_types['include_applied_moments'] = 'bool'
     settings_default['include_applied_moments'] = True
@@ -135,7 +135,7 @@ class BeamPlot(BaseSolver):
         coords_a = np.zeros((num_nodes, 3))
 
         app_forces = np.zeros((num_nodes, 3))
-        unsteady_app_forces = np.zeros((num_nodes, 3))
+        dynamic_input_forces = np.zeros((num_nodes, 3))
         app_moment = np.zeros((num_nodes, 3))
 
         forces_constraints_nodes = np.zeros((num_nodes, 3))
@@ -228,9 +228,9 @@ class BeamPlot(BaseSolver):
                                            np.dot(cab,
                                                   tstep.steady_applied_forces[i_node, 0:3]+
                                                   tstep.unsteady_applied_forces[i_node, 0:3]))
-            unsteady_app_forces[i_node, :] = np.dot(aero2inertial,
+            dynamic_input_forces[i_node, :] = np.dot(aero2inertial,
                                            np.dot(cab, 
-                                                  tstep.unsteady_applied_forces[i_node, 0:3]))
+                                                  tstep.dynamic_input_forces[i_node, 0:3]))
             app_moment[i_node, :] = np.dot(aero2inertial,
                                            np.dot(cab,
                                                   tstep.steady_applied_forces[i_node, 3:6]+
@@ -297,10 +297,10 @@ class BeamPlot(BaseSolver):
                 ug.point_data.add_array(gravity_forces_g[:, 0:3], 'vector')
                 ug.point_data.get_array(point_vector_counter).name = 'gravity_forces'
 
-        if self.settings['include_unsteady_applied_forces']:
+        if self.settings['include_dynamic_input_forces']:
             point_vector_counter += 1
-            ug.point_data.add_array(unsteady_app_forces, 'vector')
-            ug.point_data.get_array(point_vector_counter).name = 'unsteady_app_forces'
+            ug.point_data.add_array(dynamic_input_forces, 'vector')
+            ug.point_data.get_array(point_vector_counter).name = 'dynamic_input_forces'
 
         if self.settings['include_applied_moments']:
             point_vector_counter += 1

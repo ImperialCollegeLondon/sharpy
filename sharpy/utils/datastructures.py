@@ -708,6 +708,7 @@ class StructTimeStepInfo(object):
 
         self.steady_applied_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.unsteady_applied_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
+        self.dynamic_input_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.runtime_steady_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.runtime_unsteady_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.gravity_forces = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
@@ -766,6 +767,7 @@ class StructTimeStepInfo(object):
 
         copied.steady_applied_forces = self.steady_applied_forces.astype(dtype=ct.c_double, order='F', copy=True)
         copied.unsteady_applied_forces = self.unsteady_applied_forces.astype(dtype=ct.c_double, order='F', copy=True)
+        copied.dynamic_input_forces = self.dynamic_input_forces.astype(dtype=ct.c_double, order='F', copy=True)
         copied.runtime_steady_forces = self.runtime_steady_forces.astype(dtype=ct.c_double, order='F', copy=True)
         copied.runtime_unsteady_forces = self.runtime_unsteady_forces.astype(dtype=ct.c_double, order='F', copy=True)
         copied.gravity_forces = self.gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
@@ -871,6 +873,7 @@ class StructTimeStepInfo(object):
 
         ibody_StructTimeStepInfo.steady_applied_forces = self.steady_applied_forces[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.unsteady_applied_forces = self.unsteady_applied_forces[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
+        ibody_StructTimeStepInfo.dynamic_input_forces = self.dynamic_input_forces[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.runtime_steady_forces = self.runtime_steady_forces[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.runtime_unsteady_forces = self.runtime_unsteady_forces[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
         ibody_StructTimeStepInfo.gravity_forces = self.gravity_forces[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
