@@ -155,9 +155,7 @@ class SaveData(BaseSolver):
         self.filename_linear = self.folder + self.data.settings['SHARPy']['case'] + '.linss.h5'
 
         # remove old file if it exists
-        for file_path in [self.filename, self.filename_linear]:
-            if os.path.isfile(file_path):
-                os.remove(file_path)
+        self.remove_file_if_exist(self.filename)
 
         # check that there is a linear system - else return setting to false
         if self.settings['save_linear'] or self.settings['save_linear_uvlm']:
@@ -204,6 +202,10 @@ class SaveData(BaseSolver):
                 self.ClassesToSave += (sharpy.solvers.linearassembler.Linear, sharpy.linear.src.libss.ss_block)
         self.caller = caller
 
+    def remove_file_if_exist(self, filepath):
+        if os.path.isfile(filepath):
+            os.remove(filepath)
+
     def run(self, **kwargs):
 
         online = settings_utils.set_value_or_default(kwargs, 'online', False)
@@ -247,33 +249,37 @@ class SaveData(BaseSolver):
 
                     hdfile.close()
 
-                    if self.settings['save_linear_uvlm']:
-                        linhdffile = h5py.File(self.filename.replace('.data.h5', '.uvlmss.h5'), 'a')
-                        h5utils.add_as_grp(self.data.linear.linear_system.uvlm.ss, linhdffile, grpname='ss',
-                                        ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
-                                        compress_float=self.settings['compress_float'])
-                        h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linhdffile,
+                if self.settings['save_linear_uvlm']:
+                    linhdffile = h5py.File(self.filename.replace('.data.h5', '.uvlmss.h5'), 'a')
+                    self.remove_file_if_exist(linhdffile)
+                    h5utils.add_as_grp(self.data.linear.linear_system.uvlm.ss, linhdffile, grpname='ss',
+                                    ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                    compress_float=self.settings['compress_float'])
+                    h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linhdffile,
+                                    grpname='linearisation_vectors',
+                                    ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                    compress_float=self.settings['compress_float'])
+                    linhdffile.close()
+
+                if self.settings['save_linear']:
+                    self.remove_file_if_exist(self.filename_linear)
+                    with h5py.File(self.filename_linear, 'a') as linfile:
+                        h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linfile,
                                         grpname='linearisation_vectors',
                                         ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
                                         compress_float=self.settings['compress_float'])
-                        linhdffile.close()
+                        h5utils.add_as_grp(self.data.linear.ss, linfile, grpname='ss',
+                                        ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
+                                        compress_float=self.settings['compress_float'])
 
-                    if self.settings['save_linear']:
-                        with h5py.File(self.filename_linear, 'a') as linfile:
-                            h5utils.add_as_grp(self.data.linear.linear_system.linearisation_vectors, linfile,
-                                            grpname='linearisation_vectors',
-                                            ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
-                                            compress_float=self.settings['compress_float'])
-                            h5utils.add_as_grp(self.data.linear.ss, linfile, grpname='ss',
-                                            ClassesToSave=self.ClassesToSave, SkipAttr=self.settings['skip_attr'],
-                                            compress_float=self.settings['compress_float'])
-
-                    if self.settings['save_rom']:
-                        try:
-                            for k, rom in self.data.linear.linear_system.uvlm.rom.items():
-                                rom.save(self.filename.replace('.data.h5', '_{:s}.rom.h5'.format(k.lower())))
-                        except AttributeError:
-                            cout.cout_wrap('Could not locate a reduced order model to save')
+                if self.settings['save_rom']:
+                    try:
+                        for k, rom in self.data.linear.linear_system.uvlm.rom.items():
+                            romhdffile = self.filename.replace('.data.h5', '_{:s}.rom.h5'.format(k.lower()))
+                            self.remove_file_if_exist(romhdffile)
+                            rom.save(romhdffile)
+                    except AttributeError:
+                        cout.cout_wrap('Could not locate a reduced order model to save')
 
             elif self.settings['format'] == 'mat':
                 from scipy.io import savemat
