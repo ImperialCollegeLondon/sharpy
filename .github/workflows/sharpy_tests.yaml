@@ -28,9 +28,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Set up GCC
         uses: egor-tensin/setup-gcc@v1
-        with:
-          version: 10
-          platform: x64
+        #with:
+        #  version: 10
+        #  platform: x64
       - name: Setup conda
         uses: s-weigand/setup-conda@v1
         with:
