@@ -1451,16 +1451,6 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
         \end{bmatrix}
         F_{n+1}
 
-    To understand SHARPy code, it is convenient to apply the following change of notation:
-
-    .. math::
-        \textrm{th1} = \gamma \\
-        \textrm{th2} = \beta \\
-        \textrm{a0} = (1/2 -\beta) \Delta t^2  \\
-        \textrm{b0} = (1 -\gamma) \Delta t \\
-        \textrm{a1} = \beta \Delta t^2 \\
-        \textrm{b1} =  \gamma \Delta t \\
-
     Finally:
 
     .. math::
@@ -1471,6 +1461,16 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
 
     To finally isolate the vector at :math:`n+1`, instead of inverting the :math:`A_{ss1}` matrix, several systems are
     solved. Moreover, the output equation is simply :math:`y=x`.
+
+    To understand SHARPy code, it is convenient to apply the following change of notation:
+    
+        .. math::
+            \textrm{th1} = \gamma \\
+            \textrm{th2} = \beta \\
+            \textrm{a0} = (1/2 -\beta) \Delta t^2  \\
+            \textrm{b0} = (1 -\gamma) \Delta t \\
+            \textrm{a1} = \beta \Delta t^2 \\
+            \textrm{b1} =  \gamma \Delta t \\
 
     Args:
         Minv (np.array): Inverse mass matrix :math:`\mathbf{M^{-1}}`
