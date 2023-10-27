@@ -134,7 +134,7 @@ class TestKrylovRom(unittest.TestCase):
         else:
             # Discrete time system
             dt = 1e-2
-            Adt, Bdt, Cdt, Ddt = lingebm.newmark_ss(Minv, C, k, dt=dt, num_damp=0)
+            Adt, Bdt, Cdt, Ddt = lingebm.newmark_ss(m, C, k, dt=dt, num_damp=0)
 
             system = libss.StateSpace(Adt, Bdt, Cdt, Ddt, dt=dt)
 

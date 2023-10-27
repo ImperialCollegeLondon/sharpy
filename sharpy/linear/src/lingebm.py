@@ -152,7 +152,7 @@ class FlexDynamic():
         # Store structure at linearisation and linearisation conditions
         self.structure = structure
         self.tsstruct0 = tsinfo
-        self.Minv = None
+        self.Minv = None  # Not used anymore since M is factorized inside newmark_ss
 
         self.scaled_reference_matrices = dict()  # keep reference values prior to time scaling
 
@@ -932,7 +932,7 @@ class FlexDynamic():
                             Ccut = np.dot(Phi.T, np.dot(self.Cstr, Phi))
 
                         Ass, Bss, Css, Dss = newmark_ss(
-                            np.linalg.inv(np.dot(self.U[:, :Nmodes].T, np.dot(self.Mstr, self.U[:, :Nmodes]))),
+                            np.dot(self.U[:, :Nmodes].T, np.dot(self.Mstr, self.U[:, :Nmodes])),
                             Ccut,
                             np.dot(self.U[:, :Nmodes].T, np.dot(self.Kstr, self.U[:, :Nmodes])),
                             self.dt,
@@ -983,10 +983,8 @@ class FlexDynamic():
 
 
                 else:  # Full system
-                    self.Minv = np.linalg.inv(self.Mstr)
-
                     Ass, Bss, Css, Dss = newmark_ss(
-                        self.Minv, self.Cstr, self.Kstr,
+                        self.Mstr, self.Cstr, self.Kstr,
                         self.dt, self.newmark_damp)
                     self.Kin = None
                     self.Kout = None
@@ -1354,7 +1352,7 @@ class FlexDynamic():
         self.dlti = True
 
 
-def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
+def newmark_ss(M, C, K, dt, num_damp=1e-4, M_is_SPD=False):
     r"""
     Produces a discrete-time state-space model of the structural equations
 
@@ -1473,11 +1471,12 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
             \textrm{b1} =  \gamma \Delta t \\
 
     Args:
-        Minv (np.array): Inverse mass matrix :math:`\mathbf{M^{-1}}`
+        M (np.array): Mass matrix :math:`\mathbf{M}`
         C (np.array): Damping matrix :math:`\mathbf{C}`
         K (np.array): Stiffness matrix :math:`\mathbf{K}`
         dt (float): Timestep increment
         num_damp (float): Numerical damping. Default ``1e-4``
+        M_is_SPD (bool): whether to factorized M using Cholesky (only works for SPD matrices) or LU decomposition. Default: False 
 
     Returns:
         tuple: the A, B, C, D matrices of the state space packed in a tuple with the predictor and delay term removed.
@@ -1497,11 +1496,22 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
     b1 = th1 * dt
     b0 = dt - b1
 
-    # relevant matrices
+    # Identity matrix
     N = K.shape[0]
     Imat = np.eye(N)
-    MinvK = np.dot(Minv, K)
-    MinvC = np.dot(Minv, C)
+
+    # Factorize M and obtain relevant matrices
+    # Even though the inverse needs to be explicitly calculated, using the matrix 
+    # factorization is more numerically stable and faster than multiplying by the
+    # inverse
+    M_factors = sc.linalg.cho_factor(M) if M_is_SPD else sc.linalg.lu_factor(M)
+
+    def M_solve(b):
+        return sc.linalg.cho_solve(M_factors, b) if M_is_SPD else sc.linalg.lu_solve(M_factors, b)
+
+    Minv = M_solve(Imat)
+    MinvK = M_solve(K)
+    MinvC = M_solve(C)
 
     # build StateSpace
     Ass0 = np.block([[Imat - a0 * MinvK, dt * Imat - a0 * MinvC],
