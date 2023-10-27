@@ -1508,10 +1508,12 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
                      [-b0 * MinvK, Imat - b0 * MinvC]])
     Ass1 = np.block([[Imat + a1 * MinvK, a1 * MinvC],
                      [b1 * MinvK, Imat + b1 * MinvC]])
-    Ass = np.linalg.solve(Ass1, Ass0)
 
-    Bss0 = np.linalg.solve(Ass1, np.block([[a0 * Minv], [b0 * Minv]]))
-    Bss1 = np.linalg.solve(Ass1, np.block([[a1 * Minv], [b1 * Minv]]))
+    # Factorize Ass1 once, solve multiple times
+    Ass1_factors = sc.linalg.lu_factor(Ass1)
+    Ass = sc.linalg.lu_solve(Ass1_factors, Ass0)
+    Bss0 = sc.linalg.lu_solve(Ass1_factors, np.block([[a0 * Minv], [b0 * Minv]]))
+    Bss1 = sc.linalg.lu_solve(Ass1_factors, np.block([[a1 * Minv], [b1 * Minv]]))
 
     # eliminate predictior term Bss1
     return libss.SSconv(Ass, Bss0, Bss1, C=np.eye(2 * N), D=np.zeros((2 * N, N)))
