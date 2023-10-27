@@ -1427,8 +1427,8 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
             (\gamma \Delta t M^{-1}K)   & (I + \gamma \Delta t M^{-1}C) 
         \end{bmatrix} 
         \begin{Bmatrix} 
-            \mathbf{\dot q}_{n+1} \\
-            \mathbf{\ddot q}_{n+1} 
+            \mathbf{q}_{n+1} \\
+            \mathbf{\dot q}_{n+1} 
         \end{Bmatrix} 
         =
         \begin{bmatrix} 
