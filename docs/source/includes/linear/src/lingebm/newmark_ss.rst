@@ -1,4 +1,4 @@
 newmark_ss
 ----------
 
-.. automodule:: sharpy.linear.src.lingebm.newmark_ss
+.. autofunction:: sharpy.linear.src.lingebm.newmark_ss
