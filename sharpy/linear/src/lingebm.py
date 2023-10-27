@@ -1348,56 +1348,52 @@ class FlexDynamic():
 
 def newmark_ss(M, C, K, dt, num_damp=1e-4, M_is_SPD=False):
     r"""
-    Produces a discrete-time state-space model of the 2nd order ordinary differential equation (ODE) given by
+    Produces a discrete-time state-space model of the 2nd order ordinary differential equation (ODE) given by:
+
     .. math::
-        \mathbf{M}\mathbf{\ddot{x}} + \mathbf{C}\mathbf{\dot{x}} + \mathbf{K}\mathbf{x} = \mathbf{F}
+        \mathbf{M}\mathbf{\ddot{q}} + \mathbf{C}\mathbf{\dot{q}} + \mathbf{K}\mathbf{q} = \mathbf{f(t)}
 
     This ODE is discretized based on the Newmark-:math:`\beta` integration scheme.
 
     The output state-space model has the form:
+    
     .. math::
-        \mathbf{X}_{n+1} &= \mathbf{A}\,\mathbf{X}_n + \mathbf{B}\,\mathbf{F}_n \\
-        \mathbf{Y} &= \mathbf{C}\,\mathbf{X} + \mathbf{D}\,\mathbf{F}
+        \mathbf{x}_{n+1} &= \mathbf{A_{ss}}\mathbf{x}_n + \mathbf{B_{ss}}\mathbf{f}_n \\
+        \mathbf{y}_n &= \mathbf{C_{ss}}\mathbf{x}_n + \mathbf{D_{ss}}\mathbf{f}_n
 
-    with :math:`\mathbf{Y} = [\mathbf{x}, \mathbf{\dot{x}}]^T`
+    where :math:`\mathbf{y} = \begin{Bmatrix} \mathbf{q} \\ \mathbf{\dot{q}} \end{Bmatrix}`
 
     Note that as the state-space representation only requires the input force
-    :math:`\mathbf{F}` to be evaluated at time-step :math:`n`, thus the pass-through matrix 
-    :math:`\mathbf{D}` is not zero.
+    :math:`\mathbf{f}` to be evaluated at time-step :math:`n`, thus the pass-through matrix 
+    :math:`\mathbf{D_{ss}}` is not zero.
 
-    The Newmark-:math:`\beta` integration scheme is carried out following the modifications presented by
-    Geradin [1] that render it unconditionally stable. The displacement and velocities are estimated as:
+    This function retuns a tuple with the discrete state-space matrices :math:`(\mathbf{A_{ss},B_{ss},C_{ss},D_{ss}})`.
 
-    .. math::
-        x_{n+1} &= x_n + \Delta t \dot{x}_n + \left(\frac{1}{2}-\theta_2\right)\Delta t^2 \ddot{x}_n + \theta_2\Delta t
-        \ddot{x}_{n+1}  \\
-        \dot{x}_{n+1} &= \dot{x}_n + (1-\theta_1)\Delta t \ddot{x}_n + \theta_1\Delta t \ddot{x}_{n+1}
+    Theory
+    ------
 
-    The stencil is unconditionally stable if the tuning parameters :math:`\theta_1` and :math:`\theta_2` are chosen as:
+    The following steps describe how to apply the Newmark-:math:`\beta` scheme
+    to the ODE in order to generate the discrete time-state space-model. It
+    folows the development of [1].
 
-    .. math::
-        \theta_1 &= \frac{1}{2} + \alpha \\
-        \theta_2 &= \frac{1}{4} \left(\theta_1 + \frac{1}{2}\right)^2 \\
-        \theta_2 &= \frac{5}{80} + \frac{1}{4} (\theta_1 + \theta_1^2) \text{TBC SOURCE}
+    .. admonition:: Notation
 
-    where :math:`\alpha>0` accounts for small positive algorithmic damping.
+        Bold upper case letters represent matrices, bold lower case letters
+        represent vectors.  Non-bold symbols are scalars. Curly brackets
+        indicate (block) vectors and square brackets indicate (block) matrices.
 
-    The following steps describe how to apply the Newmark-beta scheme to a state-space formulation. The original idea
-    is based on [1].
-
-    The equation of a second order dynamical system reads:
+    Evaluating the ODE to the time steps :math:`t_n` and  :math:`t_{n+1}` and
+    isolating the acceleration term:
 
     .. math::
-        M\mathbf{\ddot q} + C\mathbf{\dot q} + K\mathbf{q} = F
+        \mathbf{\ddot q}_{n} &= - \mathbf{M}^{-1}\mathbf{C}\mathbf{\dot{q}}_{n} 
+                                - \mathbf{M}^{-1}\mathbf{K}\mathbf{q}_{n} 
+                                + \mathbf{M}^{-1}\mathbf{f}_{n} \\
+        \mathbf{\ddot q}_{n+1} &= - \mathbf{M}^{-1}\mathbf{C}\mathbf{\dot{q}}_{n+1} 
+                                - \mathbf{M}^{-1}\mathbf{K}\mathbf{q}_{n+1} 
+                                + \mathbf{M}^{-1}\mathbf{f}_{n+1} \\
 
-    Applying that equation to the time steps :math:`n` and  :math:`n+1`, rearranging terms and multiplying by
-    :math:`M^{-1}`:
-
-    .. math::
-        \mathbf{\ddot q}_{n} = - M^{-1}C\mathbf{\dot q}_{n} - M^{-1}K\mathbf{q}_{n} + M^{-1}F_{n} \\
-        \mathbf{\ddot q}_{n+1} = - M^{-1}C\mathbf{\dot q}_{n+1} - M^{-1}K\mathbf{q}_{n+1} + M^{-1}F_{n+1}
-
-    The relations of the Newmark-beta scheme are:
+    The update equations of the Newmark-beta scheme are [1]:
 
     .. math::
         \mathbf{q}_{n+1} &= \mathbf{q}_n + \mathbf{\dot q}_n\Delta t +
@@ -1405,74 +1401,108 @@ def newmark_ss(M, C, K, dt, num_damp=1e-4, M_is_SPD=False):
         \mathbf{\dot q}_{n+1} &= \mathbf{\dot q}_n + (1-\gamma)\mathbf{\ddot q}_n \Delta t +
         \gamma \mathbf{\ddot q}_{n+1} \Delta t + O(\Delta t^3)
 
-    Substituting the former relation onto the later ones, rearranging terms, and writing it in state-space form:
+    where :math:`\Delta t = t_{n+1} - t_n`.
+
+    The stencil is unconditionally stable if the tuning parameters
+    :math:`\gamma` and :math:`\beta` are chosen as:
+
     .. math::
-        A_{ss1} \begin{Bmatrix} \mathbf{\dot q}_{n+1} \\ \mathbf{\ddot q}_{n+1} \end{Bmatrix} =
-        A_{ss0} \begin{Bmatrix} \mathbf{\dot q}_{n} \\ \mathbf{\ddot q}_{n} \end{Bmatrix} +
-        B_{ss0} F_n +
-        B_{ss1} F_{n+1}
+        \gamma &= \frac{1}{2} + \alpha \\
+        \beta &= \frac{(1+\alpha)^2}{4} 
+               = \frac{(1/2+\gamma)^2}{4} 
+               = \frac{1}{16} + \frac{1}{4}(\gamma + \gamma^2)
+
+    where :math:`\alpha>0` accounts for small positive algorithmic damping (:math:`\alpha` is ``num_damp`` in the code).
+
+    Substituting the former relations onto the later ones, rearranging terms, and writing it in state-space form:
+    
+    .. math::
+        \mathbf{A_{ss1}} \begin{Bmatrix} \mathbf{q}_{n+1} \\ \mathbf{\dot q}_{n+1} \end{Bmatrix} 
+        =
+        \mathbf{A_{ss0}} \begin{Bmatrix} \mathbf{q}_{n} \\ \mathbf{\dot q}_{n} \end{Bmatrix} +
+        \mathbf{B_{ss0}} \mathbf{f}_n +
+        \mathbf{B_{ss1}} \mathbf{f}_{n+1}
+    
     where
+    
     .. math::
-        A_{ss1} &=
+        \mathbf{A_{ss1}} &=
         \begin{bmatrix} 
-            I + \beta\Delta t^2 M^{-1}K & \beta\Delta t^2 M^{-1}C \\ 
-            \gamma \Delta t M^{-1}K     & I + \gamma \Delta t M^{-1}C 
+            \mathbf{I} + \beta\Delta t^2 \mathbf{M}^{-1}\mathbf{K}
+                & \beta\Delta t^2 \mathbf{M}^{-1}\mathbf{C} \\
+            \gamma \Delta t \mathbf{M}^{-1}\mathbf{K}
+                & \mathbf{I}+ \gamma \Delta t \mathbf{M}^{-1}\mathbf{C}
         \end{bmatrix} 
         \\
-        A_{ss0} &=
+        \mathbf{A_{ss0}} &=
         \begin{bmatrix} 
-            I - \Delta t^2(1/2-\beta)M^{-1}K  & \Delta t I - (1/2-\beta)\Delta t^2 M^{-1}C \\
-            -(1-\gamma)\Delta t M^{-1}K       &  I - (1-\gamma)\Delta t M^{-1}C
+            \mathbf{I} - \Delta t^2(1/2-\beta)\mathbf{M}^{-1}\mathbf{K}
+                & \Delta t \mathbf{I} - (1/2-\beta)\Delta t^2 \mathbf{M}^{-1}\mathbf{C} \\
+            -(1-\gamma)\Delta t \mathbf{M}^{-1}\mathbf{K}
+                &  \mathbf{I} - (1-\gamma)\Delta t \mathbf{M}^{-1}\mathbf{C}
         \end{bmatrix}
         \\
-        B_{ss0} &=
+        \mathbf{B_{ss0}} &=
         \begin{bmatrix} 
-            (\Delta t^2(1/2-\beta)\, M^{-1} \\ 
-            (1-\gamma)\Delta t \, M^{-1}
+            (\Delta t^2(1/2-\beta) \mathbf{M}^{-1} \\ 
+            (1-\gamma)\Delta t \mathbf{M}^{-1}
         \end{bmatrix} 
         \\
-        B_{ss1} &=
+        \mathbf{B_{ss1}} &=
         \begin{bmatrix} 
-            (\beta \Delta t^2) \, M^{-1}\\ 
-            (\gamma \Delta t)  \, M^{-1}
+            (\beta \Delta t^2) \mathbf{M}^{-1}\\ 
+            (\gamma \Delta t) \mathbf{M}^{-1}
         \end{bmatrix}
 
 
-   This is not in standard space-state form because the state update equation depends of the input at the 
-   ..math:`n+1` timestep. This term can be eliminated by defining the state 
-   ..math:: 
-        X_n = 
-        \begin{Bmatrix} 
-            \mathbf{\dot q}_{n} \\
-            \mathbf{\ddot q}_{n} 
-        \end{Bmatrix} + B_{ss1} F_n
+    This is not in standard space-state form because the state update equation
+    depends of the input at :math:`t_{n+1}`. This term can be eliminated by
+    defining the state 
+   
+    .. math:: \mathbf{x}_n = 
+              \begin{Bmatrix} 
+                  \mathbf{q}_{n} \\ 
+                  \mathbf{\dot q}_{n}
+              \end{Bmatrix} 
+              - \mathbf{A_{ss1}}^{-1}\mathbf{B_{ss1}} \mathbf{f}_n
 
     Then
-    ..math::
-        X_{n+1} &= A_{ss1}^{-1}(A_{ss0} X_n + (A_{ss0}B_{ss1} + B_{ss0}) F_n) \\
+   
+    .. math::
+        \mathbf{x}_{n+1} &= \mathbf{A_{ss1}}^{-1}[
+                                \mathbf{A_{ss0}} \mathbf{x}_n + (
+                                    \mathbf{A_{ss0}}\mathbf{A_{ss1}}^{-1}\mathbf{B_{ss1}} 
+                                    + \mathbf{B_{ss0}}
+                                )
+                                \mathbf{f}_n
+                            ] \\
         \begin{Bmatrix} 
             \mathbf{\dot q}_{n} \\
             \mathbf{\ddot q}_{n} 
         \end{Bmatrix}
-        &= X_n - B_{ss1} F_n
+        &= \mathbf{x}_n + \mathbf{B_{ss1}} \mathbf{f}_n
 
-    see also libss.conv for more details on the elimination of the term
-    multiplying ..math:`F_{n+1}` in the state equation.
+    See also :func:`sharpy.linear.src.libss.SSconv` for more details on the elimination of the term
+    multiplying :math:`\mathbf{f}_{n+1}` in the state equation.
 
-    This system is identified with a standard discrete state space model
-    ..math::
-        X_{n+1} = A X_n + B F_n
-        Y_n = C X_n + D F_n
+    This system is identified with a standard discrete-time state-space model
+   
+    .. math::
+        \mathbf{x}_{n+1} &= \mathbf{A_{ss}} \mathbf{x}_n + \mathbf{B_{ss}} \mathbf{f}_n \\
+        \mathbf{y_n}    &= \mathbf{C_{ss}} \mathbf{x}_n + \mathbf{D_{ss}} \mathbf{f}_n
 
-    This function retuns a tuple with the discrete state-space matrices ..math:` (A,B,C,D)` where
-    ..math::
-        A &= A_{ss1}^{-1}A_{ss0} \\
-        B &= A_{ss1}^{-1}(B_{ss0} + A_{ss0}B{ss1}) \\
-        C &= I \\
-        D &= -B_{ss1}
+    where
+
+    .. math::
+        \mathbf{A_{ss}} &= \mathbf{A_{ss1}}^{-1}\mathbf{A_{ss0}} \\
+        \mathbf{B_{ss}} &= \mathbf{A_{ss1}}^{-1}(\mathbf{B_{ss0}} 
+                         + \mathbf{A_{ss0}}\mathbf{A_{ss1}}^{-1}\mathbf{B_{ss1}}) \\
+        \mathbf{C_{ss}} &= \mathbf{I} \\
+        \mathbf{D_{ss}} &= \mathbf{B_{ss1}}
         
 
-   The following notation is used in the code: 
+    .. admonition:: Notation is used in the code 
+   
         .. math::
             \texttt{th1} &= \gamma \\
             \texttt{th2} &= \beta \\
@@ -1487,10 +1517,10 @@ def newmark_ss(M, C, K, dt, num_damp=1e-4, M_is_SPD=False):
         K (np.array): Stiffness matrix :math:`\mathbf{K}`
         dt (float): Timestep increment
         num_damp (float): Numerical damping. Default ``1e-4``
-        M_is_SPD (bool): whether to factorized M using Cholesky (only works for SPD matrices) or LU decomposition. Default: False 
+        M_is_SPD (bool): whether to factorized M using Cholesky (only works for SPD matrices) or LU decomposition. Default: ``False`` 
 
     Returns:
-        tuple: the A, B, C, D matrices of the state space packed in a tuple with the predictor and delay term removed.
+        tuple: with the :math:`(\mathbf{A_{ss},B_{ss},C_{ss},D_{ss}})` matrices of the discrete-time state-space representation
 
     References:
         [1] - Geradin M., Rixen D. - Mechanical Vibrations: Theory and application to structural dynamics
