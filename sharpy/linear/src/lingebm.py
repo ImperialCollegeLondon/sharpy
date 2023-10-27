@@ -1412,57 +1412,75 @@ def newmark_ss(M, C, K, dt, num_damp=1e-4, M_is_SPD=False):
         \gamma \mathbf{\ddot q}_{n+1} \Delta t + O(\Delta t^3)
 
     Substituting the former relation onto the later ones, rearranging terms, and writing it in state-space form:
-
     .. math::
+        A_{ss1} \begin{Bmatrix} \mathbf{\dot q}_{n+1} \\ \mathbf{\ddot q}_{n+1} \end{Bmatrix} =
+        A_{ss0} \begin{Bmatrix} \mathbf{\dot q}_{n} \\ \mathbf{\ddot q}_{n} \end{Bmatrix} +
+        B_{ss0} F_n +
+        B_{ss1} F_{n+1}
+    where
+    .. math::
+        A_{ss1} &=
         \begin{bmatrix} 
             I + \beta\Delta t^2 M^{-1}K & \beta\Delta t^2 M^{-1}C \\ 
             \gamma \Delta t M^{-1}K     & I + \gamma \Delta t M^{-1}C 
         \end{bmatrix} 
-        \begin{Bmatrix} 
-            \mathbf{q}_{n+1} \\
-            \mathbf{\dot q}_{n+1} 
-        \end{Bmatrix} 
-        =
+        \\
+        A_{ss0} &=
         \begin{bmatrix} 
             I - \Delta t^2(1/2-\beta)M^{-1}K  & \Delta t I - (1/2-\beta)\Delta t^2 M^{-1}C \\
             -(1-\gamma)\Delta t M^{-1}K       &  I - (1-\gamma)\Delta t M^{-1}C
         \end{bmatrix}
-        \begin{Bmatrix}  
-            \mathbf{q}_{n} \\ \
-            mathbf{\dot q}_{n} 
-        \end{Bmatrix}	
-        +
+        \\
+        B_{ss0} &=
         \begin{bmatrix} 
             (\Delta t^2(1/2-\beta)\, M^{-1} \\ 
             (1-\gamma)\Delta t \, M^{-1}
         \end{bmatrix} 
-        F_n +
+        \\
+        B_{ss1} &=
         \begin{bmatrix} 
             (\beta \Delta t^2) \, M^{-1}\\ 
             (\gamma \Delta t)  \, M^{-1}
         \end{bmatrix}
-        F_{n+1}
 
-    Finally:
 
-    .. math::
-        A_{ss1} \begin{Bmatrix} \mathbf{\dot q}_{n+1} \\ \mathbf{\ddot q}_{n+1} \end{Bmatrix} =
-        A_{ss0} \begin{Bmatrix} \mathbf{\dot q}_{n} \\ \mathbf{\ddot q}_{n} \end{Bmatrix} +
-        \begin{Bmatrix} (\Delta t^2(1/2-\beta) \\ (1-\gamma)\Delta t \end{Bmatrix} M^{-1}F_n+
-        \begin{Bmatrix} (\Delta t^2\beta) \\ (\gamma \Delta t) \end{Bmatrix}M^{-1}F_{n+1}
+   This is not in standard space-state form because the state update equation depends of the input at the 
+   ..math:`n+1` timestep. This term can be eliminated by defining the state 
+   ..math:: 
+        X_n = 
+        \begin{Bmatrix} 
+            \mathbf{\dot q}_{n} \\
+            \mathbf{\ddot q}_{n} 
+        \end{Bmatrix} + B_{ss1} F_n
 
-    To finally isolate the vector at :math:`n+1`, instead of inverting the :math:`A_{ss1}` matrix, several systems are
-    solved. Moreover, the output equation is simply :math:`y=x`.
+    Then
+    ..math::
+        X_{n+1} &= A_{ss1}^{-1}(A_{ss0} X_n + (A_{ss0}B_{ss1} + B_{ss0}) F_n) \\
+        \begin{Bmatrix} 
+            \mathbf{\dot q}_{n} \\
+            \mathbf{\ddot q}_{n} 
+        \end{Bmatrix}
+        &= X_n - B_{ss1} F_n
 
-    To understand SHARPy code, it is convenient to apply the following change of notation:
-    
+    see also libss.conv for more details on the elimination of the term
+    multiplying ..math:`F_{n+1}` in the state equation.
+
+    This function retuns a tuple with the discrete state-space matrices ..math:` (A,B,C,D)` where
+    ..math::
+        A &= A_{ss1}^{-1}A_{ss0} \\
+        B &= A_{ss1}^{-1}(B_{ss0} + A_{ss0}B{ss1}) \\
+        C &= I \\
+        D &= -B_{ss1}
+        
+
+   The following notation is used in the code: 
         .. math::
-            \textrm{th1} = \gamma \\
-            \textrm{th2} = \beta \\
-            \textrm{a0} = (1/2 -\beta) \Delta t^2  \\
-            \textrm{b0} = (1 -\gamma) \Delta t \\
-            \textrm{a1} = \beta \Delta t^2 \\
-            \textrm{b1} =  \gamma \Delta t \\
+            \texttt{th1} &= \gamma \\
+            \texttt{th2} &= \beta \\
+            \texttt{a0}  &= (1/2 -\beta) \Delta t^2  \\
+            \texttt{b0}  &= (1 -\gamma) \Delta t \\
+            \texttt{a1}  &= \beta \Delta t^2 \\
+            \texttt{b1}  &=  \gamma \Delta t \\
 
     Args:
         M (np.array): Mass matrix :math:`\mathbf{M}`
