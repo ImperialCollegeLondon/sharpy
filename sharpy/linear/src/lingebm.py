@@ -925,16 +925,10 @@ class FlexDynamic():
                     if self.proj_modes == 'undamped':
                         Phi = self.U[:, :Nmodes]
 
-                        if self.Ccut is None:
-                            # Ccut = np.zeros((Nmodes, Nmodes))
-                            Ccut = np.dot(Phi.T, np.dot(self.Cstr, Phi))
-                        else:
-                            Ccut = np.dot(Phi.T, np.dot(self.Cstr, Phi))
-
                         Ass, Bss, Css, Dss = newmark_ss(
-                            np.dot(self.U[:, :Nmodes].T, np.dot(self.Mstr, self.U[:, :Nmodes])),
-                            Ccut,
-                            np.dot(self.U[:, :Nmodes].T, np.dot(self.Kstr, self.U[:, :Nmodes])),
+                            Phi.T @ self.Mstr @ Phi,
+                            Phi.T @ self.Cstr @ Phi,
+                            Phi.T @ self.Kstr @ Phi,
                             self.dt,
                             self.newmark_damp)
 
