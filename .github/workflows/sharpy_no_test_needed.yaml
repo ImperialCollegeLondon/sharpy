@@ -13,6 +13,6 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos_latest
     steps:
       - run: 'echo "No changes to python files, submodules or workflows, no run required" '
