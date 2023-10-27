@@ -1348,28 +1348,22 @@ class FlexDynamic():
 
 def newmark_ss(M, C, K, dt, num_damp=1e-4, M_is_SPD=False):
     r"""
-    Produces a discrete-time state-space model of the structural equations
-
+    Produces a discrete-time state-space model of the 2nd order ordinary differential equation (ODE) given by
     .. math::
+        \mathbf{M}\mathbf{\ddot{x}} + \mathbf{C}\mathbf{\dot{x}} + \mathbf{K}\mathbf{x} = \mathbf{F}
 
-        \mathbf{\ddot{x}} &= \mathbf{M}^{-1}( -\mathbf{C}\,\mathbf{\dot{x}}-\mathbf{K}\,\mathbf{x}+\mathbf{F} ) \\
-        \mathbf{y} &= \mathbf{x}
+    This ODE is discretized based on the Newmark-:math:`\beta` integration scheme.
 
-
-    based on the Newmark-:math:`\beta` integration scheme. The output state-space model
-    has form:
-
+    The output state-space model has the form:
     .. math::
-
         \mathbf{X}_{n+1} &= \mathbf{A}\,\mathbf{X}_n + \mathbf{B}\,\mathbf{F}_n \\
         \mathbf{Y} &= \mathbf{C}\,\mathbf{X} + \mathbf{D}\,\mathbf{F}
 
-
-    with :math:`\mathbf{X} = [\mathbf{x}, \mathbf{\dot{x}}]^T`
+    with :math:`\mathbf{Y} = [\mathbf{x}, \mathbf{\dot{x}}]^T`
 
     Note that as the state-space representation only requires the input force
-    :math:`\mathbf{F}` to be evaluated at time-step :math:`n`,the :math:`\mathbf{C}` and :math:`\mathbf{D}` matrices
-    are, in general, fully populated.
+    :math:`\mathbf{F}` to be evaluated at time-step :math:`n`, thus the pass-through matrix 
+    :math:`\mathbf{D}` is not zero.
 
     The Newmark-:math:`\beta` integration scheme is carried out following the modifications presented by
     Geradin [1] that render it unconditionally stable. The displacement and velocities are estimated as:
@@ -1464,6 +1458,11 @@ def newmark_ss(M, C, K, dt, num_damp=1e-4, M_is_SPD=False):
 
     see also libss.conv for more details on the elimination of the term
     multiplying ..math:`F_{n+1}` in the state equation.
+
+    This system is identified with a standard discrete state space model
+    ..math::
+        X_{n+1} = A X_n + B F_n
+        Y_n = C X_n + D F_n
 
     This function retuns a tuple with the discrete state-space matrices ..math:` (A,B,C,D)` where
     ..math::
