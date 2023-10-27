@@ -1422,14 +1422,33 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
     Substituting the former relation onto the later ones, rearranging terms, and writing it in state-space form:
 
     .. math::
-        \begin{bmatrix} I + M^{-1}K \Delta t^2\beta \quad \Delta t^2\beta M^{-1}C \\ (\gamma \Delta t M^{-1}K)
-        \quad (I + \gamma \Delta t M^{-1}C) \end{bmatrix} \begin{Bmatrix} \mathbf{\dot q}_{n+1} \\
-        \mathbf{\ddot q}_{n+1} \end{Bmatrix} =
-        \begin{bmatrix} (I - \Delta t^2(1/2-\beta)M^{-1}K \quad (\Delta t - \Delta t^2(1/2-\beta)M^{-1}C \\
-        (-(1-\gamma)\Delta t M^{-1}K \quad (I - (1-\gamma)\Delta tM^{-1}C \end{bmatrix}
-        \begin{Bmatrix}  \mathbf{q}_{n} \\ \mathbf{\dot q}_{n} \end{Bmatrix}	+
-        \begin{Bmatrix} (\Delta t^2(1/2-\beta) \\ (1-\gamma)\Delta t \end{Bmatrix} M^{-1}F_n+
-        \begin{Bmatrix} (\Delta t^2\beta) \\ (\gamma \Delta t) \end{Bmatrix}M^{-1}F_{n+1}
+        \begin{bmatrix} 
+            I + M^{-1}K \Delta t^2\beta & \Delta t^2\beta M^{-1}C \\ 
+            (\gamma \Delta t M^{-1}K)   & (I + \gamma \Delta t M^{-1}C) 
+        \end{bmatrix} 
+        \begin{Bmatrix} 
+            \mathbf{\dot q}_{n+1} \\
+            \mathbf{\ddot q}_{n+1} 
+        \end{Bmatrix} 
+        =
+        \begin{bmatrix} 
+            (I - \Delta t^2(1/2-\beta)M^{-1}K & (\Delta t - \Delta t^2(1/2-\beta)M^{-1}C \\
+            (-(1-\gamma)\Delta t M^{-1}K      & (I - (1-\gamma)\Delta tM^{-1}C 
+        \end{bmatrix}
+        \begin{Bmatrix}  
+            \mathbf{q}_{n} \\ \
+            mathbf{\dot q}_{n} 
+        \end{Bmatrix}	
+        +
+        \begin{Bmatrix} 
+            (\Delta t^2(1/2-\beta) \\ 
+            (1-\gamma)\Delta t 
+        \end{Bmatrix} 
+        M^{-1}F_n+
+        \begin{Bmatrix} 
+            (\Delta t^2\beta) \\ 
+            (\gamma \Delta t) 
+        \end{Bmatrix}M^{-1}F_{n+1}
 
     To understand SHARPy code, it is convenient to apply the following change of notation:
 
