@@ -272,13 +272,15 @@ docker cp sharpy:/my_file.txt my_file.txt     # copy from container to host
 ```
 The `sharpy:` part is the `--name` argument you wrote in the `docker run` command.
 
+**Enjoy!**
+
+## Testing with Docker
+
 You can run the test suite once inside the container as:
 ```
 cd sharpy_dir
 python -m unittest
 ```
-
-**Enjoy!**
 
 
 ## Running SHARPy
