@@ -1399,7 +1399,7 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
     The following steps describe how to apply the Newmark-beta scheme to a state-space formulation. The original idea
     is based on [1].
 
-    The equation of a second order system dynamics reads:
+    The equation of a second order dynamical system reads:
 
     .. math::
         M\mathbf{\ddot q} + C\mathbf{\dot q} + K\mathbf{q} = F
@@ -1415,7 +1415,7 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
 
     .. math::
         \mathbf{q}_{n+1} &= \mathbf{q}_n + \mathbf{\dot q}_n\Delta t +
-        (\frac{1}{2}-\beta)\mathbf{\ddot q}_n \Delta t^2 + \beta \mathbf{\ddot q}_{n+1} \Delta t^2 + O(\Delta t^3) \\
+        (1/2-\beta)\mathbf{\ddot q}_n \Delta t^2 + \beta \mathbf{\ddot q}_{n+1} \Delta t^2 + O(\Delta t^3) \\
         \mathbf{\dot q}_{n+1} &= \mathbf{\dot q}_n + (1-\gamma)\mathbf{\ddot q}_n \Delta t +
         \gamma \mathbf{\ddot q}_{n+1} \Delta t + O(\Delta t^3)
 
@@ -1423,8 +1423,8 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
 
     .. math::
         \begin{bmatrix} 
-            I + M^{-1}K \Delta t^2\beta & \Delta t^2\beta M^{-1}C \\ 
-            (\gamma \Delta t M^{-1}K)   & (I + \gamma \Delta t M^{-1}C) 
+            I + \beta\Delta t^2 M^{-1}K & \beta\Delta t^2 M^{-1}C \\ 
+            \gamma \Delta t M^{-1}K     & I + \gamma \Delta t M^{-1}C 
         \end{bmatrix} 
         \begin{Bmatrix} 
             \mathbf{q}_{n+1} \\
@@ -1432,33 +1432,34 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
         \end{Bmatrix} 
         =
         \begin{bmatrix} 
-            (I - \Delta t^2(1/2-\beta)M^{-1}K & (\Delta t - \Delta t^2(1/2-\beta)M^{-1}C \\
-            (-(1-\gamma)\Delta t M^{-1}K      & (I - (1-\gamma)\Delta tM^{-1}C 
+            I - \Delta t^2(1/2-\beta)M^{-1}K  & \Delta t I - (1/2-\beta)\Delta t^2 M^{-1}C \\
+            -(1-\gamma)\Delta t M^{-1}K       &  I - (1-\gamma)\Delta t M^{-1}C
         \end{bmatrix}
         \begin{Bmatrix}  
             \mathbf{q}_{n} \\ \
             mathbf{\dot q}_{n} 
         \end{Bmatrix}	
         +
-        \begin{Bmatrix} 
-            (\Delta t^2(1/2-\beta) \\ 
-            (1-\gamma)\Delta t 
-        \end{Bmatrix} 
-        M^{-1}F_n+
-        \begin{Bmatrix} 
-            (\Delta t^2\beta) \\ 
-            (\gamma \Delta t) 
-        \end{Bmatrix}M^{-1}F_{n+1}
+        \begin{bmatrix} 
+            (\Delta t^2(1/2-\beta)\, M^{-1} \\ 
+            (1-\gamma)\Delta t \, M^{-1}
+        \end{bmatrix} 
+        F_n +
+        \begin{bmatrix} 
+            (\beta \Delta t^2) \, M^{-1}\\ 
+            (\gamma \Delta t)  \, M^{-1}
+        \end{bmatrix}
+        F_{n+1}
 
     To understand SHARPy code, it is convenient to apply the following change of notation:
 
     .. math::
         \textrm{th1} = \gamma \\
         \textrm{th2} = \beta \\
-        \textrm{a0} = \Delta t^2 (1/2 -\beta) \\
-        \textrm{b0} = \Delta t (1 -\gamma) \\
-        \textrm{a1} = \Delta t^2 \beta \\
-        \textrm{b1} = \Delta t \gamma \\
+        \textrm{a0} = (1/2 -\beta) \Delta t^2  \\
+        \textrm{b0} = (1 -\gamma) \Delta t \\
+        \textrm{a1} = \beta \Delta t^2 \\
+        \textrm{b1} =  \gamma \Delta t \\
 
     Finally:
 
