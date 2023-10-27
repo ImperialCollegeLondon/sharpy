@@ -15,7 +15,7 @@ on:
 jobs:
   build:
 
-    runs-on: macos-latest
+    runs-on: macos-latest-large
     strategy:
       matrix:
         python-version: [3.10.8]
