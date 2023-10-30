@@ -18,7 +18,7 @@ env:
 
 jobs:
   test_image_build:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     name: Test Docker image build
     permissions:
       contents: read
