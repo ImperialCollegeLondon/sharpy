@@ -31,6 +31,10 @@ jobs:
         with:
           version: 10
           platform: x64
+      - name: Set up Conda
+        uses: s-weigand/setup-conda@v1
+        with:
+          python-version: 3.9
       - name: Setup Mamba
         uses: mamba-org/setup-micromamba@v1
         with:
@@ -38,13 +42,12 @@ jobs:
       - name: Pre-Install dependencies
         run: |
           gfortran --version
-          wget -O Mambaforge.sh <https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$>(uname -m).sh
-          # wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+          wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
           # wget https://repo.anaconda.com/archive/Anaconda3-2022.10-Linux-x86_64.sh -O miniconda.sh;
-          bash Mambaforge.sh -b -p $HOME/mambaforge
-          source mambaforge/bin/activate
-          export PATH="$HOME/mambaforge/bin:$PATH"
+          bash miniconda.sh -b -p $HOME/miniconda
+          export PATH="$HOME/miniconda/bin:$PATH"
           hash -r
+          conda install mamba -n base -c conda-forge
           mamba config --set always_yes yes --set changeps1 no
           # mamba config --append channels mamba-forge
           mamba update --name base mamba
