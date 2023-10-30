@@ -31,8 +31,12 @@ jobs:
         with:
           version: 10
           platform: x64
-      - name: Setup conda
+      - name: Set up Conda
         uses: s-weigand/setup-conda@v1
+        with:
+          python-version: 3.9
+      - name: Setup Mamba
+        uses: mamba-org/setup-micromamba@v1
         with:
           python-version: 3.9
       - name: Pre-Install dependencies
@@ -43,16 +47,17 @@ jobs:
           bash miniconda.sh -b -p $HOME/miniconda
           export PATH="$HOME/miniconda/bin:$PATH"
           hash -r
-          conda config --set always_yes yes --set changeps1 no
-          # conda config --append channels conda-forge
-          conda update --name base conda
-          conda list --name base conda
-          conda init bash
+          conda install mamba -n base -c conda-forge
+          mamba config --set always_yes yes --set changeps1 no
+          # mamba config --append channels mamba-forge
+          mamba update --name base mamba
+          mamba list --name base mamba
+          mamba init bash
           hash -r
           export QT_QPA_PLATFORM='offscreen'
           sudo apt install libeigen3-dev
-          conda env create -f utils/environment.yml
-          conda init bash
+          mamba env create -f utils/environment.yml
+          mamba init bash
           source activate sharpy
           git submodule init
           git submodule update
