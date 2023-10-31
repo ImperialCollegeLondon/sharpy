@@ -26,6 +26,7 @@ RUN yum groupinstall "Development Tools" -y --nogpgcheck && \
 # Install Mamba
 RUN wget --no-check-certificate https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh -O /mamba.sh && \
     chmod +x /mamba.sh && \
+    /mamba.sh -b -p /mamba/ && \
     rm /mamba.sh && hash -r
 
 ADD / /sharpy_dir/
