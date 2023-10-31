@@ -33,9 +33,9 @@ ADD / /sharpy_dir/
 
 # Update conda and make it run with no user interaction
 # Cleanup conda installation
-RUN mamba init bash 
+RUN mamba init
 RUN mamba config --set always_yes yes --set changeps1 no
-RUN mamba update -q conda
+#RUN mamba update -q conda
 RUN mamba config --set auto_activate_base false
 RUN mamba env create -f /sharpy_dir/utils/environment.yml && mamba clean -afy && \
 
