@@ -3,7 +3,7 @@ FROM centos:8
 ENV PYTHONDONTWRITEBYTECODE=true
 ENV BASH_ENV ~/.bashrc
 SHELL ["/bin/bash", "-c"]
-ENV PATH=${PATH}:/miniconda3/bin
+ENV PATH=${PATH}:/mamba/bin
 
 # CENTOS 8 has reached end of life - Not yet an updated Docker base for CentOS stream
 # Point to the CentOS 8 vault in order to download dependencies
@@ -33,10 +33,10 @@ ADD / /sharpy_dir/
 
 # Update conda and make it run with no user interaction
 # Cleanup conda installation
-#RUN mamba init
-#RUN mamba config --set always_yes yes --set changeps1 no
-#RUN mamba update -q conda
-#RUN mamba config --set auto_activate_base false
+RUN mamba init bash
+RUN mamba config --set always_yes yes --set changeps1 no
+RUN mamba update -q conda
+RUN mamba config --set auto_activate_base false
 RUN mamba env create -f /sharpy_dir/utils/environment.yml && mamba clean -afy && \
 
     find /mamba/ -follow -type f -name '*.a' -delete && \
