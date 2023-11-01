@@ -31,6 +31,7 @@ jobs:
         with:
           version: 10
           platform: x64
+        #Swapped from Conda to Mamba due to Github runner memory constraint
       - name: Setup Mamba
         uses: mamba-org/setup-micromamba@v1
       - name: Pre-Install dependencies
