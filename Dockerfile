@@ -18,6 +18,7 @@ RUN yum groupinstall "Development Tools" -y --nogpgcheck && \
     yum clean all
 
 # Install Mamba
+# Swapped from Conda to Mamba due to Github runner memory constraint
 RUN wget --no-check-certificate https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh -O /mamba.sh && \
     chmod +x /mamba.sh && \
     /mamba.sh -b -p /mamba/ && \
