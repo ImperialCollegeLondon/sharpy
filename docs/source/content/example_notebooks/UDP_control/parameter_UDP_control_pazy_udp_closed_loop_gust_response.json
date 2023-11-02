@@ -1,0 +1,1 @@
+{"server_ip_addr": "127.0.0.1", "client_ip_addr": "127.0.0.1", "port_in_network": 64017, "port_out_network_server": 59017, "port_out_network_client": 59007, "output_folder": "/home/rpalacio/sharpy/docs/source/content/example_notebooks/UDP_control/output", "dt": 0.000625, "simulation_time": 1.0, "num_sensors": 1, "initial_cs_deflection": 0, "reference_deflection": 0.02290911}

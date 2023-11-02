@@ -28,10 +28,7 @@ def print_available_generators():
 
 
 class BaseGenerator(metaclass=ABCMeta):
-    
-    def teardown(self):
-        pass
-
+    pass
 
 def generator_from_string(string):
     return dict_of_generators[string]

@@ -155,7 +155,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
         
         list_aoa_induced = []
 
-        aero_dict = aerogrid.aero_dict
+        data_dict = aerogrid.data_dict
         if aerogrid.polars is None:
             return struct_forces
         new_struct_forces = np.zeros_like(struct_forces)
@@ -168,9 +168,9 @@ class PolarCorrection(generator_interface.BaseGenerator):
 
         for inode in range(nnode):
             new_struct_forces[inode, :] = struct_forces[inode, :].copy()
-            if aero_dict['aero_node'][inode]:
+            if data_dict['aero_node'][inode]:
                 ielem, inode_in_elem = structure.node_master_elem[inode]
-                iairfoil = aero_dict['airfoil_distribution'][ielem, inode_in_elem]
+                iairfoil = data_dict['airfoil_distribution'][ielem, inode_in_elem]
                 isurf = aerogrid.struct2aero_mapping[inode][0]['i_surf']
                 if isurf not in self.settings['skip_surfaces']:
                     i_n = aerogrid.struct2aero_mapping[inode][0]['i_n']
@@ -179,7 +179,7 @@ class PolarCorrection(generator_interface.BaseGenerator):
                     cgb = np.dot(cga, cab)
 
                     if not self.cd_from_cl:
-                        airfoil = str(aero_dict['airfoil_distribution'][ielem, inode_in_elem])
+                        airfoil = str(data_dict['airfoil_distribution'][ielem, inode_in_elem])
                         aoa_0cl = self.list_aoa_cl0[int(airfoil)]
 
                     # computing surface area of panels contributing to force
@@ -317,10 +317,10 @@ class PolarCorrection(generator_interface.BaseGenerator):
         # check if outboard node of aerosurface
         self.flag_shared_node_by_surfaces = np.zeros((self.n_node,1))
         for inode in range(self.n_node):
-            if aerogrid.aero_dict['aero_node'][inode]:
+            if aerogrid.data_dict['aero_node'][inode]:
                 i_n = aerogrid.struct2aero_mapping[inode][0]['i_n']                
                 isurf = aerogrid.struct2aero_mapping[inode][0]['i_surf']
-                N = aerogrid.aero_dimensions[isurf, 1]
+                N = aerogrid.dimensions[isurf, 1]
                 if i_n in [0, N]:
                     if len(aerogrid.struct2aero_mapping[inode]) > 1:
                         self.flag_shared_node_by_surfaces[inode] = 1
@@ -350,9 +350,9 @@ class PolarCorrection(generator_interface.BaseGenerator):
         """
          Computes the angle of attack for which zero lift is achieved for every airfoil
         """
-        self.list_aoa_cl0 = np.zeros((len(aerogrid.aero_dict['airfoils']),1))
-        for i, airfoil in enumerate(aerogrid.aero_dict['airfoils']):
-            airfoil_coords = aerogrid.aero_dict['airfoils'][airfoil]
+        self.list_aoa_cl0 = np.zeros((len(aerogrid.data_dict['airfoils']),1))
+        for i, airfoil in enumerate(aerogrid.data_dict['airfoils']):
+            airfoil_coords = aerogrid.data_dict['airfoils'][airfoil]
             self.list_aoa_cl0[i] = get_aoacl0_from_camber(airfoil_coords[:, 0], airfoil_coords[:, 1])
 
 @generator_interface.generator
@@ -401,11 +401,11 @@ class EfficiencyCorrection(generator_interface.BaseGenerator):
 
         n_node = self.structure.num_node
         n_elem = self.structure.num_elem
-        aero_dict = self.aero.aero_dict
+        data_dict = self.aero.data_dict
         new_struct_forces = np.zeros_like(struct_forces)
 
         # load airfoil efficiency (if it exists); else set to one (to avoid multiple ifs in the loops)
-        airfoil_efficiency = aero_dict['airfoil_efficiency']
+        airfoil_efficiency = data_dict['airfoil_efficiency']
         # force efficiency dimensions [n_elem, n_node_elem, 2, [fx, fy, fz]] - all defined in B frame
         force_efficiency = np.zeros((n_elem, 3, 2, 3))
         force_efficiency[:, :, 0, :] = 1.

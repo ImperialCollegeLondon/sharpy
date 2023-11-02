@@ -3,7 +3,7 @@ name: Test Docker image build
 on:
   pull_request:
     branches:
-      - master
+      - main
       - develop
       - 'rc*'
   push:

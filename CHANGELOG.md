@@ -1,8 +1,39 @@
 # Changelog
 
-## [2.0.1](https://github.com/imperialcollegelondon/sharpy/tree/2.0.1) (2023-05-31)
+## [2.2](https://github.com/imperialcollegelondon/sharpy/tree/2.2) (2023-10-18)
 
-[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/2.0...2.0.1)
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/2.1...2.2)
+
+**Implemented enhancements:**
+
+- Added environment for Apple Silicon \(ARM64\) [\#254](https://github.com/ImperialCollegeLondon/sharpy/pull/254) ([ben-l-p](https://github.com/ben-l-p))
+- New Fuselage Model plus Minor Improvements [\#249](https://github.com/ImperialCollegeLondon/sharpy/pull/249) ([sduess](https://github.com/sduess))
+
+**Fixed bugs:**
+
+- fix polars concatenation in assembly of aeroinformation - develop [\#253](https://github.com/ImperialCollegeLondon/sharpy/pull/253) ([kccwing](https://github.com/kccwing))
+- fix polars concatenation in assembly of aeroinformation - main [\#252](https://github.com/ImperialCollegeLondon/sharpy/pull/252) ([kccwing](https://github.com/kccwing))
+- Minor bug fixes in aero util functions and save data postprocessor [\#247](https://github.com/ImperialCollegeLondon/sharpy/pull/247) ([sduess](https://github.com/sduess))
+
+**Closed issues:**
+
+- Automated tests failed : UnicodeEncodeError: 'ascii' codec can't encode character '\xe9' in position 47: ordinal not in range\(128\) [\#245](https://github.com/ImperialCollegeLondon/sharpy/issues/245)
+- Wrong key in settings for /cases/templates/flying\_wings.py [\#205](https://github.com/ImperialCollegeLondon/sharpy/issues/205)
+
+**Merged pull requests:**
+
+- merging develop into main for v2.2 [\#259](https://github.com/ImperialCollegeLondon/sharpy/pull/259) ([kccwing](https://github.com/kccwing))
+- fix \[docker\] use correct environment name in docker bashrc [\#257](https://github.com/ImperialCollegeLondon/sharpy/pull/257) ([sduess](https://github.com/sduess))
+- Update docker environment  [\#255](https://github.com/ImperialCollegeLondon/sharpy/pull/255) ([sduess](https://github.com/sduess))
+- Update README.md [\#246](https://github.com/ImperialCollegeLondon/sharpy/pull/246) ([rafapalacios](https://github.com/rafapalacios))
+- bringing commits to main into develop [\#244](https://github.com/ImperialCollegeLondon/sharpy/pull/244) ([rafapalacios](https://github.com/rafapalacios))
+- Updates to plotutils.py and the cantilever\_wing demo [\#242](https://github.com/ImperialCollegeLondon/sharpy/pull/242) ([boltyboi](https://github.com/boltyboi))
+- Small additions to the installation guide. [\#241](https://github.com/ImperialCollegeLondon/sharpy/pull/241) ([boltyboi](https://github.com/boltyboi))
+- Tutorial for closed-Loop Simulation with SHARPy as a hardware-in-the-loop system [\#240](https://github.com/ImperialCollegeLondon/sharpy/pull/240) ([sduess](https://github.com/sduess))
+
+## [2.1](https://github.com/imperialcollegelondon/sharpy/tree/2.1) (2023-05-31)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/2.0...2.1)
 
 **Implemented enhancements:**
 
@@ -17,10 +48,13 @@
 
 **Closed issues:**
 
+- No such file or directory during: source bin/sharpy\_vars.sh [\#233](https://github.com/ImperialCollegeLondon/sharpy/issues/233)
 - Twist direction inconsistent [\#212](https://github.com/ImperialCollegeLondon/sharpy/issues/212)
 
 **Merged pull requests:**
 
+- Version number updates for 2.1 from develop [\#237](https://github.com/ImperialCollegeLondon/sharpy/pull/237) ([kccwing](https://github.com/kccwing))
+- Merge to main for version 2.0.1 release [\#236](https://github.com/ImperialCollegeLondon/sharpy/pull/236) ([kccwing](https://github.com/kccwing))
 - Updates to Goland wing example [\#234](https://github.com/ImperialCollegeLondon/sharpy/pull/234) ([rafapalacios](https://github.com/rafapalacios))
 - A bit of clean-up of the readme file of the repo [\#231](https://github.com/ImperialCollegeLondon/sharpy/pull/231) ([rafapalacios](https://github.com/rafapalacios))
 - Dev internals [\#223](https://github.com/ImperialCollegeLondon/sharpy/pull/223) ([ACea15](https://github.com/ACea15))

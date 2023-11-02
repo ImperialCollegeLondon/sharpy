@@ -1,15 +1,15 @@
 # Simulation of High Aspect Ratio aeroplanes in Python [SHARPy]
 
-![Version badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmaster%2F.version.json)
+![Version badge](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmain%2F.version.json)
 ![Build Status](https://github.com/ImperialCollegeLondon/sharpy/actions/workflows/sharpy_tests.yaml/badge.svg)
-[![Documentation Status](https://readthedocs.org/projects/ic-sharpy/badge/?version=master)](https://ic-sharpy.readthedocs.io/en/master/?badge=master)
-[![codecov](https://codecov.io/gh/ImperialCollegeLondon/sharpy/branch/master/graph/badge.svg)](https://codecov.io/gh/ImperialCollegeLondon/sharpy)
+[![Documentation Status](https://readthedocs.org/projects/ic-sharpy/badge/?version=main)](https://ic-sharpy.readthedocs.io/en/main/?badge=main)
+[![codecov](https://codecov.io/gh/ImperialCollegeLondon/sharpy/branch/main/graph/badge.svg)](https://codecov.io/gh/ImperialCollegeLondon/sharpy)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![status](https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9/status.svg)](https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3531965.svg)](https://doi.org/10.5281/zenodo.3531965)
 
 SHARPy is a nonlinear aeroelastic analysis package originally developed at the Department of Aeronautics, Imperial
-College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible wings, aircraft and wind turbines.
+College London. It can be used for the structural, aerodynamic and aeroelastic analysis of flexible wings, aircraft and wind turbines. It is shared here under a BSD 3-Clause permissive license.
 
 ![XHALE](./docs/source/_static/XHALE-render.jpg)
 
@@ -33,6 +33,8 @@ vortex ring lattice with the boundary conditions enforced at the collocation poi
 The Kutta condition is also enforced at the trailing edge. The wake can be simulated by either additional vortex rings
 or by infinitely long horseshoe vortices, which are ideally suited for steady simulations only.
 
+The aerodynamic model has recently been extended by a linear source panel method (SPM) to model nonlifting bodies for example fuselages. The SPM and UVLM can be coupled to model fuselage-wing configuration and a junction handling approach, based on phantom panels and circulation interpolation, has been added.
+
 The input problems can be structural, aerodynamic or coupled, yielding an aeroelastic system.
 
 ## [Capabilities](http://ic-sharpy.readthedocs.io/en/latest/content/capabilities.html)
@@ -42,7 +44,7 @@ wings and wind turbines. In addition, it supports linearisation of these nonline
 arbitrary conditions and includes various tools such as: model reduction or frequency analysis.
 
 In short, SHARPy offers (amongst others) the following solutions to the user:
-* Static aerodynamic, structural and aeroelastic solutions
+* Static aerodynamic, structural and aeroelastic solutions including fuselage effects
 * Finding trim conditions for aeroelastic configurations
 * Nonlinear, dynamic time domain simulations under a large number of conditions such as:
     + Prescribed trajectories.
@@ -115,7 +117,7 @@ journal = {Journal of Open Source Software}
 SHARPy uses Continuous Integration to control the integrity of its code. The status in the release and develop branches
 is:
 
-Master
+Main
 ![Build Status](https://github.com/ImperialCollegeLondon/sharpy/actions/workflows/sharpy_tests.yaml/badge.svg)
 ![Docker Status](https://github.com/ImperialCollegeLondon/sharpy/actions/workflows/docker_build.yaml/badge.svg)
 

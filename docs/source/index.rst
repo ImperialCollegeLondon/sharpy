@@ -9,13 +9,13 @@ Simulation of High Aspect Ratio planes in Python [SHARPy]
 
 .. image:: https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2FImperialCollegeLondon%2Fsharpy%2Fmaster%2F.version.json
 
-.. image:: https://codecov.io/gh/ImperialCollegeLondon/sharpy/branch/master/graph/badge.svg
+.. image:: https://codecov.io/gh/ImperialCollegeLondon/sharpy/branch/main/graph/badge.svg
     :target: https://codecov.io/gh/ImperialCollegeLondon/sharpy
 
 .. image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
    :target: https://opensource.org/licenses/BSD-3-Clause
 
-.. image:: https://readthedocs.org/projects/ic-sharpy/badge/?version=master
+.. image:: https://readthedocs.org/projects/ic-sharpy/badge/?version=main
 
 .. image:: https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9/status.svg
    :target: https://joss.theoj.org/papers/f7ccd562160f1a54f64a81e90f5d9af9
@@ -29,7 +29,7 @@ SHARPy is an aeroelastic analysis package currently under development at the Dep
 Imperial College London. It can be used for the structural, aerodynamic, aeroelastic and flight dynamics
 analysis of flexible aircraft, flying wings and wind turbines. Amongst other capabilities_, it offers the following solutions to the user:
 
-* Static aerodynamic, structural and aeroelastic solutions
+* Static aerodynamic, structural and aeroelastic solutions including fuselage effects
 * Finding trim conditions for aeroelastic configurations
 * Nonlinear, dynamic time domain simulations under a large number of conditions such as:
 
