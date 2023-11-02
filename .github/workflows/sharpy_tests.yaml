@@ -31,28 +31,25 @@ jobs:
         with:
           version: 10
           platform: x64
-      - name: Setup conda
-        uses: s-weigand/setup-conda@v1
-        with:
-          python-version: 3.9
+        #Swapped from Conda to Mamba due to Github runner memory constraint
+      - name: Setup Mamba
+        uses: mamba-org/setup-micromamba@v1
       - name: Pre-Install dependencies
         run: |
           gfortran --version
-          wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-          # wget https://repo.anaconda.com/archive/Anaconda3-2022.10-Linux-x86_64.sh -O miniconda.sh;
-          bash miniconda.sh -b -p $HOME/miniconda
-          export PATH="$HOME/miniconda/bin:$PATH"
+          wget --no-check-certificate https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh -O mamba.sh
+          bash mamba.sh -b -p $HOME/mamba
+          export PATH="$HOME/mamba/bin:$PATH"
           hash -r
-          conda config --set always_yes yes --set changeps1 no
-          # conda config --append channels conda-forge
-          conda update --name base conda
-          conda list --name base conda
-          conda init bash
+          mamba config --set always_yes yes --set changeps1 no
+          mamba update --name base mamba
+          mamba list --name base mamba
+          mamba init bash
           hash -r
           export QT_QPA_PLATFORM='offscreen'
           sudo apt install libeigen3-dev
-          conda env create -f utils/environment.yml
-          conda init bash
+          mamba env create -f utils/environment.yml
+          mamba init bash
           source activate sharpy
           git submodule init
           git submodule update
