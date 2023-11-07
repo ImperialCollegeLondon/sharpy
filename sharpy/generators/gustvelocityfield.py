@@ -89,8 +89,8 @@ class one_minus_cos(BaseGust):
     settings_default['gust_intensity'] = 0.0
     settings_description['gust_intensity'] = 'Intensity of the gust :math:`u_{de}`.'
 
-    settings_types['gust_component'] = 'list(int)'
-    settings_default['gust_component'] = [2]
+    settings_types['gust_component'] = 'int'
+    settings_default['gust_component'] = 2
     settings_description['gust_component'] = 'Component of the gust velocity in the G-frame (x,y,z)->(0,1,2).'
 
     setting_table = settings.SettingsTable()
@@ -258,7 +258,7 @@ class time_varying_global(BaseGust):
 
     def gust_shape(self, x, y, z, time=0):
         vel = np.zeros((3,))
-        for counter, idim in enumerate(list(self.settings['gust_component'])):
+        for counter, idim in enumerate(self.settings['gust_component']):
             vel[idim] = self.list_interpolated_velocity_field_functions[counter](time)
         return vel
 
@@ -283,7 +283,7 @@ class time_varying(time_varying_global):
         vel = np.zeros((3,))
         d = np.dot(np.array([x, y, z]), self.u_inf_direction)
         if d <= 0.0:       
-            for counter, idim in enumerate(list(self.settings['gust_component'])):
+            for counter, idim in enumerate(self.settings['gust_component']):
                 vel[idim] = self.list_interpolated_velocity_field_functions[counter](d)
         return vel
        
