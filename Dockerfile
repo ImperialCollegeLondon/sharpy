@@ -36,7 +36,8 @@ RUN mamba config --set auto_activate_base false
 #    find /mamba/ -follow -type f -name '*.a' -delete && \
 #    find /mamba/ -follow -type f -name '*.pyc' -delete && \
 #    find /mamba/ -follow -type f -name '*.js.map' -delete
-RUN mamba env create -f /sharpy_dir/utils/environment.yml && mamba clean -afy
+RUN mamba env create -f /sharpy_dir/utils/environment.yml
+RUN mamba clean -afy
 RUN find /mamba/ -follow -type f -name '*.a' -delete
 RUN find /mamba/ -follow -type f -name '*.pyc' -delete
 RUN find /mamba/ -follow -type f -name '*.js.map' -delete
