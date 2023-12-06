@@ -33,7 +33,6 @@ RUN mamba config --set always_yes yes --set changeps1 no
 RUN mamba update -q conda
 RUN mamba config --set auto_activate_base false
 RUN mamba env create -f /sharpy_dir/utils/environment.yml && mamba clean -afy && \
-
     find /mamba/ -follow -type f -name '*.a' -delete && \
     find /mamba/ -follow -type f -name '*.pyc' -delete && \
     find /mamba/ -follow -type f -name '*.js.map' -delete
