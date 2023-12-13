@@ -47,10 +47,10 @@ def main(args=None, sharpy_input_dict=None):
     import sharpy.controllers
 
     # Profiling
-    prof_enable = True
+    import cProfile, sharpy.utils.profile_analyse
 
+    prof_enable = True
     if prof_enable:
-        import cProfile, sharpy.utils.profile_analyse
         pr = cProfile.Profile()
         pr.enable()
 

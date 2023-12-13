@@ -15,17 +15,17 @@ def profile_analse(pr, settings, names = ['beam', 'uvlm']):
         names.append("other")
     t_names = np.zeros(len(names), dtype=float)
     t_total = 0.0
-
+    
     with open(prof_dir, newline='\n') as f: 
         csv_f = csv.reader(f, delimiter=' ', skipinitialspace=True)
 
-    for row in csv_f:
-        try:
-            t_total += float(list(row)[1])
-            for i in range(len(names)-1):
-                if list(row)[5].find(names[i]) != -1:
-                    t_names[i] += float(list(row)[1])
-        except: () 
+        for row in csv_f:
+            try:
+                t_total += float(list(row)[1])
+                for i in range(len(names)-1):
+                    if list(row)[5].find(names[i]) != -1:
+                        t_names[i] += float(list(row)[1])
+            except: () 
 
     t_names[-1] = t_total - np.sum(t_names)
 
