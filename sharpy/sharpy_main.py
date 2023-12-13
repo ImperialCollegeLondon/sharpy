@@ -45,15 +45,6 @@ def main(args=None, sharpy_input_dict=None):
     import sharpy.postproc
     import sharpy.generators
     import sharpy.controllers
-
-    # Profiling
-    prof_enable = True
-
-    if prof_enable:
-        import cProfile, sharpy.utils.profile_analyse
-        pr = cProfile.Profile()
-        pr.enable()
-
     # ------------
 
     try:
@@ -157,11 +148,6 @@ def main(args=None, sharpy_input_dict=None):
         cout.cout_wrap('FINISHED - CPU process time = %f6 seconds' % cpu_time, 2)
         finish_writer()
 
-        # End profiling and analse output using string arguments
-        if prof_enable:
-            pr.disable()
-            prof_data = sharpy.utils.profile_analyse.profile_analse(pr, settings)
-
     except Exception as e:
         try:
             logdir = settings['SHARPy']['log_folder'] + '/' + settings['SHARPy']['case']
@@ -179,7 +165,8 @@ def main(args=None, sharpy_input_dict=None):
         logging.info('SHARPy Error Log')
         logging.error("Exception occurred", exc_info=True)
         raise e
-    return data, prof_data
+
+    return data
 
 
 
