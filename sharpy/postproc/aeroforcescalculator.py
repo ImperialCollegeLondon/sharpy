@@ -132,11 +132,8 @@ class AeroForcesCalculator(BaseSolver):
             self.data.aero.timestep_info[ts].body_unsteady_forces[i_surf, 0:3]
             ) = self.calculate_forces_for_isurf_in_g_frame(force[i_surf], unsteady_force=unsteady_force[i_surf])
         
-        print(self.settings["nonlifting_body"])
         if self.settings["nonlifting_body"]:
-            print(self.data.nonlifting_body.n_surf)
             for i_surf in range(self.data.nonlifting_body.n_surf):
-                print(i_surf)
                 (
                 self.data.nonlifting_body.timestep_info[ts].inertial_steady_forces[i_surf, 0:3], 
                 self.data.nonlifting_body.timestep_info[ts].body_steady_forces[i_surf, 0:3],
