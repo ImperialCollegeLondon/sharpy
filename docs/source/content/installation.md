@@ -207,6 +207,10 @@ to your taste.
 
 ## Using SHARPy from a Docker container
 
+> **Tip** To install the Python environment, miniconda needs approximatelly 16GB of
+> memory. It is recommended to have at least that amount available for the
+> container in which you are building SHARPy.
+
 Docker containers are similar to lightweight virtual machines. The SHARPy container
 distributed through [Docker Hub](https://hub.docker.com/) is a CentOS 8
 machine with the libraries compiled with `gfortran` and `g++` and an
@@ -268,13 +272,15 @@ docker cp sharpy:/my_file.txt my_file.txt     # copy from container to host
 ```
 The `sharpy:` part is the `--name` argument you wrote in the `docker run` command.
 
+**Enjoy!**
+
+## Testing with Docker
+
 You can run the test suite once inside the container as:
 ```
 cd sharpy_dir
 python -m unittest
 ```
-
-**Enjoy!**
 
 
 ## Running SHARPy
