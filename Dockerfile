@@ -15,7 +15,7 @@ RUN cd /etc/yum.repos.d/ && \
 RUN yum groupinstall "Development Tools" -y --nogpgcheck && \
     yum install -y --nogpgcheck mesa-libGL libXt libXt-devel wget gcc-gfortran lapack vim tmux && \
     yum clean all
-RUN yum update && yum -y install cmake
+RUN yum -y update && yum -y install cmake
 
 ADD / /sharpy_dir/
 
