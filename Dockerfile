@@ -16,7 +16,7 @@ RUN yum groupinstall "Development Tools" -y --nogpgcheck && \
     yum install -y --nogpgcheck mesa-libGL libXt libXt-devel wget gcc-gfortran lapack vim tmux && \
     yum clean all
 RUN yum -y update && yum -y install cmake
-RUN yum install lapack
+RUN yum install libblas-dev libblas3
 
 ADD / /sharpy_dir/
 
