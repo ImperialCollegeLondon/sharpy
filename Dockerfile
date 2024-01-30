@@ -16,7 +16,8 @@ RUN yum groupinstall "Development Tools" -y --nogpgcheck && \
     yum install -y --nogpgcheck mesa-libGL libXt libXt-devel wget gcc-gfortran lapack vim tmux cmake && \
     yum clean all
 
-RUN yum install openblas.x86_64 -y
+RUN yum-config-manager  --add-repo https://yum.repos.intel.com/mkl/setup/intel-mkl.repo && \
+    yum install intel-mkl-2020.0-088
 
 ADD / /sharpy_dir/
 
