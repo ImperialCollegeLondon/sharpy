@@ -16,8 +16,7 @@ RUN yum groupinstall "Development Tools" -y --nogpgcheck && \
     yum install -y --nogpgcheck mesa-libGL libXt libXt-devel wget gcc-gfortran lapack vim tmux cmake && \
     yum clean all
 
-RUN yum localinstall 'https://centos.pkgs.org/7/centos-x86_64/blas-3.4.2-8.el7.x86_64.rpm'
-
+RUN yum install openblas-devel.x86_64 -y
 
 ADD / /sharpy_dir/
 
