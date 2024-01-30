@@ -17,7 +17,6 @@ RUN yum groupinstall "Development Tools" -y --nogpgcheck && \
     yum clean all
 
 RUN yum -y update && yum -y install cmake
-RUN yum install blas
 
 ADD / /sharpy_dir/
 
@@ -34,4 +33,3 @@ RUN cd sharpy_dir && \
     rm -rf build
     
 ENTRYPOINT ["/bin/bash", "--init-file", "/root/bashrc"]
-
