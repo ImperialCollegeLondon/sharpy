@@ -13,8 +13,11 @@ RUN cd /etc/yum.repos.d/ && \
 
 # Development tools including compilers
 RUN yum groupinstall "Development Tools" -y --nogpgcheck && \
-    yum install -y --nogpgcheck mesa-libGL libXt libXt-devel wget gcc-gfortran lapack blas vim tmux cmake && \
+    yum install -y --nogpgcheck mesa-libGL libXt libXt-devel wget gcc-gfortran lapack vim tmux cmake && \
     yum clean all
+
+RUN yum localinstall 'https://centos.pkgs.org/7/centos-x86_64/blas-3.4.2-8.el7.x86_64.rpm'
+
 
 ADD / /sharpy_dir/
 
