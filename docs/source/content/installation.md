@@ -18,7 +18,7 @@ Windows users can also run it by first installing the Windows Subsystem for Linu
 
 __Required Distributions__
 
-* Anaconda Python 3.10
+* Python 3.10 (compatility with other versions is not guaranteed)
 * GCC 6.0 or higher (recommended). C++ and Fortran.
 
 __Recommended Software__
@@ -63,7 +63,7 @@ SHARPy can be installed as a standalone package, without the use of a package ma
     python --version
     ```
 
-### Quick install
+### Quick install (Standalone)
 The quick install is geared towards getting the release build of SHARPy running as quickly and simply as possible. 
 1. Move into the cloned repository:
     ```bash
@@ -138,7 +138,7 @@ or running any SHARPy cases.
     some dependencies are included in the conda environment. You should now see ```(sharpy)``` on your command line. 
 
 
-### Quick install
+### Quick install (Anaconda)
 The quick install is geared towards getting the release build of SHARPy running as quickly and simply as possible.
 1. Move into the cloned repository:
     ```bash
