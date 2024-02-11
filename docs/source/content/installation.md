@@ -54,49 +54,48 @@ once you initialise SHARPy you will also automatically clone the relevant versio
 
 2. We will now set up the SHARPy environment that will install other required distributions.
 
-### Setting up the Python Environment (Standalone)
+### Quick install (Standalone)
 
-SHARPy can be installed as a standalone package, without the use of a package manager. If you wish to install using the Anaconda package manager, please use the following tutorial [HERE](#setting-up-the-python-environment-anaconda), or make a custom installation with a develop build or modified compilation settings [HERE](#custom-installation).
+SHARPy can be installed as a standalone package, without the use of a package manager. If you wish to install using the Anaconda package manager, please use the following tutorial [HERE](#setting-up-the-python-environment-anaconda), or make a custom installation with a develop build or modified compilation settings [HERE](#custom-installation). The quick install is geared towards getting the release build of SHARPy running as quickly and simply as possible. 
 
-1. Check that your Python version is 3.10. Higher versions may be incompatible with the required modules.
+1. Check that your Python version is 3.10. Other versions may be incompatible with the required modules.
     ```bash
     python --version
     ```
-
-### Quick install (Standalone)
-The quick install is geared towards getting the release build of SHARPy running as quickly and simply as possible. 
-1. Move into the cloned repository:
+    
+2. Move into the cloned repository:
     ```bash
     cd sharpy
     ```
 
-2. Create a directory `build` that will be used during CMake's building process and `cd` into it.
+3. Create a directory `build` that will be used during CMake's building process and `cd` into it.
    Ensure it is located in the main ./sharpy folder otherwise the following steps won't work:
     ```bash
     mkdir build
     cd build
     ```
 
-3. Prepare UVLM and xbeam for compilation using `gfortran` and `g++` in their release builds running. If you'd like to
+4. Prepare UVLM and xbeam for compilation using `gfortran` and `g++` in their release builds running. If you'd like to
    change compilers see the Custom Installation.
     ```bash
     cmake ..
     ```
 
-4. Compile the libraries.
+5. Compile the libraries.
     ```bash
     make install -j 4
     ```
     where the number after the `-j` flag will specify how many cores to use during installation.
     This should take approximately 2 minutes (Tested on MacOS Sonoma).
 
-7. Finally, leave the build directory and install SHARPy:
+6. Finally, leave the build directory and install SHARPy:
     ```bash
     cd ..
     pip install .
     ```
+    There are options for what to install if required. For instance, to install the basic package with documentation, just do ```bash pip install  .[docs]```. For the whole lot, ```bash pip install  .[all]```.
 
-8. You can check the version of SHARPy you are running with:
+7. You can check the version of SHARPy you are running with:
     ```bash
     sharpy --version
     ```
