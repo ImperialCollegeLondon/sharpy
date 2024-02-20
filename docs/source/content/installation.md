@@ -1,5 +1,5 @@
 # SHARPy v2.2 Installation Guide
-__Last revision 26 January 2024__
+__Last revision 20 February 2024__
 
 The following step by step tutorial will guide you through the installation process of SHARPy. This is the updated process valid from v2.2.
 
@@ -9,7 +9,7 @@ __Operating System Requirements__
 
 SHARPy is being developed and tested on the following operating systems:
 * CentOS 7 and CentOS 8
-* Ubuntu 18.04 LTS
+* Ubuntu 22.04 LTS
 * Debian 10
 * MacOS Mojave and Catalina (Intel)
 * MacOS Sonoma (Apple Silicon M2)
@@ -18,8 +18,9 @@ Windows users can also run it by first installing the Windows Subsystem for Linu
 
 __Required Distributions__
 
-* Python 3.10 (compatility with other versions is not guaranteed)
+* Python 3.10 or higher
 * GCC 6.0 or higher (recommended). C++ and Fortran.
+* Eigen3, BLAS, MKL/LAPACK (all included in Anaconda)
 
 __Recommended Software__
 
@@ -58,44 +59,36 @@ once you initialise SHARPy you will also automatically clone the relevant versio
 
 SHARPy can be installed as a standalone package, without the use of a package manager. If you wish to install using the Anaconda package manager, please use the following tutorial [HERE](#setting-up-the-python-environment-anaconda), or make a custom installation with a develop build or modified compilation settings [HERE](#custom-installation). The quick install is geared towards getting the release build of SHARPy running as quickly and simply as possible. 
 
-1. Check that your Python version is 3.10. Other versions may be incompatible with the required modules.
+1. If the prerequisite algebra packages are not installed, they can be installed as following   (with a Homebrew equivelent for Mac installs):
+    ```bash
+    sudo apt install -y libblas-dev liblapack-dev libeigen3-dev
+    ```
+
+2. Check that your Python version is 3.10 or higher. Other versions may be incompatible with the required modules.
     ```bash
     python --version
     ```
     
-2. Move into the cloned repository:
+3. Move into the cloned repository:
     ```bash
     cd sharpy
     ```
 
-3. Create a directory `build` that will be used during CMake's building process and `cd` into it.
-   Ensure it is located in the main ./sharpy folder otherwise the following steps won't work:
+4. Install SHARPy:
     ```bash
-    mkdir build
-    cd build
-    ```
-
-4. Prepare UVLM and xbeam for compilation using `gfortran` and `g++` in their release builds running. If you'd like to
-   change compilers see the Custom Installation.
-    ```bash
-    cmake ..
-    ```
-
-5. Compile the libraries.
-    ```bash
-    make install -j 4
-    ```
-    where the number after the `-j` flag will specify how many cores to use during installation.
-    This should take approximately 2 minutes (Tested on MacOS Sonoma).
-
-6. Finally, leave the build directory and install SHARPy:
-    ```bash
-    cd ..
     pip install .
     ```
+    This will install any required Python packages as well as building the xbeam and UVLM libraries. This may take a few minutes.
+    
     There are options for what to install if required. For instance, to install the basic package with documentation, just do ```bash pip install  .[docs]```. For the whole lot, ```bash pip install  .[all]```.
 
-7. You can check the version of SHARPy you are running with:
+    In systems without root access, you may not have permission to install using this method. In that case, to complete a local install:
+
+    ```bash
+    python setup.py --user
+    ```
+
+4. You can check the version of SHARPy you are running with:
     ```bash
     sharpy --version
     ```
@@ -105,8 +98,7 @@ __You are ready to run SHARPy__. Continue reading the [Running SHARPy](#running-
 ### Setting up the Python Environment (Anaconda)
 
 SHARPy can use the Anaconda package manager to provide the necessary Python packages.
-These are specified in an Anaconda environment that shall be activated prior to compiling the xbeam and UVLM libraries
-or running any SHARPy cases.
+These are specified in an Anaconda environment that shall be activated prior to compiling the xbeam and UVLM libraries or running any SHARPy cases. Please note that this install method does
 
 1. If you still do not have it in your system, install the [Anaconda](https://conda.io/docs/) Python 3 distribution.
 
@@ -127,7 +119,9 @@ or running any SHARPy cases.
     conda env create -f environment.yml
     cd ../..
     ```
-    This should take approximately 15 minutes to complete (Tested on Ubuntu 22.04.1). 
+    This should take approximately 15 minutes to complete (Tested on Ubuntu 22.04.1).
+    
+    For installation on Apple Silicon, use ```environment_arm64.yml```. This requires GCC and GFortran to be installed prior.
 
 5. Activate the `sharpy` conda environment:
     ```bash
