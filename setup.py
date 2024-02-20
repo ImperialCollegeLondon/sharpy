@@ -139,10 +139,9 @@ setup(
         "colorama",
         "dill",
         "jupyterlab",
-        "mayavi", #tvtk
+        "mayavi @ git+https://github.com/enthought/mayavi.git", #Used for TVTK. Bug in pip install, hence git clone
         "pandas",
         "control",
-        # For pandas excel reader.
         "openpyxl>=3.0.10",
         "lxml>=4.4.1",
         "PySocks",
