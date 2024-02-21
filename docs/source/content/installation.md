@@ -59,7 +59,7 @@ once you initialise SHARPy you will also automatically clone the relevant versio
 
 SHARPy can be installed as a standalone package, without the use of a package manager. If you wish to install using the Anaconda package manager, please use the following tutorial [HERE](#setting-up-the-python-environment-anaconda), or make a custom installation with a develop build or modified compilation settings [HERE](#custom-installation). The quick install is geared towards getting the release build of SHARPy running as quickly and simply as possible. 
 
-1. If the prerequisite algebra packages are not installed, they can be installed as following   (with a Homebrew equivelent for Mac installs):
+1. If the prerequisite algebra packages are not installed, they can be installed as following   (with a Homebrew equivelent available for Mac installs):
     ```bash
     sudo apt install -y libblas-dev liblapack-dev libeigen3-dev
     ```
@@ -98,7 +98,7 @@ __You are ready to run SHARPy__. Continue reading the [Running SHARPy](#running-
 ### Setting up the Python Environment (Anaconda)
 
 SHARPy can use the Anaconda package manager to provide the necessary Python packages.
-These are specified in an Anaconda environment that shall be activated prior to compiling the xbeam and UVLM libraries or running any SHARPy cases. Please note that this install method does
+These are specified in an Anaconda environment that shall be activated prior to compiling the xbeam and UVLM libraries or running any SHARPy cases.
 
 1. If you still do not have it in your system, install the [Anaconda](https://conda.io/docs/) Python 3 distribution.
 
@@ -127,7 +127,7 @@ These are specified in an Anaconda environment that shall be activated prior to 
     ```bash
     conda activate sharpy
     ```
-    you need to do this before you compile the `xbeam` and `uvlm` libraries, as
+    This must be done before you compile the `xbeam` and `uvlm` libraries, as
     some dependencies are included in the conda environment. You should now see ```(sharpy)``` on your command line. 
 
 
@@ -143,38 +143,21 @@ The quick install is geared towards getting the release build of SHARPy running 
     (sharpy) [usr@host] $
     ```
 
-    If this is not the case, activate the environment otherwise xbeam and UVLM will not compile.
+3. Install SHARPy:
     ```bash
-    conda activate sharpy
-    ```
-
-3. Create a directory `build` that will be used during CMake's building process and `cd` into it.
-   Ensure it is located in the main ./sharpy folder otherwise the following steps won't work:
-    ```bash
-    mkdir build
-    cd build
-    ```
-
-4. Prepare UVLM and xbeam for compilation using `gfortran` and `g++` in their release builds running. If you'd like to
-   change compilers see the Custom Installation.
-    ```bash
-    cmake ..
-    ```
-
-5. Compile the libraries.
-    ```bash
-    make install -j 4
-    ```
-    where the number after the `-j` flag will specify how many cores to use during installation.
-    This should take approximately 2 minutes (Tested on MacOS Sonoma).
-
-7. Finally, leave the build directory and install SHARPy:
-    ```bash
-    cd ..
     pip install .
     ```
+    This will install any required Python packages as well as building the xbeam and UVLM libraries. This may take a few minutes.
+    
+    There are options for what to install if required. For instance, to install the basic package with documentation, just do ```bash pip install  .[docs]```. For the whole lot, ```bash pip install  .[all]```.
 
-8. You can check the version of SHARPy you are running with:
+    In systems without root access, you may not have permission to install using this method. In that case, to complete a local install:
+
+    ```bash
+    python setup.py --user
+    ```
+
+4. You can check the version of SHARPy you are running with:
     ```bash
     sharpy --version
     ```
