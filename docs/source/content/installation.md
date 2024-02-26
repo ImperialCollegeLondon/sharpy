@@ -74,19 +74,13 @@ SHARPy can be installed as a standalone package, without the use of a package ma
     cd sharpy
     ```
 
-4. Install SHARPy:
+4. Install SHARPy. This will install any required Python packages as well as building the xbeam and UVLM libraries, and may take a few minutes.
     ```bash
-    pip install .
+    pip install --user .
     ```
-    This will install any required Python packages as well as building the xbeam and UVLM libraries. This may take a few minutes.
-    
-    There are options for what to install if required. For instance, to install the basic package with documentation, just do ```bash pip install  .[docs]```. For the whole lot, ```bash pip install  .[all]```.
-
-    In systems without root access, you may not have permission to install using this method. In that case, to complete a local install:
-
-    ```bash
-    python setup.py --user
-    ```
+   The ```--user``` flag is included for systems without root access (often Linux) as the install will fail otherwise. This flag can be removed when a global install is required, and your machine allows it (works on Mac).
+   
+    There are options for what to install if required. For instance, to install the basic package with documentation, just do ```bash pip install --user .[docs]```. For the whole lot, ```bash pip install --user .[all]```.
 
 4. You can check the version of SHARPy you are running with:
     ```bash
@@ -143,19 +137,13 @@ The quick install is geared towards getting the release build of SHARPy running 
     (sharpy) [usr@host] $
     ```
 
-3. Install SHARPy:
+3. Install SHARPy. This will install any required Python packages as well as building the xbeam and UVLM libraries, and may take a few minutes.
     ```bash
-    pip install .
+    pip install --user .
     ```
-    This will install any required Python packages as well as building the xbeam and UVLM libraries. This may take a few minutes.
-    
-    There are options for what to install if required. For instance, to install the basic package with documentation, just do ```bash pip install  .[docs]```. For the whole lot, ```bash pip install  .[all]```.
-
-    In systems without root access, you may not have permission to install using this method. In that case, to complete a local install:
-
-    ```bash
-    python setup.py --user
-    ```
+   The ```--user``` flag is included for systems without root access (often Linux) as the install will fail otherwise. This flag can be removed when a global install is required, and your machine allows it (works on Mac).
+   
+   There are options for what to install if required. For instance, to install the basic package with documentation, just do ```bash pip install --user .[docs]```. For the whole lot, ```bash pip install --user .[all]```.
 
 4. You can check the version of SHARPy you are running with:
     ```bash
