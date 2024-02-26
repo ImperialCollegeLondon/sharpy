@@ -17,6 +17,7 @@ dependencies:
   - PySocks>=1.7.1         
   - PyYAML>=5.1.2          
   - recommonmark>=0.6.0    
+  - scipy>=1.11.4,<1.12
   - slycot>=0.4.0
   - sphinx_rtd_theme>=0.4.3
   - wheel>=0.33.6          
