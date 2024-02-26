@@ -562,8 +562,8 @@ def crv2rotation(psi):
         skew_normal = skew(normal)
 
         rot_matrix = np.eye(3)
-        rot_matrix += np.sin(norm_psi)*skew_normal
-        rot_matrix += (1.0 - np.cos(norm_psi))*np.dot(skew_normal, skew_normal)
+        rot_matrix += np.sin(norm_psi)/norm_psi*skew_normal
+        rot_matrix += (1.0 - np.cos(norm_psi))/pow(norm_psi, 2)*np.dot(skew_normal, skew_normal)
 
     return rot_matrix
 
