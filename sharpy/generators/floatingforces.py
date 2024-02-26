@@ -2,8 +2,7 @@ import numpy as np
 import h5py as h5
 import ctypes as ct
 import os
-from scipy import fft
-from scipy.fftpack import ifft
+from scipy import fft, ifft
 from scipy.interpolate import interp1d
 from control import forced_response, TransferFunction
 
