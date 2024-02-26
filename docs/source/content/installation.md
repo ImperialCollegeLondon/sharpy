@@ -10,7 +10,7 @@ __Operating System Requirements__
 SHARPy is being developed and tested on the following operating systems:
 * CentOS 7 and CentOS 8
 * Ubuntu 22.04 LTS
-* Debian 10
+* Debian 12
 * MacOS Mojave and Catalina (Intel)
 * MacOS Sonoma (Apple Silicon M2)
 
