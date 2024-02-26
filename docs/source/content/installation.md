@@ -1,7 +1,7 @@
-# SHARPy v2.0 Installation Guide
-__Last revision 9 October 2023__
+# SHARPy v2.2 Installation Guide
+__Last revision 26 February 2024__
 
-The following step by step tutorial will guide you through the installation process of SHARPy. This is the updated process valid from v2.0.
+The following step by step tutorial will guide you through the installation process of SHARPy. This is the updated process valid from v2.2.
 
 ## Requirements
 
@@ -9,8 +9,8 @@ __Operating System Requirements__
 
 SHARPy is being developed and tested on the following operating systems:
 * CentOS 7 and CentOS 8
-* Ubuntu 18.04 LTS
-* Debian 10
+* Ubuntu 22.04 LTS
+* Debian 12
 * MacOS Mojave and Catalina (Intel)
 * MacOS Sonoma (Apple Silicon M2)
 
@@ -18,8 +18,15 @@ Windows users can also run it by first installing the Windows Subsystem for Linu
 
 __Required Distributions__
 
-* Anaconda Python 3.10
-* GCC 6.0 or higher (recommended). C++ and Fortran.
+* Python 3.10 or higher
+* CMake
+* GCC 6.0 or higher, G++, GFortran (all included in Anaconda) 
+* Eigen3, BLAS, MKL/LAPACK (all included in Anaconda)
+
+If the prerequisite packages are not installed and you are not using Anaconda, they can be installed as following on Linux (with a Homebrew equivelent available for Mac installs):
+```bash
+sudo apt install -y cmake g++ gfortran libblas-dev liblapack-dev libeigen3-dev
+```
 
 __Recommended Software__
 
@@ -45,20 +52,47 @@ once you initialise SHARPy you will also automatically clone the relevant versio
 
 ### Set up the folder structure
 
-1. Clone `sharpy` in your desired location, if you agree with the license in `license.txt`.
+Clone `sharpy` in your desired location, if you agree with the license in `license.txt`.
+```bash
+git clone --recursive http://github.com/ImperialCollegeLondon/sharpy
+```
+The `--recursive` flag will also initialise and update the submodules SHARPy depends on,
+[xbeam](http://github.com/imperialcollegelondon/xbeam) and [UVLM](http://github.com/imperialcollegelondon/UVLM).
+
+
+### Quick install (Standalone)
+
+SHARPy can be installed as a standalone package, without the use of a package manager. If you wish to install using the Anaconda package manager, please use the following tutorial [HERE](#setting-up-the-python-environment-anaconda), or make a custom installation with a develop build or modified compilation settings [HERE](#custom-installation). The quick install is geared towards getting the release build of SHARPy running as quickly and simply as possible. 
+
+1. Check that your Python version is 3.10 or higher. Other versions may be incompatible with the required modules.
     ```bash
-    git clone --recursive http://github.com/ImperialCollegeLondon/sharpy
+    python --version
     ```
-    The `--recursive` flag will also initialise and update the submodules SHARPy depends on,
-    [xbeam](http://github.com/imperialcollegelondon/xbeam) and [UVLM](http://github.com/imperialcollegelondon/UVLM).
+    
+2. Move into the cloned repository:
+    ```bash
+    cd sharpy
+    ```
 
-2. We will now set up the SHARPy environment that will install other required distributions.
+3. Install SHARPy. This will install any required Python packages as well as building the xbeam and UVLM libraries, and may take a  few  minutes.
+    ```bash
+    pip install --user .
+    ```
+   The ```--user``` flag is included for systems without root access (often Linux) as the install will fail otherwise. This flag can be removed when a global install is required, and your machine allows it (works on Mac).
+   
+    There are options for what to install if required. For instance, to install the basic package with documentation, just do ```bash pip install --user .[docs]```. For the whole lot, ```bash pip install --user .[all]```.
 
-### Setting up the Python Environment
+4. You can check the version of SHARPy you are running with:
+    ```bash
+    sharpy --version
+    ```
 
-SHARPy uses the Anaconda package manager to provide the necessary Python packages.
-These are specified in an Anaconda environment that shall be activated prior to compiling the xbeam and UVLM libraries
-or running any SHARPy cases.
+__You are ready to run SHARPy__. Continue reading the [Running SHARPy](#running-sharpy) section.
+
+### Setting up the Python Environment (Anaconda)
+
+SHARPy can use the Anaconda package manager to provide the necessary Python packages.
+These are specified in an Anaconda environment that shall be activated prior to compiling the xbeam and UVLM libraries or running any SHARPy cases.
 
 1. If you still do not have it in your system, install the [Anaconda](https://conda.io/docs/) Python 3 distribution.
 
@@ -66,7 +100,7 @@ or running any SHARPy cases.
     ```bash
     python --version
     ```
-3. If python 3.10 is needed, use:
+3. If a specific python version is required, for example 3.10, use:
 
     ```bash
     conda install python=3.10
@@ -75,23 +109,19 @@ or running any SHARPy cases.
 4. Create the conda environment that SHARPy will use:
 
     ```bash
-    cd sharpy/utils
     conda env create -f environment.yml
-    cd ../..
     ```
-    This should take approximately 15 minutes to complete (Tested on Ubuntu 22.04.1). 
+    This should take approximately 5 minutes to complete (Tested on Ubuntu 22.04.1). For installation on Apple Silicon, use ```environment_arm64.yml```; this requires GCC and GFortran to be installed prior.
 
 5. Activate the `sharpy` conda environment:
     ```bash
     conda activate sharpy
     ```
-    you need to do this before you compile the `xbeam` and `uvlm` libraries, as
-    some dependencies are included in the conda environment. You should now see ```(sharpy)``` on your command line. 
+    You should now see ```(sharpy)``` on your command line. 
 
 
-### Quick install
-The quick install is geared towards getting the release build of SHARPy running as quickly and simply as possible. If
-you would like to install a develop build or modify the compilation settings of the libraries skip to the next section.
+### Quick install (Anaconda)
+The quick install is geared towards getting the release build of SHARPy running as quickly and simply as possible.
 1. Move into the cloned repository:
     ```bash
     cd sharpy
@@ -102,48 +132,30 @@ you would like to install a develop build or modify the compilation settings of 
     (sharpy) [usr@host] $
     ```
 
-    If this is not the case, activate the environment otherwise xbeam and UVLM will not compile.
+3. Install SHARPy. This will install any required Python packages as well as building the xbeam and UVLM libraries, and may take a few minutes.
     ```bash
-    conda activate sharpy
+    pip install --user .
     ```
+   The ```--user``` flag is included for systems without root access (often Linux) as the install will fail otherwise. This flag can be removed when a global install is required, and your machine allows it (works on Mac).
+   
+   There are options for what to install if required. For instance, to install the basic package with documentation, just do ```bash pip install --user .[docs]```. For the whole lot, ```bash pip install --user .[all]```.
 
-3. Create a directory `build` that will be used during CMake's building process and `cd` into it.
-   Ensure it is located in the main ./sharpy folder otherwise the following steps won't work:
-    ```bash
-    mkdir build
-    cd build
-    ```
-
-4. Prepare UVLM and xbeam for compilation using `gfortran` and `g++` in their release builds running. If you'd like to
-   change compilers see the Custom Installation.
-    ```bash
-    cmake ..
-    ```
-
-5. Compile the libraries.
-    ```bash
-    make install -j 4
-    ```
-    where the number after the `-j` flag will specify how many cores to use during installation.
-    This should take approximately 5 minutes (Tested on Ubuntu 22.04.1).
-
-7. Finally, leave the build directory and install SHARPy:
-    ```bash
-    cd ..
-    pip install .
-    ```
-
-8. You can check the version of SHARPy you are running with:
+4. You can check the version of SHARPy you are running with:
     ```bash
     sharpy --version
     ```
+
+If running SHARPy from Anaconda, you need to load the conda environment. Therefore, __before you run any SHARPy case or test__, activate the SHARPy conda environment: 
+```bash
+conda activate sharpy
+```
 
 __You are ready to run SHARPy__. Continue reading the [Running SHARPy](#running-sharpy) section.
 
 ### Custom installation
 
 These steps will show you how to compile the xbeam and UVLM libraries such that you can modify the compilation settings
-to your taste.
+to your taste. This is compatible with both standalone and Anaconda installations.
 
 1. If you want to use SHARPy's latest release, skip this step. If you would like to use the latest development work,
    you will need to checkout the `develop` branch. For more info on how we structure our development and what branches
@@ -154,14 +166,11 @@ to your taste.
     ```
     This command will check out the `develop` branch and set it to track the remote origin. It will also set the submodules (xbeam and UVLM) to the right commit.
 
-2. Create the conda environment that SHARPy will use:
+2. If using Anaconda, create the conda environment that SHARPy will use and activate the environment:
     ```bash
-    cd sharpy/utils
     conda env create -f environment.yml
-    cd ../..
     ```
 
-3. Activate the `sharpy` conda environment:
     ```bash
     conda activate sharpy
     ```
@@ -276,17 +285,7 @@ python -m unittest
 
 **Enjoy!**
 
-
 ## Running SHARPy
-
-In order to run SHARPy, you need to load the conda environment. Therefore, __before you run any SHARPy case__:
-
-1. Activate the SHARPy conda environment
-    ```bash
-    conda activate sharpy
-    ```
-
-You are now ready to run SHARPy cases from the terminal.
 
 ### Automated tests
 
@@ -341,12 +340,12 @@ SHARPy cases are therefore usually ran in the following way:
 
 2. Run it to produce the `.h5` files and the `.sharpy` files.
     ```bash
-    (sharpy_env) python generate_case.py
+    python generate_case.py
     ```
 
 3. Run SHARPy (ensure the environment is activated).
     ```bash
-    (sharpy_env) sharpy case.sharpy
+    sharpy case.sharpy
     ```
 
 #### Output
@@ -381,7 +380,6 @@ is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compres
 
     The `sharpy` call is:
     ```bash
-    # Make sure that the sharpy_env conda environment is active
     sharpy <path to solver file>
     ```
 
@@ -409,7 +407,6 @@ is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compres
 
     You are now ready to run the case again:
     ```bash
-    # Make sure that the sharpy_env conda environment is active
     sharpy <path to solver file>
     ```
 
