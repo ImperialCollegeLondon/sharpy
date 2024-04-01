@@ -1464,23 +1464,23 @@ def newmark_ss(M, C, K, dt, num_damp=1e-4, M_is_SPD=False):
                   \mathbf{q}_{n} \\ 
                   \mathbf{\dot q}_{n}
               \end{Bmatrix} 
-              - \mathbf{A_{ss1}}^{-1}\mathbf{B_{ss1}} \mathbf{f}_n
+              - \mathbf{A}_{\mathbf{ss1}}^{-1}\mathbf{B_{ss1}} \mathbf{f}_n
 
     Then
    
     .. math::
-        \mathbf{x}_{n+1} &= \mathbf{A_{ss1}}^{-1}[
+        \mathbf{x}_{n+1} &= \mathbf{A}_{\mathbf{ss1}}^{-1}[
                                 \mathbf{A_{ss0}} \mathbf{x}_n + (
-                                    \mathbf{A_{ss0}}\mathbf{A_{ss1}}^{-1}\mathbf{B_{ss1}} 
+                                    \mathbf{A_{ss0}}\mathbf{A}_{\mathbf{ss1}}^{-1}\mathbf{B_{ss1}} 
                                     + \mathbf{B_{ss0}}
                                 )
                                 \mathbf{f}_n
                             ] \\
         \begin{Bmatrix} 
-            \mathbf{\dot q}_{n} \\
-            \mathbf{\ddot q}_{n} 
+            \mathbf{q}_{n} \\
+            \mathbf{\dot q}_{n}
         \end{Bmatrix}
-        &= \mathbf{x}_n + \mathbf{B_{ss1}} \mathbf{f}_n
+        &= \mathbf{x}_n + \mathbf{A}_{\mathbf{ss1}}^{-1}\mathbf{B_{ss1}} \mathbf{f}_n
 
     See also :func:`sharpy.linear.src.libss.SSconv` for more details on the elimination of the term
     multiplying :math:`\mathbf{f}_{n+1}` in the state equation.
@@ -1494,11 +1494,11 @@ def newmark_ss(M, C, K, dt, num_damp=1e-4, M_is_SPD=False):
     where
 
     .. math::
-        \mathbf{A_{ss}} &= \mathbf{A_{ss1}}^{-1}\mathbf{A_{ss0}} \\
-        \mathbf{B_{ss}} &= \mathbf{A_{ss1}}^{-1}(\mathbf{B_{ss0}} 
-                         + \mathbf{A_{ss0}}\mathbf{A_{ss1}}^{-1}\mathbf{B_{ss1}}) \\
+        \mathbf{A_{ss}} &= \mathbf{A}_{\mathbf{ss1}}^{-1}\mathbf{A_{ss0}} \\
+        \mathbf{B_{ss}} &= \mathbf{A_{\mathbf{ss1}}^{-1}(\mathbf{B_{ss0}} 
+                         + \mathbf{A_{ss0}}\mathbf{A_{\mathbf{ss1}}^{-1}\mathbf{B_{ss1}}) \\
         \mathbf{C_{ss}} &= \mathbf{I} \\
-        \mathbf{D_{ss}} &= \mathbf{B_{ss1}}
+        \mathbf{D_{ss}} &= \mathbf{A_{\mathbf{ss1}}^{-1}\mathbf{B_{ss1}}
         
 
     .. admonition:: Notation is used in the code 
