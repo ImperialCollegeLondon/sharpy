@@ -152,7 +152,7 @@ class FlexDynamic():
         # Store structure at linearisation and linearisation conditions
         self.structure = structure
         self.tsstruct0 = tsinfo
-        self.Minv = None
+        self.Minv = None  # Not used anymore since M is factorized inside newmark_ss
 
         self.scaled_reference_matrices = dict()  # keep reference values prior to time scaling
 
@@ -925,16 +925,10 @@ class FlexDynamic():
                     if self.proj_modes == 'undamped':
                         Phi = self.U[:, :Nmodes]
 
-                        if self.Ccut is None:
-                            # Ccut = np.zeros((Nmodes, Nmodes))
-                            Ccut = np.dot(Phi.T, np.dot(self.Cstr, Phi))
-                        else:
-                            Ccut = np.dot(Phi.T, np.dot(self.Cstr, Phi))
-
                         Ass, Bss, Css, Dss = newmark_ss(
-                            np.linalg.inv(np.dot(self.U[:, :Nmodes].T, np.dot(self.Mstr, self.U[:, :Nmodes]))),
-                            Ccut,
-                            np.dot(self.U[:, :Nmodes].T, np.dot(self.Kstr, self.U[:, :Nmodes])),
+                            Phi.T @ self.Mstr @ Phi,
+                            Phi.T @ self.Cstr @ Phi,
+                            Phi.T @ self.Kstr @ Phi,
                             self.dt,
                             self.newmark_damp)
 
@@ -983,10 +977,8 @@ class FlexDynamic():
 
 
                 else:  # Full system
-                    self.Minv = np.linalg.inv(self.Mstr)
-
                     Ass, Bss, Css, Dss = newmark_ss(
-                        self.Minv, self.Cstr, self.Kstr,
+                        self.Mstr, self.Cstr, self.Kstr,
                         self.dt, self.newmark_damp)
                     self.Kin = None
                     self.Kout = None
@@ -1354,113 +1346,181 @@ class FlexDynamic():
         self.dlti = True
 
 
-def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
+def newmark_ss(M, C, K, dt, num_damp=1e-4, M_is_SPD=False):
     r"""
-    Produces a discrete-time state-space model of the structural equations
+    Produces a discrete-time state-space model of the 2nd order ordinary differential equation (ODE) given by:
 
     .. math::
+        \mathbf{M}\mathbf{\ddot{q}} + \mathbf{C}\mathbf{\dot{q}} + \mathbf{K}\mathbf{q} = \mathbf{f(t)}
 
-        \mathbf{\ddot{x}} &= \mathbf{M}^{-1}( -\mathbf{C}\,\mathbf{\dot{x}}-\mathbf{K}\,\mathbf{x}+\mathbf{F} ) \\
-        \mathbf{y} &= \mathbf{x}
+    This ODE is discretized based on the Newmark-:math:`\beta` integration scheme.
 
-
-    based on the Newmark-:math:`\beta` integration scheme. The output state-space model
-    has form:
-
+    The output state-space model has the form:
+    
     .. math::
+        \mathbf{x}_{n+1} &= \mathbf{A_{ss}}\mathbf{x}_n + \mathbf{B_{ss}}\mathbf{f}_n \\
+        \mathbf{y}_n &= \mathbf{C_{ss}}\mathbf{x}_n + \mathbf{D_{ss}}\mathbf{f}_n
 
-        \mathbf{X}_{n+1} &= \mathbf{A}\,\mathbf{X}_n + \mathbf{B}\,\mathbf{F}_n \\
-        \mathbf{Y} &= \mathbf{C}\,\mathbf{X} + \mathbf{D}\,\mathbf{F}
-
-
-    with :math:`\mathbf{X} = [\mathbf{x}, \mathbf{\dot{x}}]^T`
+    where :math:`\mathbf{y} = \begin{Bmatrix} \mathbf{q} \\ \mathbf{\dot{q}} \end{Bmatrix}`
 
     Note that as the state-space representation only requires the input force
-    :math:`\mathbf{F}` to be evaluated at time-step :math:`n`,the :math:`\mathbf{C}` and :math:`\mathbf{D}` matrices
-    are, in general, fully populated.
+    :math:`\mathbf{f}` to be evaluated at time-step :math:`n`, thus the pass-through matrix 
+    :math:`\mathbf{D_{ss}}` is not zero.
 
-    The Newmark-:math:`\beta` integration scheme is carried out following the modifications presented by
-    Geradin [1] that render it unconditionally stable. The displacement and velocities are estimated as:
+    This function retuns a tuple with the discrete state-space matrices :math:`(\mathbf{A_{ss},B_{ss},C_{ss},D_{ss}})`.
 
-    .. math::
-        x_{n+1} &= x_n + \Delta t \dot{x}_n + \left(\frac{1}{2}-\theta_2\right)\Delta t^2 \ddot{x}_n + \theta_2\Delta t
-        \ddot{x}_{n+1}  \\
-        \dot{x}_{n+1} &= \dot{x}_n + (1-\theta_1)\Delta t \ddot{x}_n + \theta_1\Delta t \ddot{x}_{n+1}
+    Theory
+    ------
 
-    The stencil is unconditionally stable if the tuning parameters :math:`\theta_1` and :math:`\theta_2` are chosen as:
+    The following steps describe how to apply the Newmark-:math:`\beta` scheme
+    to the ODE in order to generate the discrete time-state space-model. It
+    folows the development of [1].
 
-    .. math::
-        \theta_1 &= \frac{1}{2} + \alpha \\
-        \theta_2 &= \frac{1}{4} \left(\theta_1 + \frac{1}{2}\right)^2 \\
-        \theta_2 &= \frac{5}{80} + \frac{1}{4} (\theta_1 + \theta_1^2) \text{TBC SOURCE}
+    .. admonition:: Notation
 
-    where :math:`\alpha>0` accounts for small positive algorithmic damping.
+        Bold upper case letters represent matrices, bold lower case letters
+        represent vectors.  Non-bold symbols are scalars. Curly brackets
+        indicate (block) vectors and square brackets indicate (block) matrices.
 
-    The following steps describe how to apply the Newmark-beta scheme to a state-space formulation. The original idea
-    is based on [1].
-
-    The equation of a second order system dynamics reads:
+    Evaluating the ODE to the time steps :math:`t_n` and  :math:`t_{n+1}` and
+    isolating the acceleration term:
 
     .. math::
-        M\mathbf{\ddot q} + C\mathbf{\dot q} + K\mathbf{q} = F
+        \mathbf{\ddot q}_{n} &= - \mathbf{M}^{-1}\mathbf{C}\mathbf{\dot{q}}_{n} 
+                                - \mathbf{M}^{-1}\mathbf{K}\mathbf{q}_{n} 
+                                + \mathbf{M}^{-1}\mathbf{f}_{n} \\
+        \mathbf{\ddot q}_{n+1} &= - \mathbf{M}^{-1}\mathbf{C}\mathbf{\dot{q}}_{n+1} 
+                                - \mathbf{M}^{-1}\mathbf{K}\mathbf{q}_{n+1} 
+                                + \mathbf{M}^{-1}\mathbf{f}_{n+1} \\
 
-    Applying that equation to the time steps :math:`n` and  :math:`n+1`, rearranging terms and multiplying by
-    :math:`M^{-1}`:
-
-    .. math::
-        \mathbf{\ddot q}_{n} = - M^{-1}C\mathbf{\dot q}_{n} - M^{-1}K\mathbf{q}_{n} + M^{-1}F_{n} \\
-        \mathbf{\ddot q}_{n+1} = - M^{-1}C\mathbf{\dot q}_{n+1} - M^{-1}K\mathbf{q}_{n+1} + M^{-1}F_{n+1}
-
-    The relations of the Newmark-beta scheme are:
+    The update equations of the Newmark-beta scheme are [1]:
 
     .. math::
         \mathbf{q}_{n+1} &= \mathbf{q}_n + \mathbf{\dot q}_n\Delta t +
-        (\frac{1}{2}-\beta)\mathbf{\ddot q}_n \Delta t^2 + \beta \mathbf{\ddot q}_{n+1} \Delta t^2 + O(\Delta t^3) \\
+        (1/2-\beta)\mathbf{\ddot q}_n \Delta t^2 + \beta \mathbf{\ddot q}_{n+1} \Delta t^2 + O(\Delta t^3) \\
         \mathbf{\dot q}_{n+1} &= \mathbf{\dot q}_n + (1-\gamma)\mathbf{\ddot q}_n \Delta t +
         \gamma \mathbf{\ddot q}_{n+1} \Delta t + O(\Delta t^3)
 
-    Substituting the former relation onto the later ones, rearranging terms, and writing it in state-space form:
+    where :math:`\Delta t = t_{n+1} - t_n`.
+
+    The stencil is unconditionally stable if the tuning parameters
+    :math:`\gamma` and :math:`\beta` are chosen as:
 
     .. math::
-        \begin{bmatrix} I + M^{-1}K \Delta t^2\beta \quad \Delta t^2\beta M^{-1}C \\ (\gamma \Delta t M^{-1}K)
-        \quad (I + \gamma \Delta t M^{-1}C) \end{bmatrix} \begin{Bmatrix} \mathbf{\dot q}_{n+1} \\
-        \mathbf{\ddot q}_{n+1} \end{Bmatrix} =
-        \begin{bmatrix} (I - \Delta t^2(1/2-\beta)M^{-1}K \quad (\Delta t - \Delta t^2(1/2-\beta)M^{-1}C \\
-        (-(1-\gamma)\Delta t M^{-1}K \quad (I - (1-\gamma)\Delta tM^{-1}C \end{bmatrix}
-        \begin{Bmatrix}  \mathbf{q}_{n} \\ \mathbf{\dot q}_{n} \end{Bmatrix}	+
-        \begin{Bmatrix} (\Delta t^2(1/2-\beta) \\ (1-\gamma)\Delta t \end{Bmatrix} M^{-1}F_n+
-        \begin{Bmatrix} (\Delta t^2\beta) \\ (\gamma \Delta t) \end{Bmatrix}M^{-1}F_{n+1}
+        \gamma &= \frac{1}{2} + \alpha \\
+        \beta &= \frac{(1+\alpha)^2}{4} 
+               = \frac{(1/2+\gamma)^2}{4} 
+               = \frac{1}{16} + \frac{1}{4}(\gamma + \gamma^2)
 
-    To understand SHARPy code, it is convenient to apply the following change of notation:
+    where :math:`\alpha>0` accounts for small positive algorithmic damping (:math:`\alpha` is ``num_damp`` in the code).
+
+    Substituting the former relations onto the later ones, rearranging terms, and writing it in state-space form:
+    
+    .. math::
+        \mathbf{A_{ss1}} \begin{Bmatrix} \mathbf{q}_{n+1} \\ \mathbf{\dot q}_{n+1} \end{Bmatrix} 
+        =
+        \mathbf{A_{ss0}} \begin{Bmatrix} \mathbf{q}_{n} \\ \mathbf{\dot q}_{n} \end{Bmatrix} +
+        \mathbf{B_{ss0}} \mathbf{f}_n +
+        \mathbf{B_{ss1}} \mathbf{f}_{n+1}
+    
+    where
+    
+    .. math::
+        \mathbf{A_{ss1}} &=
+        \begin{bmatrix} 
+            \mathbf{I} + \beta\Delta t^2 \mathbf{M}^{-1}\mathbf{K}
+                & \beta\Delta t^2 \mathbf{M}^{-1}\mathbf{C} \\
+            \gamma \Delta t \mathbf{M}^{-1}\mathbf{K}
+                & \mathbf{I}+ \gamma \Delta t \mathbf{M}^{-1}\mathbf{C}
+        \end{bmatrix} 
+        \\
+        \mathbf{A_{ss0}} &=
+        \begin{bmatrix} 
+            \mathbf{I} - \Delta t^2(1/2-\beta)\mathbf{M}^{-1}\mathbf{K}
+                & \Delta t \mathbf{I} - (1/2-\beta)\Delta t^2 \mathbf{M}^{-1}\mathbf{C} \\
+            -(1-\gamma)\Delta t \mathbf{M}^{-1}\mathbf{K}
+                &  \mathbf{I} - (1-\gamma)\Delta t \mathbf{M}^{-1}\mathbf{C}
+        \end{bmatrix}
+        \\
+        \mathbf{B_{ss0}} &=
+        \begin{bmatrix} 
+            (\Delta t^2(1/2-\beta) \mathbf{M}^{-1} \\ 
+            (1-\gamma)\Delta t \mathbf{M}^{-1}
+        \end{bmatrix} 
+        \\
+        \mathbf{B_{ss1}} &=
+        \begin{bmatrix} 
+            (\beta \Delta t^2) \mathbf{M}^{-1}\\ 
+            (\gamma \Delta t) \mathbf{M}^{-1}
+        \end{bmatrix}
+
+
+    This is not in standard space-state form because the state update equation
+    depends of the input at :math:`t_{n+1}`. This term can be eliminated by
+    defining the state 
+   
+    .. math:: \mathbf{x}_n = 
+              \begin{Bmatrix} 
+                  \mathbf{q}_{n} \\ 
+                  \mathbf{\dot q}_{n}
+              \end{Bmatrix} 
+              - \mathbf{A}_{\mathbf{ss1}}^{-1}\mathbf{B_{ss1}} \mathbf{f}_n
+
+    Then
+   
+    .. math::
+        \mathbf{x}_{n+1} &= \mathbf{A}_{\mathbf{ss1}}^{-1}[
+                                \mathbf{A_{ss0}} \mathbf{x}_n + (
+                                    \mathbf{A_{ss0}}\mathbf{A}_{\mathbf{ss1}}^{-1}\mathbf{B_{ss1}} 
+                                    + \mathbf{B_{ss0}}
+                                )
+                                \mathbf{f}_n
+                            ] \\
+        \begin{Bmatrix} 
+            \mathbf{q}_{n} \\
+            \mathbf{\dot q}_{n}
+        \end{Bmatrix}
+        &= \mathbf{x}_n + \mathbf{A}_{\mathbf{ss1}}^{-1}\mathbf{B_{ss1}} \mathbf{f}_n
+
+    See also :func:`sharpy.linear.src.libss.SSconv` for more details on the elimination of the term
+    multiplying :math:`\mathbf{f}_{n+1}` in the state equation.
+
+    This system is identified with a standard discrete-time state-space model
+   
+    .. math::
+        \mathbf{x}_{n+1} &= \mathbf{A_{ss}} \mathbf{x}_n + \mathbf{B_{ss}} \mathbf{f}_n \\
+        \mathbf{y_n}    &= \mathbf{C_{ss}} \mathbf{x}_n + \mathbf{D_{ss}} \mathbf{f}_n
+
+    where
 
     .. math::
-        \textrm{th1} = \gamma \\
-        \textrm{th2} = \beta \\
-        \textrm{a0} = \Delta t^2 (1/2 -\beta) \\
-        \textrm{b0} = \Delta t (1 -\gamma) \\
-        \textrm{a1} = \Delta t^2 \beta \\
-        \textrm{b1} = \Delta t \gamma \\
+        \mathbf{A_{ss}} &= \mathbf{A}_{\mathbf{ss1}}^{-1}\mathbf{A_{ss0}} \\
+        \mathbf{B_{ss}} &= \mathbf{A_{\mathbf{ss1}}^{-1}(\mathbf{B_{ss0}} 
+                         + \mathbf{A_{ss0}}\mathbf{A_{\mathbf{ss1}}^{-1}\mathbf{B_{ss1}}) \\
+        \mathbf{C_{ss}} &= \mathbf{I} \\
+        \mathbf{D_{ss}} &= \mathbf{A_{\mathbf{ss1}}^{-1}\mathbf{B_{ss1}}
+        
 
-    Finally:
-
-    .. math::
-        A_{ss1} \begin{Bmatrix} \mathbf{\dot q}_{n+1} \\ \mathbf{\ddot q}_{n+1} \end{Bmatrix} =
-        A_{ss0} \begin{Bmatrix} \mathbf{\dot q}_{n} \\ \mathbf{\ddot q}_{n} \end{Bmatrix} +
-        \begin{Bmatrix} (\Delta t^2(1/2-\beta) \\ (1-\gamma)\Delta t \end{Bmatrix} M^{-1}F_n+
-        \begin{Bmatrix} (\Delta t^2\beta) \\ (\gamma \Delta t) \end{Bmatrix}M^{-1}F_{n+1}
-
-    To finally isolate the vector at :math:`n+1`, instead of inverting the :math:`A_{ss1}` matrix, several systems are
-    solved. Moreover, the output equation is simply :math:`y=x`.
+    .. admonition:: Notation is used in the code 
+   
+        .. math::
+            \texttt{th1} &= \gamma \\
+            \texttt{th2} &= \beta \\
+            \texttt{a0}  &= (1/2 -\beta) \Delta t^2  \\
+            \texttt{b0}  &= (1 -\gamma) \Delta t \\
+            \texttt{a1}  &= \beta \Delta t^2 \\
+            \texttt{b1}  &=  \gamma \Delta t \\
 
     Args:
-        Minv (np.array): Inverse mass matrix :math:`\mathbf{M^{-1}}`
+        M (np.array): Mass matrix :math:`\mathbf{M}`
         C (np.array): Damping matrix :math:`\mathbf{C}`
         K (np.array): Stiffness matrix :math:`\mathbf{K}`
         dt (float): Timestep increment
         num_damp (float): Numerical damping. Default ``1e-4``
+        M_is_SPD (bool): whether to factorized M using Cholesky (only works for SPD matrices) or LU decomposition. Default: ``False`` 
 
     Returns:
-        tuple: the A, B, C, D matrices of the state space packed in a tuple with the predictor and delay term removed.
+        tuple: with the :math:`(\mathbf{A_{ss},B_{ss},C_{ss},D_{ss}})` matrices of the discrete-time state-space representation
 
     References:
         [1] - Geradin M., Rixen D. - Mechanical Vibrations: Theory and application to structural dynamics
@@ -1477,21 +1537,34 @@ def newmark_ss(Minv, C, K, dt, num_damp=1e-4):
     b1 = th1 * dt
     b0 = dt - b1
 
-    # relevant matrices
+    # Identity matrix
     N = K.shape[0]
     Imat = np.eye(N)
-    MinvK = np.dot(Minv, K)
-    MinvC = np.dot(Minv, C)
+
+    # Factorize M and obtain relevant matrices
+    # Even though the inverse needs to be explicitly calculated, using the matrix 
+    # factorization is more numerically stable and faster than multiplying by the
+    # inverse
+    M_factors = sc.linalg.cho_factor(M) if M_is_SPD else sc.linalg.lu_factor(M)
+
+    def M_solve(b):
+        return sc.linalg.cho_solve(M_factors, b) if M_is_SPD else sc.linalg.lu_solve(M_factors, b)
+
+    Minv = M_solve(Imat)
+    MinvK = M_solve(K)
+    MinvC = M_solve(C)
 
     # build StateSpace
     Ass0 = np.block([[Imat - a0 * MinvK, dt * Imat - a0 * MinvC],
                      [-b0 * MinvK, Imat - b0 * MinvC]])
     Ass1 = np.block([[Imat + a1 * MinvK, a1 * MinvC],
                      [b1 * MinvK, Imat + b1 * MinvC]])
-    Ass = np.linalg.solve(Ass1, Ass0)
 
-    Bss0 = np.linalg.solve(Ass1, np.block([[a0 * Minv], [b0 * Minv]]))
-    Bss1 = np.linalg.solve(Ass1, np.block([[a1 * Minv], [b1 * Minv]]))
+    # Factorize Ass1 once, solve multiple times
+    Ass1_factors = sc.linalg.lu_factor(Ass1)
+    Ass = sc.linalg.lu_solve(Ass1_factors, Ass0)
+    Bss0 = sc.linalg.lu_solve(Ass1_factors, np.block([[a0 * Minv], [b0 * Minv]]))
+    Bss1 = sc.linalg.lu_solve(Ass1_factors, np.block([[a1 * Minv], [b1 * Minv]]))
 
     # eliminate predictior term Bss1
     return libss.SSconv(Ass, Bss0, Bss1, C=np.eye(2 * N), D=np.zeros((2 * N, N)))
