@@ -62,25 +62,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
     settings_default['zero_ini_dot_ddot'] = False
     settings_description['zero_ini_dot_ddot'] = 'Set to zero the position and crv derivatives at the first time step'
 
-    settings_types['fix_prescribed_quat_ini'] = 'bool'
-    settings_default['fix_prescribed_quat_ini'] = False
-    settings_description['fix_prescribed_quat_ini'] = 'Set to initial the quaternion for prescibed bodies'
-
-    # initial speed direction is given in inertial FOR!!! also in a lot of cases coincident with global A frame
-    settings_types['initial_velocity_direction'] = 'list(float)'
-    settings_default['initial_velocity_direction'] = [-1.0, 0.0, 0.0]
-    settings_description['initial_velocity_direction'] = 'Initial velocity of the reference node given in the inertial FOR'
-
-    settings_types['initial_velocity'] = 'float'
-    settings_default['initial_velocity'] = 0
-    settings_description['initial_velocity'] = 'Initial velocity magnitude of the reference node'
-
-    # restart sim after dynamictrim
-    settings_types['dyn_trim'] = 'bool'
-    settings_default['dyn_trim'] = False
-    settings_description['dyn_trim'] = 'flag for dyntrim prior to dyncoup'
-
-
     settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -122,302 +103,42 @@ class NonLinearDynamicMultibody(_BaseStructural):
         self.data.structure.add_unsteady_information(
             self.data.structure.dyn_dict, self.settings['num_steps'])
 
-        # import pdb
-        # pdb.set_trace()
-        if self.settings['dyn_trim']:
-            # import pdb
-            # pdb.set_trace()
+        # Define the number of equations
+        self.lc_list = lagrangeconstraints.initialize_constraints(self.data.structure.ini_mb_dict)
+        self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
 
-            self.data = self.data.previousndm.data
+        self.Lambda = np.zeros((self.num_LM_eq,), dtype=ct.c_double, order='F')
+        self.Lambda_dot = np.zeros((self.num_LM_eq,), dtype=ct.c_double, order='F')
+        self.Lambda_ddot = np.zeros((self.num_LM_eq,), dtype=ct.c_double, order='F')
 
-            self.Lambda = self.data.Lambda
-            self.Lambda_dot = self.data.Lambda_dot
-            self.Lambda_ddot = np.zeros_like(self.data.Lambda)
+        if self.settings['write_lm']:
+            dire = self.data.output_folder + '/NonLinearDynamicMultibody/'
+            if not os.path.isdir(dire):
+                os.makedirs(dire)
 
-            num_body = self.data.structure.timestep_info[0].mb_FoR_vel.shape[0]
+            self.out_files = {'lambda': dire + 'lambda.dat',
+                              'lambda_dot': dire + 'lambda_dot.dat',
+                              'lambda_ddot': dire + 'lambda_ddot.dat',
+                              'cond_number': dire + 'cond_num.dat'}
+            # clean up files
+            for file in self.out_files.values():
+                if os.path.isfile(file):
+                    os.remove(file)
 
-            new_quat = np.zeros([num_body,4])
-            ini_quat = np.zeros([num_body,4])
-            new_direction = np.zeros([num_body,3])
-            
-            # import pdb
-            # pdb.set_trace()
-            # self.settings['initial_velocity_direction'] = [-0.8, 0, 0.6]
+        # Define the number of dofs
+        self.define_sys_size()
 
-        #     if self.settings['initial_velocity']:
-        #         for ibody in range(num_body):
-        #             new_quat[ibody] = self.data.structure.timestep_info[-1].mb_quat[ibody]
-        #             ini_quat[ibody] = self.data.structure.ini_mb_dict['body_%02d' % ibody]['quat']
-        #             b = algebra.multiply_matrices(algebra.quat2rotation(new_quat[0]),self.settings['initial_velocity_direction'])
-        #             new_direction[ibody] = algebra.multiply_matrices(algebra.quat2rotation(new_quat[ibody]).T,b)
-        # #     new_direction = np.dot(self.data.structure.timestep_info[-1].cag(),
-        # #                         self.settings['initial_velocity_direction'])
-        #         self.data.structure.timestep_info[-1].for_vel[0:3] += new_direction[0]*self.settings['initial_velocity']
-        #     #     num_body = self.data.structure.timestep_info[0].mb_FoR_vel.shape[0]
-        #     #     #  self.data.structure.num_bodies
-        #         for ibody in range(num_body):
-        #             self.data.structure.timestep_info[-1].mb_FoR_vel[ibody,0:3] += new_direction[ibody]*self.settings['initial_velocity']
-        #         print(self.data.structure.timestep_info[-1].mb_FoR_vel)
+        self.prev_Dq = np.zeros((self.sys_size + self.num_LM_eq))
 
-            if self.settings['initial_velocity']:
-                for ibody in range(num_body):
-                    new_quat[ibody] = self.data.structure.timestep_info[-1].mb_quat[ibody]
-                    ini_quat[ibody] = self.data.structure.ini_mb_dict['body_%02d' % ibody]['quat']
-                    new_direction[ibody] = algebra.multiply_matrices(algebra.quat2rotation(new_quat[ibody]).T,self.settings['initial_velocity_direction'])
-        #     new_direction = np.dot(self.data.structure.timestep_info[-1].cag(),
-        #                         self.settings['initial_velocity_direction'])
-                self.data.structure.timestep_info[-1].for_vel[0:3] += new_direction[0]*self.settings['initial_velocity']
-            #     num_body = self.data.structure.timestep_info[0].mb_FoR_vel.shape[0]
-            #     #  self.data.structure.num_bodies
-                for ibody in range(num_body):
-                    self.data.structure.timestep_info[-1].mb_FoR_vel[ibody,0:3] += new_direction[ibody]*self.settings['initial_velocity']
-                print(self.data.structure.timestep_info[-1].mb_FoR_vel)
+        self.settings['time_integrator_settings']['sys_size'] = self.sys_size
+        self.settings['time_integrator_settings']['num_LM_eq'] = self.num_LM_eq
 
-            # import pdb
-            # pdb.set_trace()        
-            # if self.settings['initial_velocity']:
-            #     new_direction = np.dot(self.data.structure.timestep_info[-1].cag(),
-            #                         self.settings['initial_velocity_direction'])
-            #     self.data.structure.timestep_info[-1].for_vel[0:3] = new_direction*self.settings['initial_velocity']
-            #     num_body = self.data.structure.timestep_info[0].mb_FoR_vel.shape[0]
-            #     #  self.data.structure.num_bodies
-            #     for ibody in range(num_body):
-            #         self.data.structure.timestep_info[-1].mb_FoR_vel[ibody,:] = self.data.structure.timestep_info[-1].for_vel
-
-
-            # nowquat = np.zeros([num_body,4])
-            # iniquat = np.zeros([num_body,4])
-            # # reset the a2 rot axis for hinge axes onlyyyyyyy!!!!!!! TODO:
-            # for ibody in range(num_body):
-            #         nowquat[ibody] = self.data.structure.timestep_info[-1].mb_quat[ibody]
-            #         iniquat[ibody] = self.data.structure.ini_mb_dict['body_%02d' % ibody]['quat']
-                    
-
-            # # hardcodeeeeeee                    
-            # for iconstraint in range(2):
-            #     self.data.structure.ini_mb_dict['constraint_%02d' % iconstraint]['rot_axisA2'] = algebra.multiply_matrices(algebra.quat2rotation(self.data.structure.timestep_info[-1].mb_quat[iconstraint+1]).T,
-            #                                                                                                                algebra.quat2rotation(self.data.structure.ini_mb_dict['body_%02d' % (iconstraint+1)]['quat']),
-            #                                                                                                                self.data.structure.ini_mb_dict['constraint_%02d' % iconstraint]['rot_axisA2'])
-
-            # # reset quat, pos, vel, acc
-            # for ibody in range(num_body):
-            #         self.data.structure.ini_mb_dict['body_%02d' % ibody]['quat'] = self.data.structure.timestep_info[-1].mb_quat[ibody]
-            #         # self.data.structure.ini_mb_dict['body_%02d' % ibody]['FoR_acceleration'] = self.data.structure.timestep_info[-1].mb_FoR_acc[ibody,:]
-            #         self.data.structure.timestep_info[-1].mb_FoR_acc[ibody,:] = np.zeros([1,6])        
-
-            #         self.data.structure.ini_mb_dict['body_%02d' % ibody]['FoR_velocity'] = self.data.structure.timestep_info[-1].mb_FoR_vel[ibody,:]
-            #         self.data.structure.ini_mb_dict['body_%02d' % ibody]['FoR_position'] = self.data.structure.timestep_info[-1].mb_FoR_pos[ibody,:]
-
-            # self.data.structure.timestep_info[-1].mb_dict = self.data.structure.ini_mb_dict
-            # self.data.structure.ini_info.mb_dict = self.data.structure.ini_mb_dict
-
-            # # Define the number of equations
-            self.lc_list = lagrangeconstraints.initialize_constraints(self.data.structure.ini_mb_dict)
-            
-            # import pdb
-            # pdb.set_trace()
-            # Define the number of dofs
-            self.define_sys_size() #check
-            self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
-            num_LM_eq = self.num_LM_eq
-         
-
-            self.prev_Dq = np.zeros((self.sys_size + self.num_LM_eq))
-
-            self.settings['time_integrator_settings']['sys_size'] = self.sys_size
-            self.settings['time_integrator_settings']['num_LM_eq'] = self.num_LM_eq
-
-            # Initialise time integrator
+        # Initialise time integrator
+        if not restart:
             self.time_integrator = solver_interface.initialise_solver(
-                    self.settings['time_integrator'])
-            self.time_integrator.initialise(
-                self.data, self.settings['time_integrator_settings'])
-  
-            if self.settings['write_lm']:
-                dire = self.data.output_folder + '/NonLinearDynamicMultibody/'
-                if not os.path.isdir(dire):
-                    os.makedirs(dire)
-
-                self.out_files = {'lambda': dire + 'lambda.dat',
-                                'lambda_dot': dire + 'lambda_dot.dat',
-                                'lambda_ddot': dire + 'lambda_ddot.dat',
-                                'cond_number': dire + 'cond_num.dat'}
-
-
-
-            #         # add initial speed to RBM
-            # if self.settings['initial_velocity']:
-            #     new_direction = np.dot(self.data.structure.timestep_info[-1].cag(),
-            #                         self.settings['initial_velocity_direction'])
-            #     self.data.structure.timestep_info[-1].for_vel[0:3] = new_direction*self.settings['initial_velocity']
-            #     num_body = self.data.structure.timestep_info[0].mb_FoR_vel.shape[0]
-            #     #  self.data.structure.num_bodies
-            #     for ibody in range(num_body):
-            #         self.data.structure.timestep_info[-1].mb_FoR_vel[ibody,:] = self.data.structure.timestep_info[-1].for_vel
-            # # import pdb
-            # # pdb.set_trace()
-
-            # # nowquat = np.zeros([num_body,4])
-            # # iniquat = np.zeros([num_body,4])
-            # # # reset the a2 rot axis for hinge axes onlyyyyyyy!!!!!!! TODO:
-            # # for ibody in range(num_body):
-            # #         nowquat[ibody] = self.data.structure.timestep_info[-1].mb_quat[ibody]
-            # #         iniquat[ibody] = self.data.structure.ini_mb_dict['body_%02d' % ibody]['quat']
-                    
-
-            # # # hardcodeeeeeee                    
-            # # for iconstraint in range(2):
-            # #     self.data.structure.ini_mb_dict['constraint_%02d' % iconstraint]['rot_axisA2'] = algebra.multiply_matrices(algebra.quat2rotation(self.data.structure.timestep_info[-1].mb_quat[iconstraint+1]).T,
-            # #                                                                                                                algebra.quat2rotation(self.data.structure.ini_mb_dict['body_%02d' % (iconstraint+1)]['quat']),
-            # #                                                                                                                self.data.structure.ini_mb_dict['constraint_%02d' % iconstraint]['rot_axisA2'])
-
-            # # # reset quat, pos, vel, acc
-            # # for ibody in range(num_body):
-            # #         self.data.structure.ini_mb_dict['body_%02d' % ibody]['quat'] = self.data.structure.timestep_info[-1].mb_quat[ibody]
-            # #         # self.data.structure.ini_mb_dict['body_%02d' % ibody]['FoR_acceleration'] = self.data.structure.timestep_info[-1].mb_FoR_acc[ibody,:]
-            # #         self.data.structure.timestep_info[-1].mb_FoR_acc[ibody,:] = np.zeros([1,6])        
-
-            # #         self.data.structure.ini_mb_dict['body_%02d' % ibody]['FoR_velocity'] = self.data.structure.timestep_info[-1].mb_FoR_vel[ibody,:]
-            # #         self.data.structure.ini_mb_dict['body_%02d' % ibody]['FoR_position'] = self.data.structure.timestep_info[-1].mb_FoR_pos[ibody,:]
-
-
-
-
-            # # Define the number of equations
-            # self.lc_list = lagrangeconstraints.initialize_constraints(self.data.structure.ini_mb_dict)
-            # print(self.data.structure.ini_mb_dict)
-            # # import pdb
-            # # pdb.set_trace()
-            # self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
-
-            # # self.num_LM_eq = 10
-
-            # structural_step = self.data.structure.timestep_info[-1]
-            # # dt= self.settings['dt']
-            # # import pdb
-            # # pdb.set_trace()
-
-
-            # MBdict = structural_step.mb_dict
-
-
-            # # import pdb
-            # # pdb.set_trace()
-
-            # MB_beam, MB_tstep = mb.split_multibody(
-            #     self.data.structure,
-            #     structural_step,
-            #     MBdict,
-            #     -1)
-            
-            # # import pdb
-            # # pdb.set_trace()
-
-            # q = []
-            # dqdt = []
-            # dqddt = []
-
-            # for ibody in range(num_body):
-            #     q = np.append(q, MB_tstep[ibody].q)
-            #     dqdt = np.append(dqdt, MB_tstep[ibody].dqdt)
-            #     dqddt = np.append(dqddt, MB_tstep[ibody].dqddt)
-            
-            # q = np.append(q, self.data.Lambda)
-            # dqdt = np.append(dqdt, self.data.Lambda_dot)
-            # dqddt = np.append(dqddt, np.zeros([10]))
-
-            # # q = np.insert(q, 336, np.zeros([10]))
-            # # dqdt = np.insert(dqdt, 336, np.zeros([10]))
-            # # dqddt = np.insert(dqddt, 336, np.zeros([10]))
-
-
-
-            # self.Lambda, self.Lambda_dot = mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, self.num_LM_eq)
-
-            # self.Lambda_ddot = np.zeros_like(self.Lambda)
-
-            # # self.Lambda = np.zeros((self.num_LM_eq,), dtype=ct.c_double, order='F')
-            # # self.Lambda_dot = np.zeros((self.num_LM_eq,), dtype=ct.c_double, order='F')
-            # # self.Lambda_ddot = np.zeros((self.num_LM_eq,), dtype=ct.c_double, order='F')
-
-            # if self.settings['write_lm']:
-            #     dire = self.data.output_folder + '/NonLinearDynamicMultibody/'
-            #     if not os.path.isdir(dire):
-            #         os.makedirs(dire)
-
-            #     self.out_files = {'lambda': dire + 'lambda.dat',
-            #                     'lambda_dot': dire + 'lambda_dot.dat',
-            #                     'lambda_ddot': dire + 'lambda_ddot.dat',
-            #                     'cond_number': dire + 'cond_num.dat'}
-            #     # clean up files
-            #     for file in self.out_files.values():
-            #         if os.path.isfile(file):
-            #             os.remove(file)
-
-            # # Define the number of dofs
-            # self.define_sys_size()
-
-            # self.prev_Dq = np.zeros((self.sys_size + self.num_LM_eq))
-
-            # self.settings['time_integrator_settings']['sys_size'] = self.sys_size
-            # self.settings['time_integrator_settings']['num_LM_eq'] = self.num_LM_eq
-
-            # # Initialise time integrator
-            # if not restart:
-            #     self.time_integrator = solver_interface.initialise_solver(
-            #         self.settings['time_integrator'])
-            # self.time_integrator.initialise(
-            #     self.data, self.settings['time_integrator_settings'], restart=restart)
-
-        else:
-            # add initial speed to RBM
-            if self.settings['initial_velocity']:
-                new_direction = np.dot(self.data.structure.timestep_info[-1].cag(),
-                                    self.settings['initial_velocity_direction'])
-                self.data.structure.timestep_info[-1].for_vel[0:3] = new_direction*self.settings['initial_velocity']
-                num_body = self.data.structure.timestep_info[0].mb_FoR_vel.shape[0]
-                #  self.data.structure.num_bodies
-                for ibody in range(num_body):
-                    self.data.structure.timestep_info[-1].mb_FoR_vel[ibody,:] = self.data.structure.timestep_info[-1].for_vel
-            # import pdb
-            # pdb.set_trace()
-
-            # Define the number of equations
-            self.lc_list = lagrangeconstraints.initialize_constraints(self.data.structure.ini_mb_dict)
-            self.num_LM_eq = lagrangeconstraints.define_num_LM_eq(self.lc_list)
-
-            self.Lambda = np.zeros((self.num_LM_eq,), dtype=ct.c_double, order='F')
-            self.Lambda_dot = np.zeros((self.num_LM_eq,), dtype=ct.c_double, order='F')
-            self.Lambda_ddot = np.zeros((self.num_LM_eq,), dtype=ct.c_double, order='F')
-
-            if self.settings['write_lm']:
-                dire = self.data.output_folder + '/NonLinearDynamicMultibody/'
-                if not os.path.isdir(dire):
-                    os.makedirs(dire)
-
-                self.out_files = {'lambda': dire + 'lambda.dat',
-                                'lambda_dot': dire + 'lambda_dot.dat',
-                                'lambda_ddot': dire + 'lambda_ddot.dat',
-                                'cond_number': dire + 'cond_num.dat'}
-                # clean up files
-                for file in self.out_files.values():
-                    if os.path.isfile(file):
-                        os.remove(file)
-
-            # Define the number of dofs
-            self.define_sys_size()
-
-            self.prev_Dq = np.zeros((self.sys_size + self.num_LM_eq))
-
-            self.settings['time_integrator_settings']['sys_size'] = self.sys_size
-            self.settings['time_integrator_settings']['num_LM_eq'] = self.num_LM_eq
-
-            # Initialise time integrator
-            if not restart:
-                self.time_integrator = solver_interface.initialise_solver(
-                    self.settings['time_integrator'])
-            self.time_integrator.initialise(
-                self.data, self.settings['time_integrator_settings'], restart=restart)
+                self.settings['time_integrator'])
+        self.time_integrator.initialise(
+            self.data, self.settings['time_integrator_settings'], restart=restart)
 
     def add_step(self):
         self.data.structure.next_step()
@@ -483,8 +204,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
         first_dof = 0
         last_dof = 0
 
-        # import pdb
-        # pdb.set_trace()
         # Loop through the different bodies
         for ibody in range(len(MB_beam)):
 
@@ -494,22 +213,10 @@ class NonLinearDynamicMultibody(_BaseStructural):
             K = None
             Q = None
 
-
-            # import pdb
-            # pdb.set_trace()
             # Generate the matrices for each body
             if MB_beam[ibody].FoR_movement == 'prescribed':
                 last_dof = first_dof + MB_beam[ibody].num_dof.value
-                # old_quat = MB_tstep[ibody].quat.copy()
                 M, C, K, Q = xbeamlib.cbeam3_asbly_dynamic(MB_beam[ibody], MB_tstep[ibody], self.settings)
-                # MB_tstep[ibody].quat = old_quat
-
-            elif MB_beam[ibody].FoR_movement == 'prescribed_trim':
-                last_dof = first_dof + MB_beam[ibody].num_dof.value
-                # old_quat = MB_tstep[ibody].quat.copy()
-                M, C, K, Q = xbeamlib.cbeam3_asbly_dynamic(MB_beam[ibody], MB_tstep[ibody], self.settings)
-                # MB_tstep[ibody].quat = old_quat
-
 
             elif MB_beam[ibody].FoR_movement == 'free':
                 last_dof = first_dof + MB_beam[ibody].num_dof.value + 10
@@ -576,36 +283,8 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 MB_tstep[ibody].for_pos[0:3] += dt*np.dot(MB_tstep[ibody].cga(),MB_tstep[ibody].for_vel[0:3])
 
     def extract_resultants(self, tstep):
-        # import pdb
-        # pdb.set_trace()
         # TODO: code
-        if tstep is None:
-            tstep = self.data.structure.timestep_info[self.data.ts]
-        steady, unsteady, grav = tstep.extract_resultants(self.data.structure, force_type=['steady', 'unsteady', 'grav'])
-        totals = steady + unsteady + grav
-        return totals[0:3], totals[3:6]
-
-    def extract_resultants_not_required(self, tstep):
-        # as ibody = None returns for entire structure! How convenient!
-        import pdb
-        pdb.set_trace()
-        # TODO: code
-        if tstep is None:
-            tstep = self.data.structure.timestep_info[self.data.ts]
-        steady_running = 0
-        unsteady_running = 0
-        grav_running = 0 
-        for body in range (0, self.data.structure.ini_mb_dict['num_bodies']):
-            steady, unsteady, grav = tstep.extract_resultants(self.data.structure, force_type=['steady', 'unsteady', 'grav'], ibody = body)
-            steady_running += steady
-            unsteady_running += unsteady
-            grav_running += grav
-        totals = steady_running + unsteady_running + grav_running
-        return totals[0:3], totals[3:6]
-
-
-
-        # return np.zeros((3)), np.zeros((3))
+        return np.zeros((3)), np.zeros((3))
 
     def compute_forces_constraints(self, MB_beam, MB_tstep, ts, dt, Lambda, Lambda_dot):
         """
@@ -673,8 +352,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
     def run(self, **kwargs):
         structural_step = settings_utils.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
         dt= settings_utils.set_value_or_default(kwargs, 'dt', self.settings['dt'])
-        # import pdb
-        # pdb.set_trace()
 
         if structural_step.mb_dict is not None:
             MBdict = structural_step.mb_dict
@@ -703,16 +380,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 MB_tstep[ibody].psi_dot_local *= 0.
                 MB_tstep[ibody].psi_ddot *= 0.
 
-        
-                #     # Initialize
-        #     # TODO: i belive this can move into disp_and_accel2 state as self.Lambda, self.Lambda_dot
-
-
-        #     # Predictor step
-        #     q, dqdt, dqddt = mb.disp_and_accel2state(MB_beam, MB_tstep, self.Lambda, self.Lambda_dot, self.sys_size, num_LM_eq)
-        #     self.time_integrator.predictor(q, dqdt, dqddt)
-
-        # else:
         # Initialize
         # TODO: i belive this can move into disp_and_accel2 state as self.Lambda, self.Lambda_dot
         if not num_LM_eq == 0:
@@ -726,7 +393,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
         # Predictor step
         q, dqdt, dqddt = mb.disp_and_accel2state(MB_beam, MB_tstep, Lambda, Lambda_dot, self.sys_size, num_LM_eq)
-        self.time_integrator.predictor(q, dqdt, dqddt)    
+        self.time_integrator.predictor(q, dqdt, dqddt)
 
         # Reference residuals
         old_Dq = 1.0
@@ -738,9 +405,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
             if iteration == self.settings['max_iterations'] - 1:
                 error = ('Solver did not converge in %d iterations.\n res = %e \n LM_res = %e' %
                         (iteration, res, LM_res))
-                print(error)
-                break
-                # raise exc.NotConvergedSolver(error)
+                raise exc.NotConvergedSolver(error)
 
             # Update positions and velocities
             Lambda, Lambda_dot = mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, num_LM_eq)
@@ -758,18 +423,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
             Asys, Q = self.time_integrator.build_matrix(MB_M, MB_C, MB_K, MB_Q,
                                                         kBnh, LM_Q)
-
-            np.set_printoptions(threshold=np.inf)
-            # import pdb
-            # pdb.set_trace()
-
-            # print(Asys)
-            # print(Q)
-            # import sympy 
-            # rref, inds = sympy.Matrix(Asys).rref()
-            # print(inds)
-            # print(rref)
-            # print(np.linalg.inv(Asys))
 
             if self.settings['write_lm']:
                 cond_num = np.linalg.cond(Asys[:self.sys_size, :self.sys_size])
@@ -826,13 +479,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
 
             if (res < self.settings['min_delta']) and (LM_res < self.settings['min_delta']):
                 break
-            # if (res < self.settings['min_delta']) and (np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq])) < self.settings['abs_threshold']):
-            #     print(f'Relative \'min_delta\' threshold not reached - LM_res is {LM_res} >= \'min_delta\' {self.settings["min_delta"]} abs res is {np.max(np.abs(Dq[0:self.sys_size]))}, abs LM_res is {np.max(np.abs(Dq[self.sys_size:self.sys_size+num_LM_eq]))} < {self.settings["abs_threshold"]}')
-            #     break
 
-        # import pdb
-        # pdb.set_trace()
-        # print("end - check")
         Lambda, Lambda_dot = mb.state2disp_and_accel(q, dqdt, dqddt, MB_beam, MB_tstep, num_LM_eq)
         if self.settings['write_lm']:
             self.write_lm_cond_num(iteration, Lambda, Lambda_dot, Lambda_ddot, cond_num, cond_num_lm)
@@ -852,7 +499,6 @@ class NonLinearDynamicMultibody(_BaseStructural):
                 MB_tstep[ibody].quat = np.dot(Temp, np.dot(np.eye(4) - 0.25*algebra.quadskew(MB_tstep[ibody].for_vel[3:6])*dt, MB_tstep[ibody].quat))
 
         # End of Newmark-beta iterations
-        # self.beta = self.time_integrator.beta
         # self.integrate_position(MB_beam, MB_tstep, dt)
         lagrangeconstraints.postprocess(self.lc_list, MB_beam, MB_tstep, "dynamic")
         self.compute_forces_constraints(MB_beam, MB_tstep, self.data.ts, dt, Lambda, Lambda_dot)
@@ -864,17 +510,5 @@ class NonLinearDynamicMultibody(_BaseStructural):
         self.Lambda = Lambda.astype(dtype=ct.c_double, copy=True, order='F')
         self.Lambda_dot = Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
         self.Lambda_ddot = Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
-
-        self.data.Lambda = Lambda.astype(dtype=ct.c_double, copy=True, order='F')
-        self.data.Lambda_dot = Lambda_dot.astype(dtype=ct.c_double, copy=True, order='F')
-        self.data.Lambda_ddot = Lambda_ddot.astype(dtype=ct.c_double, copy=True, order='F')
-
-        self.data.previousndm = self
-
-        # name = "struc_" + str(self.data.ts) + ".txt"
-        # from pprint import pprint as ppr
-        # file = open(name,'wt')
-        # ppr(self.data.structure.timestep_info[-1].__dict__, stream=file)
-        # file.close()
 
         return self.data
