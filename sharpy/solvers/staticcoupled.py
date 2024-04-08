@@ -74,10 +74,6 @@ class StaticCoupled(BaseSolver):
     settings_description['runtime_generators'] = 'The dictionary keys are the runtime generators to be used. ' \
                                                  'The dictionary values are dictionaries with the settings ' \
                                                  'needed by each generator.'
-    
-    settings_types['nonlifting_body_interactions'] = 'bool'
-    settings_default['nonlifting_body_interactions'] = False
-    settings_description['nonlifting_body_interactions'] = 'Consider forces induced by nonlifting bodies'
 
     settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
@@ -153,19 +149,16 @@ class StaticCoupled(BaseSolver):
 
     def cleanup_timestep_info(self):
         if max(len(self.data.aero.timestep_info), len(self.data.structure.timestep_info)) > 1:
-            self.remove_old_timestep_info(self.data.structure.timestep_info)
-            self.remove_old_timestep_info(self.data.aero.timestep_info)            
-            if self.settings['nonlifting_body_interactions']:
-                self.remove_old_timestep_info(self.data.nonlifting_body.timestep_info)
+            # copy last info to first
+            self.data.aero.timestep_info[0] = self.data.aero.timestep_info[-1].copy()
+            self.data.structure.timestep_info[0] = self.data.structure.timestep_info[-1].copy()
+            # delete all the rest
+            while len(self.data.aero.timestep_info) - 1:
+                del self.data.aero.timestep_info[-1]
+            while len(self.data.structure.timestep_info) - 1:
+                del self.data.structure.timestep_info[-1]
 
         self.data.ts = 0
-
-    def remove_old_timestep_info(self, tstep_info):
-        # copy last info to first
-        tstep_info[0] = tstep_info[-1].copy()
-        # delete all the rest
-        while len(tstep_info) - 1:
-            del tstep_info[-1]
 
     def run(self, **kwargs):
         for i_step in range(self.settings['n_load_steps'] + 1):
@@ -196,29 +189,14 @@ class StaticCoupled(BaseSolver):
                     self.data.structure.node_master_elem,
                     self.data.structure.connectivities,
                     self.data.structure.timestep_info[self.data.ts].cag(),
-                    self.data.aero.data_dict)
-                        
+                    self.data.aero.aero_dict)
+
                 if self.correct_forces:
                     struct_forces = \
                         self.correct_forces_generator.generate(aero_kstep=self.data.aero.timestep_info[self.data.ts],
                                                                structural_kstep=self.data.structure.timestep_info[self.data.ts],
                                                                struct_forces=struct_forces,
                                                                ts=0)
-
-                # map nonlifting forces to structural nodes
-                if self.settings['nonlifting_body_interactions']:
-                    struct_forces += mapping.aero2struct_force_mapping(
-                        self.data.nonlifting_body.timestep_info[self.data.ts].forces,
-                        self.data.nonlifting_body.struct2aero_mapping,
-                        self.data.nonlifting_body.timestep_info[self.data.ts].zeta,
-                        self.data.structure.timestep_info[self.data.ts].pos,
-                        self.data.structure.timestep_info[self.data.ts].psi,
-                        self.data.structure.node_master_elem,
-                        self.data.structure.connectivities,
-                        self.data.structure.timestep_info[self.data.ts].cag(),
-                        self.data.nonlifting_body.data_dict,
-                        skip_moments_generated_by_forces = True)
-
                 self.data.aero.timestep_info[self.data.ts].aero_steady_forces_beam_dof = struct_forces
                 self.data.structure.timestep_info[self.data.ts].postproc_node['aero_steady_forces'] = struct_forces  # B
                 
@@ -261,7 +239,6 @@ class StaticCoupled(BaseSolver):
                 # update grid
                 self.aero_solver.update_step()
 
-                self.structural_solver.update(self.data.structure.timestep_info[self.data.ts])
                 # convergence
                 if self.convergence(i_iter, i_step):
                     # create q and dqdt vectors
@@ -345,7 +322,10 @@ class StaticCoupled(BaseSolver):
             for i_node, node in enumerate(thrust_nodes):
                 self.force_orientation[i_node, :] = (
                     algebra.unit_vector(self.data.structure.ini_info.steady_applied_forces[node, 0:3]))
-            # print(self.force_orientation)
+                print(self.force_orientation)
+            #TODO: HARDCODE
+            self.force_orientation = np.array([[0., 1., 0.],[0., -1., 0.]])
+            print(self.force_orientation)
 
         # thrust
         # thrust is scaled so that the direction of the forces is conserved
@@ -365,7 +345,7 @@ class StaticCoupled(BaseSolver):
 
         # tail deflection
         try:
-            self.data.aero.data_dict['control_surface_deflection'][tail_cs_index] = tail_deflection
+            self.data.aero.aero_dict['control_surface_deflection'][tail_cs_index] = tail_deflection
         except KeyError:
             raise Exception('This model has no control surfaces')
         except IndexError:

@@ -77,7 +77,8 @@ class NonLinearDynamicCoupledStep(_BaseStructural):
     def run(self, **kwargs):
 
         structural_step = settings_utils.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
-        
+        # TODO: previous_structural_step never used
+        previous_structural_step = settings_utils.set_value_or_default(kwargs, 'previous_structural_step', self.data.structure.timestep_info[-1])
         dt= settings_utils.set_value_or_default(kwargs, 'dt', self.settings['dt'])
 
         xbeamlib.xbeam_step_couplednlndyn(self.data.structure,

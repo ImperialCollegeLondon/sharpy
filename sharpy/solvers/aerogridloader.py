@@ -6,13 +6,12 @@ import sharpy.aero.models.aerogrid as aerogrid
 import sharpy.utils.settings as settings_utils
 import sharpy.utils.h5utils as h5utils
 import sharpy.utils.generator_interface as gen_interface
-from sharpy.solvers.gridloader import GridLoader
 
 
 @solver
-class AerogridLoader(GridLoader):
+class AerogridLoader(BaseSolver):
     """
-    ``AerogridLoader`` class, inherited from ``GridLoader``
+    ``AerogridLoader`` class, inherited from ``BaseSolver``
 
     Generates aerodynamic grid based on the input data
 
@@ -37,9 +36,9 @@ class AerogridLoader(GridLoader):
         settings_types (dict): Acceptable types for the values in ``settings``
         settings_default (dict): Name-value pair of default values for the aerodynamic settings
         data (ProblemData): class structure
-        file_name (str): name of the ``.aero.h5`` HDF5 file
+        aero_file_name (str): name of the ``.aero.h5`` HDF5 file
         aero: empty attribute
-        data_dict (dict): key-value pairs of aerodynamic data
+        aero_data_dict (dict): key-value pairs of aerodynamic data
         wake_shape_generator (class): Wake shape generator
 
     """
@@ -90,13 +89,28 @@ class AerogridLoader(GridLoader):
                                        settings_options=settings_options)
 
     def __init__(self):
-        super().__init__
-        self.file_name = '.aero.h5'
+        self.data = None
+        self.settings = None
+        self.aero_file_name = ''
+        # storage of file contents
+        self.aero_data_dict = dict()
+
+        # aero storage
         self.aero = None
+
         self.wake_shape_generator = None
 
     def initialise(self, data, restart=False):
-        super().initialise(data)
+        self.data = data
+        self.settings = data.settings[self.solver_id]
+
+        # init settings
+        settings_utils.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default, options=self.settings_options)
+
+        # read input file (aero)
+        self.read_files()
 
         wake_shape_generator_type = gen_interface.generator_from_string(
             self.settings['wake_shape_generator'])
@@ -105,9 +119,25 @@ class AerogridLoader(GridLoader):
                                              self.settings['wake_shape_generator_input'],
                                              restart=restart)
 
+    def read_files(self):
+        # open aero file
+        # first, file names
+        self.aero_file_name = (self.data.case_route +
+                               '/' +
+                               self.data.case_name +
+                               '.aero.h5')
+
+        #  then check that the file exists
+        h5utils.check_file_exists(self.aero_file_name)
+
+        #  read and store the hdf5 file
+        with h5.File(self.aero_file_name, 'r') as aero_file_handle:
+            # store files in dictionary
+            self.aero_data_dict = h5utils.load_h5_in_dict(aero_file_handle)
+
     def run(self, **kwargs):
         self.data.aero = aerogrid.Aerogrid()
-        self.data.aero.generate(self.data_dict,
+        self.data.aero.generate(self.aero_data_dict,
                                 self.data.structure,
                                 self.settings,
                                 self.data.ts)

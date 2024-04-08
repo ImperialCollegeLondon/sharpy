@@ -78,7 +78,7 @@ class NoAero(BaseSolver):
                                          -1,
                                          beam_ts=-1)
 
-    def update_custom_grid(self, structure_tstep, aero_tstep, nl_body_tstep = None):
+    def update_custom_grid(self, structure_tstep, aero_tstep):
         # called by DynamicCoupled
         if self.settings['update_grid']:
             self.data.aero.generate_zeta_timestep_info(structure_tstep,

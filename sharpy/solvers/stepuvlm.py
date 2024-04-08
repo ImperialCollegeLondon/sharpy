@@ -130,26 +130,6 @@ class StepUvlm(BaseSolver):
     settings_types['quasi_steady'] = 'bool'
     settings_default['quasi_steady'] = False
     settings_description['quasi_steady'] = 'Use quasi-steady approximation in UVLM'
-    
-    settings_types['only_nonlifting'] = 'bool'
-    settings_default['only_nonlifting'] = False
-    settings_description['only_nonlifting'] = 'Consider nonlifting body interactions'
-
-    settings_types['nonlifting_body_interactions'] = 'bool'
-    settings_default['nonlifting_body_interactions'] = False
-    settings_description['nonlifting_body_interactions'] = 'Consider nonlifting body interactions'
-
-    settings_types['phantom_wing_test'] = 'bool'
-    settings_default['phantom_wing_test'] = False
-    settings_description['phantom_wing_test'] = 'Debug option'
-
-    settings_types['centre_rot_g'] = 'list(float)'
-    settings_default['centre_rot_g'] = [0., 0., 0.]
-    settings_description['centre_rot_g'] = 'Centre of rotation in G FoR around which ``rbm_vel_g`` is applied'
-
-    settings_types['ignore_first_x_nodes_in_force_calculation'] = 'int'
-    settings_default['ignore_first_x_nodes_in_force_calculation'] = 0
-    settings_description['ignore_first_x_nodes_in_force_calculation'] = 'Ignores the forces on the first user-specified number of nodes of all surfaces.'
 
     settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
@@ -238,32 +218,13 @@ class StepUvlm(BaseSolver):
                                               'for_pos': structure_tstep.for_pos,
                                               'is_wake': True},
                                              aero_tstep.u_ext_star)
-        if self.settings['nonlifting_body_interactions']:
 
-            nl_body_tstep = settings_utils.set_value_or_default(kwargs, 'nl_body_tstep', self.data.nonlifting_body.timestep_info[-1])
-            self.velocity_generator.generate({'zeta': nl_body_tstep.zeta,
-                                              'override': True,
-                                              'ts': self.data.ts,
-                                              'dt': dt,
-                                              't': t,
-                                              'for_pos': structure_tstep.for_pos,
-                                              'is_wake': False},
-                                             nl_body_tstep.u_ext)
-            
-            uvlmlib.uvlm_solver_lifting_and_nonlifting(self.data.ts,
-                                                       aero_tstep, 
-                                                       nl_body_tstep,
-                                                       structure_tstep, 
-                                                       self.settings,
-                                                       convect_wake=convect_wake, 
-                                                       dt=dt)
-        else:            
-            uvlmlib.uvlm_solver(self.data.ts,
-                                aero_tstep,
-                                structure_tstep,
-                                self.settings,
-                                convect_wake=convect_wake,
-                                dt=dt)
+        uvlmlib.uvlm_solver(self.data.ts,
+                            aero_tstep,
+                            structure_tstep,
+                            self.settings,
+                            convect_wake=convect_wake,
+                            dt=dt)
 
         if unsteady_contribution and not self.settings['quasi_steady']:
             # calculate unsteady (added mass) forces:
@@ -287,38 +248,24 @@ class StepUvlm(BaseSolver):
         else:
             for i_surf in range(len(aero_tstep.gamma)):
                 aero_tstep.gamma_dot[i_surf][:] = 0.0
+
         return self.data
 
     def add_step(self):
         self.data.aero.add_timestep()
-        if self.settings['nonlifting_body_interactions']:              
-            self.data.nonlifting_body.add_timestep()
 
     def update_grid(self, beam):
         self.data.aero.generate_zeta(beam,
                                      self.data.aero.aero_settings,
                                      -1,
                                      beam_ts=-1)
-        if self.settings['nonlifting_body_interactions']:                            
-            self.data.nonlifting_body.generate_zeta(beam,
-                                                    self.data.aero.aero_settings,
-                                                    -1,
-                                                    beam_ts=-1)
 
-    def update_custom_grid(self, structure_tstep, aero_tstep, nl_body_tstep = None):
+    def update_custom_grid(self, structure_tstep, aero_tstep):
         self.data.aero.generate_zeta_timestep_info(structure_tstep,
                                                    aero_tstep,
                                                    self.data.structure,
                                                    self.data.aero.aero_settings,
                                                    dt=self.settings['dt'])
-        if self.settings['nonlifting_body_interactions']:
-            if nl_body_tstep is None:
-                nl_body_tstep  =  self.data.nonlifting_body.timestep_info[-1] 
-            self.data.nonlifting_body.generate_zeta_timestep_info(structure_tstep,
-                                                                  nl_body_tstep,
-                                                                  self.data.structure,
-                                                                  self.data.nonlifting_body.aero_settings,
-                                                                  dt = self.settings['dt'])
 
     @staticmethod
     def filter_gamma_dot(tstep, history, filter_param):
