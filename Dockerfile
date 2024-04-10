@@ -17,8 +17,7 @@ RUN yum groupinstall "Development Tools" -y --nogpgcheck && \
     yum install -y --nogpgcheck mesa-libGL libXt libXt-devel wget gcc-gfortran lapack vim tmux && \
     yum clean all
 
-# Install Mamba
-# Swapped from Conda to Mamba due to Github runner memory constraint
+# Install Mamba - swapped from Conda to Mamba due to Github runner memory constraint
 RUN wget --no-check-certificate https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh -O /mamba.sh && \
     chmod +x /mamba.sh && \
     /mamba.sh -b -p /mamba/ && \
@@ -26,19 +25,14 @@ RUN wget --no-check-certificate https://github.com/conda-forge/miniforge/release
 
 ADD / /sharpy_dir/
 
-# Update mamba and make it run with no user interaction
-# Cleanup mamba installation
-RUN mamba init bash
-RUN mamba config --set always_yes yes --set changeps1 no
-RUN mamba update -q conda
-RUN mamba config --set auto_activate_base false
-RUN mamba env create -f /sharpy_dir/utils/environment.yml
-#RUN mamba clean -afy
-RUN find /mamba/ -follow -type f -name '*.a' -delete
-RUN find /mamba/ -follow -type f -name '*.pyc' -delete
-RUN find /mamba/ -follow -type f -name '*.js.map' -delete
+# Initialise mamba installation
+RUN mamba init bash && \
+    mamba update -q conda && \
+    mamba env create -f /sharpy_dir/utils/environment.yml && \
+    find /mamba/ -follow -type f -name '*.a' -delete && \
+    find /mamba/ -follow -type f -name '*.pyc' -delete && \
+    find /mamba/ -follow -type f -name '*.js.map' -delete
 
-#COPY /utils/docker/* /root/
 RUN ln -s /sharpy_dir/utils/docker/* /root/
 
 RUN cd sharpy_dir && \
@@ -46,7 +40,7 @@ RUN cd sharpy_dir && \
     git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
-    CXX=g++ FC=gfortran cmake .. && make install -j 2 && \
+    CXX=g++ FC=gfortran cmake .. && make install -j 4 && \
     cd .. && \
     pip install . && \
     rm -rf build
