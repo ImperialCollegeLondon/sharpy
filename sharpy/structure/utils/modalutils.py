@@ -283,7 +283,7 @@ def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
     else:
         num_rigid_body = 0
 
-    for mode in range(num_rigid_body, NumLambda - num_rigid_body):
+    for mode in range(num_rigid_body, NumLambda):
         # scale eigenvector
         eigvec = eigenvectors[:num_dof, mode]
         fact = scale_mode(data, eigvec, rot_max_deg, perc_max)
