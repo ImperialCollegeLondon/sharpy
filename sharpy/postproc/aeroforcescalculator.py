@@ -132,11 +132,8 @@ class AeroForcesCalculator(BaseSolver):
             self.data.aero.timestep_info[ts].body_unsteady_forces[i_surf, 0:3]
             ) = self.calculate_forces_for_isurf_in_g_frame(force[i_surf], unsteady_force=unsteady_force[i_surf])
         
-        print(self.settings["nonlifting_body"])
         if self.settings["nonlifting_body"]:
-            print(self.data.nonlifting_body.n_surf)
             for i_surf in range(self.data.nonlifting_body.n_surf):
-                print(i_surf)
                 (
                 self.data.nonlifting_body.timestep_info[ts].inertial_steady_forces[i_surf, 0:3], 
                 self.data.nonlifting_body.timestep_info[ts].body_steady_forces[i_surf, 0:3],
@@ -236,8 +233,8 @@ class AeroForcesCalculator(BaseSolver):
     def file_output(self, filename):
         # assemble forces/moments matrix
         # (1 timestep) + (3+3 inertial steady+unsteady) + (3+3 body steady+unsteady)
-        force_matrix = np.zeros((self.ts_max, 1 + 3 + 3 + 3 + 3 + 3 + 3))
-        moment_matrix = np.zeros((self.ts_max, 1 + 3 + 3 + 3 + 3 + 3 + 3))
+        force_matrix = np.zeros((self.ts_max, 1 + 3 + 3 + 3 + 3 ))
+        moment_matrix = np.zeros((self.ts_max, 1 + 3 + 3 + 3 + 3))
         for ts in range(self.ts_max):
             aero_tstep = self.data.aero.timestep_info[ts]
             i = 0
@@ -271,12 +268,10 @@ class AeroForcesCalculator(BaseSolver):
         header += 'fx_unsteady_G, fy_unsteady_G, fz_unsteady_G, '
         header += 'fx_steady_a, fy_steady_a, fz_steady_a, '
         header += 'fx_unsteady_a, fy_unsteady_a, fz_unsteady_a'
-        header += 'mx_total_G, my_total_G, mz_total_G'
-        header += 'mx_total_a, my_total_a, mz_total_a'
 
         np.savetxt(self.folder + 'forces_' + filename,
                    force_matrix,
-                   fmt='%i' + ', %10e'*18,
+                   fmt='%i' + ', %10e' * (np.shape(force_matrix)[1] - 1),
                    delimiter=',',
                    header=header,
                    comments='#')
@@ -290,7 +285,7 @@ class AeroForcesCalculator(BaseSolver):
 
         np.savetxt(self.folder + 'moments_' + filename,
                    moment_matrix,
-                   fmt='%i' + ', %10e'*18,
+                   fmt='%i' + ', %10e' * (np.shape(moment_matrix)[1] - 1),
                    delimiter=',',
                    header=header,
                    comments='#')
