@@ -15,7 +15,7 @@ dependencies:
   - pandas>=0.25.3         
   - pyOpenSSL>=19.0.0      
   - PySocks>=1.7.1         
-  - PyYAML>=5.1.2          
+  - PyYAML>=5.1.2
   - recommonmark>=0.6.0
   - scipy>=1.11.4,<1.12
   - slycot>=0.4.0
