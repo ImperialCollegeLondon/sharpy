@@ -1,0 +1,12 @@
+name: sharpy
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - eigen
+  - libopenblas
+  - libblas
+  - libcblas
+  - liblapack
+  - libgfortran
+  - python=3.10
