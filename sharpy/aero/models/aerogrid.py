@@ -34,6 +34,8 @@ class Aerogrid(Grid):
 
         self.cs_generators = []
 
+        self.initial_strip_z_rot = None
+
     def generate(self, data_dict, beam, settings, ts):
         super().generate(data_dict, beam, settings, ts)
 
@@ -43,6 +45,15 @@ class Aerogrid(Grid):
         # allocating initial grid storage
         self.ini_info = AeroTimeStepInfo(self.dimensions,
                                          self.dimensions_star)
+
+        # Initial panel orientation, used when aligned grid is off
+        self.initial_strip_z_rot = np.zeros([self.n_elem, 3]) 
+        if not settings['aligned_grid'] and settings['initial_align']:
+            for i_elem in range(self.n_elem):
+                for i_local_node in range(3):
+                    Cab = algebra.crv2rotation(beam.ini_info.psi[i_elem, i_local_node, :])
+                    self.initial_strip_z_rot[i_elem, i_local_node] = \
+                        algebra.angle_between_vectors_sign(settings['freestream_dir'], Cab[:, 1], Cab[:, 2])
 
         # load airfoils db
         # for i_node in range(self.n_node):
@@ -288,6 +299,7 @@ class Aerogrid(Grid):
                     generate_strip(node_info,
                                    self.airfoil_db,
                                    self.aero_settings['aligned_grid'],
+                                   initial_strip_z_rot=self.initial_strip_z_rot[i_elem, i_local_node],
                                    orientation_in=self.aero_settings['freestream_dir'],
                                    calculate_zeta_dot=True))
         # set junction boundary conditions for later phantom cell creation in UVLM
@@ -299,8 +311,6 @@ class Aerogrid(Grid):
     def generate_phantom_panels_at_junction(self, aero_tstep):
         for i_surf in range(self.n_surf):
                 aero_tstep.flag_zeta_phantom[0, i_surf] = self.data_dict["junction_boundary_condition"][0,i_surf] 
-
-
 
     @staticmethod
     def compute_gamma_dot(dt, tstep, previous_tsteps):
@@ -372,6 +382,7 @@ class Aerogrid(Grid):
 
 
 def generate_strip(node_info, airfoil_db, aligned_grid,
+                   initial_strip_z_rot,
                    orientation_in=np.array([1, 0, 0]),
                    calculate_zeta_dot = False,
                    first_twist=True):
@@ -447,11 +458,10 @@ def generate_strip(node_info, airfoil_db, aligned_grid,
     # Cab transformation
     Cab = algebra.crv2rotation(node_info['beam_psi'])
 
-    rot_angle = algebra.angle_between_vectors_sign(orientation_in, Cab[:, 1], Cab[:, 2])
-    if np.sign(np.dot(orientation_in, Cab[:, 1])) >= 0:
-        rot_angle += 0.0
+    if aligned_grid:
+        rot_angle = algebra.angle_between_vectors_sign(orientation_in, Cab[:, 1], Cab[:, 2])
     else:
-        rot_angle += -2*np.pi
+        rot_angle = initial_strip_z_rot
     Crot = algebra.rotation3d_z(-rot_angle)
 
     c_sweep = np.eye(3)

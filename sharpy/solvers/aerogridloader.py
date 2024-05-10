@@ -29,6 +29,10 @@ class AerogridLoader(GridLoader):
     surface is simply static, an empty string should be parsed. See the documentation for ``DynamicControlSurface``
     generators for accepted key-value pairs as settings.
 
+    The ``initial_align`` setting aligns the wing panel discretization with the freestream for the undeformed structure, 
+    and applies this Z rotation at every timestep (panels become misaligned when the wing deforms). The ``aligned_grid`` 
+    setting aligns the wing panel discretization with the flow at every time step and takes precedence.
+
     Args:
         data (PreSharpy): ``ProblemData`` class structure
 
@@ -58,6 +62,10 @@ class AerogridLoader(GridLoader):
     settings_types['aligned_grid'] = 'bool'
     settings_default['aligned_grid'] = True
     settings_description['aligned_grid'] = 'Align grid'
+
+    settings_types['initial_align'] = 'bool'
+    settings_default['initial_align'] = True
+    settings_description['initial_align'] = "Initially align grid"
 
     settings_types['freestream_dir'] = 'list(float)'
     settings_default['freestream_dir'] = [1.0, 0.0, 0.0]

@@ -45,6 +45,10 @@ class BeamPlot(BaseSolver):
     settings_default['output_rbm'] = True
     settings_description['output_rbm'] = 'Write ``csv`` file with rigid body motion data'
 
+    settings_types['stride'] = 'int'
+    settings_default['stride'] = 1
+    settings_description['stride'] = 'Number of steps between the execution calls when run online'
+
     settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -107,7 +111,7 @@ class BeamPlot(BaseSolver):
                     self.write_beam(it)
                     if self.settings['include_FoR']:
                         self.write_for(it)
-        else:
+        elif ((len(self.data.structure.timestep_info) - 1) % self.settings['stride'] == 0):
             it = len(self.data.structure.timestep_info) - 1
             self.write_beam(it)
             if self.settings['include_FoR']:
