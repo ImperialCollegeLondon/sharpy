@@ -1,7 +1,7 @@
-# SHARPy v2.2 Installation Guide
-__Last revision 26 February 2024__
+# SHARPy v2.3 Installation Guide
+__Last revision 10 May 2024__
 
-The following step by step tutorial will guide you through the installation process of SHARPy. This is the updated process valid from v2.2.
+The following step by step tutorial will guide you through the installation process of SHARPy. This is the updated process valid from v2.3.
 
 ## Requirements
 
