@@ -130,10 +130,10 @@ setup(
     #     ],
     python_requires=">=3.8",
     install_requires=[
-        "numpy",
+        "numpy<2.0",
         "configobj",
         "h5py",
-        "scipy",
+        "scipy<1.14.0",
         "sympy",
         "matplotlib",
         "colorama",
