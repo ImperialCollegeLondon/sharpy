@@ -103,7 +103,7 @@ with open(os.path.join(this_directory, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 run()
 setup(
-    name="sharpy",
+    name="icl_sharpy",
     version=__version__,
     description="""SHARPy is a nonlinear aeroelastic analysis package developed
     at the Department of Aeronautics, Imperial College London. It can be used
