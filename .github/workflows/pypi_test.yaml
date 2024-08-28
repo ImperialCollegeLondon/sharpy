@@ -2,11 +2,11 @@ name: Create and publish pypi image
 
 on:
   push:
-    branches: 
-      - develop
-      - main
-    tags:
-      - 'v*'
+    # branches: 
+    #   - develop
+    #   - main
+    # tags:
+    #   - 'v*'
 
 env:
   REGISTRY: ghcr.io
