@@ -40,7 +40,6 @@ jobs:
           sudo apt install libeigen3-dev
           git submodule init
           git submodule update
-          export PIP_CACHE_DIR=dist/
       #     git fetch --tags -f
       #     mkdir build && cd build
       #     cmake .. && make install -j 4 && cd ..
@@ -53,7 +52,7 @@ jobs:
           --user    
       - name: Build a binary wheel and a source tarball
         # run: python3 setup.py sdist
-        run: python3 -m pip install --user -e .
+        run: python3 -m pip install --user --cache-dir dist/ -e .
         # run: python setup.py bdist_wheel --universal
       - name: Store the distribution packages
         uses: actions/upload-artifact@v3
