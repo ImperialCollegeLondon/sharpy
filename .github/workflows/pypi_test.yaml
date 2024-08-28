@@ -44,19 +44,19 @@ jobs:
           mkdir build && cd build
           cmake .. && make install -j 4 && cd ..
           pip install -e .
-      - name: Install pypa/build
-        run: >-
-          python3 -m
-          pip install
-          build
-          --user    
-      - name: Build a binary wheel and a source tarball
-        run: python3 -m build
+      # - name: Install pypa/build
+      #   run: >-
+      #     python3 -m
+      #     pip install
+      #     build
+      #     --user    
+      # - name: Build a binary wheel and a source tarball
+      #   run: python3 -m build
       - name: Store the distribution packages
         uses: actions/upload-artifact@v3
         with:
           name: python-package-distributions
-          path: dist/
+          path: /
 
   publish-to-pypi:
     name: >-
@@ -75,6 +75,6 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: python-package-distributions
-        path: dist/
+        path: /
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
