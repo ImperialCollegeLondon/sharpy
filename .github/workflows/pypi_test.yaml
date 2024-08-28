@@ -44,6 +44,7 @@ jobs:
           mkdir build && cd build
           cmake .. && make install -j 4 && cd ..
           pip install -e .
+          cd build
       - name: Store the distribution packages
         uses: actions/upload-artifact@v3
         with:
