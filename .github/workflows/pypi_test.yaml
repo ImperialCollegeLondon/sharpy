@@ -52,8 +52,15 @@ jobs:
           --user    
       - name: Build a binary wheel and a source tarball
         # run: python3 setup.py sdist
-        run: python3 -m pip install --user --cache-dir dist/ -e .
+        # run: python3 -m pip install --user -e .
+        run: python3 -m pip wheel
         # run: python setup.py bdist_wheel --universal
+
+
+      - name: Find the wheel created during pip install
+        run: 
+          python3 -m pip cache dir
+
       - name: Store the distribution packages
         uses: actions/upload-artifact@v3
         with:
