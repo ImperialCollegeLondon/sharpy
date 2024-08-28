@@ -56,7 +56,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: python-package-distributions
-          path: /
+          path: /home/runner/work/sharpy/
 
   publish-to-pypi:
     name: >-
@@ -75,6 +75,6 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: python-package-distributions
-        path: /
+        path: /home/runner/work/sharpy/
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
