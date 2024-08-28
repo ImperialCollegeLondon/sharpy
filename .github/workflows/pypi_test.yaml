@@ -44,7 +44,8 @@ jobs:
           mkdir build && cd build
           cmake .. && make install -j 4 && cd ..
           pip install -e .
-          cd build
+      - name: Build a binary wheel and a source tarball
+        run: python3 -m build
       - name: Store the distribution packages
         uses: actions/upload-artifact@v3
         with:
