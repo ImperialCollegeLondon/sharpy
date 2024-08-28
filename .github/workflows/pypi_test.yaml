@@ -53,7 +53,7 @@ jobs:
       - name: Build a binary wheel and a source tarball
         # run: python3 setup.py sdist
         # run: python3 -m pip install --user -e .
-        run: python3 -m pip wheel
+        run: python3 -m pip wheel -w dist/ icl_sharpy
         # run: python setup.py bdist_wheel --universal
 
 
