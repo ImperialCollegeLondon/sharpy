@@ -162,7 +162,8 @@ setup(
                  ],
     },
     classifiers=[
-        "Operating System :: Linux, Mac OS",
+        "Operating System :: MacOS",
+        "Operating System :: POSIX :: Linux",
         "Programming Language :: Python, C++",
         ],
 
