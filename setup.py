@@ -164,7 +164,9 @@ setup(
     classifiers=[
         "Operating System :: MacOS",
         "Operating System :: POSIX :: Linux",
-        "Programming Language :: Python, C++",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Fortran",
+        "Programming Language :: C++"
         ],
 
     entry_points={
