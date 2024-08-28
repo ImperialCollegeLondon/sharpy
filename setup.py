@@ -139,7 +139,7 @@ setup(
         "colorama",
         "dill",
         "jupyterlab",
-        "mayavi @ git+https://github.com/enthought/mayavi.git", #Used for TVTK. Bug in pip install, hence git clone
+        "mayavi",
         "pandas",
         "control",
         "openpyxl>=3.0.10",
