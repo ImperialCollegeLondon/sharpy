@@ -9,8 +9,8 @@ on:
   push:
     paths:
       - 'utils/*'
-      - 'Dockerfile'
-      - '.github/workflows/docker*'
+      - 'setup.py'
+      - '.github/workflows/pypi*'
 
 # env:
 #   REGISTRY: ghcr.io
