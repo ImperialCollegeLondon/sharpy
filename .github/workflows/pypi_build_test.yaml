@@ -1,12 +1,16 @@
 name: Create and publish pypi image
 
 on:
+  pull_request:
+    branches:
+      - main
+      - develop
+      - 'rc*'
   push:
-    # branches: 
-    #   - develop
-    #   - main
-    # tags:
-    #   - 'v*'
+    paths:
+      - 'utils/*'
+      - 'Dockerfile'
+      - '.github/workflows/docker*'
 
 # env:
 #   REGISTRY: ghcr.io
