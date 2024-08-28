@@ -33,30 +33,30 @@ jobs:
         with:
           version: 10
           platform: x64
-      - name: Pre-Install dependencies
-        run: |
-          gfortran --version
-          export QT_QPA_PLATFORM='offscreen'
-          sudo apt install libeigen3-dev
-          git submodule init
-          git submodule update
-          git fetch --tags -f
-          mkdir build && cd build
-          cmake .. && make install -j 4 && cd ..
-          pip install -e .
-      # - name: Install pypa/build
-      #   run: >-
-      #     python3 -m
-      #     pip install
-      #     build
-      #     --user    
-      # - name: Build a binary wheel and a source tarball
-      #   run: python3 -m build
+      # - name: Pre-Install dependencies
+      #   run: |
+      #     gfortran --version
+      #     export QT_QPA_PLATFORM='offscreen'
+      #     sudo apt install libeigen3-dev
+      #     git submodule init
+      #     git submodule update
+      #     git fetch --tags -f
+      #     mkdir build && cd build
+      #     cmake .. && make install -j 4 && cd ..
+      #     pip install -e .
+      - name: Install pypa/build
+        run: >-
+          python3 -m
+          pip install
+          build
+          --user    
+      - name: Build a binary wheel and a source tarball
+        run: python3 -m build
       - name: Store the distribution packages
         uses: actions/upload-artifact@v3
         with:
           name: python-package-distributions
-          path: /home/runner/work/sharpy/
+          path: dist/
 
   publish-to-pypi:
     name: >-
@@ -78,5 +78,5 @@ jobs:
         path: dist/
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        path: dist/*
+      # with:
+      #   path: dist/*
