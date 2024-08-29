@@ -91,7 +91,8 @@ jobs:
       with:
         name: python-package-distributions
         path: dist/
-    - name: Publish distribution 📦 to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      # with:
-      #   path: dist/*
+    # testing only - do not upload    
+    # - name: Publish distribution 📦 to PyPI
+    #   uses: pypa/gh-action-pypi-publish@release/v1
+    #   # with:
+    #   #   path: dist/*
