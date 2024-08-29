@@ -19,6 +19,8 @@ on:
 
 jobs:
   create-pypi-image:
+    name: >-
+      Create .whl 🛞 from SHARPy distribution
     runs-on: ubuntu-latest
     env:
       python-version-chosen: "3.10.8"
