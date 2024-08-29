@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Set up Python ${{ python-version-chosen }}
+      - name: Set up Python ${{ env.python-version-chosen }}
         uses: actions/setup-python@v2
         with:
           submodules: 'true'
