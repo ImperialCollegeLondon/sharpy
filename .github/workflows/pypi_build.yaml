@@ -31,7 +31,6 @@ jobs:
       - name: Set up Python ${{ env.python-version-chosen }}
         uses: actions/setup-python@v2
         with:
-          submodules: 'true'
           python-version: ${{ env.python-version-chosen }}
       - name: Set up GCC
         uses: egor-tensin/setup-gcc@v1
@@ -42,6 +41,8 @@ jobs:
         run: |
           export QT_QPA_PLATFORM='offscreen'
           sudo apt install libeigen3-dev
+          git submodule init
+          git submodule update
       - name: Install pypa/build
         run: >-
           python3 -m
