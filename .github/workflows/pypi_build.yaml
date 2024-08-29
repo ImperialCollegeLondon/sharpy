@@ -1,8 +1,8 @@
 name: Create and publish pypi image
 
 on:
-  # only runs when there are pushes to develop and main
-  # and for pull requests to develop and main
+  # only runs when there are pushes to develop and main for publishing
+  # and for testing, pull requests to develop and main
   # and if there are changes to the build process and github action
   push:
     branches: 
@@ -18,7 +18,7 @@ on:
       - 'rc*'
 
 jobs:
-  build:
+  create-pypi-image:
     runs-on: ubuntu-latest
     env:
       python-version-chosen: "3.10.8"
@@ -67,7 +67,7 @@ jobs:
       Publish Python 🐍 distribution 📦 to PyPI
     if: startsWith(github.ref, 'refs/tags/v')  # only publish to PyPI on tag pushes
     needs:
-    - build
+    - create-pypi-image
     runs-on: ubuntu-latest
     environment:
       name: pypi
