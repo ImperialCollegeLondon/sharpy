@@ -1,34 +1,40 @@
 name: Create and publish pypi image
 
 on:
+  # only runs when there are pushes to develop and main
+  # and for pull requests to develop and main
+  # and if there are changes to the build process and github action
   push:
-  # only publish with a new tag
-    # branches: 
-    #   - develop
-    #   - main
-    tags:
-      - 'v*'
-
-# env:
-#   REGISTRY: ghcr.io
-#   IMAGE_NAME: ${{ github.repository }}
+    branches: 
+      - develop
+      - main
+    paths:
+      - 'setup.py'
+      - '.github/workflows/pypi*'  
+  pull_request:
+    branches:
+      - main
+      - develop
+      - 'rc*'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      python-version-chosen: [3.10.8]
     strategy:
-      matrix:
-        python-version: [3.10.8]
+        python-version: $python-version-chosen
     permissions:
       contents: read
       packages: write
 
     steps:
       - uses: actions/checkout@v2
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ python-version-chosen }}
         uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          submodules: 'true'
+          python-version: $python-version-chosen
       - name: Set up GCC
         uses: egor-tensin/setup-gcc@v1
         with:
@@ -36,15 +42,8 @@ jobs:
           platform: x64
       - name: Pre-Install dependencies
         run: |
-          gfortran --version
           export QT_QPA_PLATFORM='offscreen'
           sudo apt install libeigen3-dev
-          git submodule init
-          git submodule update
-      #     git fetch --tags -f
-      #     mkdir build && cd build
-      #     cmake .. && make install -j 4 && cd ..
-      #     pip install -e .
       - name: Install pypa/build
         run: >-
           python3 -m
@@ -54,16 +53,10 @@ jobs:
       - name: Install wheel
         run: python3 -m pip install wheel --user
       - name: Build a binary wheel and a source tarball
-        # run: python3 setup.py sdist
-        # run: python3 -m pip install --user -e .
         run: python3 setup.py bdist_wheel
-        # run: python setup.py bdist_wheel --universal
-
-
       - name: Find the wheel created during pip install
         run: 
           python3 -m pip cache dir
-
       - name: Store the distribution packages
         uses: actions/upload-artifact@v3
         with:
@@ -73,7 +66,7 @@ jobs:
   publish-to-pypi:
     name: >-
       Publish Python 🐍 distribution 📦 to PyPI
-    # if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
+    if: startsWith(github.ref, 'refs/tags/v')  # only publish to PyPI on tag pushes
     needs:
     - build
     runs-on: ubuntu-latest
