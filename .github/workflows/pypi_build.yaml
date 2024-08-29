@@ -2,9 +2,10 @@ name: Create and publish pypi image
 
 on:
   push:
-    branches: 
-      - develop
-      - main
+  # only publish with a new tag
+    # branches: 
+    #   - develop
+    #   - main
     tags:
       - 'v*'
 
