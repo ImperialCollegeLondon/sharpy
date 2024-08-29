@@ -1,6 +1,6 @@
 # SHARPy GitHub Workflows
 
-There are 4 automated workflows for SHARPy's CI/CD.
+There are 4(+2 experimental) automated workflows for SHARPy's CI/CD.
 
 ## SHARPy Tests
 
@@ -19,5 +19,13 @@ Python code, hence allowing the merge.
 Two nearly identical workflows, the only difference is that one pushes the Docker 
 image to the SHARPy packages. Therefore:
 
-    * `docker_build.yaml`: Builds the Docker image but does not push. Runs on changes to the `docker*` workflows, changes to the `utils/` directory (environments) and changes to the `Dockerfile`. Required test for PRs to merge to `develop` and `main`.
+    * `docker_build_test.yaml`: Builds the Docker image but does not push. Runs on changes to the `docker*` workflows, changes to the `utils/` directory (environments) and changes to the `Dockerfile`. Required test for PRs to merge to `develop` and `main`.
     * `docker_build.yaml`: Builds and pushes the Docker image. Runs on pushes to `develop`, `main` and annotated tags.
+
+## Pypi
+
+Two nearly identical workflows, the only difference is that one pushes the wheel 
+artifact to icl-sharpy @ pypi. Therefore:
+
+    * `pypi_build_test.yaml`: Builds the pypi wheel but does not push. Runs on changes to the `pypi*` workflows, changes to the `utils/` directory (environments) and changes to the `setup.py`. Required test for PRs to merge to `develop` and `main`.
+    * `pypi_build.yaml`: Builds and pushes the pypi wheel. Runs on annotated tags.    
