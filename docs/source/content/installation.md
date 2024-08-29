@@ -310,12 +310,10 @@ You can obtain a built version of SHARPy, icl-sharpy, from PyPI [here](https://p
 To install at default directory use
 ```
 python3 -m pip install icl-sharpy
-
 ```
 To install at current directory use
 ```
 python3 -m pip install --prefix . icl-sharpy
-
 ```
 The source code can be found at `/lib/python3.10/site-packages/sharpy` and the executable at `/bin/sharpy`.
 
