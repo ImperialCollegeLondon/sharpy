@@ -1,4 +1,4 @@
-name: Create and publish pypi image
+name: Test pypi image build
 
 on:
   pull_request:
