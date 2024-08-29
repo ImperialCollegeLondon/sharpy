@@ -22,7 +22,7 @@ image to the SHARPy packages. Therefore:
     * `docker_build_test.yaml`: Builds the Docker image but does not push. Runs on changes to the `docker*` workflows, changes to the `utils/` directory (environments) and changes to the `Dockerfile`. Required test for PRs to merge to `develop` and `main`.
     * `docker_build.yaml`: Builds and pushes the Docker image. Runs on pushes to `develop`, `main` and annotated tags.
 
-## Pypi
+## Pypi (experimental!)
 
 Two nearly identical workflows, the only difference is that one pushes the wheel 
 artifact to icl-sharpy @ pypi. Therefore:
