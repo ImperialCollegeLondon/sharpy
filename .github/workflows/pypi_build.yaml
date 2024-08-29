@@ -21,7 +21,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      python-version-chosen: "[3.10.8]"
+      python-version-chosen: "3.10.8"
     permissions:
       contents: read
       packages: write
