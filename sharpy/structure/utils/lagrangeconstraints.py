@@ -2408,7 +2408,7 @@ class hinge_node_FoR(BaseLagrangeConstraint):
     _lc_id = 'hinge_node_FoR'
 
     def __init__(self):
-        self.required_parameters = ['node_in_body', 'body', 'body_FoR', 'rot_axisB', 'rot_axisA2']
+        self.required_parameters = ['node_in_body', 'body', 'body_FoR', 'rot_axisB']
         self._n_eq = 5
 
     def get_n_eq(self):
