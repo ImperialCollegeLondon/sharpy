@@ -1101,6 +1101,16 @@ def der_Tan_by_xv(fv0,xv):
     """
 
     f0 = np.linalg.norm(fv0)
+    if f0 < (1e9*np.finfo(float).eps):
+
+        print("in der_Tan_by_xv replaced nan with 0")
+        tensor1 = np.array([[0., 0., 0.], [0., 0., -0.5], [0., 0.5, 0.]])*xv[0]
+        tensor2 = np.array([[0., 0., 0.5], [0., 0., 0.], [-0.5, 0., 0.]])*xv[1]
+        tensor3 = np.array([[0., -0.5, 0.], [0.5, 0., 0.], [0., 0., 0.]])*xv[2]
+        print(tensor1+tensor2+tensor3)
+        return tensor1+tensor2+tensor3
+
+
     sf0, cf0 = np.sin(f0), np.cos(f0)
 
     fv0_x, fv0_y, fv0_z = fv0
@@ -1996,3 +2006,19 @@ def der_skewp_skewp_v(p, v):
     der[2, 2] = v[0]*p[0] + v[1]*p[1]
 
     return der
+
+def der_skewpT_v(p, v):
+    """
+    This function computes:
+
+        .. math:: \frac{d}{d\boldsymbol{p}} \tilde{\boldsymbol{p}}^T v)
+    """
+    return skew(v)
+
+def der_skewp_v(p, v):
+    """
+    This function computes:
+
+        .. math:: \frac{d}{d\boldsymbol{p}} \tilde{\boldsymbol{p}} v)
+    """
+    return -skew(v)
