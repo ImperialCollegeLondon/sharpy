@@ -331,6 +331,7 @@ def equal_lin_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, 
     node_dot_Ra = MB_tstep[node_body].pos_dot[node_number,:]
     FoR_cga = MB_tstep[FoR_body].cga()
     FoR_va = MB_tstep[FoR_body].for_vel[0:3]
+    FoR_wa = MB_tstep[FoR_body].for_vel[3:6]
 
     Bnh[:, FoR_dof:FoR_dof+3] = FoR_cga
     Bnh[:, node_dof:node_dof+3] = -1.0*node_cga
@@ -359,54 +360,903 @@ def equal_lin_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, 
                                                                                      ag.der_CquatT_by_v(MB_tstep[node_body].quat,
                                                                                                              Lambda_dot[ieq:ieq+num_LM_eq_specific]))
 
+        # non-trivial - verified by hand (involves multiple transformations, Dynamics of Flexible Aircraft Appen. C)
         LM_K[node_FoR_dof+3:node_FoR_dof+6,node_dof:node_dof+3] += scalingFactor*ag.skew(np.dot(node_cga.T,Lambda_dot[ieq:ieq+num_LM_eq_specific]))
 
     if penaltyFactor:
-        q = np.zeros((sys_size))
-        q[FoR_dof:FoR_dof+3] = FoR_va
-        q[node_dof:node_dof+3] = node_dot_Ra
         if MB_beam[node_body].FoR_movement == 'free':
+        # TODO: follow general approach to derive terms - first 4*4 terms, then LMC derivatives, then LMK derivatives - this is why penalty didn't work!
+
+            # Simplify notation
+            cab = ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:])
+            node_cga = MB_tstep[node_body].cga()
+            FoR_cga = MB_tstep[FoR_body].cga()
+            FoR_wa = MB_tstep[FoR_body].for_vel[3:6]
+            node_wa = MB_tstep[node_body].for_vel[3:6]
+            psi = MB_tstep[node_body].psi[ielem,inode_in_elem,:]
+            psi_dot = MB_tstep[node_body].psi_dot[ielem,inode_in_elem,:]
+            psi_FoR = MB_tstep[FoR_body].psi[0,0,:]
+            cab2 = ag.crv2rotation(MB_tstep[FoR_body].psi[0,0,:])
+
+            q = np.zeros((sys_size))
+            q[FoR_dof:FoR_dof+3] = FoR_va
+            q[node_dof:node_dof+3] = node_dot_Ra
+            q[node_dof+3:node_dof+6] = psi_dot
             q[node_FoR_dof:node_FoR_dof+3] = node_FoR_va
             q[node_FoR_dof+3:node_FoR_dof+6] = node_FoR_wa
 
-        LM_Q[:sys_size] += penaltyFactor*np.dot(np.dot(Bnh.T, Bnh), q)
+            LM_Q[:sys_size] += penaltyFactor*np.dot(Bnh.T, np.dot(Bnh, q))
 
-        LM_C[:sys_size, :sys_size] += penaltyFactor*np.dot(Bnh.T, Bnh)
+            LM_C[:sys_size, :sys_size] += penaltyFactor*np.dot(Bnh.T, Bnh)
 
-        # Derivatives wrt the FoR quaterion
-        LM_C[FoR_dof:FoR_dof+3, FoR_dof+6:FoR_dof+10] -= penaltyFactor*ag.der_CquatT_by_v(MB_tstep[FoR_body].quat,
-                                                                                                 np.dot(node_cga, node_dot_Ra + node_FoR_va +
-                                                                                                         np.dot(ag.skew(node_Ra), node_FoR_wa)))
+        # # 16 canonical terms for (abcd)^T(abcd)
+        #     # term 1-1 - \frac{\partial}{\partial q_{1}}(a^Taq_1 + a^Tbq2 + a^Tcq3 + a^Tdq4) 
+        #     # a^Taq1 dq1 -> a^Ta
+        #     mat = ag.multiply_matrices(-node_cga.T, -node_cga)
+                                       
+        #     # vec = ag.multiply_matrices()                                    
+                                    
+        #     LM_C[node_dof:node_dof+3, node_dof:node_dof+3] += penaltyFactor*mat
 
-        LM_C[node_dof:node_dof+3, FoR_dof+6:FoR_dof+10] -= penaltyFactor*np.dot(node_cga.T, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat,
-                                                                                                               FoR_va))
+        #     # term 1-2 - \frac{\partial}{\partial q_{2}}(a^Taq_1 + a^Tbq2 + a^Tcq3 + a^Tdq4) 
+        #     # a^Tb
+        #     mat = ag.multiply_matrices(-node_cga.T, -node_cga)
 
-        if MB_beam[node_body].FoR_movement == 'free':
-            LM_C[node_FoR_dof:node_FoR_dof+3, FoR_dof+6:FoR_dof+10] -= penaltyFactor*np.dot(node_cga.T, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat,
-                                                                                                               FoR_va))
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_dof:node_dof+3, node_FoR_dof:node_FoR_dof+3] += penaltyFactor*mat      
+
+        #     # term 1-3 - \frac{\partial}{\partial q_{3}}(a^Taq_1 + a^Tbq2 + a^Tcq3 + a^Tdq4) 
+        #     # a^Tc
+        #     mat = ag.multiply_matrices(-node_cga.T, node_cga, ag.skew(node_Ra))
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_dof:node_dof+3, node_FoR_dof+3:node_FoR_dof+6] += penaltyFactor*mat    
+
+        #     # term 1-4 - \frac{\partial}{\partial q_{4}}(a^Taq_1 + a^Tbq2 + a^Tcq3 + a^Tdq4) 
+        #     # a^Td
+        #     mat = ag.multiply_matrices(-node_cga.T, FoR_cga)
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_dof:node_dof+3, FoR_dof:FoR_dof+3] += penaltyFactor*mat    
+
+        #     # term 2-1 - \frac{\partial}{\partial q_1}(b^Taq_1 + b^Tbq2 + b^Tcq3 + b^Tdq4)
+        #     # b^Ta
+        #     mat = ag.multiply_matrices(-node_cga.T, -node_cga)
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] += penaltyFactor*mat    
+                           
+        #     # term 2-2 - \frac{\partial}{\partial q_2}(b^Taq_1 + b^Tbq2 + b^Tcq3 + b^Tdq4)
+        #     # b^Tb
+        #     mat = ag.multiply_matrices(-node_cga.T, -node_cga)
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof:node_FoR_dof+3] += penaltyFactor*mat    
+
+        #     # term 2-3 - \frac{\partial}{\partial q_3}(b^Taq_1 + b^Tbq2 + b^Tcq3 + b^Tdq4)
+        #     # b^Tc
+        #     mat = ag.multiply_matrices(-node_cga.T, node_cga, ag.skew(node_Ra))
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+3:node_FoR_dof+6] += penaltyFactor*mat    
+
+        #     # term 2-4 - \frac{\partial}{\partial q_4}(b^Taq_1 + b^Tbq2 + b^Tcq3 + b^Tdq4)
+        #     # b^Td
+        #     mat = ag.multiply_matrices(-node_cga.T, FoR_cga)
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_FoR_dof:node_FoR_dof+3, FoR_dof:FoR_dof+3] += penaltyFactor*mat  
+
+        #     # term 3-1 - \frac{\partial}{\partial q_1}(c^Taq_1 + c^Tbq2 + c^Tcq3 + c^Tdq4)
+        #     # c^Ta
+        #     mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T, -node_cga)
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] += penaltyFactor*mat                           
+
+        #     # term 3-2 - \frac{\partial}{\partial q_2}(c^Taq_1 + c^Tbq2 + c^Tcq3 + c^Tdq4)
+        #     # c^Tb
+        #     mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T, -node_cga)
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof:node_FoR_dof+3] += penaltyFactor*mat      
+
+        #     # term 3-3 - \frac{\partial}{\partial q_3}(c^Taq_1 + c^Tbq2 + c^Tcq3 + c^Tdq4)
+        #     # c^Tc
+        #     mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T, -node_cga)
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+3:node_FoR_dof+6] += penaltyFactor*mat        
+
+        #     # term 3-4 - \frac{\partial}{\partial q_4}(c^Taq_1 + c^Tbq2 + c^Tcq3 + c^Tdq4)
+        #     # c^Td
+        #     mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T, FoR_cga)
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_FoR_dof+3:node_FoR_dof+6, FoR_dof:FoR_dof+3] += penaltyFactor*mat        
+
+        #     # term 4-1 - \frac{\partial}{\partial q_1}(d^Taq_1 + d^Tbq2 + d^Tcq3 + d^Tdq4)
+        #     # d^Ta
+        #     mat = ag.multiply_matrices(FoR_cga.T, -node_cga)
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[FoR_dof:FoR_dof+3, node_dof:node_dof+3] += penaltyFactor*mat   
+
+        #     # term 4-2 - \frac{\partial}{\partial q_2}(d^Taq_1 + d^Tbq2 + d^Tcq3 + d^Tdq4)
+        #     # d^Tb
+        #     mat = ag.multiply_matrices(FoR_cga.T, -node_cga)
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[FoR_dof:FoR_dof+3, node_FoR_dof:node_FoR_dof+3] += penaltyFactor*mat    
+
+        #     # term 4-3 - \frac{\partial}{\partial q_3}(d^Taq_1 + d^Tbq2 + d^Tcq3 + d^Tdq4)
+        #     # d^Tc
+        #     mat = ag.multiply_matrices(FoR_cga.T, node_cga, ag.skew(node_Ra))
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[FoR_dof:FoR_dof+3, node_FoR_dof+3:node_FoR_dof+6] += penaltyFactor*mat    
+
+        #     # term 4-4 - \frac{\partial}{\partial q_4}(d^Taq_1 + d^Tbq2 + d^Tcq3 + d^Tdq4)
+        #     # d^Td
+        #     mat = ag.multiply_matrices(FoR_cga.T, FoR_cga)
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[FoR_dof:FoR_dof+3, FoR_dof:FoR_dof+3] += penaltyFactor*mat                                                                          
+
+        # other LM_C derivatives for c dependencies in x1 and x2
+            # term 1-x1 - \frac{\partial}{\partial x_1}(a^Taq_1 + a^Tbq2 + a^Tcq3 + a^Tdq4) 
+            # da^Tdxaq_1 + a^Tdadxaq_1 + da^Tdxbq_2 + a^Tdbdxq_2 + da^Tdxcq_3 + a^Tdcdxq_3 + da^Tdxdq_4
+
+            mat = ag.multiply_matrices(-np.eye(3))
+                                       
+            vec = ag.multiply_matrices(-node_cga, node_dot_Ra)                                    
+                                    
+            LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+           
+            mat = ag.multiply_matrices(-node_cga.T, -np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_dot_Ra)                                    
+                                    
+            LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+           
+            mat = ag.multiply_matrices(-np.eye(3))
+                                       
+            vec = ag.multiply_matrices(-node_cga, node_FoR_va)                                    
+                                    
+            LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+          
+            mat = ag.multiply_matrices(-node_cga.T, -np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_FoR_va)                                    
+                                    
+            LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+           
+            mat = ag.multiply_matrices(-np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_cga, ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+            LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+
+            mat = ag.multiply_matrices(-node_cga.T)
+                                       
+            vec = ag.multiply_matrices(ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+            LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+
+            mat = ag.multiply_matrices(-np.eye(3))
+                                       
+            vec = ag.multiply_matrices(FoR_cga, FoR_va)                                    
+                                    
+            LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+
+            # term 2-x1 - \frac{\partial}{\partial x_1}(b^Taq_1 + b^Tbq2 + b^Tcq3 + b^Tdq4)
+            # db^Tdxaq_1 + b^Tdadxaq_1 + db^Tdxbq_2 + b^Tdbdxq_2 + db^Tdxcq_3 + b^Tdcdxq_3 + db^Tdxdq_4
+           
+            mat = ag.multiply_matrices(-np.eye(3))
+                                       
+            vec = ag.multiply_matrices(-node_cga, node_dot_Ra)                                    
+                                    
+            LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+           
+            mat = ag.multiply_matrices(-node_cga.T, -np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_dot_Ra)                                    
+                                    
+            LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+           
+            mat = ag.multiply_matrices(-np.eye(3))
+                                       
+            vec = ag.multiply_matrices(-node_cga, node_FoR_va)                                    
+                                    
+            LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+          
+            mat = ag.multiply_matrices(-node_cga.T, -np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_FoR_va)                                    
+                                    
+            LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+           
+            mat = ag.multiply_matrices(-np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_cga, ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+            LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+
+            mat = ag.multiply_matrices(-node_cga.T)
+                                       
+            vec = ag.multiply_matrices(ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+            LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+
+            mat = ag.multiply_matrices(-np.eye(3))
+                                       
+            vec = ag.multiply_matrices(FoR_cga, FoR_va)                                    
+                                    
+            LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+
+            # term 3-x1 - \frac{\partial}{\partial x_1}(c^Taq_1 + c^Tbq2 + c^Tcq3 + c^Tdq4)
+            # dc^Tdxaq_1 + c^Tdadxaq_1 + dc^Tdxbq_2 + c^Tdbdxq_2 + dc^Tdxcq_3 + c^Tdcdxq_3 + dc^Tdxdq_4          
+
+            mat = ag.multiply_matrices(ag.skew(node_Ra).T)
+                                       
+            vec = ag.multiply_matrices(-node_cga, node_dot_Ra)                                    
+                                    
+            LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+           
+            mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T, -np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_dot_Ra)                                    
+                                    
+            LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+           
+            mat = ag.multiply_matrices(ag.skew(node_Ra).T)
+                                       
+            vec = ag.multiply_matrices(-node_cga, node_FoR_va)                                    
+                                    
+            LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+          
+            mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T, -np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_FoR_va)                                    
+                                    
+            LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+           
+            mat = ag.multiply_matrices(ag.skew(node_Ra).T)
+                                       
+            vec = ag.multiply_matrices(node_cga, ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+            LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
 
             mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T)
-            LM_C[node_FoR_dof+3:node_FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat,
-                                                                                                               FoR_va))
+                                       
+            vec = ag.multiply_matrices(ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+            LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
 
-        # Derivatives wrt the node quaternion
-        if MB_beam[node_body].FoR_movement == 'free':
-            vec = -node_dot_Ra - node_FoR_va + np.dot(ag.skew(node_Ra), node_FoR_wa)
-            LM_C[FoR_dof:FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(FoR_cga.T, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+            mat = ag.multiply_matrices(ag.skew(node_Ra).T)
+                                       
+            vec = ag.multiply_matrices(FoR_cga, FoR_va)                                    
+                                    
+            LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
 
-            derivative = -ag.der_CquatT_by_v(MB_tstep[node_body].quat, np.dot(FoR_cga, FoR_va))
-            LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*derivative
-            LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*derivative
-            LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] -= penaltyFactor*np.dot(ag.skew(node_Ra), derivative)
+            # term 4-x1 - \frac{\partial}{\partial x_1}(d^Taq_1 + d^Tbq2 + d^Tcq3 + d^Tdq4) 
+            # d^Tdadxaq_1 + d^Tdbdxq_2 + d^Tdcdxq_3      
 
-        # Derivatives wrt the node Ra
-        LM_K[FoR_dof:FoR_dof+3, node_dof:node_dof+3] -= penaltyFactor*ag.multiply_matrices(FoR_cga.T, node_cga, ag.skew(node_FoR_wa))
-        LM_K[node_dof:node_dof+3, node_dof:node_dof+3] += penaltyFactor*ag.skew(node_FoR_wa)
-        if MB_beam[node_body].FoR_movement == 'free':
-            LM_K[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] += penaltyFactor*ag.skew(node_FoR_wa)
-            vec = ag.multiply_matrices(node_cga.T, FoR_cga, FoR_va) - node_dot_Ra - node_FoR_va
-            LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] += penaltyFactor*ag.skew(vec)
-            LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] -= penaltyFactor*ag.der_skewp_skewp_v(node_Ra, node_FoR_wa)
+            mat = ag.multiply_matrices(FoR_cga.T, -np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_dot_Ra)                                    
+                                    
+            LM_C[FoR_dof:FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+           
+            mat = ag.multiply_matrices(FoR_cga.T, -np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_FoR_va)                                    
+                                    
+            LM_C[FoR_dof:FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+           
+            mat = ag.multiply_matrices(FoR_cga.T)
+                                       
+            vec = ag.multiply_matrices(ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+            LM_C[FoR_dof:FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+
+            # term 1-x2 - \frac{\partial}{\partial x_2}(a^Taq_1 + a^Tbq2 + a^Tcq3 + a^Tdq4) 
+            # a^Tdddxq_4
+
+            mat = ag.multiply_matrices(-node_cga.T)
+                                       
+            vec = ag.multiply_matrices(FoR_va)                                    
+                                    
+            LM_C[node_dof:node_dof+3, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[FoR_body].quat, vec))
+
+            # term 2-x2 - \frac{\partial}{\partial x_2}(b^Taq_1 + b^Tbq2 + b^Tcq3 + b^Tdq4)
+            # b^Tdddxq_4
+
+            mat = ag.multiply_matrices(-node_cga.T)
+                                       
+            vec = ag.multiply_matrices(FoR_va)                                    
+                                    
+            LM_C[node_FoR_dof:node_FoR_dof+3, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[FoR_body].quat, vec))
+
+            # term 3-x2 - \frac{\partial}{\partial x_2}(c^Taq_1 + c^Tbq2 + c^Tcq3 + c^Tdq4)
+            # c^Tdddxq_4
+
+            mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T)
+                                       
+            vec = ag.multiply_matrices(FoR_va)                                    
+                                    
+            LM_C[node_FoR_dof+3:node_FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[FoR_body].quat, vec))
+
+            # term 4-x2 - \frac{\partial}{\partial x_2}(d^Taq_1 + d^Tbq2 + d^Tcq3 + d^Tdq4) 
+            # dd^Tdxaq_1 + dd^Tdxbq_2 + dd^Tdxcq_3 + dd^Tdxdq_4 + d^Tdddxq_4
+
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(-node_cga, node_dot_Ra)                                    
+                                    
+            LM_C[FoR_dof:FoR_dof+3, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec))
+           
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(-node_cga, node_FoR_va)                                    
+                                    
+            LM_C[FoR_dof:FoR_dof+3, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec))
+          
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_cga, ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+            LM_C[FoR_dof:FoR_dof+3, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec))
+
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(FoR_cga, FoR_va)                                    
+                                    
+            LM_C[FoR_dof:FoR_dof+3, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec))
+
+            mat = ag.multiply_matrices(FoR_cga.T)
+                                       
+            vec = ag.multiply_matrices(FoR_va)                                    
+                                    
+            LM_C[FoR_dof:FoR_dof+3, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[FoR_body].quat, vec))
+
+
+        # other LM_K derivatives for a/b/c/d dependencies in Ra
+            # term 1-Ra - \frac{\partial}{\partial Ra}(a^Taq_1 + a^Tbq2 + a^Tcq3 + a^Tdq4) 
+            # a^Tdcdrq_3
+
+            mat = ag.multiply_matrices(-node_cga.T, node_cga)
+                                        
+            vec = ag.multiply_matrices(node_FoR_wa)                                    
+                                    
+            LM_K[node_dof:node_dof+3, node_dof:node_dof+3] += penaltyFactor*np.dot(mat, ag.der_skewp_v(ag.skew(node_Ra), vec))
+
+            # term 2-Ra - \frac{\partial}{\partial Ra}(b^Taq_1 + b^Tbq2 + b^Tcq3 + b^Tdq4)
+            # b^Tdcdrq_3
+
+            mat = ag.multiply_matrices(-node_cga.T, node_cga)
+                                        
+            vec = ag.multiply_matrices(node_FoR_wa)                                    
+                                    
+            LM_K[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] += penaltyFactor*np.dot(mat, ag.der_skewp_v(ag.skew(node_Ra), vec))
+
+            # term 3-Ra - \frac{\partial}{\partial Ra}(c^Taq_1 + c^Tbq2 + c^Tcq3 + c^Tdq4)
+            # dc^Tdraq_1 + dc^Tdrbq_2 + dc^Tdrcq_3 + c^Tdcdrq_3 + dc^Tdrdq_4
+
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_cga.T, -node_cga, node_dot_Ra)                                    
+                                    
+            LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] += penaltyFactor*np.dot(mat, ag.der_skewpT_v(ag.skew(node_Ra), vec))
+           
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_cga.T, -node_cga, node_FoR_va)                                    
+                                    
+            LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] += penaltyFactor*np.dot(mat, ag.der_skewpT_v(ag.skew(node_Ra), vec))
+           
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_cga.T, node_cga, ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+            LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] += penaltyFactor*np.dot(mat, ag.der_skewpT_v(ag.skew(node_Ra), vec))
+           
+            mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T, node_cga)
+                                        
+            vec = ag.multiply_matrices(node_FoR_wa)                                    
+                                    
+            LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] += penaltyFactor*np.dot(mat, ag.der_skewp_v(ag.skew(node_Ra), vec))
+
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_cga.T, FoR_cga, FoR_va)                                    
+                                    
+            LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] += penaltyFactor*np.dot(mat, ag.der_skewpT_v(ag.skew(node_Ra), vec))
+           
+            # term 4-Ra - \frac{\partial}{\partial Ra}(d^Taq_1 + d^Tbq2 + d^Tcq3 + d^Tdq4) 
+            # d^Tdcdrq_3
+
+            mat = ag.multiply_matrices(FoR_cga.T, node_cga)
+                                        
+            vec = ag.multiply_matrices(node_FoR_wa)                                    
+                                    
+            LM_K[FoR_dof:FoR_dof+3, node_dof:node_dof+3] += penaltyFactor*np.dot(mat, ag.der_skewp_v(ag.skew(node_Ra), vec))
+
+
+            #  a^T   -node_cga.T
+            #  a     -node_cga
+            #  b^T   -node_cga.T
+            #  b     -node_cga
+            #  c^T   ag.skew(node_Ra).T, node_cga.T
+            #  c     node_cga, ag.skew(node_Ra)
+            #  d^T   FoR_cga.T
+            #  d     FoR_cga
+            #  q1    node_dof:node_dof+3            node_dot_Ra
+            #  q2    node_FoR_dof:node_FoR_dof+3    node_FoR_va
+            #  q3    node_FoR_dof+3:node_FoR_dof+6  node_FoR_wa
+            #  q4    FoR_dof:FoR_dof+3              FoR_va
+
+        else:
+        # TODO: follow general approach to derive terms - first 4*4 terms, then LMC derivatives, then LMK derivatives - this is why penalty didn't work!
+
+            # Simplify notation
+            cab = ag.crv2rotation(MB_tstep[node_body].psi[ielem,inode_in_elem,:])
+            node_cga = MB_tstep[node_body].cga()
+            FoR_cga = MB_tstep[FoR_body].cga()
+            FoR_wa = MB_tstep[FoR_body].for_vel[3:6]
+            # node_wa = MB_tstep[node_body].for_vel[3:6]
+            psi = MB_tstep[node_body].psi[ielem,inode_in_elem,:]
+            psi_dot = MB_tstep[node_body].psi_dot[ielem,inode_in_elem,:]
+            psi_FoR = MB_tstep[FoR_body].psi[0,0,:]
+            cab2 = ag.crv2rotation(MB_tstep[FoR_body].psi[0,0,:])
+
+            q = np.zeros((sys_size))
+            q[FoR_dof:FoR_dof+3] = FoR_va
+            q[node_dof:node_dof+3] = node_dot_Ra
+            q[node_dof+3:node_dof+6] = psi_dot
+            # q[node_FoR_dof:node_FoR_dof+3] = node_FoR_va
+            # q[node_FoR_dof+3:node_FoR_dof+6] = node_FoR_wa
+
+            LM_Q[:sys_size] += penaltyFactor*np.dot(Bnh.T, np.dot(Bnh, q))
+
+            LM_C[:sys_size, :sys_size] += penaltyFactor*np.dot(Bnh.T, Bnh)
+
+        # # 16 canonical terms for (abcd)^T(abcd)
+        #     # term 1-1 - \frac{\partial}{\partial q_{1}}(a^Taq_1 + a^Tbq2 + a^Tcq3 + a^Tdq4) 
+        #     # a^Taq1 dq1 -> a^Ta
+        #     mat = ag.multiply_matrices(-node_cga.T, -node_cga)
+                                       
+        #     # vec = ag.multiply_matrices()                                    
+                                    
+        #     LM_C[node_dof:node_dof+3, node_dof:node_dof+3] += penaltyFactor*mat
+
+        #     # # term 1-2 - \frac{\partial}{\partial q_{2}}(a^Taq_1 + a^Tbq2 + a^Tcq3 + a^Tdq4) 
+        #     # # a^Tb
+        #     # mat = ag.multiply_matrices(-node_cga.T, -node_cga)
+
+        #     # # vec = ag.multiply_matrices()                                    
+
+        #     # LM_C[node_dof:node_dof+3, node_FoR_dof:node_FoR_dof+3] += penaltyFactor*mat      
+
+        #     # # term 1-3 - \frac{\partial}{\partial q_{3}}(a^Taq_1 + a^Tbq2 + a^Tcq3 + a^Tdq4) 
+        #     # # a^Tc
+        #     # mat = ag.multiply_matrices(-node_cga.T, node_cga, ag.skew(node_Ra))
+
+        #     # # vec = ag.multiply_matrices()                                    
+
+        #     # LM_C[node_dof:node_dof+3, node_FoR_dof+3:node_FoR_dof+6] += penaltyFactor*mat    
+
+        #     # term 1-4 - \frac{\partial}{\partial q_{4}}(a^Taq_1 + a^Tbq2 + a^Tcq3 + a^Tdq4) 
+        #     # a^Td
+        #     mat = ag.multiply_matrices(-node_cga.T, FoR_cga)
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_dof:node_dof+3, FoR_dof:FoR_dof+3] += penaltyFactor*mat    
+
+        #     # # term 2-1 - \frac{\partial}{\partial q_1}(b^Taq_1 + b^Tbq2 + b^Tcq3 + b^Tdq4)
+        #     # # b^Ta
+        #     # mat = ag.multiply_matrices(-node_cga.T, -node_cga)
+
+        #     # # vec = ag.multiply_matrices()                                    
+
+        #     # LM_C[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] += penaltyFactor*mat    
+                           
+        #     # # term 2-2 - \frac{\partial}{\partial q_2}(b^Taq_1 + b^Tbq2 + b^Tcq3 + b^Tdq4)
+        #     # # b^Tb
+        #     # mat = ag.multiply_matrices(-node_cga.T, -node_cga)
+
+        #     # # vec = ag.multiply_matrices()                                    
+
+        #     # LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof:node_FoR_dof+3] += penaltyFactor*mat    
+
+        #     # # term 2-3 - \frac{\partial}{\partial q_3}(b^Taq_1 + b^Tbq2 + b^Tcq3 + b^Tdq4)
+        #     # # b^Tc
+        #     # mat = ag.multiply_matrices(-node_cga.T, node_cga, ag.skew(node_Ra))
+
+        #     # # vec = ag.multiply_matrices()                                    
+
+        #     # LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+3:node_FoR_dof+6] += penaltyFactor*mat    
+
+        #     # # term 2-4 - \frac{\partial}{\partial q_4}(b^Taq_1 + b^Tbq2 + b^Tcq3 + b^Tdq4)
+        #     # # b^Td
+        #     # mat = ag.multiply_matrices(-node_cga.T, FoR_cga)
+
+        #     # # vec = ag.multiply_matrices()                                    
+
+        #     # LM_C[node_FoR_dof:node_FoR_dof+3, FoR_dof:FoR_dof+3] += penaltyFactor*mat  
+
+        #     # # term 3-1 - \frac{\partial}{\partial q_1}(c^Taq_1 + c^Tbq2 + c^Tcq3 + c^Tdq4)
+        #     # # c^Ta
+        #     # mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T, -node_cga)
+
+        #     # # vec = ag.multiply_matrices()                                    
+
+        #     # LM_C[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] += penaltyFactor*mat                           
+
+        #     # # term 3-2 - \frac{\partial}{\partial q_2}(c^Taq_1 + c^Tbq2 + c^Tcq3 + c^Tdq4)
+        #     # # c^Tb
+        #     # mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T, -node_cga)
+
+        #     # # vec = ag.multiply_matrices()                                    
+
+        #     # LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof:node_FoR_dof+3] += penaltyFactor*mat      
+
+        #     # # term 3-3 - \frac{\partial}{\partial q_3}(c^Taq_1 + c^Tbq2 + c^Tcq3 + c^Tdq4)
+        #     # # c^Tc
+        #     # mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T, -node_cga)
+
+        #     # # vec = ag.multiply_matrices()                                    
+
+        #     # LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+3:node_FoR_dof+6] += penaltyFactor*mat        
+
+        #     # # term 3-4 - \frac{\partial}{\partial q_4}(c^Taq_1 + c^Tbq2 + c^Tcq3 + c^Tdq4)
+        #     # # c^Td
+        #     # mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T, FoR_cga)
+
+        #     # # vec = ag.multiply_matrices()                                    
+
+        #     # LM_C[node_FoR_dof+3:node_FoR_dof+6, FoR_dof:FoR_dof+3] += penaltyFactor*mat        
+
+        #     # term 4-1 - \frac{\partial}{\partial q_1}(d^Taq_1 + d^Tbq2 + d^Tcq3 + d^Tdq4)
+        #     # d^Ta
+        #     mat = ag.multiply_matrices(FoR_cga.T, -node_cga)
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[FoR_dof:FoR_dof+3, node_dof:node_dof+3] += penaltyFactor*mat   
+
+        #     # # term 4-2 - \frac{\partial}{\partial q_2}(d^Taq_1 + d^Tbq2 + d^Tcq3 + d^Tdq4)
+        #     # # d^Tb
+        #     # mat = ag.multiply_matrices(FoR_cga.T, -node_cga)
+
+        #     # # vec = ag.multiply_matrices()                                    
+
+        #     # LM_C[FoR_dof:FoR_dof+3, node_FoR_dof:node_FoR_dof+3] += penaltyFactor*mat    
+
+        #     # # term 4-3 - \frac{\partial}{\partial q_3}(d^Taq_1 + d^Tbq2 + d^Tcq3 + d^Tdq4)
+        #     # # d^Tc
+        #     # mat = ag.multiply_matrices(FoR_cga.T, node_cga, ag.skew(node_Ra))
+
+        #     # # vec = ag.multiply_matrices()                                    
+
+        #     # LM_C[FoR_dof:FoR_dof+3, node_FoR_dof+3:node_FoR_dof+6] += penaltyFactor*mat    
+
+        #     # term 4-4 - \frac{\partial}{\partial q_4}(d^Taq_1 + d^Tbq2 + d^Tcq3 + d^Tdq4)
+        #     # d^Td
+        #     mat = ag.multiply_matrices(FoR_cga.T, FoR_cga)
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[FoR_dof:FoR_dof+3, FoR_dof:FoR_dof+3] += penaltyFactor*mat                                                                          
+
+        # other LM_C derivatives for c dependencies in x1 and x2
+            # term 1-x1 - \frac{\partial}{\partial x_1}(a^Taq_1 + a^Tbq2 + a^Tcq3 + a^Tdq4) 
+            # da^Tdxaq_1 + a^Tdadxaq_1 + da^Tdxbq_2 + a^Tdbdxq_2 + da^Tdxcq_3 + a^Tdcdxq_3 + da^Tdxdq_4
+
+            mat = ag.multiply_matrices(-np.eye(3))
+                                       
+            vec = ag.multiply_matrices(-node_cga, node_dot_Ra)                                    
+                                    
+            LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+           
+            mat = ag.multiply_matrices(-node_cga.T, -np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_dot_Ra)                                    
+                                    
+            LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+           
+            # mat = ag.multiply_matrices(-np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(-node_cga, node_FoR_va)                                    
+                                    
+            # LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+          
+            # mat = ag.multiply_matrices(-node_cga.T, -np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(node_FoR_va)                                    
+                                    
+            # LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+           
+            # mat = ag.multiply_matrices(-np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(node_cga, ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+            # LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+
+            # mat = ag.multiply_matrices(-node_cga.T)
+                                       
+            # vec = ag.multiply_matrices(ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+            # LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+
+            mat = ag.multiply_matrices(-np.eye(3))
+                                       
+            vec = ag.multiply_matrices(FoR_cga, FoR_va)                                    
+                                    
+            LM_C[node_dof:node_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+
+            # # term 2-x1 - \frac{\partial}{\partial x_1}(b^Taq_1 + b^Tbq2 + b^Tcq3 + b^Tdq4)
+            # # db^Tdxaq_1 + b^Tdadxaq_1 + db^Tdxbq_2 + b^Tdbdxq_2 + db^Tdxcq_3 + b^Tdcdxq_3 + db^Tdxdq_4
+           
+            # mat = ag.multiply_matrices(-np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(-node_cga, node_dot_Ra)                                    
+                                    
+            # LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+           
+            # mat = ag.multiply_matrices(-node_cga.T, -np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(node_dot_Ra)                                    
+                                    
+            # LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+           
+            # mat = ag.multiply_matrices(-np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(-node_cga, node_FoR_va)                                    
+                                    
+            # LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+          
+            # mat = ag.multiply_matrices(-node_cga.T, -np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(node_FoR_va)                                    
+                                    
+            # LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+           
+            # mat = ag.multiply_matrices(-np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(node_cga, ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+            # LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+
+            # mat = ag.multiply_matrices(-node_cga.T)
+                                       
+            # vec = ag.multiply_matrices(ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+            # LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+
+            # mat = ag.multiply_matrices(-np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(FoR_cga, FoR_va)                                    
+                                    
+            # LM_C[node_FoR_dof:node_FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+
+            # # term 3-x1 - \frac{\partial}{\partial x_1}(c^Taq_1 + c^Tbq2 + c^Tcq3 + c^Tdq4)
+            # # dc^Tdxaq_1 + c^Tdadxaq_1 + dc^Tdxbq_2 + c^Tdbdxq_2 + dc^Tdxcq_3 + c^Tdcdxq_3 + dc^Tdxdq_4          
+
+            # mat = ag.multiply_matrices(ag.skew(node_Ra).T)
+                                       
+            # vec = ag.multiply_matrices(-node_cga, node_dot_Ra)                                    
+                                    
+            # LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+           
+            # mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T, -np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(node_dot_Ra)                                    
+                                    
+            # LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+           
+            # mat = ag.multiply_matrices(ag.skew(node_Ra).T)
+                                       
+            # vec = ag.multiply_matrices(-node_cga, node_FoR_va)                                    
+                                    
+            # LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+          
+            # mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T, -np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(node_FoR_va)                                    
+                                    
+            # LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+           
+            # mat = ag.multiply_matrices(ag.skew(node_Ra).T)
+                                       
+            # vec = ag.multiply_matrices(node_cga, ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+            # LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+
+            # mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T)
+                                       
+            # vec = ag.multiply_matrices(ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+            # LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+
+            # mat = ag.multiply_matrices(ag.skew(node_Ra).T)
+                                       
+            # vec = ag.multiply_matrices(FoR_cga, FoR_va)                                    
+                                    
+            # LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+
+            # term 4-x1 - \frac{\partial}{\partial x_1}(d^Taq_1 + d^Tbq2 + d^Tcq3 + d^Tdq4) 
+            # d^Tdadxaq_1 + d^Tdbdxq_2 + d^Tdcdxq_3      
+
+            mat = ag.multiply_matrices(FoR_cga.T, -np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_dot_Ra)                                    
+                                    
+            LM_C[FoR_dof:FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+           
+            # mat = ag.multiply_matrices(FoR_cga.T, -np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(node_FoR_va)                                    
+                                    
+            # LM_C[FoR_dof:FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+           
+            # mat = ag.multiply_matrices(FoR_cga.T)
+                                       
+            # vec = ag.multiply_matrices(ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+            # LM_C[FoR_dof:FoR_dof+3, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+
+            # term 1-x2 - \frac{\partial}{\partial x_2}(a^Taq_1 + a^Tbq2 + a^Tcq3 + a^Tdq4) 
+            # a^Tdddxq_4
+
+            mat = ag.multiply_matrices(-node_cga.T)
+                                       
+            vec = ag.multiply_matrices(FoR_va)                                    
+                                    
+            LM_C[node_dof:node_dof+3, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[FoR_body].quat, vec))
+
+            # # term 2-x2 - \frac{\partial}{\partial x_2}(b^Taq_1 + b^Tbq2 + b^Tcq3 + b^Tdq4)
+            # # b^Tdddxq_4
+
+            # mat = ag.multiply_matrices(-node_cga.T)
+                                       
+            # vec = ag.multiply_matrices(FoR_va)                                    
+                                    
+            # LM_C[node_FoR_dof:node_FoR_dof+3, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[FoR_body].quat, vec))
+
+            # # term 3-x2 - \frac{\partial}{\partial x_2}(c^Taq_1 + c^Tbq2 + c^Tcq3 + c^Tdq4)
+            # # c^Tdddxq_4
+
+            # mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T)
+                                       
+            # vec = ag.multiply_matrices(FoR_va)                                    
+                                    
+            # LM_C[node_FoR_dof+3:node_FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[FoR_body].quat, vec))
+
+            # term 4-x2 - \frac{\partial}{\partial x_2}(d^Taq_1 + d^Tbq2 + d^Tcq3 + d^Tdq4) 
+            # dd^Tdxaq_1 + dd^Tdxbq_2 + dd^Tdxcq_3 + dd^Tdxdq_4 + d^Tdddxq_4
+
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(-node_cga, node_dot_Ra)                                    
+                                    
+            LM_C[FoR_dof:FoR_dof+3, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec))
+           
+            # mat = ag.multiply_matrices(np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(-node_cga, node_FoR_va)                                    
+                                    
+            # LM_C[FoR_dof:FoR_dof+3, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec))
+          
+            # mat = ag.multiply_matrices(np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(node_cga, ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+            # LM_C[FoR_dof:FoR_dof+3, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec))
+
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(FoR_cga, FoR_va)                                    
+                                    
+            LM_C[FoR_dof:FoR_dof+3, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec))
+
+            mat = ag.multiply_matrices(FoR_cga.T)
+                                       
+            vec = ag.multiply_matrices(FoR_va)                                    
+                                    
+            LM_C[FoR_dof:FoR_dof+3, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[FoR_body].quat, vec))
+
+
+        # # other LM_K derivatives for a/b/c/d dependencies in Ra
+        #     # term 1-Ra - \frac{\partial}{\partial Ra}(a^Taq_1 + a^Tbq2 + a^Tcq3 + a^Tdq4) 
+        #     # a^Tdcdrq_3
+
+        #     mat = ag.multiply_matrices(-node_cga.T, node_cga)
+                                        
+        #     vec = ag.multiply_matrices(node_FoR_wa)                                    
+                                    
+        #     LM_K[node_dof:node_dof+3, node_dof:node_dof+3] += penaltyFactor*np.dot(mat, ag.der_skewp_v(ag.skew(node_Ra), vec))
+
+        #     # term 2-Ra - \frac{\partial}{\partial Ra}(b^Taq_1 + b^Tbq2 + b^Tcq3 + b^Tdq4)
+        #     # b^Tdcdrq_3
+
+        #     mat = ag.multiply_matrices(-node_cga.T, node_cga)
+                                        
+        #     vec = ag.multiply_matrices(node_FoR_wa)                                    
+                                    
+        #     LM_K[node_FoR_dof:node_FoR_dof+3, node_dof:node_dof+3] += penaltyFactor*np.dot(mat, ag.der_skewp_v(ag.skew(node_Ra), vec))
+
+        #     # term 3-Ra - \frac{\partial}{\partial Ra}(c^Taq_1 + c^Tbq2 + c^Tcq3 + c^Tdq4)
+        #     # dc^Tdraq_1 + dc^Tdrbq_2 + dc^Tdrcq_3 + c^Tdcdrq_3 + dc^Tdrdq_4
+
+        #     mat = ag.multiply_matrices(np.eye(3))
+                                       
+        #     vec = ag.multiply_matrices(node_cga.T, -node_cga, node_dot_Ra)                                    
+                                    
+        #     LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] += penaltyFactor*np.dot(mat, ag.der_skewpT_v(ag.skew(node_Ra), vec))
+           
+        #     mat = ag.multiply_matrices(np.eye(3))
+                                       
+        #     vec = ag.multiply_matrices(node_cga.T, -node_cga, node_FoR_va)                                    
+                                    
+        #     LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] += penaltyFactor*np.dot(mat, ag.der_skewpT_v(ag.skew(node_Ra), vec))
+           
+        #     mat = ag.multiply_matrices(np.eye(3))
+                                       
+        #     vec = ag.multiply_matrices(node_cga.T, node_cga, ag.skew(node_Ra), node_FoR_wa)                                    
+                                    
+        #     LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] += penaltyFactor*np.dot(mat, ag.der_skewpT_v(ag.skew(node_Ra), vec))
+           
+        #     mat = ag.multiply_matrices(ag.skew(node_Ra).T, node_cga.T, node_cga)
+                                        
+        #     vec = ag.multiply_matrices(node_FoR_wa)                                    
+                                    
+        #     LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] += penaltyFactor*np.dot(mat, ag.der_skewp_v(ag.skew(node_Ra), vec))
+
+        #     mat = ag.multiply_matrices(np.eye(3))
+                                       
+        #     vec = ag.multiply_matrices(node_cga.T, FoR_cga, FoR_va)                                    
+                                    
+        #     LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof:node_dof+3] += penaltyFactor*np.dot(mat, ag.der_skewpT_v(ag.skew(node_Ra), vec))
+           
+        #     # term 4-Ra - \frac{\partial}{\partial Ra}(d^Taq_1 + d^Tbq2 + d^Tcq3 + d^Tdq4) 
+        #     # d^Tdcdrq_3
+
+        #     mat = ag.multiply_matrices(FoR_cga.T, node_cga)
+                                        
+        #     vec = ag.multiply_matrices(node_FoR_wa)                                    
+                                    
+        #     LM_K[FoR_dof:FoR_dof+3, node_dof:node_dof+3] += penaltyFactor*np.dot(mat, ag.der_skewp_v(ag.skew(node_Ra), vec))
+
+
+            #  a^T   -node_cga.T
+            #  a     -node_cga
+            #  b^T   -node_cga.T
+            #  b     -node_cga
+            #  c^T   ag.skew(node_Ra).T, node_cga.T
+            #  c     node_cga, ag.skew(node_Ra)
+            #  d^T   FoR_cga.T
+            #  d     FoR_cga
+            #  q1    node_dof:node_dof+3            node_dot_Ra
+            #  q2    node_FoR_dof:node_FoR_dof+3    node_FoR_va
+            #  q3    node_FoR_dof+3:node_FoR_dof+6  node_FoR_wa
+            #  q4    FoR_dof:FoR_dof+3              FoR_va
 
     ieq += 3
     return ieq
@@ -471,7 +1321,7 @@ def rel_rot_vel_node_FoR(MB_tstep, MB_beam, FoR_body, node_body, node_number, no
     ieq += 3
     return ieq
 
-def def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q, indep):
+def def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, rot_axisA2, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q, indep):
     """
     This function generates the stiffness and damping matrices and the independent vector associated to a joint that
     forces the rotation axis of a FoR to be parallel to a certain direction. This direction is defined in the
@@ -481,6 +1331,7 @@ def def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, FoR_body, node_body, no
 
     Args:
         rot_axisB (np.ndarray): Rotation axis with respect to the node B FoR
+        rot_axisA2 (np.ndarray): Rotation axis with respect to the node A2 FoR
         indep (np.ndarray): Number of the equations that are used as independent
         node_number (int): number of the "node" within its own body
         node_body (int): body number of the "node"
@@ -489,9 +1340,7 @@ def def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, FoR_body, node_body, no
         FoR_body (int): body number of the "FoR"
         FoR_dof (int): position of the first degree of freedom associated to the "FoR"
 
-    Notes: this function is missing the contribution of the rotation velocity of the reference node. See ``def_rot_axis_FoR_wrt_node_general``
     """
-    cout.cout_wrap("WARNING: this function is missing the contribution of the rotation velocity of the reference node. See ``def_rot_axis_FoR_wrt_node_general``", 3)
 
     ielem, inode_in_elem = MB_beam[node_body].node_master_elem[node_number]
 
@@ -500,133 +1349,801 @@ def def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, FoR_body, node_body, no
     node_cga = MB_tstep[node_body].cga()
     FoR_cga = MB_tstep[FoR_body].cga()
     FoR_wa = MB_tstep[FoR_body].for_vel[3:6]
-
-    if not indep:
-        aux_Bnh = ag.multiply_matrices(ag.skew(rot_axisB),
-                                  cab.T,
-                                  node_cga.T,
-                                  FoR_cga)
-
-        # indep = None
-        n0 = np.linalg.norm(aux_Bnh[0,:])
-        n1 = np.linalg.norm(aux_Bnh[1,:])
-        n2 = np.linalg.norm(aux_Bnh[2,:])
-        if ((n0 < n1) and (n0 < n2)):
-            indep[:] = [1, 2]
-        elif ((n1 < n0) and (n1 < n2)):
-            indep[:] = [0, 2]
-        elif ((n2 < n0) and (n2 < n1)):
-            indep[:] = [0, 1]
-
-    new_Lambda_dot = np.zeros(3)
-    new_Lambda_dot[indep[0]] = Lambda_dot[ieq]
-    new_Lambda_dot[indep[1]] = Lambda_dot[ieq+1]
-
-    num_LM_eq_specific = 2
-    Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
-    B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
-
-    Bnh[:, FoR_dof+3:FoR_dof+6] = ag.multiply_matrices(ag.skew(rot_axisB),
-                                                       cab.T,
-                                                       node_cga.T,
-                                                       FoR_cga)[indep,:]
-
-    # Constrain angular velocities
-    LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq+num_LM_eq_specific])
-    LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*ag.multiply_matrices(ag.skew(rot_axisB),
-                                                  cab.T,
-                                                  node_cga.T,
-                                                  FoR_cga,
-                                                  FoR_wa)[indep]
-
-    LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
-    LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
+    node_wa = MB_tstep[node_body].for_vel[3:6]
+    psi = MB_tstep[node_body].psi[ielem,inode_in_elem,:]
+    psi_dot = MB_tstep[node_body].psi_dot[ielem,inode_in_elem,:]
+    psi_FoR = MB_tstep[FoR_body].psi[0,0,:]
+    cab2 = ag.crv2rotation(MB_tstep[FoR_body].psi[0,0,:])
 
     if MB_beam[node_body].FoR_movement == 'free':
-        LM_C[FoR_dof+3:FoR_dof+6,node_FoR_dof+6:node_FoR_dof+10] += scalingFactor*np.dot(FoR_cga.T,
-                                                                           ag.der_Cquat_by_v(MB_tstep[node_body].quat,
-                                                                                                  ag.multiply_matrices(cab,
-                                                                                                                    ag.skew(rot_axisB).T,
-                                                                                                                    new_Lambda_dot)))
+        if not indep:
+            aux_Bnh = ag.multiply_matrices(cab.T,
+                                                        node_cga.T,
+                                                        FoR_cga,
+                                                        ag.skew(rot_axisA2)
+                                    )
 
-    LM_C[FoR_dof+3:FoR_dof+6,FoR_dof+6:FoR_dof+10] += scalingFactor*ag.der_CquatT_by_v(MB_tstep[FoR_body].quat,
-                                                                              ag.multiply_matrices(node_cga,
-                                                                                                cab,
-                                                                                                ag.skew(rot_axisB).T,
-                                                                                                new_Lambda_dot))
+            # indep = None
+            n0 = np.linalg.norm(aux_Bnh[0,:])
+            n1 = np.linalg.norm(aux_Bnh[1,:])
+            n2 = np.linalg.norm(aux_Bnh[2,:])
+            if ((n0 < n1) and (n0 < n2)):
+                indep[:] = [1, 2]
+            elif ((n1 < n0) and (n1 < n2)):
+                indep[:] = [0, 2]
+            elif ((n2 < n0) and (n2 < n1)):
+                indep[:] = [0, 1]
 
-    LM_K[FoR_dof+3:FoR_dof+6,node_dof+3:node_dof+6] += scalingFactor*ag.multiply_matrices(FoR_cga.T,
-                                                                         node_cga,
-                                                                         cab,
-                                                                         ag.skew(rot_axisB).T,
-                                                                         new_Lambda_dot)
+        new_Lambda_dot = np.zeros(3)
+        new_Lambda_dot[indep[0]] = Lambda_dot[ieq]
+        new_Lambda_dot[indep[1]] = Lambda_dot[ieq+1]
 
+        num_LM_eq_specific = 2
+        Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
+        B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
+
+        Bnh[:, FoR_dof+3:FoR_dof+6] -= ag.multiply_matrices(cab.T,
+                                                        node_cga.T,
+                                                        FoR_cga,
+                                                        ag.skew(rot_axisA2))[indep,:]
+        Bnh[:, node_dof+3:node_dof+6] += ag.multiply_matrices(ag.skew(rot_axisB), ag.crv2tan(psi))[indep,:]
+        Bnh[:, node_FoR_dof+3:node_FoR_dof+6] += ag.multiply_matrices(ag.skew(rot_axisB), cab.T)[indep,:]
+
+        # print(Bnh)
+
+        # Constrain angular velocities
+        LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq+num_LM_eq_specific])
+        LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] -= scalingFactor*ag.multiply_matrices(cab.T,
+                                                        node_cga.T,
+                                                        FoR_cga,
+                                                        ag.skew(rot_axisA2),
+                                                        FoR_wa)[indep]
+        LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*ag.multiply_matrices(ag.skew(rot_axisB), ag.crv2tan(psi), psi_dot)[indep]
+        LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*ag.multiply_matrices(ag.skew(rot_axisB), cab.T, MB_tstep[node_body].for_vel[3:6])[indep]
+
+        # # for initial omega A2
+        # cab2 = ag.crv2rotation(MB_tstep[FoR_body].psi[ielem,inode_in_elem,:])
+        # LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] -= scalingFactor*ag.multiply_matrices(ag.skew(rot_axisB), cab2.T, #omega input#)
+
+        LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
+        LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
+
+        # term 3 x1
+        LM_C[FoR_dof+3:FoR_dof+6,node_FoR_dof+6:node_FoR_dof+10] += scalingFactor*ag.multiply_matrices(ag.skew(rot_axisA2),FoR_cga.T,
+                                                                                            # q1 -> cGA https://ic-sharpy.readthedocs.io/en/master/includes/utils/algebra/quat2rotation.html#module-sharpy.utils.algebra.quat2rotation
+                                                                            ag.der_Cquat_by_v(MB_tstep[node_body].quat,
+                                                                                                    ag.multiply_matrices(cab,
+                                                                                                                        new_Lambda_dot)))
+
+        # term 3 x2
+        LM_C[FoR_dof+3:FoR_dof+6,FoR_dof+6:FoR_dof+10] += scalingFactor*ag.multiply_matrices(ag.skew(rot_axisA2),
+                                                                            ag.der_CquatT_by_v(MB_tstep[FoR_body].quat,
+                                                                                ag.multiply_matrices(
+                                                                                                    node_cga,
+                                                                                                    cab,
+                                                                                                    new_Lambda_dot)))
+
+        # term 3 K(psi)
+        LM_K[FoR_dof+3:FoR_dof+6,node_dof+3:node_dof+6] += scalingFactor*ag.multiply_matrices(ag.skew(rot_axisA2),
+                                                                                            FoR_cga.T,
+                                                                                            node_cga,
+                                                                            ag.der_CcrvT_by_v(psi, ag.multiply_matrices(
+                                                                            new_Lambda_dot)))
+        # term 2
+        # print("here")
+        # print(ag.der_Tan_by_xv(psi, ag.multiply_matrices(ag.skew(rot_axisB),new_Lambda_dot)))
+
+        # print(ag.der_TanT_by_xv(-psi, ag.multiply_matrices(ag.skew(rot_axisB),new_Lambda_dot)))
+        # print(ag.der_TanT_by_xv(psi, ag.multiply_matrices(ag.skew(rot_axisB),new_Lambda_dot)))
+        # # import pdb
+        # pdb.set_trace()
+        LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] -= scalingFactor*ag.multiply_matrices(ag.der_TanT_by_xv(psi, ag.multiply_matrices(ag.skew(rot_axisB),new_Lambda_dot)))
+        # print("here")
+        # print(ag.der_Tan_by_xv(psi, ag.multiply_matrices(new_Lambda_dot)))
+        # print(psi)
+
+
+        # term 1
+        LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] -= scalingFactor*ag.multiply_matrices(ag.der_Ccrv_by_v(psi, ag.multiply_matrices(ag.skew(rot_axisB),new_Lambda_dot)))
+    else:
+        # import pdb
+        # pdb.set_trace()
+        if not indep:
+            aux_Bnh = ag.multiply_matrices(cab.T,
+                                                        node_cga.T,
+                                                        FoR_cga,
+                                                        ag.skew(rot_axisA2)
+                                    )
+
+            # indep = None
+            n0 = np.linalg.norm(aux_Bnh[0,:])
+            n1 = np.linalg.norm(aux_Bnh[1,:])
+            n2 = np.linalg.norm(aux_Bnh[2,:])
+            if ((n0 < n1) and (n0 < n2)):
+                indep[:] = [1, 2]
+            elif ((n1 < n0) and (n1 < n2)):
+                indep[:] = [0, 2]
+            elif ((n2 < n0) and (n2 < n1)):
+                indep[:] = [0, 1]
+
+        new_Lambda_dot = np.zeros(3)
+        new_Lambda_dot[indep[0]] = Lambda_dot[ieq]
+        new_Lambda_dot[indep[1]] = Lambda_dot[ieq+1]
+
+        num_LM_eq_specific = 2
+        Bnh = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
+        B = np.zeros((num_LM_eq_specific, sys_size), dtype=ct.c_double, order = 'F')
+
+        Bnh[:, FoR_dof+3:FoR_dof+6] -= ag.multiply_matrices(cab.T,
+                                                        node_cga.T,
+                                                        FoR_cga,
+                                                        ag.skew(rot_axisA2))[indep,:]
+        Bnh[:, node_dof+3:node_dof+6] += ag.multiply_matrices(ag.skew(rot_axisB), ag.crv2tan(psi))[indep,:]
+        # Bnh[:, node_FoR_dof+3:node_FoR_dof+6] += ag.multiply_matrices(ag.skew(rot_axisB), cab.T)[indep,:]
+
+        # print(Bnh)
+
+        # Constrain angular velocities
+        LM_Q[:sys_size] += scalingFactor*np.dot(np.transpose(Bnh), Lambda_dot[ieq:ieq+num_LM_eq_specific])
+        LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] -= scalingFactor*ag.multiply_matrices(cab.T,
+                                                        node_cga.T,
+                                                        FoR_cga,
+                                                        ag.skew(rot_axisA2),
+                                                        FoR_wa)[indep]
+        LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*ag.multiply_matrices(ag.skew(rot_axisB), ag.crv2tan(psi), psi_dot)[indep]
+        # LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*ag.multiply_matrices(ag.skew(rot_axisB), cab.T, MB_tstep[node_body].for_vel[3:6])[indep]
+
+        # # for initial omega A2
+        # cab2 = ag.crv2rotation(MB_tstep[FoR_body].psi[ielem,inode_in_elem,:])
+        # LM_Q[sys_size+ieq:sys_size+ieq+num_LM_eq_specific] -= scalingFactor*ag.multiply_matrices(ag.skew(rot_axisB), cab2.T, #omega input#)
+
+        LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += scalingFactor*Bnh
+        LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += scalingFactor*np.transpose(Bnh)
+
+        # # term 3 x1
+        # LM_C[FoR_dof+3:FoR_dof+6,node_FoR_dof+6:node_FoR_dof+10] += scalingFactor*ag.multiply_matrices(ag.skew(rot_axisA2),FoR_cga.T,
+        #                                                                                     # q1 -> cGA https://ic-sharpy.readthedocs.io/en/master/includes/utils/algebra/quat2rotation.html#module-sharpy.utils.algebra.quat2rotation
+        #                                                                     ag.der_Cquat_by_v(MB_tstep[node_body].quat,
+        #                                                                                             ag.multiply_matrices(cab,
+        #                                                                                                                 new_Lambda_dot)))
+
+        # term 3 x2
+        LM_C[FoR_dof+3:FoR_dof+6,FoR_dof+6:FoR_dof+10] += scalingFactor*ag.multiply_matrices(ag.skew(rot_axisA2),
+                                                                            ag.der_CquatT_by_v(MB_tstep[FoR_body].quat,
+                                                                                ag.multiply_matrices(
+                                                                                                    node_cga,
+                                                                                                    cab,
+                                                                                                    new_Lambda_dot)))
+
+        # term 3 K(psi)
+        LM_K[FoR_dof+3:FoR_dof+6,node_dof+3:node_dof+6] += scalingFactor*ag.multiply_matrices(ag.skew(rot_axisA2),
+                                                                                            FoR_cga.T,
+                                                                                            node_cga,
+                                                                            ag.der_CcrvT_by_v(psi, ag.multiply_matrices(
+                                                                            new_Lambda_dot)))
+        # term 2
+        LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] -= scalingFactor*ag.multiply_matrices(ag.der_TanT_by_xv(psi, ag.multiply_matrices(ag.skew(rot_axisB),new_Lambda_dot)))
+        # print("here")
+        # print(ag.der_Tan_by_xv(psi, ag.multiply_matrices(new_Lambda_dot)))
+        # print(psi)
+
+
+        # term 1
+        # LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] -= scalingFactor*ag.multiply_matrices(ag.der_Ccrv_by_v(psi, ag.multiply_matrices(ag.skew(rot_axisB),new_Lambda_dot)))        
+
+    # TODO: penalty factor formulation to be verified
     if penaltyFactor:
-        q = np.zeros((sys_size,))
-        q[FoR_dof+3:FoR_dof+6] = MB_tstep[FoR_body].for_vel[3:6]
-
-        LM_Q[:sys_size] += penaltyFactor*np.dot(Bnh.T, np.dot(Bnh, q))
-
-        LM_C[:sys_size, :sys_size] += penaltyFactor*np.dot(Bnh.T, Bnh)
-
-        sq_rot_axisB = np.dot(ag.skew(rot_axisB).T, ag.skew(rot_axisB))
-
-        # Derivatives with the quaternion of the FoR
-        vec = ag.multiply_matrices(node_cga,
-                                   cab,
-                                   sq_rot_axisB,
-                                   cab.T,
-                                   node_cga.T,
-                                   FoR_cga,
-                                   FoR_wa)
-        LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec)
-
-        mat = ag.multiply_matrices(FoR_cga.T,
-                                    node_cga,
-                                    cab,
-                                    sq_rot_axisB,
-                                    cab.T,
-                                    node_cga.T)
-        LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[FoR_body].quat, FoR_wa))
-
         if MB_beam[node_body].FoR_movement == 'free':
-            # Derivatives with the quaternion of the FoR of the node
-            vec = ag.multiply_matrices(cab,
-                                        sq_rot_axisB,
-                                        cab.T,
-                                        node_cga.T,
-                                        FoR_cga,
-                                        FoR_wa)
-            LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(FoR_cga.T,
-                                                                                          ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
-            mat = ag.multiply_matrices(FoR_cga.T,
-                                        node_cga,
-                                        cab,
-                                        sq_rot_axisB,
-                                        cab.T)
-            vec = np.dot(FoR_cga, FoR_wa)
+            q = np.zeros((sys_size,))
+            q[FoR_dof+3:FoR_dof+6] = FoR_wa
+            q[node_dof+3:node_dof+6] = psi_dot
+            q[node_FoR_dof+3:node_FoR_dof+6] = node_wa
+
+            LM_Q[:sys_size] += penaltyFactor*np.dot(Bnh.T, np.dot(Bnh, q))
+
+            LM_C[:sys_size, :sys_size] += penaltyFactor*np.dot(Bnh.T, Bnh)
+
+        # # 9 canonical terms for (abc)^T(abc)
+        #     # term 2-2 - \frac{\partial}{\partial q_2}(a^2q_2 + abq_5 + acq_7)
+        #     # a^2q2 dq2 -> a^Ta
+        #     mat = ag.multiply_matrices(cab, ag.skew(rot_axisB).T, ag.skew(rot_axisB), cab.T)
+                                       
+        #     # vec = ag.multiply_matrices()                                    
+                                    
+        #     LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+3:node_FoR_dof+6] += penaltyFactor*mat
+
+        #     # term 2-5 - \frac{\partial}{\partial q_5}(a^2q_2 + abq_5 + acq_7)
+        #     # a^Tb
+        #     mat = ag.multiply_matrices(cab, ag.skew(rot_axisB).T, ag.skew(rot_axisB), ag.crv2tan(psi))
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*mat
+
+        #     # term 2-7 - \frac{\partial}{\partial q_7}(a^2q_2 + abq_5 + acq_7)
+        #     # a^Tc
+        #     mat = ag.multiply_matrices(cab, ag.skew(rot_axisB).T, -cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2))
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_FoR_dof+3:node_FoR_dof+6, FoR_dof+3:FoR_dof+6] += penaltyFactor*mat
+
+        #     # term 5-2 - \frac{\partial}{\partial q_2}(ba q_2 + b^2 q_5 + bc q_7)
+        #     # b^Ta
+        #     mat = ag.multiply_matrices(ag.crv2tan(psi).T, ag.skew(rot_axisB).T, ag.skew(rot_axisB), cab.T)
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_dof+3:node_dof+6, node_FoR_dof+3:node_FoR_dof+6] += penaltyFactor*mat    
+
+        #     # term 5-5 - \frac{\partial}{\partial q_5}(ba q_2 + b^2 q_5 + bc q_7)
+        #     # b^Tb
+        #     mat = ag.multiply_matrices(ag.crv2tan(psi).T, ag.skew(rot_axisB).T, ag.skew(rot_axisB), ag.crv2tan(psi))
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += penaltyFactor*mat    
+
+        #     # term 5-7 - \frac{\partial}{\partial q_7}(ba q_2 + b^2 q_5 + bc q_7)
+        #     # b^Tc
+        #     mat = ag.multiply_matrices(ag.crv2tan(psi).T, ag.skew(rot_axisB).T, -cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2))
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_dof+3:node_dof+6, FoR_dof+3:FoR_dof+6] += penaltyFactor*mat    
+
+        #     # term 7-2 - \frac{\partial}{\partial q_2}(ca q_2 + cb q_5 + c^2 q_7)
+        #     # c^Ta
+
+        #     mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab, ag.skew(rot_axisB), cab.T)
+                                       
+        #     # vec = ag.multiply_matrices()                                    
+                                    
+        #     LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+3:node_FoR_dof+6] += penaltyFactor*mat
+
+        #     # term 7-5 - \frac{\partial}{\partial q_5}(ca q_2 + cb q_5 + c^2 q_7)
+        #     # c^Tb
+
+        #     mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab, ag.skew(rot_axisB), ag.crv2tan(psi))
+                                       
+        #     # vec = ag.multiply_matrices()                                    
+                                    
+        #     LM_C[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*mat
+
+        #     # term 7-7 - \frac{\partial}{\partial q_7}(ca q_2 + cb q_5 + c^2 q_7)
+        #     # c^Tc
+
+        #     mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab, -cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2))
+                                       
+        #     # vec = ag.multiply_matrices()                                    
+                                    
+        #     LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += penaltyFactor*mat
+        
+        # # other LM_C derivatives for c dependencies in x1 and x2
+        #     # term 2-x1 - \frac{\partial}{\partial x1}(a^2q_2 + abq_5 + acq_7)
+        #     # a^Tdcdx1q_7
+
+        #     mat = ag.multiply_matrices(cab, ag.skew(rot_axisB).T, -cab.T)
+                                       
+        #     vec = ag.multiply_matrices(FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+        #     LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+
+        #     # term 2-x2 - \frac{\partial}{\partial x2}(a^2q_2 + abq_5 + acq_7)
+        #     # a^Tdcdx2q_7
+
+        #     mat = ag.multiply_matrices(cab, ag.skew(rot_axisB).T, -cab.T, node_cga.T)
+                                       
+        #     vec = ag.multiply_matrices(ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+        #     LM_C[node_FoR_dof+3:node_FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[FoR_body].quat, vec))
+
+        #     # term 5-x1 - \frac{\partial}{\partial x1}(ba q_2 + b^2 q_5 + bc q_7)
+        #     # b^Tdcdx1q_7
+
+        #     mat = ag.multiply_matrices(ag.crv2tan(psi).T, ag.skew(rot_axisB).T, -cab.T)
+                                       
+        #     vec = ag.multiply_matrices(FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+        #     LM_C[node_dof+3:node_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+
+        #     # term 5-x2 - \frac{\partial}{\partial x2}(ba q_2 + b^2 q_5 + bc q_7)
+        #     # b^Tdcdx2q_7
+
+        #     mat = ag.multiply_matrices(ag.crv2tan(psi).T, ag.skew(rot_axisB).T, -cab.T, node_cga.T)
+                                       
+        #     vec = ag.multiply_matrices(ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+        #     LM_C[node_dof+3:node_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[FoR_body].quat, vec))
+
+        #     # term 7-x1 - \frac{\partial}{\partial x1}(ca q_2 + cb q_5 + c^2 q_7)
+        #     # dc^Tdx1aq_2 + dc^Tdx1bq_5 + dc^Tdx1cq_7 + c^Tdcdx1q_7
+
+        #     mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T)
+                                       
+        #     vec = ag.multiply_matrices(cab, ag.skew(rot_axisB), cab.T, node_wa)                                    
+                                    
+        #     LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+
+        #     mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T)
+                                       
+        #     vec = ag.multiply_matrices(cab, ag.skew(rot_axisB), ag.crv2tan(psi), psi_dot)                                    
+                                    
+        #     LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+
+        #     mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T)
+                                       
+        #     vec = ag.multiply_matrices(cab, -cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+        #     LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+
+        #     mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab, -cab.T)
+                                       
+        #     vec = ag.multiply_matrices(FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+        #     LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+
+        #     # term 7-x2 - \frac{\partial}{\partial x2}(ca q_2 + cb q_5 + c^2 q_7)
+        #     # dc^Tdx2aq_2 + dc^Tdx2bq_5 + dc^Tdx2cq_7 + c^Tdcdx2q_7
+
+        #     mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T)
+                                       
+        #     vec = ag.multiply_matrices(node_cga, cab, ag.skew(rot_axisB), cab.T, node_wa)                                    
+                                    
+        #     LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec))
+
+        #     mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T)
+                                       
+        #     vec = ag.multiply_matrices(node_cga, cab, ag.skew(rot_axisB), ag.crv2tan(psi), psi_dot)                                    
+                                    
+        #     LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec))
+
+        #     mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T)
+                                       
+        #     vec = ag.multiply_matrices(node_cga, cab, -cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+        #     LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec))
+
+        #     mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab, -cab.T, node_cga.T)
+                                       
+        #     vec = ag.multiply_matrices(ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+        #     LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[FoR_body].quat, vec))
+
+
+        # other LM_K derivatives for a/b/c dependencies in C(psi) and T(psi)
+            # term 2-psi - \frac{\partial}{\partial psi}(a^2q_2 + abq_5 + acq_7)
+            # da^Tdpsiaq_2 + a^Tdadpsiq_2 + da^Tdpsibq_5 + a^Tdbdpsiq_5 + da^Tdpsicq_7 + a^Tdcdpsiq_7
+
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(ag.skew(rot_axisB).T, ag.skew(rot_axisB), cab.T, node_wa)                                    
+                                    
+            LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Ccrv_by_v(psi, vec))
+
+            mat = ag.multiply_matrices(cab, ag.skew(rot_axisB).T, ag.skew(rot_axisB))
+                                       
+            vec = ag.multiply_matrices(node_wa)                                    
+                                    
+            LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_CcrvT_by_v(psi, vec))
+
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(ag.skew(rot_axisB).T, ag.skew(rot_axisB), ag.crv2tan(psi), psi_dot)                                    
+                                    
+            LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Ccrv_by_v(psi, vec))
+
+            mat = ag.multiply_matrices(cab, ag.skew(rot_axisB).T, ag.skew(rot_axisB))
+                                       
+            vec = ag.multiply_matrices(psi_dot)                                    
+                                    
+            LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Tan_by_xv(psi, vec))
+
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(ag.skew(rot_axisB).T, -cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Ccrv_by_v(psi, vec))
+
+            mat = ag.multiply_matrices(cab, ag.skew(rot_axisB).T, -np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_cga.T, FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_CcrvT_by_v(psi, vec))
+
+            # term 5-psi - \frac{\partial}{\partial psi}(ba q_2 + b^2 q_5 + bc q_7)
+            # db^Tdpsiaq_2 + b^Tdadpsiq_2 + db^Tdpsibq_5 + b^Tdbdpsiq_5 + db^Tdpsicq_7 + b^Tdcdpsiq_7
+
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(ag.skew(rot_axisB).T, ag.skew(rot_axisB), cab.T, node_wa)                                    
+                                    
+            LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_TanT_by_xv(psi, vec))
+
+            mat = ag.multiply_matrices(ag.crv2tan(psi).T, ag.skew(rot_axisB).T, ag.skew(rot_axisB))
+                                       
+            vec = ag.multiply_matrices(node_wa)                                    
+                                    
+            LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_CcrvT_by_v(psi, vec))
+
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(ag.skew(rot_axisB).T, ag.skew(rot_axisB), ag.crv2tan(psi), psi_dot)                                    
+                                    
+            LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_TanT_by_xv(psi, vec))
+
+            mat = ag.multiply_matrices(ag.crv2tan(psi).T, ag.skew(rot_axisB).T, ag.skew(rot_axisB))
+                                       
+            vec = ag.multiply_matrices(psi_dot)                                    
+                                    
+            LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Tan_by_xv(psi, vec))
+
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(ag.skew(rot_axisB).T, -cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_TanT_by_xv(psi, vec))
+
+            mat = ag.multiply_matrices(ag.crv2tan(psi).T, ag.skew(rot_axisB).T, -np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_cga.T, FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_CcrvT_by_v(psi, vec))
+
+            # term 7-psi - \frac{\partial}{\partial psi}(ca q_2 + cb q_5 + c^2 q_7)
+            # dc^Tdpsiaq_2 + c^Tdadpsiq_2 + dc^Tdpsibq_5 + c^Tdbdpsiq_5 + dc^Tdpsicq_7 + c^Tdcdpsiq_7
+
+            mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga)
+                                       
+            vec = ag.multiply_matrices(ag.skew(rot_axisB), cab.T, node_wa)                                    
+                                    
+            LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Ccrv_by_v(psi, vec))
+
+            mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab, ag.skew(rot_axisB))
+                                       
+            vec = ag.multiply_matrices(node_wa)                                    
+                                    
+            LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_CcrvT_by_v(psi, vec))
+
+            mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga)
+                                       
+            vec = ag.multiply_matrices(ag.skew(rot_axisB), ag.crv2tan(psi), psi_dot)                                    
+                                    
+            LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Ccrv_by_v(psi, vec))
+
+            mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab, ag.skew(rot_axisB))
+                                       
+            vec = ag.multiply_matrices(psi_dot)                                    
+                                    
+            LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Tan_by_xv(psi, vec))
+
+            mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga)
+                                       
+            vec = ag.multiply_matrices(-cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Ccrv_by_v(psi, vec))
+
+            mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab, -np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_cga.T, FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_CcrvT_by_v(psi, vec))
+
+            #  a^T   cab, ag.skew(rot_axisB).T
+            #  a     ag.skew(rot_axisB), cab.T
+            #  b^T   ag.crv2tan(psi).T, ag.skew(rot_axisB).T
+            #  b     ag.skew(rot_axisB), ag.crv2tan(psi)
+            #  c^T   -ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab
+            #  c     -cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2)
+
+        else:
+            # print("I'm here")
+            q = np.zeros((sys_size,))
+            q[FoR_dof+3:FoR_dof+6] = MB_tstep[FoR_body].for_vel[3:6]
+            q[node_dof+3:node_dof+6] = psi_dot
+            # q[node_FoR_dof+3:node_FoR_dof+6] = node_wa
+
+            LM_Q[:sys_size] += penaltyFactor*np.dot(Bnh.T, np.dot(Bnh, q))
+
+            LM_C[:sys_size, :sys_size] += penaltyFactor*np.dot(Bnh.T, Bnh)
+
+        # # 9 canonical terms for (abc)^T(abc)
+        #     # # term 2-2 - \frac{\partial}{\partial q_2}(a^2q_2 + abq_5 + acq_7)
+        #     # # a^2q2 dq2 -> a^Ta
+        #     # mat = ag.multiply_matrices(cab, ag.skew(rot_axisB).T, ag.skew(rot_axisB), cab.T)
+                                       
+        #     # # vec = ag.multiply_matrices()                                    
+                                    
+        #     # LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+3:node_FoR_dof+6] += penaltyFactor*mat
+
+        #     # # term 2-5 - \frac{\partial}{\partial q_5}(a^2q_2 + abq_5 + acq_7)
+        #     # # a^Tb
+        #     # mat = ag.multiply_matrices(cab, ag.skew(rot_axisB).T, ag.skew(rot_axisB), ag.crv2tan(psi))
+
+        #     # # vec = ag.multiply_matrices()                                    
+
+        #     # LM_C[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*mat
+
+        #     # # term 2-7 - \frac{\partial}{\partial q_7}(a^2q_2 + abq_5 + acq_7)
+        #     # # a^Tc
+        #     # mat = ag.multiply_matrices(cab, ag.skew(rot_axisB).T, -cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2))
+
+        #     # # vec = ag.multiply_matrices()                                    
+
+        #     # LM_C[node_FoR_dof+3:node_FoR_dof+6, FoR_dof+3:FoR_dof+6] += penaltyFactor*mat
+
+        #     # # term 5-2 - \frac{\partial}{\partial q_2}(ba q_2 + b^2 q_5 + bc q_7)
+        #     # # b^Ta
+        #     # mat = ag.multiply_matrices(ag.crv2tan(psi).T, ag.skew(rot_axisB).T, ag.skew(rot_axisB), cab.T)
+
+        #     # # vec = ag.multiply_matrices()                                    
+
+        #     # LM_C[node_dof+3:node_dof+6, node_FoR_dof+3:node_FoR_dof+6] += penaltyFactor*mat    
+
+        #     # term 5-5 - \frac{\partial}{\partial q_5}(b^2 q_5 + bc q_7)
+        #     # b^Tb
+        #     mat = ag.multiply_matrices(ag.crv2tan(psi).T, ag.skew(rot_axisB).T, ag.skew(rot_axisB), ag.crv2tan(psi))
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += penaltyFactor*mat    
+
+        #     # term 5-7 - \frac{\partial}{\partial q_7}(b^2 q_5 + bc q_7)
+        #     # b^Tc
+        #     mat = ag.multiply_matrices(ag.crv2tan(psi).T, ag.skew(rot_axisB).T, -cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2))
+
+        #     # vec = ag.multiply_matrices()                                    
+
+        #     LM_C[node_dof+3:node_dof+6, FoR_dof+3:FoR_dof+6] += penaltyFactor*mat    
+
+        #     # # term 7-2 - \frac{\partial}{\partial q_2}(ca q_2 + cb q_5 + c^2 q_7)
+        #     # # c^Ta
+
+        #     # mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab, ag.skew(rot_axisB), cab.T)
+                                       
+        #     # # vec = ag.multiply_matrices()                                    
+                                    
+        #     # LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+3:node_FoR_dof+6] += penaltyFactor*mat
+
+        #     # term 7-5 - \frac{\partial}{\partial q_5}(cb q_5 + c^2 q_7)
+        #     # c^Tb
+
+        #     mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab, ag.skew(rot_axisB), ag.crv2tan(psi))
+                                       
+        #     # vec = ag.multiply_matrices()                                    
+                                    
+        #     LM_C[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*mat
+
+        #     # term 7-7 - \frac{\partial}{\partial q_7}(cb q_5 + c^2 q_7)
+        #     # c^Tc
+
+        #     mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab, -cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2))
+                                       
+        #     # vec = ag.multiply_matrices()                                    
+                                    
+        #     LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += penaltyFactor*mat
+        
+        # other LM_C derivatives for c dependencies in x1 and x2
+            # # term 2-x1 - \frac{\partial}{\partial x1}(a^2q_2 + abq_5 + acq_7)
+            # # a^Tdcdx1q_7
+
+            # mat = ag.multiply_matrices(cab, ag.skew(rot_axisB).T, -cab.T)
+                                       
+            # vec = ag.multiply_matrices(FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            # LM_C[node_FoR_dof+3:node_FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+
+            # # term 2-x2 - \frac{\partial}{\partial x2}(a^2q_2 + abq_5 + acq_7)
+            # # a^Tdcdx2q_7
+
+            # mat = ag.multiply_matrices(cab, ag.skew(rot_axisB).T, -cab.T, node_cga.T)
+                                       
+            # vec = ag.multiply_matrices(ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            # LM_C[node_FoR_dof+3:node_FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[FoR_body].quat, vec))
+
+            # term 5-x1 - \frac{\partial}{\partial x1}(b^2 q_5 + bc q_7)
+            # b^Tdcdx1q_7
+
+            mat = ag.multiply_matrices(ag.crv2tan(psi).T, ag.skew(rot_axisB).T, -cab.T)
+                                       
+            vec = ag.multiply_matrices(FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            LM_C[node_dof+3:node_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
+
+            # term 5-x2 - \frac{\partial}{\partial x2}(b^2 q_5 + bc q_7)
+            # b^Tdcdx2q_7
+
+            mat = ag.multiply_matrices(ag.crv2tan(psi).T, ag.skew(rot_axisB).T, -cab.T, node_cga.T)
+                                       
+            vec = ag.multiply_matrices(ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            LM_C[node_dof+3:node_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[FoR_body].quat, vec))
+
+            # term 7-x1 - \frac{\partial}{\partial x1}(cb q_5 + c^2 q_7)
+            # dc^Tdx1aq_2 -> 0!!! + dc^Tdx1bq_5 + dc^Tdx1cq_7 + c^Tdcdx1q_7
+
+            # mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T)
+                                       
+            # vec = ag.multiply_matrices(cab, ag.skew(rot_axisB), cab.T, node_wa)                                    
+                                    
+            # LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+
+            mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T)
+                                       
+            vec = ag.multiply_matrices(cab, ag.skew(rot_axisB), ag.crv2tan(psi), psi_dot)                                    
+                                    
+            LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+
+            mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T)
+                                       
+            vec = ag.multiply_matrices(cab, -cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[node_body].quat, vec))
+
+            mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab, -cab.T)
+                                       
+            vec = ag.multiply_matrices(FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
             LM_C[FoR_dof+3:FoR_dof+6, node_FoR_dof+6:node_FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[node_body].quat, vec))
 
-        # Derivatives with the CRV
-        mat = np.dot(FoR_cga.T, node_cga)
-        vec = ag.multiply_matrices(sq_rot_axisB,
-                                    cab.T,
-                                    node_cga.T,
-                                    FoR_cga,
-                                    FoR_wa)
-        LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Ccrv_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:], vec))
+            # term 7-x2 - \frac{\partial}{\partial x2}(cb q_5 + c^2 q_7)
+            # dc^Tdx2aq_2 -> 0!!! + dc^Tdx2bq_5 + dc^Tdx2cq_7 + c^Tdcdx2q_7
 
-        mat = ag.multiply_matrices(FoR_cga.T,
-                                    node_cga,
-                                    cab,
-                                    sq_rot_axisB)
-        vec = ag.multiply_matrices(node_cga.T,
-                                    FoR_cga,
-                                    FoR_wa)
-        LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_CcrvT_by_v(MB_tstep[node_body].psi[ielem,inode_in_elem,:], vec))
+            # mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T)
+                                       
+            # vec = ag.multiply_matrices(node_cga, cab, ag.skew(rot_axisB), cab.T, node_wa)                                    
+                                    
+            # LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec))
+
+            mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T)
+                                       
+            vec = ag.multiply_matrices(node_cga, cab, ag.skew(rot_axisB), ag.crv2tan(psi), psi_dot)                                    
+                                    
+            LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec))
+
+            mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T)
+                                       
+            vec = ag.multiply_matrices(node_cga, cab, -cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_CquatT_by_v(MB_tstep[FoR_body].quat, vec))
+
+            mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab, -cab.T, node_cga.T)
+                                       
+            vec = ag.multiply_matrices(ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+6:FoR_dof+10] += penaltyFactor*np.dot(mat, ag.der_Cquat_by_v(MB_tstep[FoR_body].quat, vec))
+
+
+        # other LM_K derivatives for a/b/c dependencies in C(psi) and T(psi)
+            # # term 2-psi - \frac{\partial}{\partial psi}(a^2q_2 + abq_5 + acq_7)
+            # # da^Tdpsiaq_2 + a^Tdadpsiq_2 + da^Tdpsibq_5 + a^Tdbdpsiq_5 + da^Tdpsicq_7 + a^Tdcdpsiq_7
+
+            # # mat = ag.multiply_matrices(np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(ag.skew(rot_axisB).T, ag.skew(rot_axisB), cab.T, node_wa)                                    
+                                    
+            # LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Ccrv_by_v(psi, vec))
+
+            # mat = ag.multiply_matrices(cab, ag.skew(rot_axisB).T, ag.skew(rot_axisB))
+                                       
+            # vec = ag.multiply_matrices(node_wa)                                    
+                                    
+            # LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_CcrvT_by_v(psi, vec))
+
+            # # mat = ag.multiply_matrices(np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(ag.skew(rot_axisB).T, ag.skew(rot_axisB), ag.crv2tan(psi), psi_dot)                                    
+                                    
+            # LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Ccrv_by_v(psi, vec))
+
+            # mat = ag.multiply_matrices(cab, ag.skew(rot_axisB).T, ag.skew(rot_axisB))
+                                       
+            # vec = ag.multiply_matrices(psi_dot)                                    
+                                    
+            # LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Tan_by_xv(psi, vec))
+
+            # # mat = ag.multiply_matrices(np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(ag.skew(rot_axisB).T, -cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            # LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Ccrv_by_v(psi, vec))
+
+            # mat = ag.multiply_matrices(cab, ag.skew(rot_axisB).T, -np.eye(3))
+                                       
+            # vec = ag.multiply_matrices(node_cga.T, FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            # LM_K[node_FoR_dof+3:node_FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_CcrvT_by_v(psi, vec))
+
+            # term 5-psi - \frac{\partial}{\partial psi}(b^2 q_5 + bc q_7)
+            # db^Tdpsiaq_2 -> 0!!! + b^Tdadpsiq_2 -> 0!!! + db^Tdpsibq_5 + b^Tdbdpsiq_5 + db^Tdpsicq_7 + b^Tdcdpsiq_7
+
+            # # mat = ag.multiply_matrices(np.eye(3))
+                                     
+            # vec = ag.multiply_matrices(ag.skew(rot_axisB).T, ag.skew(rot_axisB), cab.T, node_wa)                                    
+                                    
+            # LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_TanT_by_xv(psi, vec))
+
+            # mat = ag.multiply_matrices(ag.crv2tan(psi).T, ag.skew(rot_axisB).T, ag.skew(rot_axisB))
+                                       
+            # vec = ag.multiply_matrices(node_wa)                                    
+                                    
+            # LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_CcrvT_by_v(psi, vec))
+
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(ag.skew(rot_axisB).T, ag.skew(rot_axisB), ag.crv2tan(psi), psi_dot)                                    
+                                    
+            LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_TanT_by_xv(psi, vec))
+
+            mat = ag.multiply_matrices(ag.crv2tan(psi).T, ag.skew(rot_axisB).T, ag.skew(rot_axisB))
+                                       
+            vec = ag.multiply_matrices(psi_dot)                                    
+                                    
+            LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Tan_by_xv(psi, vec))
+
+            mat = ag.multiply_matrices(np.eye(3))
+                                       
+            vec = ag.multiply_matrices(ag.skew(rot_axisB).T, -cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_TanT_by_xv(psi, vec))
+
+            mat = ag.multiply_matrices(ag.crv2tan(psi).T, ag.skew(rot_axisB).T, -np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_cga.T, FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            LM_K[node_dof+3:node_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_CcrvT_by_v(psi, vec))
+
+            # term 7-psi - \frac{\partial}{\partial psi}(cb q_5 + c^2 q_7)
+            # dc^Tdpsiaq_2 -> 0!!! + c^Tdadpsiq_2 -> 0!!! + dc^Tdpsibq_5 + c^Tdbdpsiq_5 + dc^Tdpsicq_7 + c^Tdcdpsiq_7
+
+            # mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga)
+                                       
+            # vec = ag.multiply_matrices(ag.skew(rot_axisB), cab.T, node_wa)                                    
+                                    
+            # LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Ccrv_by_v(psi, vec))
+
+            # mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab, ag.skew(rot_axisB))
+                                       
+            # vec = ag.multiply_matrices(node_wa)                                    
+                                    
+            # LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_CcrvT_by_v(psi, vec))
+
+            mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga)
+                                       
+            vec = ag.multiply_matrices(ag.skew(rot_axisB), ag.crv2tan(psi), psi_dot)                                    
+                                    
+            LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Ccrv_by_v(psi, vec))
+
+            mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab, ag.skew(rot_axisB))
+                                       
+            vec = ag.multiply_matrices(psi_dot)                                    
+                                    
+            LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Tan_by_xv(psi, vec))
+
+            mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga)
+                                       
+            vec = ag.multiply_matrices(-cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_Ccrv_by_v(psi, vec))
+
+            mat = ag.multiply_matrices(-ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab, -np.eye(3))
+                                       
+            vec = ag.multiply_matrices(node_cga.T, FoR_cga, ag.skew(rot_axisA2), FoR_wa)                                    
+                                    
+            LM_K[FoR_dof+3:FoR_dof+6, node_dof+3:node_dof+6] += penaltyFactor*np.dot(mat, ag.der_CcrvT_by_v(psi, vec))
+
+            #  a^T   cab, ag.skew(rot_axisB).T
+            #  a     ag.skew(rot_axisB), cab.T
+            #  b^T   ag.crv2tan(psi).T, ag.skew(rot_axisB).T
+            #  b     ag.skew(rot_axisB), ag.crv2tan(psi)
+            #  c^T   -ag.skew(rot_axisA2).T, FoR_cga.T, node_cga, cab
+            #  c     -cab.T, node_cga.T, FoR_cga, ag.skew(rot_axisA2)
+
 
     ieq += 2
     return ieq
+
 
 
 def def_rot_axis_FoR_wrt_node_xyz(MB_tstep, MB_beam, FoR_body, node_body, node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, rot_axisB, scalingFactor, penaltyFactor, ieq, LM_K, LM_C, LM_Q, zero_comp):
@@ -886,11 +2403,12 @@ class hinge_node_FoR(BaseLagrangeConstraint):
         node_body (int): body number of the "node"
         FoR_body (int): body number of the "FoR"
         rot_axisB (np.ndarray): Rotation axis with respect to the node B FoR
+        rot_axisA2 (np.ndarray): Rotation axis with respect to the node A2 FoR
     """
     _lc_id = 'hinge_node_FoR'
 
     def __init__(self):
-        self.required_parameters = ['node_in_body', 'body', 'body_FoR', 'rot_axisB']
+        self.required_parameters = ['node_in_body', 'body', 'body_FoR', 'rot_axisB', 'rot_axisA2']
         self._n_eq = 5
 
     def get_n_eq(self):
@@ -901,10 +2419,11 @@ class hinge_node_FoR(BaseLagrangeConstraint):
         self.node_body = MBdict_entry['body']
         self.FoR_body = MBdict_entry['body_FoR']
         self.rot_axisB = MBdict_entry['rot_axisB']
+        self.rot_axisA2 = set_value_or_default(MBdict_entry, "rot_axisA2", self.rot_axisB)
         self._ieq = ieq
         self.scalingFactor = set_value_or_default(MBdict_entry, "scalingFactor", 1.)
         self.penaltyFactor = set_value_or_default(MBdict_entry, "penaltyFactor", 0.)
-
+        self.indep = []
         if (self.rot_axisB[[1, 2]]  == 0).all():
             self.rot_dir = 'x'
             self.zero_comp = np.array([1, 2], dtype=int)
@@ -915,9 +2434,9 @@ class hinge_node_FoR(BaseLagrangeConstraint):
             self.rot_dir = 'z'
             self.zero_comp = np.array([0, 1], dtype=int)
         else:
-            raise NotImplementedError("Hinges should be parallel to the xB, yB or zB of the reference node")
-            #self.rot_dir = 'general'
-            #self.indep = []
+            # raise NotImplementedError("Hinges should be parallel to the xB, yB or zB of the reference node")
+            self.rot_dir = 'general'
+            self.indep = []
 
         return self._ieq + self._n_eq
 
@@ -937,10 +2456,10 @@ class hinge_node_FoR(BaseLagrangeConstraint):
         # Define the equations
         # ieq =  equal_pos_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
         ieq = equal_lin_vel_node_FoR(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q)
-        if self.rot_dir == 'general':
-            ieq = def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.rot_axisB, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q, self.indep)
-        else:
-            ieq = def_rot_axis_FoR_wrt_node_xyz(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.rot_axisB, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q, self.zero_comp)
+        # if self.rot_dir == 'general':
+            # ieq = def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.rot_axisB, self.rot_axisA2, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q, self.indep)
+        # else:
+        ieq = def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, self.FoR_body, self.node_body, self.node_number, node_FoR_dof, node_dof, FoR_dof, sys_size, Lambda_dot, self.rot_axisB, self.rot_axisA2, self.scalingFactor, self.penaltyFactor, ieq, LM_K, LM_C, LM_Q, self.indep)
 
         return
 
@@ -1361,24 +2880,26 @@ class hinge_FoR(BaseLagrangeConstraint):
 
         Bnh[:3, FoR_dof:FoR_dof+3] = 1.0*np.eye(3)
 
-        if self.rot_dir == 'general':
-            # Only two of these equations are linearly independent
-            skew_rot_axis = ag.skew(self.rot_axis)
-            n0 = np.linalg.norm(skew_rot_axis[0,:])
-            n1 = np.linalg.norm(skew_rot_axis[1,:])
-            n2 = np.linalg.norm(skew_rot_axis[2,:])
-            if ((n0 < n1) and (n0 < n2)):
-                row0 = 1
-                row1 = 2
-            elif ((n1 < n0) and (n1 < n2)):
-                row0 = 0
-                row1 = 2
-            elif ((n2 < n0) and (n2 < n1)):
-                row0 = 0
-                row1 = 1
-            Bnh[3:5, FoR_dof+3:FoR_dof+6] = skew_rot_axis[[row0,row1],:]
-        else:
-            Bnh[3:5, FoR_dof+3+self.zero_comp] = np.eye(2)
+        # TODO: general logic removed since that implies local beam direction coincident with global axis direction
+        # if self.rot_dir == 'general':
+        #     # Only two of these equations are linearly independent
+        skew_rot_axis = ag.skew(self.rot_axis)
+        n0 = np.linalg.norm(skew_rot_axis[0,:])
+        n1 = np.linalg.norm(skew_rot_axis[1,:])
+        n2 = np.linalg.norm(skew_rot_axis[2,:])
+        if ((n0 < n1) and (n0 < n2)):
+            row0 = 1
+            row1 = 2
+        elif ((n1 < n0) and (n1 < n2)):
+            row0 = 0
+            row1 = 2
+        elif ((n2 < n0) and (n2 < n1)):
+            row0 = 0
+            row1 = 1
+        Bnh[3:5, FoR_dof+3:FoR_dof+6] = skew_rot_axis[[row0,row1],:]
+        # else:
+        #     Bnh[3:5, FoR_dof+3+self.zero_comp] = np.eye(2)
+
 
         LM_C[sys_size+ieq:sys_size+ieq+num_LM_eq_specific,:sys_size] += self.scalingFactor*Bnh
         LM_C[:sys_size,sys_size+ieq:sys_size+ieq+num_LM_eq_specific] += self.scalingFactor*np.transpose(Bnh)
@@ -1386,22 +2907,24 @@ class hinge_FoR(BaseLagrangeConstraint):
         LM_Q[:sys_size] += self.scalingFactor*np.dot(np.transpose(Bnh),Lambda_dot[ieq:ieq+num_LM_eq_specific])
 
         LM_Q[sys_size+ieq:sys_size+ieq+3] += self.scalingFactor*MB_tstep[self.body_FoR].for_vel[0:3].astype(dtype=ct.c_double, copy=True, order='F')
-        if self.rot_dir == 'general':
-            LM_Q[sys_size+ieq+3:sys_size+ieq+5] += self.scalingFactor*np.dot(skew_rot_axis[[row0,row1],:], MB_tstep[self.body_FoR].for_vel[3:6])
-        else:
-            LM_Q[sys_size+ieq+3:sys_size+ieq+5] += self.scalingFactor*MB_tstep[self.body_FoR].for_vel[3 + self.zero_comp]
+        # TODO: general logic removed since that implies local beam direction coincident with global axis direction
+        # if self.rot_dir == 'general':
+        LM_Q[sys_size+ieq+3:sys_size+ieq+5] += self.scalingFactor*np.dot(skew_rot_axis[[row0,row1],:], MB_tstep[self.body_FoR].for_vel[3:6])
+        # else:
+        #     LM_Q[sys_size+ieq+3:sys_size+ieq+5] += self.scalingFactor*MB_tstep[self.body_FoR].for_vel[3 + self.zero_comp]
 
         if self.penaltyFactor:
             LM_Q[FoR_dof:FoR_dof+3] += self.penaltyFactor*MB_tstep[self.body_FoR].for_vel[0:3]
             LM_C[FoR_dof:FoR_dof+3, FoR_dof:FoR_dof+3] += self.penaltyFactor*np.eye(3)
 
-            if self.rot_dir == 'general':
-                sq_rot_axis = np.dot(ag.skew(self.rot_axis).T, ag.skew(self.rot_axis))
-                LM_Q[FoR_dof+3:FoR_dof+6] += self.penaltyFactor*np.dot(sq_rot_axis, MB_tstep[self.body_FoR].for_vel[3:6])
-                LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += self.penaltyFactor*sq_rot_axis
-            else:
-                LM_Q[FoR_dof+3:FoR_dof+6] += self.penaltyFactor*MB_tstep[self.body_FoR].for_vel[3:6]
-                LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += self.penaltyFactor*np.eye(3)
+            # TODO: general logic removed since that implies local beam direction coincident with global axis direction
+            # if self.rot_dir == 'general':
+            sq_rot_axis = np.dot(ag.skew(self.rot_axis).T, ag.skew(self.rot_axis))
+            LM_Q[FoR_dof+3:FoR_dof+6] += self.penaltyFactor*np.dot(sq_rot_axis, MB_tstep[self.body_FoR].for_vel[3:6])
+            LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += self.penaltyFactor*sq_rot_axis
+            # else:
+            #     LM_Q[FoR_dof+3:FoR_dof+6] += self.penaltyFactor*MB_tstep[self.body_FoR].for_vel[3:6]
+            #     LM_C[FoR_dof+3:FoR_dof+6, FoR_dof+3:FoR_dof+6] += self.penaltyFactor*np.eye(3)
 
         ieq += 5
         return
@@ -1986,7 +3509,9 @@ def initialize_constraints(MBdict):
         MBdict_entry = MBdict["constraint_%02d" % iconstraint]
         if "penaltyFactor" in MBdict_entry.keys():
             if not MBdict_entry['penaltyFactor'] == 0.:
-                raise NotImplementedError("Penalty method not completely implemented for Lagrange Constraints")
+                # raise NotImplementedError("Penalty method not completely implemented for Lagrange Constraints")
+                print("Penalty method not completely implemented for Lagrange Constraints")
+
         index_eq = lc_list[-1].initialise(MBdict_entry, index_eq)
 
     return lc_list
