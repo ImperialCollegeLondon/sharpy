@@ -265,6 +265,28 @@ class WriteVariablesTime(BaseSolver):
         for ivariable in range(len(self.settings['structure_variables'])):
             if self.settings['structure_variables'][ivariable] == '':
                 continue
+            #TODO: fix for lack of g frame description in nonlineardynamicmultibody.py
+            if tstep.mb_dict is None:
+                var = getattr(tstep, self.settings['structure_variables'][ivariable])
+            else:
+                if self.settings['structure_variables'][ivariable] == 'for_pos':
+                    import sharpy.utils.algebra as ag
+                    #TODO: uncomment for dynamic trim
+                    # try:
+                    #     # import pdb
+                    #     # pdb.set_trace()
+                    #     cga = ag.euler2rot([0, self.data.trimmed_values[0], 0])
+                    #     cag = cga.T
+                    #     tstep.for_pos[0:3] = np.dot(cga,tstep.for_pos[0:3])
+                    #     var = getattr(tstep, self.settings['structure_variables'][ivariable]).copy()
+                    #     tstep.for_pos[0:3] = np.dot(cag,tstep.for_pos[0:3])
+                    # except AttributeError:
+                    t0step = self.data.structure.timestep_info[0]
+                    tstep.for_pos[0:3] = np.dot(t0step.cga(), tstep.for_pos[0:3])
+                    var = getattr(tstep, self.settings['structure_variables'][ivariable]).copy()
+                    tstep.for_pos[0:3] = np.dot(t0step.cag(), tstep.for_pos[0:3])
+                else:
+                    var = getattr(tstep, self.settings['structure_variables'][ivariable])            
             var = getattr(tstep, self.settings['structure_variables'][ivariable])
             num_indices = len(var.shape)
             if num_indices == 1:

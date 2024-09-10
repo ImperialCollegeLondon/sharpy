@@ -148,6 +148,18 @@ class BeamPlot(BaseSolver):
         # coordinates of corners
         coords = tstep.glob_pos(include_rbm=self.settings['include_rbm'])
 
+        if tstep.mb_dict is None:
+            pass
+        else:
+            #TODO: fix for lack of g frame description in nonlineardynamicmultibody.py
+            for i_node in range(tstep.num_node):
+                #TODO: uncomment for dynamic trim
+                # try:
+                #     c = algebra.euler2rot([0, self.data.trimmed_values[0], 0])
+                # except AttributeError:
+                c = self.data.structure.timestep_info[0].cga()
+                coords[i_node, :] += np.dot(c, tstep.for_pos[0:3])
+
         # check if I can output gravity forces
         with_gravity = False
         try:
