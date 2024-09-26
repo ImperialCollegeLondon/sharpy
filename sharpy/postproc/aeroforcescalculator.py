@@ -5,15 +5,13 @@ import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings_utils
 import sharpy.utils.algebra as algebra
-import sharpy.aero.utils.mapping as mapping
-import warnings
 
 
 @solver
 class AeroForcesCalculator(BaseSolver):
     """AeroForcesCalculator
 
-    Calculates the total aerodynamic forces and moments on the frame of reference ``A``.
+    Calculates the total aerodynamic forces and moments on the body ``A`` and inertial  ``G`` frame of reference .
 
     """
     solver_id = 'AeroForcesCalculator'
@@ -63,6 +61,10 @@ class AeroForcesCalculator(BaseSolver):
     settings_default['c_ref'] = 1
     settings_description['c_ref'] = 'Reference chord'
 
+    settings_types['u_inf_dir'] = 'list(float)'
+    settings_default['u_inf_dir'] = [1., 0., 0.]
+    settings_description['u_inf_dir'] = 'Flow direction'
+
     settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -76,7 +78,6 @@ class AeroForcesCalculator(BaseSolver):
         self.caller = None
 
         self.table = None
-        self.rot = None
         self.moment_reference_location = np.array([0., 0., 0.])
 
     def initialise(self, data, custom_settings=None, caller=None, restart=False):
@@ -99,10 +100,7 @@ class AeroForcesCalculator(BaseSolver):
                 self.table.print_header(['tstep', 'fx_g', 'fy_g', 'fz_g', 'mx_g', 'my_g', 'mz_g'])
 
     def run(self, **kwargs):
-
-        online = settings_utils.set_value_or_default(kwargs, 'online', False)
-
-        if online:
+        if kwargs.get('online', False):
             self.ts_max = len(self.data.structure.timestep_info)
             self.calculate_forces(-1)
 
@@ -118,174 +116,145 @@ class AeroForcesCalculator(BaseSolver):
         if self.settings['write_text_file']:
             self.file_output(self.settings['text_file_name'])
         return self.data
- 
+
+    # generate forcing data for a given timestep
     def calculate_forces(self, ts):
-        # Forces per surface in G frame
-        self.rot = algebra.quat2rotation(self.data.structure.timestep_info[ts].quat)
-        force = self.data.aero.timestep_info[ts].forces
-        unsteady_force = self.data.aero.timestep_info[ts].dynamic_forces
-        for i_surf in range(self.data.aero.n_surf):
-            (
-            self.data.aero.timestep_info[ts].inertial_steady_forces[i_surf, 0:3], 
-            self.data.aero.timestep_info[ts].inertial_unsteady_forces[i_surf, 0:3],
-            self.data.aero.timestep_info[ts].body_steady_forces[i_surf, 0:3],
-            self.data.aero.timestep_info[ts].body_unsteady_forces[i_surf, 0:3]
-            ) = self.calculate_forces_for_isurf_in_g_frame(force[i_surf], unsteady_force=unsteady_force[i_surf])
-        
+        # body orientation rotation
+        rot_ag = algebra.quat2rotation(self.data.structure.timestep_info[ts].quat).T  # R_AG
+
+        # flow rotation angle from x and z components of flow direction
+        # WARNING: this will give incorrect results when there is sideslip (u_inf_dir[1] != 0.)
+        rot_xy = np.arctan2(-self.settings['u_inf_dir'][2], self.settings['u_inf_dir'][0])
+        rmat_xy = algebra.euler2rot((0., rot_xy, 0.))
+
+        # number of aero surfaces
+        n_surf = self.data.aero.n_surf
+
+        # forces per node per wing surface
+        # naming convention: s=steady, u=unsteady, a=body for, g=inertial for
+        force_s_a = [np.squeeze(rmat_xy.T @ np.expand_dims(np.moveaxis(
+            self.data.aero.timestep_info[ts].forces[i], 0, -1)[..., :3], -1)) for i in range(n_surf)]
+        force_u_a = [np.squeeze(rmat_xy.T @ np.expand_dims(np.moveaxis(
+            self.data.aero.timestep_info[ts].dynamic_forces[i], 0, -1)[..., :3], -1)) for i in range(n_surf)]
+
+        # add nonlifting: TODO: check FoR of nonlifting forces
         if self.settings["nonlifting_body"]:
-            for i_surf in range(self.data.nonlifting_body.n_surf):
-                (
-                self.data.nonlifting_body.timestep_info[ts].inertial_steady_forces[i_surf, 0:3], 
-                self.data.nonlifting_body.timestep_info[ts].body_steady_forces[i_surf, 0:3],
-                ) = self.calculate_forces_for_isurf_in_g_frame(self.data.nonlifting_body.timestep_info[ts].forces[i_surf], nonlifting=True)
-        
-        # Convert to forces in B frame
-        try:
-            steady_forces_b = self.data.structure.timestep_info[ts].postproc_node['aero_steady_forces']
-        except KeyError:
-            if self.settings["nonlifting_body"]:
-                warnings.warn('Nonlifting forces are not considered in aero forces calculation since forces cannot not be retrieved from postproc node.')
-            steady_forces_b = self.map_forces_beam_dof(self.data.aero, ts, force)
+            n_surf_nonlift = self.data.nonlifting_body.n_surf
+            force_s_a.extend([np.squeeze(rmat_xy.T @ np.expand_dims(np.moveaxis(
+                self.data.nonlifting_body.timestep_info[ts].inertial_steady_forces[i], 0, -1)[..., :3], -1))
+                              for i in range(n_surf_nonlift)])
 
-        try:
-            unsteady_forces_b = self.data.structure.timestep_info[ts].postproc_node['aero_unsteady_forces']
-        except KeyError:
-            unsteady_forces_b = self.map_forces_beam_dof(self.data.aero, ts, unsteady_force)
-        # Convert to forces in A frame
-        steady_forces_a = self.data.structure.timestep_info[ts].nodal_b_for_2_a_for(steady_forces_b,
-                                                                                    self.data.structure)
+        # list of steady and unsteady body and inertial forces per surface
+        f_s_a_surf = [np.sum(force_s_a[i], axis=(0, 1)) for i in range(n_surf)]
+        f_s_g_surf = [rot_ag.T @ f_s_a_surf[i] for i in range(n_surf)]
+        f_u_a_surf = [np.sum(force_u_a[i], axis=(0, 1)) for i in range(n_surf)]
+        f_u_g_surf = [rot_ag.T @ f_u_a_surf[i] for i in range(n_surf)]
 
-        unsteady_forces_a = self.data.structure.timestep_info[ts].nodal_b_for_2_a_for(unsteady_forces_b,
-                                                                                      self.data.structure)
+        # calculate moments
+        # surface dimensions
+        m = [surf.shape[0] for surf in force_s_a]
+        n = [surf.shape[1] for surf in force_s_a]
 
-        # Express total forces in A frame
-        self.data.aero.timestep_info[ts].total_steady_body_forces = \
-            mapping.total_forces_moments(steady_forces_a,
-                                         self.data.structure.timestep_info[ts].pos,
-                                         ref_pos=self.moment_reference_location)
-        self.data.aero.timestep_info[ts].total_unsteady_body_forces = \
-            mapping.total_forces_moments(unsteady_forces_a,
-                                         self.data.structure.timestep_info[ts].pos,
-                                         ref_pos=self.moment_reference_location)
+        # aerogrid node body position
+        zeta_a = [np.squeeze(rot_ag @ np.expand_dims(np.moveaxis(
+            self.data.aero.timestep_info[ts].zeta[i], 0, -1), axis=-1)) for i in range(n_surf)]
 
-        # Express total forces in G frame
-        self.data.aero.timestep_info[ts].total_steady_inertial_forces = \
-            np.block([[self.rot, np.zeros((3, 3))],
-                      [np.zeros((3, 3)), self.rot]]).dot(
-                self.data.aero.timestep_info[ts].total_steady_body_forces)
+        # add nonlifting body node positions
+        if self.settings["nonlifting_body"]:
+            zeta_a.extend([np.squeeze(rot_ag @ np.expand_dims(np.moveaxis(
+                self.data.nonlifting_body.timestep_info[ts].zeta[i], 0, -1), axis=-1)) for i in range(n_surf)])
 
-        self.data.aero.timestep_info[ts].total_unsteady_inertial_forces = \
-            np.block([[self.rot, np.zeros((3, 3))],
-                      [np.zeros((3, 3)), self.rot]]).dot(
-                self.data.aero.timestep_info[ts].total_unsteady_body_forces)
+        # node body position relative to reference position and its skew
+        r_a = [zeta_a[i] - np.tile(self.moment_reference_location.reshape(1, 1, 3), (m[i], n[i], 1)) for i in
+               range(n_surf)]
+        r_a_tilde = [np.apply_along_axis(algebra.skew, 2, r_a[i]) for i in range(n_surf)]
 
-    def calculate_forces_for_isurf_in_g_frame(self, force, unsteady_force = None, nonlifting = False):
-        """
-            Forces for a surface in G frame
-        """
-        # Forces per surface in G frame
-        total_steady_force = np.zeros((3,))
-        total_unsteady_force = np.zeros((3,))
-        _, n_rows, n_cols = force.shape
-        for i_m in range(n_rows):
-            for i_n in range(n_cols):
-                total_steady_force += force[0:3, i_m, i_n]
-                if not nonlifting:
-                    total_unsteady_force += unsteady_force[0:3, i_m, i_n]
-        if not nonlifting:
-            return total_steady_force, total_unsteady_force, np.dot(self.rot.T, total_steady_force), np.dot(self.rot.T, total_unsteady_force)
-        else:
-            return total_steady_force, np.dot(self.rot.T, total_steady_force)
+        # steady moments per node per surface
+        mom_s_a = [np.squeeze(r_a_tilde[i] @ np.expand_dims(force_s_a[i], axis=-1)) for i in range(n_surf)]
 
+        # list of steady body and inertial forces per surface
+        mom_s_a_surf = [np.sum(mom_s_a[i], axis=(0, 1)) for i in range(n_surf)]
+        mom_s_g_surf = [rot_ag.T @ mom_s_a_surf[i] for i in range(n_surf)]
 
-    def map_forces_beam_dof(self, aero_data, ts, force):
-        struct_tstep = self.data.structure.timestep_info[ts]
-        aero_forces_beam_dof = mapping.aero2struct_force_mapping(force,
-                                                                 aero_data.struct2aero_mapping,
-                                                                 aero_data.timestep_info[ts].zeta,
-                                                                 struct_tstep.pos,
-                                                                 struct_tstep.psi,
-                                                                 None,
-                                                                 self.data.structure.connectivities,
-                                                                 struct_tstep.cag())
-        return aero_forces_beam_dof
+        # unsteady moments per node per surface
+        mom_u_a = [np.squeeze(r_a_tilde[i] @ np.expand_dims(force_u_a[i], axis=-1)) for i in range(n_surf)]
+
+        # list of unsteady body and inertial forces per surface
+        mom_u_a_surf = [np.sum(mom_u_a[i], axis=(0, 1)) for i in range(n_surf)]
+        mom_u_g_surf = [rot_ag.T @ mom_u_a_surf[i] for i in range(n_surf)]
+
+        # save steady forcing to timestep data
+        self.data.aero.timestep_info[ts].body_steady_forces = np.hstack((f_s_a_surf, mom_s_a_surf))
+        self.data.aero.timestep_info[ts].inertial_steady_forces = np.hstack((f_s_g_surf, mom_s_g_surf))
+        self.data.aero.timestep_info[ts].total_steady_body_forces \
+            = np.sum(np.hstack((f_s_a_surf, mom_s_a_surf)), axis=0)
+        self.data.aero.timestep_info[ts].total_steady_inertial_forces \
+            = np.sum(np.hstack((f_s_g_surf, mom_s_g_surf)), axis=0)
+
+        # save unsteady forcing to timestep data
+        self.data.aero.timestep_info[ts].body_unsteady_forces = np.hstack((f_u_a_surf, mom_u_a_surf))
+        self.data.aero.timestep_info[ts].inertial_unsteady_forces = np.hstack((f_u_g_surf, mom_u_g_surf))
+        self.data.aero.timestep_info[ts].total_unsteady_body_forces \
+            = np.sum(np.hstack((f_u_a_surf, mom_u_a_surf)), axis=0)
+        self.data.aero.timestep_info[ts].total_unsteady_inertial_forces \
+            = np.sum(np.hstack((f_u_g_surf, mom_u_g_surf)), axis=0)
 
     def calculate_coefficients(self, fx, fy, fz, mx, my, mz):
-        qS = self.settings['q_ref'] * self.settings['S_ref']
-        return fx/qS, fy/qS, fz/qS, mx/qS/self.settings['b_ref'], my/qS/self.settings['c_ref'], \
-               mz/qS/self.settings['b_ref']
+        q_s = self.settings['q_ref'] * self.settings['S_ref']
+        return (fx / q_s,
+                fy / q_s,
+                fz / q_s,
+                mx / (q_s * self.settings['b_ref']),
+                my / (q_s * self.settings['c_ref']),
+                mz / (q_s * self.settings['b_ref']))
 
     def screen_output(self, ts):
         # print time step total aero forces
-        forces  = np.zeros(3)
-        moments  = np.zeros(3)
-
         aero_tstep = self.data.aero.timestep_info[ts]
-        forces += aero_tstep.total_steady_inertial_forces[:3] + aero_tstep.total_unsteady_inertial_forces[:3]
-        moments += aero_tstep.total_steady_inertial_forces[3:] + aero_tstep.total_unsteady_inertial_forces[3:]
+        forces = aero_tstep.total_steady_inertial_forces[:3] + aero_tstep.total_unsteady_inertial_forces[:3]
+        moments = aero_tstep.total_steady_inertial_forces[3:] + aero_tstep.total_unsteady_inertial_forces[3:]
 
-        if self.settings['coefficients']: # TODO: Check if coefficients have to be computed differently for fuselages
-            Cfx, Cfy, Cfz, Cmx, Cmy, Cmz = self.calculate_coefficients(*forces, *moments)
-            self.table.print_line([ts, Cfx, Cfy, Cfz, Cmx, Cmy, Cmz])
+        if self.settings['coefficients']:  # TODO: Check if coefficients have to be computed differently for fuselages
+            coeffs = self.calculate_coefficients(*forces, *moments)
+            self.table.print_line([ts, *coeffs])
         else:
             self.table.print_line([ts, *forces, *moments])
 
     def file_output(self, filename):
-        # assemble forces/moments matrix
-        # (1 timestep) + (3+3 inertial steady+unsteady) + (3+3 body steady+unsteady)
-        force_matrix = np.zeros((self.ts_max, 1 + 3 + 3 + 3 + 3 ))
-        moment_matrix = np.zeros((self.ts_max, 1 + 3 + 3 + 3 + 3))
+        # assemble forces/moments matrix: (1 timestep) + (3+3 inertial steady+unsteady) + (3+3 body steady+unsteady)
+        force_matrix = np.zeros((self.ts_max, 13))
+        moment_matrix = np.zeros((self.ts_max, 13))
         for ts in range(self.ts_max):
             aero_tstep = self.data.aero.timestep_info[ts]
-            i = 0
-            force_matrix[ts, i] = ts
-            moment_matrix[ts, i] = ts
-            i += 1
-
+            # timestep column
+            force_matrix[ts, 0] = moment_matrix[ts, 0] = ts
             # Steady forces/moments G
-            force_matrix[ts, i:i+3] = aero_tstep.total_steady_inertial_forces[:3]
-            moment_matrix[ts, i:i+3] = aero_tstep.total_steady_inertial_forces[3:]
-            i += 3
-
+            force_matrix[ts, 1:4], moment_matrix[ts, 1:4] = np.split(aero_tstep.total_steady_inertial_forces, 2)
             # Unsteady forces/moments G
-            force_matrix[ts, i:i+3] = aero_tstep.total_unsteady_inertial_forces[:3]
-            moment_matrix[ts, i:i+3] = aero_tstep.total_unsteady_inertial_forces[3:]
-            i += 3
-
+            force_matrix[ts, 4:7], moment_matrix[ts, 4:7] = np.split(aero_tstep.total_unsteady_inertial_forces, 2)
             # Steady forces/moments A
-            force_matrix[ts, i:i+3] = aero_tstep.total_steady_body_forces[:3]
-            moment_matrix[ts, i:i+3] = aero_tstep.total_steady_body_forces[3:]
-            i += 3
-
+            force_matrix[ts, 7:10], moment_matrix[ts, 7:10] = np.split(aero_tstep.total_steady_body_forces, 2)
             # Unsteady forces/moments A
-            force_matrix[ts, i:i+3] = aero_tstep.total_unsteady_body_forces[:3]
-            moment_matrix[ts, i:i+3] = aero_tstep.total_unsteady_body_forces[3:]
+            force_matrix[ts, 10:13], moment_matrix[ts, 10:13] = np.split(aero_tstep.total_unsteady_body_forces, 2)
 
-
-        header = ''
-        header += 'tstep, '
-        header += 'fx_steady_G, fy_steady_G, fz_steady_G, '
-        header += 'fx_unsteady_G, fy_unsteady_G, fz_unsteady_G, '
-        header += 'fx_steady_a, fy_steady_a, fz_steady_a, '
-        header += 'fx_unsteady_a, fy_unsteady_a, fz_unsteady_a'
+        # save linear force data
+        header_f = ('tstep, fx_steady_G, fy_steady_G, fz_steady_G, fx_unsteady_G, fy_unsteady_G, fz_unsteady_G, '
+                    'fx_steady_a, fy_steady_a, fz_steady_a, fx_unsteady_a, fy_unsteady_a, fz_unsteady_a')
 
         np.savetxt(self.folder + 'forces_' + filename,
                    force_matrix,
                    fmt='%i' + ', %10e' * (np.shape(force_matrix)[1] - 1),
                    delimiter=',',
-                   header=header,
+                   header=header_f,
                    comments='#')
 
-        header = ''
-        header += 'tstep, '
-        header += 'mx_steady_G, my_steady_G, mz_steady_G, '
-        header += 'mx_unsteady_G, my_unsteady_G, mz_unsteady_G, '
-        header += 'mx_steady_a, my_steady_a, mz_steady_a, '
-        header += 'mx_unsteady_a, my_unsteady_a, mz_unsteady_a'
+        # save moment data
+        header_m = ('tstep, mx_steady_G, my_steady_G, mz_steady_G, mx_unsteady_G, my_unsteady_G, mz_unsteady_G, '
+                    'mx_steady_a, my_steady_a, mz_steady_a, mx_unsteady_a, rot_agmy_unsteady_a, mz_unsteady_a')
 
         np.savetxt(self.folder + 'moments_' + filename,
                    moment_matrix,
                    fmt='%i' + ', %10e' * (np.shape(moment_matrix)[1] - 1),
                    delimiter=',',
-                   header=header,
+                   header=header_m,
                    comments='#')
