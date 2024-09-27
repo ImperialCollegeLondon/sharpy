@@ -181,16 +181,6 @@ class AeroForcesCalculator(BaseSolver):
         unsteady_forces_a = self.data.structure.timestep_info[ts].nodal_b_for_2_a_for(unsteady_forces_b,
                                                                                       self.data.structure)
 
-        # Express total forces in A frame
-        # self.data.aero.timestep_info[ts].total_steady_body_forces = \
-        #     mapping.total_forces_moments(steady_forces_a,
-        #                                  self.data.structure.timestep_info[ts].pos,
-        #                                  ref_pos=self.moment_reference_location)
-        # self.data.aero.timestep_info[ts].total_unsteady_body_forces = \
-        #     mapping.total_forces_moments(unsteady_forces_a,
-        #                                  self.data.structure.timestep_info[ts].pos,
-        #                                  ref_pos=self.moment_reference_location)
-
         self.data.aero.timestep_info[ts].total_steady_body_forces = \
             rmat @ mapping.total_forces_moments(steady_forces_a,
                                                 self.data.structure.timestep_info[ts].pos,
