@@ -11,7 +11,7 @@ import sharpy.utils.algebra as algebra
 
 class InfiniteWing:
     area = 90000000.0
-    chord = 3
+    chord = 3.
 
     def force_coef(self, rho, uinf):
         return 0.5 * rho * uinf ** 2 * self.area
@@ -53,8 +53,8 @@ class TestAirfoilPolars(unittest.TestCase):
 
         results = postprocess(output_route + '/' + case_header + '/')
 
-        results[:, 1:3] /= wing.force_coef(1.225, 1)
-        results[:, -1] /= wing.moment_coef(1.225, 1)
+        results[:, 1:3] /= wing.force_coef(1.225, 1.)
+        results[:, -1] /= wing.moment_coef(1.225, 1.)
 
         with self.subTest('lift'):
             cl_polar = np.interp(results[:, 0], self.polar_data[:, 0], self.polar_data[:, 1])
@@ -95,12 +95,13 @@ def process_case(path_to_case):
     case_name = path_to_case.split('/')[-1]
     pmor = configobj.ConfigObj(path_to_case + f'/{case_name}.pmor.sharpy')
     alpha = pmor['parameters']['alpha']
-    inertial_forces = np.loadtxt(f'{path_to_case}/forces/forces_aeroforces.txt',
-                                 skiprows=1, delimiter=',', dtype=float)[1:4]
-    inertial_moments = np.loadtxt(f'{path_to_case}/forces/moments_aeroforces.txt',
-                                  skiprows=1, delimiter=',', dtype=float)[1:4]
 
-    return alpha, inertial_forces[2], inertial_forces[0], inertial_moments[1]
+    body_forces = np.loadtxt(f'{path_to_case}/forces/forces_aeroforces.txt',
+                             skiprows=1, delimiter=',', dtype=float)[7:10]
+    body_moments = np.loadtxt(f'{path_to_case}/forces/moments_aeroforces.txt',
+                              skiprows=1, delimiter=',', dtype=float)[7:10]
+
+    return alpha, body_forces[2], body_forces[0], body_moments[1]
 
 
 class TestStab(unittest.TestCase):
