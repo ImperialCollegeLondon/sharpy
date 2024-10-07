@@ -21,7 +21,7 @@ jobs:
   create-pypi-image:
     name: >-
       Create .whl 🛞 from SHARPy distribution
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     env:
       python-version-chosen: "3.10.8"
     permissions:
@@ -39,7 +39,6 @@ jobs:
         with:
           version: 4.8
           platform: x64
-          os: ubuntu-18.04
       - name: Pre-Install dependencies
         run: |
           export QT_QPA_PLATFORM='offscreen'
