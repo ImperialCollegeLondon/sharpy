@@ -39,6 +39,7 @@ jobs:
         with:
           version: 4.8
           platform: x64
+          os: ubuntu-18.04
       - name: Pre-Install dependencies
         run: |
           export QT_QPA_PLATFORM='offscreen'
