@@ -37,7 +37,7 @@ jobs:
       - name: Set up GCC
         uses: egor-tensin/setup-gcc@v1
         with:
-          version: 10
+          version: 4.8
           platform: x64
       - name: Pre-Install dependencies
         run: |
