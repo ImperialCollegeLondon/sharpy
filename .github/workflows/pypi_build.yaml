@@ -21,7 +21,7 @@ jobs:
   create-pypi-image:
     name: >-
       Create .whl 🛞 from SHARPy distribution
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     env:
       python-version-chosen: "3.10.8"
     permissions:
@@ -37,7 +37,7 @@ jobs:
       - name: Set up GCC
         uses: egor-tensin/setup-gcc@v1
         with:
-          version: 4.8
+          version: 7
           platform: x64
       - name: Pre-Install dependencies
         run: |
