@@ -25,6 +25,6 @@ image to the SHARPy packages. Therefore:
 ## Pypi (experimental!)
 
 One workflow with two jobs, the first creates and the second pushes the wheel 
-artifact to icl-sharpy @ pypi. Therefore:
+artifact to ic-sharpy @ pypi. Therefore:
 
     * `pypi_build.yaml`: Builds and pushes the pypi wheel according to conditions. Runs on changes to the `pypi*` workflow, changes to the `setup.py`, and PRs and pushes to main and develop. Required test for PRs to merge to `develop` and `main`. Publishes on annotated tags.    
