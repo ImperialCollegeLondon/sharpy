@@ -376,7 +376,7 @@ def principal_axes_inertia(j_a, r_cg, m):
 
     """
 
-    j_p, t_pa = np.linalg.eig(j_a + algebra.multiply_matrices(algebra.skew(r_cg), algebra.skew(r_cg)) * m)
+    j_p, t_pa = np.linalg.eig(j_a + algebra.skew(r_cg) @ (algebra.skew(r_cg)) * m)
 
     t_pa, j_p = order_eigenvectors(t_pa, j_p)
 
