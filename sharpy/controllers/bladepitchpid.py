@@ -423,7 +423,7 @@ class BladePitchPid(controller_interface.BaseController):
 
     def compute_aero_torque(self, beam, struct_tstep):
         # Compute total forces
-        total_forces = np.zeros((6))
+        total_forces = np.zeros(6)
         for ibody in self.settings['blade_num_body']:
             steady, unsteady, grav = struct_tstep.extract_resultants(beam,
                                                       force_type=['steady', 'unsteady', 'grav'],
@@ -436,9 +436,9 @@ class BladePitchPid(controller_interface.BaseController):
         hub_node = beam.connectivities[hub_elem, 0]
         hub_pos = struct_tstep.pos[hub_node, :]
 
-        hub_forces = np.zeros((6))
-        hub_forces[0:3] = total_forces[0:3].copy()
-        hub_forces[3:6] = total_forces[3:6] - np.cross(hub_pos, total_forces[0:3])
+        hub_forces = np.zeros(6)
+        hub_forces[:3] = total_forces[:3].copy()
+        hub_forces[3:6] = total_forces[3:6] - np.cross(hub_pos, total_forces[:3])
 
         return hub_forces[5]
 
@@ -450,11 +450,11 @@ class BladePitchPid(controller_interface.BaseController):
         ielem, inode_in_elem = beam.node_master_elem[tt_node]
         ca0b = algebra.crv2rotation(struct_tstep.psi[ielem, inode_in_elem, :])
         cga0 = algebra.quat2rotation(struct_tstep.mb_quat[tower_ibody, :])
-        zg_tower_top = algebra.multiply_matrices(cga0, ca0b, np.array([0., 0., 1.]))
+        zg_tower_top = cga0 @ ca0b @ np.array([0., 0., 1.])
 
         # blade root
         cga = algebra.quat2rotation(struct_tstep.mb_quat[blade_ibody, :])
-        zg_hub = algebra.multiply_matrices(cga, np.array([0., 0., 1.]))
+        zg_hub = cga @ np.array([0., 0., 1.])
 
         pitch = algebra.angle_between_vectors(zg_tower_top, zg_hub)
         return pitch

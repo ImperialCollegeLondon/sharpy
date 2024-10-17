@@ -1979,7 +1979,7 @@ class LagrangeConstraint():
                 raise RuntimeError(("'%s' parameter required in '%s' lagrange constraint" % (param, self.behaviour)))
         has_behaviour = False
         for param, value in self.__dict__.items():
-            if not param in ['behaviour', 'scalingFactor', 'penaltyFactor']:
+            if not param in ['behaviour', 'scalingFactor', 'penaltyFactor', 'rot_axisA2']:
                 if param not in required_parameters:
                     raise RuntimeError(("'%s' parameter is not required in '%s' lagrange constraint" % (param, self.behaviour)))
             if param == 'behaviour':
@@ -2026,7 +2026,11 @@ def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_n
                                              data=getattr(constraint, "penaltyFactor"))
             except:
                 pass
-
+            try:
+                constraint_id.create_dataset("rot_axisA2",
+                                             data=getattr(constraint, "rot_axisA2"))
+            except:
+                pass
             iconstraint += 1
 
         # Write the body information
