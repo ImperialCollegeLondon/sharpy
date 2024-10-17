@@ -2026,7 +2026,11 @@ def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_n
                                              data=getattr(constraint, "penaltyFactor"))
             except:
                 pass
-
+            try:
+                constraint_id.create_dataset("rot_axisA2",
+                                             data=getattr(constraint, "rot_axisA2"))
+            except:
+                pass
             iconstraint += 1
 
         # Write the body information
