@@ -588,7 +588,10 @@ class StructuralInformation():
             y_BFoR (string): Direction of the yB axis
         """
 
-        if y_BFoR == 'x_AFoR':
+        if isinstance(y_BFoR,(list,np.ndarray)):
+            yB = np.asarray(y_BFoR)
+            cout.cout_wrap(("WARNING: custom FoR delta defined, using the given value: y_BFoR = {y_BFoR}" % (y_BFoR)), 3)
+        elif y_BFoR == 'x_AFoR':
             yB = np.array([1.0, 0.0, 0.0])
         elif y_BFoR == 'y_AFoR':
             yB = np.array([0.0, 1.0, 0.0])
