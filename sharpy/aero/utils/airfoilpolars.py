@@ -11,6 +11,9 @@ class Polar:
 
     def __init__(self):
 
+        self.cm_interp = None
+        self.cd_interp = None
+        self.cl_interp = None
         self.table = None
         self.aoa_cl0_deg = None
 
@@ -34,15 +37,11 @@ class Polar:
         for ipoint in range(npoints - 1):
             if self.table[ipoint, 1] == 0.:
                 matches.append(self.table[ipoint, 0])
-            elif (self.table[ipoint, 1] < 0. and self.table[ipoint + 1, 1] > 0):
-            # elif ((self.table[ipoint, 1] < 0. and self.table[ipoint + 1, 1] > 0) or
-            #       (self.table[ipoint, 1] > 0. and self.table[ipoint + 1, 1] < 0)):
-                if (self.table[ipoint, 0] <= 0.):
+            elif self.table[ipoint, 1] < 0. and self.table[ipoint + 1, 1] > 0:
+                if self.table[ipoint, 0] <= 0.:
                     matches.append(np.interp(0,
                                              self.table[ipoint:ipoint+2, 1],
                                              self.table[ipoint:ipoint+2, 0]))
-                # else:
-                #     print("WARNING: Be careful negative camber airfoil not supported")
 
         iaoacl0 = 0
         aux = np.abs(matches[0])
@@ -62,7 +61,7 @@ class Polar:
         cd = self.cd_interp(aoa_deg)
         cm = self.cm_interp(aoa_deg)
 
-        return cl, cd, cm
+        return cl[0], cd[0], cm[0]
 
     def get_aoa_deg_from_cl_2pi(self, cl):
 
@@ -116,7 +115,7 @@ class Polar:
                 cd = np.interp(cl, self.table[i:i+2, 1], self.table[i:i+2, 2])
                 cm = np.interp(cl, self.table[i:i+2, 1], self.table[i:i+2, 3])
         
-        return cd, cm
+        return float(cd), float(cm)
 
     
 def interpolate(polar1, polar2, coef=0.5):

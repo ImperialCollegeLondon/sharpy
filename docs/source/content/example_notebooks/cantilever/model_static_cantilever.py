@@ -16,8 +16,7 @@ def generate_fem_file(route, case_name, num_elem, deadforce=600e3, followerforce
     length = 5
     num_node_elem=3
     num_node = (num_node_elem - 1)*num_elem + 1
-    # import pdb; pdb.set_trace()
-    angle = 0*np.pi/180.0       # Angle of the beam reference line within the x-y plane of the B frame.
+    angle = 0. * np.pi / 180.       # Angle of the beam reference line within the x-y plane of the B frame.
     x = (np.linspace(0, length, num_node))*np.cos(angle)
     y = (np.linspace(0, length, num_node))*np.sin(angle)
     z = np.zeros((num_node,))
@@ -41,7 +40,6 @@ def generate_fem_file(route, case_name, num_elem, deadforce=600e3, followerforce
                           + [0, 2, 1])
 
     # stiffness array
-    # import pdb; pdb.set_trace()
     num_stiffness = 1
     ea = 4.8e8
     ga = 3.231e8
@@ -49,7 +47,6 @@ def generate_fem_file(route, case_name, num_elem, deadforce=600e3, followerforce
     ei = 9.346e6
     base_stiffness = np.diag([ea, ga, ga, gj, ei, ei])
     stiffness = np.zeros((num_stiffness, 6, 6))
-    # import pdb; pdb.set_trace()
     for i in range(num_stiffness):
         stiffness[i, :, :] = base_stiffness
 

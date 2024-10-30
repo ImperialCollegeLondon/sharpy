@@ -67,14 +67,19 @@ def generate_fem_file():
     x = np.zeros((num_node, ))
     y = np.zeros((num_node, ))
     z = np.zeros((num_node, ))
+
     # struct twist
     structural_twist = np.zeros((num_elem, num_node_elem))
+
     # beam number
     beam_number = np.zeros((num_elem, ), dtype=int)
+
     # frame of reference delta
     frame_of_reference_delta = np.zeros((num_elem, num_node_elem, 3))
+
     # connectivities
     conn = np.zeros((num_elem, num_node_elem), dtype=int)
+
     # stiffness
     num_stiffness = 1
     ea = 1e5
@@ -87,6 +92,7 @@ def generate_fem_file():
     stiffness = np.zeros((num_stiffness, 6, 6))
     stiffness[0, :, :] = main_sigma*base_stiffness
     elem_stiffness = np.zeros((num_elem,), dtype=int)
+
     # mass
     num_mass = 1
     m_base = 0.75
@@ -95,30 +101,19 @@ def generate_fem_file():
     mass = np.zeros((num_mass, 6, 6))
     mass[0, :, :] = base_mass
     elem_mass = np.zeros((num_elem,), dtype=int)
+
     # boundary conditions
     boundary_conditions = np.zeros((num_node, ), dtype=int)
     boundary_conditions[0] = 1
-    # applied forces
-    # n_app_forces = 2
-    # node_app_forces = np.zeros((n_app_forces,), dtype=int)
-    app_forces = np.zeros((num_node, 6))
 
-    spacing_param = 4
+    # applied forces
+    app_forces = np.zeros((num_node, 6))
 
     # right wing (beam 0) --------------------------------------------------------------
     working_elem = 0
     working_node = 0
     beam_number[working_elem:working_elem + num_elem_main] = 0
-    domain = np.linspace(0, 1.0, num_node_main)
-    # 16 - (np.geomspace(20, 4, 10) - 4)
-    # x[working_node:working_node + num_node_main] = np.sin(sweep)*(main_span - (np.geomspace(main_span + spacing_param,
-    #                                                                                         0 + spacing_param,
-    #                                                                                         num_node_main)
-    #                                                                            - spacing_param))
-    # y[working_node:working_node + num_node_main] = np.abs(np.cos(sweep)*(main_span - (np.geomspace(main_span + spacing_param,
-    #                                                                                         0 + spacing_param,
-    #                                                                                         num_node_main)
-    #                                                                            - spacing_param)))
+
     y[0] = 0
     y[working_node:working_node + num_node_main] = np.cos(sweep)*np.linspace(0.0, main_span, num_node_main)
     x[working_node:working_node + num_node_main] = np.sin(sweep)*np.linspace(0.0, main_span, num_node_main)
@@ -142,14 +137,7 @@ def generate_fem_file():
     tempy = np.linspace(-main_span, 0.0, num_node_main)
     x[working_node:working_node + num_node_main - 1] = -np.sin(sweep)*tempy[0:-1]
     y[working_node:working_node + num_node_main - 1] = np.cos(sweep)*tempy[0:-1]
-    # x[working_node:working_node + num_node_main - 1] = -np.sin(sweep)*(main_span - (np.geomspace(0 + spacing_param,
-    #                                                                                         main_span + spacing_param,
-    #                                                                                         num_node_main)[:-1]
-    #                                                                            - spacing_param))
-    # y[working_node:working_node + num_node_main - 1] = -np.abs(np.cos(sweep)*(main_span - (np.geomspace(0 + spacing_param,
-    #                                                                                                main_span + spacing_param,
-    #                                                                                                num_node_main)[:-1]
-    #                                                                                   - spacing_param)))
+
     for ielem in range(num_elem_main):
         for inode in range(num_node_elem):
             frame_of_reference_delta[working_elem + ielem, inode, :] = [-1, 0, 0]
@@ -208,7 +196,7 @@ def generate_aero_file():
 
     working_elem = 0
     working_node = 0
-    # right wing (surface 0, beam 0)
+
     i_surf = 0
     airfoil_distribution[working_elem:working_elem + num_elem_main, :] = 0
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
@@ -219,15 +207,13 @@ def generate_aero_file():
     working_elem += num_elem_main
     working_node += num_node_main
 
-    # left wing (surface 1, beam 1)
     i_surf = 1
-    # airfoil_distribution[working_node:working_node + num_node_main - 1] = 0
+
     airfoil_distribution[working_elem:working_elem + num_elem_main, :] = 0
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main
     aero_node[working_node:working_node + num_node_main - 1] = True
-    # chord[working_node:working_node + num_node_main - 1] = main_chord
-    # elastic_axis[working_node:working_node + num_node_main - 1] = main_ea
+
     working_elem += num_elem_main
     working_node += num_node_main - 1
 
@@ -274,14 +260,14 @@ def generate_naca_camber(M=0, P=0):
 
 def generate_solver_file(horseshoe=False):
     file_name = route + '/' + case_name + '.sharpy'
-    # config = configparser.ConfigParser()
+
     import configobj
     config = configobj.ConfigObj()
     config.filename = file_name
     config['SHARPy'] = {'case': case_name,
                         'route': route,
-                        'flow': ['BeamLoader', 'AerogridLoader', 'StaticCoupled', 'AerogridPlot', 'BeamPlot', 'AeroForcesCalculator', 'WriteVariablesTime'],
-                        # 'flow': ['BeamLoader', 'NonLinearStatic', 'BeamPlot'],
+                        'flow': ['BeamLoader', 'AerogridLoader', 'StaticCoupled',
+                                 'AeroForcesCalculator', 'WriteVariablesTime'],
                         'write_screen': 'off',
                         'write_log': 'on',
                         'log_folder': route + '/output/',
@@ -312,8 +298,6 @@ def generate_solver_file(horseshoe=False):
                                                                                  'u_inf_direction': [1., 0, 0]},
                                                         'rho': rho},
                                'max_iter': 50,
-                               # 'n_load_steps': 1,
-                               # 'n_load_steps': 5,
                                'tolerance': 1e-9,
                                'relaxation_factor': 0.0}
     config['WriteVariablesTime'] = {'cleanup_old_solution': 'on',
@@ -338,16 +322,10 @@ def generate_solver_file(horseshoe=False):
                                     'wake_shape_generator_input': {'u_inf': u_inf,
                                                                    'u_inf_direction': np.array([1., 0., 0.]),
                                                                    'dt': main_chord/m_main/u_inf}}
-    config['AerogridPlot'] = {'include_rbm': 'off',
-                              'include_applied_forces': 'on',
-                              'minus_m_star': 0
-                              }
     config['AeroForcesCalculator'] = {'write_text_file': 'on',
                                       'text_file_name': case_name + '_aeroforces.csv',
                                       'screen_output': 'on',
                                       }
-    config['BeamPlot'] = {'include_rbm': 'off',
-                          'include_applied_forces': 'on'}
     config.write()
 
 

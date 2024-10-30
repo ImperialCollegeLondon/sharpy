@@ -345,7 +345,6 @@ class StaticCoupled(BaseSolver):
             for i_node, node in enumerate(thrust_nodes):
                 self.force_orientation[i_node, :] = (
                     algebra.unit_vector(self.data.structure.ini_info.steady_applied_forces[node, 0:3]))
-            # print(self.force_orientation)
 
         # thrust
         # thrust is scaled so that the direction of the forces is conserved
@@ -354,10 +353,7 @@ class StaticCoupled(BaseSolver):
         # if there are two or more nodes in thrust_nodes, the total forces
         # is n_nodes_in_thrust_nodes*thrust
         # thrust forces have to be indicated in structure.ini_info
-        # print(algebra.unit_vector(self.data.structure.ini_info.steady_applied_forces[0, 0:3])*thrust)
         for i_node, node in enumerate(thrust_nodes):
-            # self.data.structure.ini_info.steady_applied_forces[i_node, 0:3] = (
-            #     algebra.unit_vector(self.data.structure.ini_info.steady_applied_forces[i_node, 0:3])*thrust)
             self.data.structure.ini_info.steady_applied_forces[node, 0:3] = (
                     self.force_orientation[i_node, :]*thrust)
             self.data.structure.timestep_info[0].steady_applied_forces[node, 0:3] = (

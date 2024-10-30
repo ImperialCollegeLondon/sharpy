@@ -45,17 +45,18 @@ class InitialAeroelasticLoader(BaseSolver):
         else:
             self.settings = custom_settings
         settings_utils.to_custom_types(self.settings,
-                           self.settings_types,
-                           self.settings_default,
-                           no_ctype=True)
+                                       self.settings_types,
+                                       self.settings_default,
+                                       no_ctype=True)
         # Load simulation data
         self.file_info = h5utils.readh5(self.settings['input_file'])
 
     def run(self, **kwargs):
 
         aero_step = settings_utils.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[-1])
-        structural_step = settings_utils.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
-        
+        structural_step = settings_utils.set_value_or_default(kwargs, 'structural_step',
+                                                              self.data.structure.timestep_info[-1])
+
         # Copy structural information
         attributes = ['pos', 'pos_dot', 'pos_ddot',
                       'psi', 'psi_dot', 'psi_ddot',
@@ -64,9 +65,9 @@ class InitialAeroelasticLoader(BaseSolver):
 
         if self.settings['include_forces']:
             attributes.extend(['runtime_steady_forces',
-                      'runtime_unsteady_forces',
-                      'steady_applied_forces',
-                      'unsteady_applied_forces'])
+                               'runtime_unsteady_forces',
+                               'steady_applied_forces',
+                               'unsteady_applied_forces'])
 
         for att in attributes:
             new_attr = getattr(structural_step, att)
@@ -86,19 +87,18 @@ class InitialAeroelasticLoader(BaseSolver):
                                                        self.data.aero.aero_settings)
             # generate the wake because the solid shape might change
             self.data.aero.wake_shape_generator.generate({'zeta': aero_step.zeta,
-                                            'zeta_star': aero_step.zeta_star,
-                                            'gamma': aero_step.gamma,
-                                            'gamma_star': aero_step.gamma_star,
-                                            'dist_to_orig': aero_step.dist_to_orig})
+                                                          'zeta_star': aero_step.zeta_star,
+                                                          'gamma': aero_step.gamma,
+                                                          'gamma_star': aero_step.gamma_star,
+                                                          'dist_to_orig': aero_step.dist_to_orig})
 
         else:
             attributes = ['zeta', 'zeta_star', 'normals',
                           'gamma', 'gamma_star',
-                          'u_ext', 'u_ext_star',]
-                          # 'dist_to_orig', 'gamma_dot', 'zeta_dot',
+                          'u_ext', 'u_ext_star', ]
 
             if self.settings['include_forces']:
-                attributes.extend(['dynamic_forces', 'forces',])
+                attributes.extend(['dynamic_forces', 'forces', ])
 
             for att in attributes:
                 for isurf in range(aero_step.n_surf):

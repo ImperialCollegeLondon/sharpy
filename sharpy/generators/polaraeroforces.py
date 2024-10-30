@@ -102,6 +102,9 @@ class PolarCorrection(generator_interface.BaseGenerator):
                                        header_line='This generator takes in the following settings.')
 
     def __init__(self):
+        self.folder = None
+        self.cd_from_cl = None
+        self.list_aoa_cl0 = None
         self.settings = None
 
         self.aero = None
@@ -202,11 +205,9 @@ class PolarCorrection(generator_interface.BaseGenerator):
                     c_bs = local_stability_axes(cgb.T.dot(dir_urel), cgb.T.dot(dir_chord))
                     forces_s = c_bs.T.dot(struct_forces[inode, :3])
                     moment_s = c_bs.T.dot(struct_forces[inode, 3:])
-                    drag_force = forces_s[0]
                     lift_force = forces_s[2]
                     # Compute the associated lift
                     cl = np.sign(lift_force) * np.linalg.norm(lift_force) / coef
-                    cd_sharpy = np.linalg.norm(drag_force) / coef
 
                     if self.cd_from_cl:
                         # Compute the drag from the UVLM computed lift

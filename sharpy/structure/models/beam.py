@@ -132,8 +132,6 @@ class Beam(BaseStructure):
         self.frame_of_reference_delta = in_data['frame_of_reference_delta'].copy()
         # structural twist
         self.structural_twist = in_data['structural_twist'].copy()
-        # boundary conditions
-        # self.boundary_conditions = in_data['boundary_conditions'].copy()
         # beam number for every elem
         try:
             self.beam_number = in_data['beam_number'].copy()
@@ -250,21 +248,6 @@ class Beam(BaseStructure):
             for it in range(num_steps):
                 self.dynamic_input[it]['for_acc'] = np.zeros((6, ), dtype=ct.c_double, order='F')
 
-        # try:
-        #     for it in range(num_steps):
-        #         self.dynamic_input[it]['trayectories'] = dyn_dict['trayectories'][it, :, :]
-        # except KeyError:
-        #     for it in range(num_steps):
-        #         self.dynamic_input[it]['trayectories'] = None
-
-# TODO ADC: necessary? I don't think so
-        # try:
-            # for it in range(num_steps):
-                # self.dynamic_input[it]['enforce_trajectory'] = dyn_dict['enforce_trayectory'][it, :, :]
-        # except KeyError:
-            # for it in range(num_steps):
-                # self.dynamic_input[it]['enforce_trajectory'] = np.zeros((self.num_node, 3), dtype=bool)
-
     def generate_dof_arrays(self):
         self.vdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
         self.fdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
@@ -333,23 +316,6 @@ class Beam(BaseStructure):
                 self.elements[i_lumped_master_elem].rbmass[i_lumped_master_node_local, :, :] += (
                     inertia_tensor) # += necessary in case multiple masses defined per node
 
-    # def generate_master_structure(self):
-    #     self.master = np.zeros((self.num_elem, self.num_node_elem, 2), dtype=int) - 1
-    #     for i_elem in range(self.num_elem):
-    #         for i_node_local in range(self.elements[i_elem].n_nodes):
-    #             if not i_elem and not i_node_local:
-    #                 continue
-    #             j_elem = 0
-    #             while self.master[i_elem, i_node_local, 0] == -1 and j_elem <= i_elem:
-    #                 # for j_node_local in self.elements[j_elem].ordering:
-    #                 for j_node_local in range(self.elements[j_elem].n_nodes):
-    #                     if (self.connectivities[i_elem, i_node_local] ==
-    #                             self.connectivities[j_elem, j_node_local]):
-    #                         self.master[i_elem, i_node_local, :] = [j_elem, j_node_local]
-    #                 j_elem += 1
-
-    #     self.generate_node_master_elem()
-    #     a = 1
     def generate_master_structure(self):
         self.master = np.zeros((self.num_elem, self.num_node_elem, 2), dtype=int) - 1
         for i_elem in range(self.num_elem):
@@ -380,17 +346,6 @@ class Beam(BaseStructure):
     def next_step(self):
         self.add_timestep(self.timestep_info)
 
-    # def generate_node_master_elem(self):
-    #     """
-    #     Returns a matrix indicating the master element for a given node
-    #     :return:
-    #     """
-    #     self.node_master_elem = np.zeros((self.num_node, 2), dtype=ct.c_int, order='F') - 1
-    #     for i_elem in range(self.num_elem):
-    #         for i_node_local in range(self.elements[i_elem].n_nodes):
-    #             if self.master[i_elem, i_node_local, 0] == -1:
-    #                 self.node_master_elem[self.connectivities[i_elem, i_node_local], 0] = i_elem
-    #                 self.node_master_elem[self.connectivities[i_elem, i_node_local], 1] = i_node_local
     def generate_node_master_elem(self):
         """
         Returns a matrix indicating the master element for a given node
@@ -456,28 +411,6 @@ class Beam(BaseStructure):
 
         if self.settings['unsteady']:
             pass
-            # TODO
-            # if self.dynamic_forces_amplitude is not None:
-            #     self.dynamic_forces_amplitude_fortran = self.dynamic_forces_amplitude.astype(dtype=ct.c_double, order='F')
-            #     self.dynamic_forces_time_fortran = self.dynamic_forces_time.astype(dtype=ct.c_double, order='F')
-            # else:
-            #     self.dynamic_forces_amplitude_fortran = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
-            #     self.dynamic_forces_time_fortran = np.zeros((self.n_tsteps, 1), dtype=ct.c_double, order='F')
-            #
-            # if self.forced_vel is not None:
-            #     self.forced_vel_fortran = self.forced_vel.astype(dtype=ct.c_double, order='F')
-            # else:
-            #     self.forced_vel_fortran = np.zeros((self.n_tsteps, 6), dtype=ct.c_double, order='F')
-            #
-            # if self.forced_acc is not None:
-            #     self.forced_acc_fortran = self.forced_acc.astype(dtype=ct.c_double, order='F')
-            # else:
-            #     self.forced_acc_fortran = np.zeros((self.n_tsteps, 6), dtype=ct.c_double, order='F')
-
-    # def update_orientation(self, quat=None, ts=-1):
-    #     if quat is None:
-    #         quat = algebra.euler2quat(self.timestep_info[ts].for_pos[3:6])
-    #     self.timestep_info[ts].update_orientation(quat)  # Cga going in here
 
     def integrate_position(self, ts, dt):
         try:
@@ -490,7 +423,6 @@ class Beam(BaseStructure):
                           self.timestep_info[ts].for_vel[0:3]))
 
     def nodal_premultiply_inv_T_transpose(self, nodal, tstep, filter=np.array([True]*6)):
-        # nodal_t = np.zeros_like(nodal, dtype=ct.c_double, order='F')
         nodal_t = nodal.copy(order='F')
         for i_node in range(self.num_node):
             # get master elem and i_local_node

@@ -59,7 +59,6 @@ def load_attributes(handle, path):
 
 def check_fem_dict(fem_dict):
     print('\tRunning tests for the FEM input file...', end='')
-    # import pdb; pdb.set_trace()
     (num_elem_dict, num_node_elem_dict) = np.shape(fem_dict['connectivities'])
     num_elem = fem_dict['num_elem']
     num_node_elem = fem_dict['num_node_elem']

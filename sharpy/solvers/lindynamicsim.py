@@ -283,8 +283,6 @@ def state_to_timestep(data, x, u=None, y=None):
         modal = False
 
     aero_state = x[:-data.linear.linear_system.beam.ss.states]
-    beam_state = x[-data.linear.linear_system.beam.ss.states:] # after aero all the rest is beam, but should not use
-    # in case it is in DT the state variables do not mean the same!
 
     # Beam output
     y_beam = y[-data.linear.linear_system.beam.ss.outputs:]
@@ -340,14 +338,8 @@ def state_to_timestep(data, x, u=None, y=None):
     current_aero_tstep.zeta_dot = zeta_dot
     current_aero_tstep.u_ext = u_ext
 
-    # self.data.aero.timestep_info.append(current_aero_tstep)
-
     aero_forces_vec = np.concatenate([forces[i_surf][:3, :, :].reshape(-1, order='C') for i_surf in range(len(forces))])
     beam_forces = data.linear.linear_system.couplings['Ksa'].dot(aero_forces_vec)
-
-    if u is not None:
-        u_struct = u[-data.linear.linear_system.beam.ss.inputs:]
-    # y_struct = y[:self.data.linear.lsys[sys_id].lsys['LinearBeam'].ss.outputs]
 
     # Reconstruct the state if modal
     if modal:
@@ -356,9 +348,7 @@ def state_to_timestep(data, x, u=None, y=None):
     else:
         x_s = y_beam
     y_s = beam_forces #+ phi.dot(u_struct)
-    # y_s = self.data.linear.lsys['LinearBeam'].sys.U.T.dot(y_struct)
 
     current_struct_step = data.linear.linear_system.beam.unpack_ss_vector(x_s, y_s, data.linear.tsstruct0)
-    # data.structure.timestep_info.append(current_struct_step)
 
     return current_aero_tstep, current_struct_step

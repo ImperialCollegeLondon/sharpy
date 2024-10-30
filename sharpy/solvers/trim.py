@@ -261,20 +261,7 @@ class Trim(BaseSolver):
 
         cout.cout_wrap('Solution = ')
         cout.cout_wrap(solution.x)
-        # pretty_print_x(x, x_info)
         return solution
-
-
-# def pretty_print_x(x, x_info):
-#     cout.cout_wrap('X vector:', 1)
-#     for k, v in x_info:
-#         if k.startswith('i_'):
-#             if isinstance(v, list):
-#                 for i, vv in v:
-#                     cout.cout_wrap(k + ' ' + str(i) + ': ', vv)
-#             else:
-#                 cout.cout_wrap(k + ': ', v)
-
 
 def solver_wrapper(x, x_info, solver_data, i_dim=-1):
     if solver_data.settings['print_info']:
@@ -286,7 +273,6 @@ def solver_wrapper(x, x_info, solver_data, i_dim=-1):
     # change input data
     solver_data.data.structure.timestep_info[solver_data.data.ts] = solver_data.data.structure.ini_info.copy()
     tstep = solver_data.data.structure.timestep_info[solver_data.data.ts]
-    aero_tstep = solver_data.data.aero.timestep_info[solver_data.data.ts]
     orientation_quat = algebra.euler2quat(np.array([roll, alpha, beta]))
     tstep.quat[:] = orientation_quat
     # control surface deflection
@@ -323,21 +309,13 @@ def solver_wrapper(x, x_info, solver_data, i_dim=-1):
     totals[3:6] = moments
     if solver_data.settings['print_info']:
         cout.cout_wrap(' forces = ' + str(totals), 1)
-    # print('total forces = ', totals)
-    # try:
-    #     totals += x[x_info['i_none']]
-    # except KeyError:
-    #     pass
-    # return resultant forces and moments
-    # return np.linalg.norm(totals)
+
     if i_dim >= 0:
         return totals[i_dim]
     elif i_dim == -1:
-        # return [np.sum(totals[0:3]**2), np.sum(totals[4:6]**2)]
         return totals
     elif i_dim == -2:
         coeffs = np.array([1.0, 1.0, 1.0, 2, 2, 2])
-        # print('return = ', np.dot(coeffs*totals, coeffs*totals))
         if solver_data.settings['print_info']:
             cout.cout_wrap(' val = ' + str(np.dot(coeffs*totals, coeffs*totals)), 1)
         return np.dot(coeffs*totals, coeffs*totals)

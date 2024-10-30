@@ -317,17 +317,12 @@ class StaticTrim(BaseSolver):
 
     def evaluate(self, alpha, deflection_gamma, thrust):
         if not np.isfinite(alpha):
-            import pdb; pdb.set_trace()
+            raise ValueError
         if not np.isfinite(deflection_gamma):
-            import pdb; pdb.set_trace()
+            raise ValueError
         if not np.isfinite(thrust):
-            import pdb; pdb.set_trace()
+            raise ValueError
 
-        # cout.cout_wrap('--', 2)
-        # cout.cout_wrap('Trying trim: ', 2)
-        # cout.cout_wrap('Alpha: ' + str(alpha*180/np.pi), 2)
-        # cout.cout_wrap('CS deflection: ' + str((deflection_gamma - alpha)*180/np.pi), 2)
-        # cout.cout_wrap('Thrust: ' + str(thrust), 2)
         # modify the trim in the static_coupled solver
         self.solver.change_trim(alpha,
                                 thrust,
@@ -342,10 +337,6 @@ class StaticTrim(BaseSolver):
         forcez = forces[2]
         forcex = forces[0]
         moment = moments[1]
-        # cout.cout_wrap('Forces and moments:', 2)
-        # cout.cout_wrap('fx = ' + str(forces[0]) + ' mx = ' + str(moments[0]), 2)
-        # cout.cout_wrap('fy = ' + str(forces[1]) + ' my = ' + str(moments[1]), 2)
-        # cout.cout_wrap('fz = ' + str(forces[2]) + ' mz = ' + str(moments[2]), 2)
 
         self.table.print_line([self.i_iter,
                                alpha*180/np.pi,

@@ -6,8 +6,8 @@ import sharpy.utils.cout_utils as cout
 class DefaultValueBaseException(Exception):
     def __init__(self, variable, value, message=''):
         super().__init__(message)
-        
-    def output_message(self, message, color_id = 3):
+
+    def output_message(self, message, color_id=3):
         if cout.cout_wrap is None:
             print(message)
         else:
@@ -18,8 +18,8 @@ class DefaultValueBaseException(Exception):
 
 class NoDefaultValueException(DefaultValueBaseException):
     def __init__(self, variable, value=None, message=''):
-        super().__init__(message, value)        
-        self.output_message("The variable " + variable + " has no default value, please indicate one") 
+        super().__init__(message, value)
+        self.output_message("The variable " + variable + " has no default value, please indicate one")
 
 
 class NotValidInputFile(Exception):
@@ -31,9 +31,12 @@ class NotImplementedSolver(Exception):
     def __init__(self, solver_name, message=''):
         super().__init__(message)
         if cout.cout_wrap is None:
-            print("The solver " + solver_name + " is not implemented. Check the list of available solvers when starting SHARPy")
+            print(
+                "The solver " + solver_name + " is not implemented. Check the list of available solvers when starting SHARPy")
         else:
-            cout.cout_wrap("The solver " + solver_name + " is not implemented. Check the list of available solvers when starting SHARPy", 3)
+            cout.cout_wrap(
+                "The solver " + solver_name + " is not implemented. Check the list of available solvers when starting SHARPy",
+                3)
 
 
 class NotConvergedStructuralSolver(Exception):
@@ -69,18 +72,18 @@ class NotValidSetting(DefaultValueBaseException):
     def __init__(self, setting, variable, options, value=None, message=''):
         message = 'The setting %s with entry %s is not one of the valid options: %s' % (setting, variable, options)
         super().__init__(variable, value, message=message)
-        self.output_message(message, color_id = 4)
-        
-    
+        self.output_message(message, color_id=4)
+
+
 class NotValidSettingType(DefaultValueBaseException):
     """
     Raised when a user gives a setting with an invalid type
     """
 
-    def __init__(self, setting, variable,  data_types, value=None, message=''):
+    def __init__(self, setting, variable, data_types, value=None, message=''):
         message = 'The setting %s with entry %s is not one of the valid types: %s' % (setting, variable, data_types)
         super().__init__(variable, value, message=message)
-        self.output_message(message, color_id = 4)
+        self.output_message(message, color_id=4)
 
 
 class SolverNotFound(Exception):
@@ -94,7 +97,8 @@ class NotRecognisedSetting(DefaultValueBaseException):
     """
     Raised when a setting is not recognised
     """
+
     def __init__(self, setting, value=None, message=''):
         message = 'Unrecognised setting {:s}. Please check input file and/or documentation'.format(setting)
         super().__init__(variable=None, value=None, message=message)
-        self.output_message(message, color_id = 4)
+        self.output_message(message, color_id=4)

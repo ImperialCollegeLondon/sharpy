@@ -268,14 +268,6 @@ class Modal(BaseSolver):
                     zero_FullCglobal = False
                     warnings.warn('Projecting a system with damping on undamped modal shapes')
                     break
-        # Check if the damping matrix is skew-symmetric
-        # skewsymmetric_FullCglobal = True
-        # for i in range(num_dof):
-        #     for j in range(i:num_dof):
-        #         if((i==j) and (np.absolute(FullCglobal[i, j]) > np.finfo(float).eps)):
-        #             skewsymmetric_FullCglobal = False
-        #         elif(np.absolute(FullCglobal[i, j] + FullCglobal[j, i]) > np.finfo(float).eps):
-        #             skewsymmetric_FullCglobal = False
 
         NumLambda = min(num_dof, self.settings['NumLambda'])
 
@@ -289,7 +281,6 @@ class Modal(BaseSolver):
             freq_natural = np.sqrt(eigenvalues)
             order = np.argsort(freq_natural)[:NumLambda]
             freq_natural = freq_natural[order]
-            #freq_damped = freq_natural
             eigenvalues = eigenvalues[order]
             eigenvectors = eigenvectors[:,order]
             damping = np.zeros((NumLambda,))
@@ -533,16 +524,12 @@ class Modal(BaseSolver):
                 bc_here = self.data.structure.boundary_conditions[node_glob]
 
                 if bc_here == 1:  # clamp (only rigid-body)
-                    dofs_here = 0
-                    jj_tra, jj_rot = [], []
                     continue
 
                 elif bc_here == -1 or bc_here == 0:  # (rigid+flex body)
                     dofs_here = 6
                     jj_tra = 6 * self.data.structure.vdof[node_glob] + np.array([0, 1, 2], dtype=int)
                     jj_rot = 6 * self.data.structure.vdof[node_glob] + np.array([3, 4, 5], dtype=int)
-                # jj_tra=[jj  ,jj+1,jj+2]
-                # jj_rot=[jj+3,jj+4,jj+5]
                 else:
                     raise NameError('Invalid boundary condition (%d) at node %d!' \
                                     % (bc_here, node_glob))
@@ -567,7 +554,6 @@ class Modal(BaseSolver):
 
             # Assemble transformed modes
             phirr = Krr.dot(phi[-10:, :10])
-            phiss = K_vec.dot(phi[:, 10:])
 
             # Get rigid body modes to be positive in translation and rotation
             for i in range(10):

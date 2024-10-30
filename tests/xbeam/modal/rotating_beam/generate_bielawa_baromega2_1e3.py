@@ -7,7 +7,6 @@ import sharpy.utils.algebra as algebra
 import sys
 import sharpy.utils.cout_utils as cout
 
-
 case_name = 'bielawa_baromega2_1e3'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
 
@@ -17,20 +16,21 @@ num_node_elem = 3
 length = 1
 
 # linear_factor: scaling factor to make the non linear solver behave as a linear one
-linear_factor=1
-E=1e6*linear_factor
-A=1e4
-I=1e-4
-ei = E*I
-m_bar = 1*linear_factor
+linear_factor = 1
+E = 1e6 * linear_factor
+A = 1e4
+I = 1e-4
+ei = E * I
+m_bar = 1 * linear_factor
 
-rot_speed=np.sqrt(1e3*ei/m_bar/length**4)
+rot_speed = np.sqrt(1e3 * ei / m_bar / length ** 4)
 
 steps_per_revolution = 180
-dt = 2.0*np.pi/rot_speed/steps_per_revolution
-n_tstep = 1*steps_per_revolution+1
+dt = 2.0 * np.pi / rot_speed / steps_per_revolution
+n_tstep = 1 * steps_per_revolution + 1
 
 n_tstep = 90
+
 
 def clean_test_files():
     fem_file_name = route + '/' + case_name + '.fem.h5'
@@ -49,14 +49,13 @@ def clean_test_files():
     if os.path.isfile(solver_file_name):
         os.remove(solver_file_name)
 
-def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
+def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     global num_node
-    num_node = (num_node_elem - 1)*num_elem + 1
-    # import pdb; pdb.set_trace()
-    angle = 0*np.pi/180.0
-    x = (np.linspace(0, length, num_node))*np.cos(angle)
-    y = (np.linspace(0, length, num_node))*np.sin(angle)
+    num_node = (num_node_elem - 1) * num_elem + 1
+    angle = 0 * np.pi / 180.0
+    x = (np.linspace(0, length, num_node)) * np.cos(angle)
+    y = (np.linspace(0, length, num_node)) * np.sin(angle)
     z = np.zeros((num_node,))
 
     structural_twist = np.zeros((num_elem, num_node_elem))
@@ -77,25 +76,21 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
         conn[ielem, :] = (np.ones((3,)) * ielem * (num_node_elem - 1)
                           + [0, 2, 1])
 
-
-
     # stiffness array
-    # import pdb; pdb.set_trace()
     num_stiffness = 1
 
-    ea = E*A
+    ea = E * A
     # APPROXIMATION!!!
     cout.cout_wrap("Assuming isotropic material", 2)
-    G = E / 2.0 / (1.0+0.3)
+    G = E / 2. / (1. + 0.3)
     cout.cout_wrap("Using total cross-section area as shear area", 2)
-    ga = G*A
+    ga = G * A
     cout.cout_wrap("Assuming planar cross-sections", 2)
-    J = 2.0* I
-    gj = G*J
+    J = 2. * I
+    gj = G * J
 
     base_stiffness = np.diag([ea, ga, ga, gj, ei, ei])
     stiffness = np.zeros((num_stiffness, 6, 6))
-    # import pdb; pdb.set_trace()
     for i in range(num_stiffness):
         stiffness[i, :, :] = base_stiffness
     # element stiffness
@@ -103,11 +98,11 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     # mass array
     num_mass = 1
-    base_mass = m_bar*np.diag([1.0, 1.0, 1.0, J/A, I/A, I/A])
-    # base_mass = m_bar*np.diag([1.0, 1.0, 1.0, 1.0,1.0,1.0])
+    base_mass = m_bar * np.diag([1., 1., 1., J / A, I / A, I / A])
     mass = np.zeros((num_mass, 6, 6))
     for i in range(num_mass):
         mass[i, :, :] = base_mass
+
     # element masses
     elem_mass = np.zeros((num_elem,), dtype=int)
 
@@ -121,63 +116,55 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     # new app forces scheme (only follower)
     app_forces = np.zeros((num_node, 6))
-    # app_forces[0, :] = [0, 0, 3000000, 0, 0, 0]
 
     # lumped masses input
     n_lumped_mass = 1
     lumped_mass_nodes = np.array([num_node - 1], dtype=int)
-    lumped_mass = np.zeros((n_lumped_mass, ))
+    lumped_mass = np.zeros((n_lumped_mass,))
     lumped_mass[0] = 0.0
     lumped_mass_inertia = np.zeros((n_lumped_mass, 3, 3))
     lumped_mass_position = np.zeros((n_lumped_mass, 3))
 
-    #n_lumped_mass = 1
-    #lumped_mass_nodes = np.ones((num_node,), dtype=int)
-    #lumped_mass = np.zeros((n_lumped_mass, ))
-    #lumped_mass[0] = m_bar*length/num_elem/(num_node_elem-1)
-    #lumped_mass_inertia[0,:,:] = np.diag([J, I, I])
-    #lumped_mass_position = np.zeros((n_lumped_mass, 3))
-
     with h5.File(route + '/' + case_name + '.fem.h5', 'a') as h5file:
 
         # CHECKING
-        if(elem_stiffness.shape[0]!=num_elem):
+        if (elem_stiffness.shape[0] != num_elem):
             sys.exit("ERROR: Element stiffness must be defined for each element")
-        if(elem_mass.shape[0]!=num_elem):
+        if (elem_mass.shape[0] != num_elem):
             sys.exit("ERROR: Element mass must be defined for each element")
-        if(frame_of_reference_delta.shape[0]!=num_elem):
+        if (frame_of_reference_delta.shape[0] != num_elem):
             sys.exit("ERROR: The first dimension of FoR does not match the number of elements")
-        if(frame_of_reference_delta.shape[1]!=num_node_elem):
+        if (frame_of_reference_delta.shape[1] != num_node_elem):
             sys.exit("ERROR: The second dimension of FoR does not match the number of nodes element")
-        if(frame_of_reference_delta.shape[2]!=3):
+        if (frame_of_reference_delta.shape[2] != 3):
             sys.exit("ERROR: The third dimension of FoR must be 3")
-        if(structural_twist.shape[0]!=num_node):
+        if (structural_twist.shape[0] != num_node):
             sys.exit("ERROR: The structural twist must be defined for each node")
-        if(boundary_conditions.shape[0]!=num_node):
+        if (boundary_conditions.shape[0] != num_node):
             sys.exit("ERROR: The boundary conditions must be defined for each node")
-        if(beam_number.shape[0]!=num_node):
+        if (beam_number.shape[0] != num_node):
             sys.exit("ERROR: The beam number must be defined for each node")
-        if(app_forces.shape[0]!=num_node):
+        if (app_forces.shape[0] != num_node):
             sys.exit("ERROR: The first dimension of the applied forces matrix does not match the number of nodes")
-        if(app_forces.shape[1]!=6):
+        if (app_forces.shape[1] != 6):
             sys.exit("ERROR: The second dimension of the applied forces matrix must be 6")
 
-        coordinates = h5file.create_dataset('coordinates', data = np.column_stack((x, y, z)))
-        conectivities = h5file.create_dataset('connectivities', data = conn)
+        coordinates = h5file.create_dataset('coordinates', data=np.column_stack((x, y, z)))
+        conectivities = h5file.create_dataset('connectivities', data=conn)
         num_nodes_elem_handle = h5file.create_dataset(
-            'num_node_elem', data = num_node_elem)
+            'num_node_elem', data=num_node_elem)
         num_nodes_handle = h5file.create_dataset(
-            'num_node', data = num_node)
+            'num_node', data=num_node)
         num_elem_handle = h5file.create_dataset(
-            'num_elem', data = num_elem)
+            'num_elem', data=num_elem)
         stiffness_db_handle = h5file.create_dataset(
-            'stiffness_db', data = stiffness)
+            'stiffness_db', data=stiffness)
         stiffness_handle = h5file.create_dataset(
-            'elem_stiffness', data = elem_stiffness)
+            'elem_stiffness', data=elem_stiffness)
         mass_db_handle = h5file.create_dataset(
-            'mass_db', data = mass)
+            'mass_db', data=mass)
         mass_handle = h5file.create_dataset(
-            'elem_mass', data = elem_mass)
+            'elem_mass', data=elem_mass)
         frame_of_reference_delta_handle = h5file.create_dataset(
             'frame_of_reference_delta', data=frame_of_reference_delta)
         structural_twist_handle = h5file.create_dataset(
@@ -198,17 +185,14 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
             'lumped_mass_position', data=lumped_mass_position)
     return num_node, coordinates
 
+
 def generate_dyn_file():
     global num_node
 
     forced_for_vel = np.zeros((n_tstep, 6))
-    dynamic_forces_time = np.zeros((n_tstep, num_node,6))
+    dynamic_forces_time = np.zeros((n_tstep, num_node, 6))
     for it in range(n_tstep):
-        # forced_for_vel[it, 3:6] = it/n_tstep*angular_velocity
         forced_for_vel[it, 5] = rot_speed
-        # dynamic_forces_time[it,-1,2] = 100
-
-
 
     with h5.File(route + '/' + case_name + '.dyn.h5', 'a') as h5file:
         h5file.create_dataset(
@@ -218,33 +202,37 @@ def generate_dyn_file():
         h5file.create_dataset(
             'num_steps', data=n_tstep)
 
+
 def generate_aero_file():
     global num_node
     with h5.File(route + '/' + case_name + '.aero.h5', 'a') as h5file:
         airfoils_group = h5file.create_group('airfoils')
         # add the airfoils
-        airfoils_group.create_dataset("0", data = np.column_stack( (np.linspace( 0.0, 1.0, 10), np.zeros(10) )) )
+        airfoils_group.create_dataset("0", data=np.column_stack((np.linspace(0.0, 1.0, 10), np.zeros(10))))
 
         # chord
-        chord_input = h5file.create_dataset('chord', data= np.ones((num_elem,num_node_elem),))
-        dim_attr = chord_input .attrs['units'] = 'm'
+        chord_input = h5file.create_dataset('chord', data=np.ones((num_elem, num_node_elem), ))
+        dim_attr = chord_input.attrs['units'] = 'm'
 
         # twist
-        twist_input = h5file.create_dataset('twist', data=np.zeros((num_elem,num_node_elem),))
+        twist_input = h5file.create_dataset('twist', data=np.zeros((num_elem, num_node_elem), ))
         dim_attr = twist_input.attrs['units'] = 'rad'
 
         # airfoil distribution
-        airfoil_distribution_input = h5file.create_dataset('airfoil_distribution', data=np.zeros((num_elem,num_node_elem),dtype=int))
+        airfoil_distribution_input = h5file.create_dataset('airfoil_distribution',
+                                                           data=np.zeros((num_elem, num_node_elem), dtype=int))
 
-        surface_distribution_input = h5file.create_dataset('surface_distribution', data=np.zeros((num_elem,),dtype=int))
-        surface_m_input = h5file.create_dataset('surface_m', data = np.ones((1,),dtype=int))
+        surface_distribution_input = h5file.create_dataset('surface_distribution',
+                                                           data=np.zeros((num_elem,), dtype=int))
+        surface_m_input = h5file.create_dataset('surface_m', data=np.ones((1,), dtype=int))
         m_distribution = 'uniform'
         m_distribution_input = h5file.create_dataset('m_distribution', data=m_distribution.encode('ascii', 'ignore'))
 
-        aero_node = np.zeros((num_node,),dtype=bool)
-        aero_node[-3:] = np.ones((3,),dtype=bool)
+        aero_node = np.zeros((num_node,), dtype=bool)
+        aero_node[-3:] = np.ones((3,), dtype=bool)
         aero_node_input = h5file.create_dataset('aero_node', data=aero_node)
-        elastic_axis_input = h5file.create_dataset('elastic_axis', data=0.5*np.ones((num_elem,num_node_elem),))
+        elastic_axis_input = h5file.create_dataset('elastic_axis', data=0.5 * np.ones((num_elem, num_node_elem), ))
+
 
 def generate_solver_file():
     file_name = route + '/' + case_name + '.sharpy'
@@ -253,12 +241,13 @@ def generate_solver_file():
     settings = dict()
 
     settings['SHARPy'] = {'case': case_name,
-                        'route': route,
-                        'flow': ['BeamLoader', 'AerogridLoader', 'StaticCoupled', 'BeamPlot', 'AerogridPlot',  'DynamicPrescribedCoupled', 'Modal'],
-                        'write_screen': 'off',
-                        'write_log': 'on',
-                        'log_folder': route + '/output/',
-                        'log_file': case_name + '.log'}
+                          'route': route,
+                          'flow': ['BeamLoader', 'AerogridLoader', 'StaticCoupled', 'BeamPlot', 'AerogridPlot',
+                                   'DynamicPrescribedCoupled', 'Modal'],
+                          'write_screen': 'off',
+                          'write_log': 'on',
+                          'log_folder': route + '/output/',
+                          'log_file': case_name + '.log'}
 
     # AUX DICTIONARIES
     aux_settings['velocity_field_input'] = {'u_inf': 100.0,
@@ -266,7 +255,7 @@ def generate_solver_file():
 
     # LOADERS
     settings['BeamLoader'] = {'unsteady': 'on',
-                              'orientation': algebra.euler2quat(np.array([0.0,0.0,0.0]))}
+                              'orientation': algebra.euler2quat(np.array([0.0, 0.0, 0.0]))}
 
     settings['AerogridLoader'] = {'unsteady': 'on',
                                   'aligned_grid': 'on',
@@ -290,7 +279,6 @@ def generate_solver_file():
                             'include_forward_motion': 'on'}
 
     settings['BeamLoads'] = {}
-
 
     # STATIC COUPLED
 
@@ -326,14 +314,14 @@ def generate_solver_file():
     # DYNAMIC PRESCRIBED COUPLED
 
     settings['NonLinearDynamicPrescribedStep'] = {'print_info': 'on',
-                                               'max_iterations': 95000,
-                                               'delta_curved': 1e-9,
-                                               'min_delta': 1e-6,
-                                               'newmark_damp': 1e-3,
-                                               'gravity_on': 'off',
-                                               'gravity': 9.81,
-                                               'num_steps': n_tstep,
-                                               'dt': dt}
+                                                  'max_iterations': 95000,
+                                                  'delta_curved': 1e-9,
+                                                  'min_delta': 1e-6,
+                                                  'newmark_damp': 1e-3,
+                                                  'gravity_on': 'off',
+                                                  'gravity': 9.81,
+                                                  'num_steps': n_tstep,
+                                                  'dt': dt}
 
     settings['StepUvlm'] = {'print_info': 'on',
                             'horseshoe': 'off',
@@ -366,9 +354,9 @@ def generate_solver_file():
                                                                         'AerogridPlot': settings['AerogridPlot']}}
 
     settings['Modal'] = {'include_rbm': 'on',
-                          'NumLambda': 10000,
-                          'num_steps': 1,
-                          'print_matrices': 'on'}
+                         'NumLambda': 10000,
+                         'num_steps': 1,
+                         'print_matrices': 'on'}
 
     import configobj
     config = configobj.ConfigObj()
@@ -377,6 +365,7 @@ def generate_solver_file():
         config[k] = v
     config.write()
 
+
 # run everything
 clean_test_files()
 generate_fem_file(route, case_name, num_elem, num_node_elem)
@@ -384,4 +373,6 @@ generate_aero_file()
 generate_dyn_file()
 generate_solver_file()
 
-cout.cout_wrap('Reference for validation: "Rotary wing structural dynamics and aeroelasticity", R.L. Bielawa. AIAA education series. Second edition', 1)
+cout.cout_wrap(
+    'Reference for validation: "Rotary wing structural dynamics and aeroelasticity", R.L. Bielawa. AIAA education series. Second edition',
+    1)
