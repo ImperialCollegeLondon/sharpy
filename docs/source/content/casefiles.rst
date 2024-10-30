@@ -319,7 +319,92 @@ Item by item:
 
     This is an optional group to add if correcting the aerodynamic forces using airfoil polars is desired. A polar
     should be included for each airfoil defined. Each entry consists of a 4-column table. The first column corresponds
-    to the angle of attack (in radians) and then the ``C_L``, ``C_D`` and ``C_M``. 
+    to the angle of attack (in radians) and then the ``C_L``, ``C_D`` and ``C_M``.
+
+Multibody file
+--------------
+
+All the aerodynamic data is contained in ``case.mb.h5``.
+
+This file encapsulates both the initial conditions for the multiple bodies, and the constraints between them.
+
+Item by item:
+
+* ``num_bodies``: Number of bodies.
+
+* ``num_constraints``: Number of constraints between bodies.
+
+    The initial conditions for each body and the constraint definititions are defined in groups. The body groups are named
+    as ``body_xx``, where the xx is replaced with a two digit body number starting from 00, e.g. ``body_00``. Each of these
+    groups should have the following items:
+
+* ``FoR_acceleration [6]``: Frame of reference initial acceleration.
+
+    An array of the stacked linear and rotational initial accelerations in the inertial frame.
+
+* ``FoR_velocity [6]``: Frame of reference initial velocity.
+
+    An array of the stacked linear and rotational initial velocities in the inertial frame.
+
+* ``FoR_position [6]``: Frame of reference initial position.
+
+    An array of the stacked linear and rotational initial positions in the inertial frame.
+
+* ``quat [4]``: Frame of reference initial orientation.
+
+    A quaternion describing the initial rotation between the body attached and inertial frames.
+
+* ``body_number``: Body number.
+
+    An integer used to identify the body when creating constraints.
+
+* ``FoR_movement``: Type of frame of reference movement.
+
+    Use "free" to include rigid body motion, or "prescribed" for a clamped body.
+
+The constraint groups are named similarly to the bodies, using ``constraint_xx`` where xx is the two digit constraint number
+starting from 00. Each of these groups should have the following items:
+
+* ``scalingFactor``: Scaling factor.
+
+    This value scales the multibody equations, where generally settings to ``dt^2`` provides acceptable results.
+
+* ``behavior``: Constraint behavior.
+
+    This string defines the type of constraint applied to a single or multiple bodies. A wide range of standard lower-pair
+    kinematic joints are available, such as hinge and spherical joints, as well as prescribed rotation joints. A list of the
+    available joints can be found in ``sharpy/structure/utils/lagrangeconstraints.py`` and
+    ``sharpy/structure/utils/lagrangeconstraintsjax.py``, depending on the solver being used. Due to every constraint being
+    different, further paramters depend upon the constraint type used. These parameters are added as variables to the constraint
+    group. Some examples which may be included are listed below:
+
+* ``body_FoR``: Body frame of reference number.
+
+    The number of the body which is constrainted by its body attached frame of reference. For example for a double pendulum,
+    this would be the lower link.
+
+* ``body``: Body number.
+
+    The number of the body which is constrained by one of its nodes. For example for a double pendulum,
+    this would be the upper link.
+
+* ``node_in_body``: Node in body.
+
+    This is paired to the ``body`` paramter, and this indicates which node within the body is to be constrained.
+
+* ``rot_axisB [3]``: Rotation axis in the B frame.
+
+    For a hinge constraint, this defines a vector for the hinge axis for the ``body``. This is defined in the material frame.
+
+* ``rot_axisA2 [3]``: Rotation axis in the A frame.
+
+    For a hinge constraint, this defines a vector for the hinge axis for the ``body_FoR``. This is defined in the body attached frame.
+
+* ``controller_id``: Controller ID for using an actuated constraint.
+
+    This should use the same ID as the ``MultibodyController`` used in the ``DynamicCoupled`` simulation, allowing the rotation to be controlled over time.
+
+
 
 Nonlifting Body file
 -----------------
