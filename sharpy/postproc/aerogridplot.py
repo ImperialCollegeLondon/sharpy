@@ -199,7 +199,16 @@ class AerogridPlot(BaseSolver):
                     counter += 1
                     coords[counter, :] = aero_tstep.zeta[i_surf][:, i_m, i_n]
                     if self.settings['include_rbm']:
-                        coords[counter, :] += struct_tstep.for_pos[0:3]
+                        #TODO: fix for lack of g frame description in nonlineardynamicmultibody.py
+                        if struct_tstep.mb_dict is None:
+                            coords[counter, :] += struct_tstep.for_pos[0:3]
+                        else:
+                            #TODO: uncomment for dynamic trim
+                            # try:
+                            #     cga = algebra.euler2rot([0, self.data.trimmed_values[0], 0])
+                            #     coords[counter, :] += np.dot(cga, struct_tstep.for_pos[0:3])
+                            # except AttributeError:
+                            coords[counter, :] += np.dot(struct_tstep.cga(), struct_tstep.for_pos[0:3])
                     if self.settings['include_forward_motion']:
                         coords[counter, 0] -= self.settings['dt']*self.ts*self.settings['u_inf']
 
@@ -313,7 +322,16 @@ class AerogridPlot(BaseSolver):
                     counter += 1
                     coords[counter, :] = self.data.aero.timestep_info[self.ts].zeta_star[i_surf][:, i_m, i_n]
                     if self.settings['include_rbm']:
-                        coords[counter, :] += self.data.structure.timestep_info[self.ts].for_pos[0:3]
+                        #TODO: fix for lack of g frame description in nonlineardynamicmultibody.py
+                        if self.data.structure.timestep_info[self.ts].mb_dict is None:
+                            coords[counter, :] += self.data.structure.timestep_info[self.ts].for_pos[0:3]
+                        else:
+                            #TODO: uncomment for dynamic trim
+                            # try:
+                            #     cga = algebra.euler2rot([0, self.data.trimmed_values[0], 0])
+                            #     coords[counter, :] += np.dot(cga, self.data.structure.timestep_info[self.ts].for_pos[0:3])
+                            # except AttributeError:
+                            coords[counter, :] += np.dot(self.data.structure.timestep_info[self.ts].cga(), self.data.structure.timestep_info[self.ts].for_pos[0:3])                                                        
                     if self.settings['include_forward_motion']:
                         coords[counter, 0] -= self.settings['dt']*self.ts*self.settings['u_inf']
 

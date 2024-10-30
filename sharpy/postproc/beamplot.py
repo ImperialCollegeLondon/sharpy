@@ -124,7 +124,6 @@ class BeamPlot(BaseSolver):
         num_nodes = self.data.structure.num_node
         num_elem = self.data.structure.num_elem
 
-        coords = np.zeros((num_nodes, 3))
         conn = np.zeros((num_elem, 3), dtype=int)
         node_id = np.zeros((num_nodes,), dtype=int)
         elem_id = np.zeros((num_elem,), dtype=int)
@@ -147,6 +146,18 @@ class BeamPlot(BaseSolver):
 
         # coordinates of corners
         coords = tstep.glob_pos(include_rbm=self.settings['include_rbm'])
+
+        if tstep.mb_dict is None:
+            pass
+        else:
+            #TODO: fix for lack of g frame description in nonlineardynamicmultibody.py
+            for i_node in range(tstep.num_node):
+                #TODO: uncomment for dynamic trim
+                # try:
+                #     c = algebra.euler2rot([0, self.data.trimmed_values[0], 0])
+                # except AttributeError:
+                c = self.data.structure.timestep_info[0].cga()
+                coords[i_node, :] += np.dot(c, tstep.for_pos[0:3])
 
         # check if I can output gravity forces
         with_gravity = False
@@ -172,9 +183,6 @@ class BeamPlot(BaseSolver):
             pass
 
         # count number of arguments
-        postproc_cell_keys = tstep.postproc_cell.keys()
-        postproc_cell_vals = tstep.postproc_cell.values()
-        postproc_cell_scalar = []
         postproc_cell_vector = []
         postproc_cell_6vector = []
         for k, v in tstep.postproc_cell.items():
@@ -189,8 +197,6 @@ class BeamPlot(BaseSolver):
             else:
                 raise AttributeError('Only scalar and 3-vector types supported in beamplot')
         # count number of arguments
-        postproc_node_keys = tstep.postproc_node.keys()
-        postproc_node_vals = tstep.postproc_node.values()
         postproc_node_scalar = []
         postproc_node_vector = []
         postproc_node_6vector = []
