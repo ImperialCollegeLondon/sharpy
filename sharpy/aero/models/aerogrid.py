@@ -193,11 +193,6 @@ class Aerogrid(Grid):
                 else:
                     global_node_in_surface[i_surf].append(i_global_node)
 
-                # master_elem, master_elem_node = beam.master[i_elem, i_local_node, :]
-                # if master_elem < 0:
-                    # master_elem = i_elem
-                    # master_elem_node = i_local_node
-
                 # find the i_surf and i_n data from the mapping
                 i_n = -1
                 ii_surf = -1
@@ -270,15 +265,28 @@ class Aerogrid(Grid):
                             raise NotImplementedError(str(self.data_dict['control_surface_type'][i_control_surface]) +
                                 ' control surfaces are not yet implemented')
 
-
+                # add sweep for aerogrid warping in constraint defintition
+                # if no constraint_xx.aerogrid warp factor is provided, this will be ignored
+                ang_warp = 0.
+                if structure_tstep.mb_dict is not None:
+                    if structure_tstep.mb_prescribed_dict is not None:
+                        for i_constraint in range(structure_tstep.mb_dict['num_constraints']):
+                            try:
+                                cst_name = f"constraint_{i_constraint:02d}"
+                                ctrl_id = structure_tstep.mb_dict[cst_name]['controller_id'].decode('UTF-8')
+                                f_warp = structure_tstep.mb_dict[cst_name]['aerogrid_warp_factor'][i_elem, i_local_node]
+                                ang_z = structure_tstep.mb_prescribed_dict[ctrl_id]['delta_psi'][2]
+                                ang_warp += f_warp * ang_z
+                            except KeyError:
+                                continue
 
                 node_info = dict()
                 node_info['i_node'] = i_global_node
                 node_info['i_local_node'] = i_local_node
-                node_info['chord'] = self.data_dict['chord'][i_elem, i_local_node]
+                node_info['chord'] = self.data_dict['chord'][i_elem, i_local_node] / np.cos(ang_warp)
                 node_info['eaxis'] = self.data_dict['elastic_axis'][i_elem, i_local_node]
                 node_info['twist'] = self.data_dict['twist'][i_elem, i_local_node]
-                node_info['sweep'] = self.data_dict['sweep'][i_elem, i_local_node]
+                node_info['sweep'] = self.data_dict['sweep'][i_elem, i_local_node] + ang_warp
                 node_info['M'] = self.dimensions[i_surf, 0]
                 node_info['M_distribution'] = self.data_dict['m_distribution'].decode('ascii')
                 node_info['airfoil'] = self.data_dict['airfoil_distribution'][i_elem, i_local_node]

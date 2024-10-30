@@ -404,6 +404,13 @@ starting from 00. Each of these groups should have the following items:
 
     This should use the same ID as the ``MultibodyController`` used in the ``DynamicCoupled`` simulation, allowing the rotation to be controlled over time.
 
+* ``aerogrid_warp_factor [num_elem, 3]``: Aerodynamic grid warping factor.
+
+    For simulating wings with dynamic sweep by a local rotation around the z axis, the aerodynamic grid needs to warp to
+    account for this. To create a smooth warp, it can be preferred to gradually change the sweep (and therefore chord to
+    maintain the "same" geometry) at elements around the discontinuity. This paramter sets the sweep per node using this
+    parameter to scale the input angle. If not included, it will be ignored when generating the aerodynamic grid and have
+    no effect.
 
 
 Nonlifting Body file
