@@ -1,7 +1,7 @@
-# SHARPy v2.2 Installation Guide
-__Last revision 26 February 2024__
+# SHARPy v2.3 Installation Guide
+__Last revision 10 June 2024__
 
-The following step by step tutorial will guide you through the installation process of SHARPy. This is the updated process valid from v2.2.
+The following step by step tutorial will guide you through the installation process of SHARPy. This is the updated process valid from v2.3.
 
 ## Requirements
 
@@ -113,7 +113,17 @@ These are specified in an Anaconda environment that shall be activated prior to 
     ```
     This should take approximately 5 minutes to complete (Tested on Ubuntu 22.04.1). For installation on Apple Silicon, use ```environment_arm64.yml```; this requires GCC and GFortran to be installed prior.
 
-5. Activate the `sharpy` conda environment:
+   Installation using Conda can be memory intensive, and will give the message ```Collecting package metadata (repodata.json): - Killed``` if all the available RAM is filled. From testing, 16GB of total system RAM is reliable for Conda install, whereas 8GB may have issues. Three solutions are available:
+   * Increase available RAM (if running on a compute cluster etc)
+   * Use [Mamba](https://mamba.readthedocs.io/en/latest/), a more efficient drop-in replacement for Conda
+   * Create a blank conda environment and install the required packages:
+     	```bash
+      conda create --name sharpy python=3.10
+      conda config –add channels conda-forge
+      conda install eigen libopenblas libblas libcblas liblapack libgfortran libgcc libgfortran-ng
+      ```
+      
+6. Activate the `sharpy` conda environment:
     ```bash
     conda activate sharpy
     ```
@@ -292,6 +302,20 @@ python -m unittest
 ```
 
 **Enjoy!**
+
+## Obtain SHARPy from PyPI (experimental!)
+
+You can obtain a built version of SHARPy, ic-sharpy, from PyPI [here](https://pypi.org/project/ic-sharpy/).
+
+To install at default directory use
+```
+python3 -m pip install ic-sharpy
+```
+To install at current directory use
+```
+python3 -m pip install --prefix . ic-sharpy
+```
+The source code can be found at `/lib/python3.10/site-packages/sharpy` and the executable at `/bin/sharpy`.
 
 ## Running SHARPy
 

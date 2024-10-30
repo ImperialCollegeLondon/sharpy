@@ -103,7 +103,7 @@ with open(os.path.join(this_directory, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 run()
 setup(
-    name="sharpy",
+    name="ic_sharpy", # due to the name sharpy being taken on pypi
     version=__version__,
     description="""SHARPy is a nonlinear aeroelastic analysis package developed
     at the Department of Aeronautics, Imperial College London. It can be used
@@ -139,7 +139,7 @@ setup(
         "colorama",
         "dill",
         "jupyterlab",
-        "mayavi @ git+https://github.com/enthought/mayavi.git", #Used for TVTK. Bug in pip install, hence git clone
+        "mayavi", # github direct dependency removed since pip version is fixed, and also not compatible with pypi
         "pandas",
         "control",
         "openpyxl>=3.0.10",
@@ -162,8 +162,11 @@ setup(
                  ],
     },
     classifiers=[
-        "Operating System :: Linux, Mac OS",
-        "Programming Language :: Python, C++",
+        "Operating System :: MacOS",
+        "Operating System :: POSIX :: Linux",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Fortran",
+        "Programming Language :: C++"
         ],
 
     entry_points={

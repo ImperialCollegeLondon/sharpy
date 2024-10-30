@@ -1,5 +1,48 @@
 # Changelog
 
+## [2.3](https://github.com/imperialcollegelondon/sharpy/tree/2.3) (2024-05-10)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/2.2...2.3)
+
+**Implemented enhancements:**
+
+- Version 2.3 update [\#289](https://github.com/ImperialCollegeLondon/sharpy/pull/289) ([ben-l-p](https://github.com/ben-l-p))
+- Update develop branch with main [\#284](https://github.com/ImperialCollegeLondon/sharpy/pull/284) ([ben-l-p](https://github.com/ben-l-p))
+- Added pip install \(with docs\) [\#280](https://github.com/ImperialCollegeLondon/sharpy/pull/280) ([ben-l-p](https://github.com/ben-l-p))
+- Update beamplot.py to have stride option, consistent with aerogridplot.py [\#279](https://github.com/ImperialCollegeLondon/sharpy/pull/279) ([kccwing](https://github.com/kccwing))
+
+**Fixed bugs:**
+
+- Fix Github Runner Docker build failing [\#285](https://github.com/ImperialCollegeLondon/sharpy/pull/285) ([ben-l-p](https://github.com/ben-l-p))
+- Add scipy version info to env yml [\#277](https://github.com/ImperialCollegeLondon/sharpy/pull/277) ([SJ-Innovation](https://github.com/SJ-Innovation))
+
+**Closed issues:**
+
+- Scipy 1.12.0 Incompatible [\#276](https://github.com/ImperialCollegeLondon/sharpy/issues/276)
+- BeamLoader postprocessor squishing answers [\#270](https://github.com/ImperialCollegeLondon/sharpy/issues/270)
+- Solving Environment gets killed. [\#268](https://github.com/ImperialCollegeLondon/sharpy/issues/268)
+- Error when running sharpy unittest: module scipy.sparse.\_sputils not found [\#227](https://github.com/ImperialCollegeLondon/sharpy/issues/227)
+- Potential bug in /sharpy/structure/utils/modalutils.py [\#208](https://github.com/ImperialCollegeLondon/sharpy/issues/208)
+
+**Merged pull requests:**
+
+- Added ability to turn aligned grid off [\#288](https://github.com/ImperialCollegeLondon/sharpy/pull/288) ([ben-l-p](https://github.com/ben-l-p))
+- Update with main for mamba fixes [\#286](https://github.com/ImperialCollegeLondon/sharpy/pull/286) ([ben-l-p](https://github.com/ben-l-p))
+- Correct typos caught by Divya Sanghi [\#283](https://github.com/ImperialCollegeLondon/sharpy/pull/283) ([bbahiam](https://github.com/bbahiam))
+- Develop: Update environment.yml to fix scipy version issue [\#282](https://github.com/ImperialCollegeLondon/sharpy/pull/282) ([kccwing](https://github.com/kccwing))
+- Update noaero.py for consistency in function input [\#275](https://github.com/ImperialCollegeLondon/sharpy/pull/275) ([kccwing](https://github.com/kccwing))
+- A few minor bug fixes [\#273](https://github.com/ImperialCollegeLondon/sharpy/pull/273) ([sduess](https://github.com/sduess))
+- Update XBeam version to include compiler optimisation [\#272](https://github.com/ImperialCollegeLondon/sharpy/pull/272) ([ben-l-p](https://github.com/ben-l-p))
+- Update XBeam version to include compiler optimisation [\#271](https://github.com/ImperialCollegeLondon/sharpy/pull/271) ([ben-l-p](https://github.com/ben-l-p))
+- Improve docs and code of newmark\_ss [\#267](https://github.com/ImperialCollegeLondon/sharpy/pull/267) ([bbahiam](https://github.com/bbahiam))
+- Changed Github runner from Conda to Mamba [\#266](https://github.com/ImperialCollegeLondon/sharpy/pull/266) ([ben-l-p](https://github.com/ben-l-p))
+- Changed Github runner from Conda to Mamba [\#265](https://github.com/ImperialCollegeLondon/sharpy/pull/265) ([ben-l-p](https://github.com/ben-l-p))
+- Hotfix for documentation search [\#264](https://github.com/ImperialCollegeLondon/sharpy/pull/264) ([kccwing](https://github.com/kccwing))
+- Hotfix for documentation - develop [\#263](https://github.com/ImperialCollegeLondon/sharpy/pull/263) ([kccwing](https://github.com/kccwing))
+- Hotfix for documentation - main [\#262](https://github.com/ImperialCollegeLondon/sharpy/pull/262) ([kccwing](https://github.com/kccwing))
+- Merging v2.2 into develop [\#261](https://github.com/ImperialCollegeLondon/sharpy/pull/261) ([kccwing](https://github.com/kccwing))
+
+
 ## [2.2](https://github.com/imperialcollegelondon/sharpy/tree/2.2) (2023-10-18)
 
 [Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/2.1...2.2)

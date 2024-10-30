@@ -431,6 +431,10 @@ class AeroTimeStepInfo(TimeStepInfo):
           ``[num_surf x chordwise panels x spanwise panels]``
         dimensions_star (np.ndarray): Matrix defining the dimensions of the vortex grid on wakes
           ``[num_surf x streamwise panels x spanwise panels]``
+
+    Note, Ben Preston 27/09/24: forces and dynamic forces are stated to be in ``G`` however were actually
+    determined to be in ``A``. This issue may apply to other parameters, however errors due to this were only apparent
+    in the AeroForcesCalculator postprocessor.
     """
     def __init__(self, dimensions, dimensions_star):
         super().__init__(dimensions)
@@ -948,22 +952,6 @@ class StructTimeStepInfo(object):
         # Modify local rotations
         for ielem in range(self.psi.shape[0]):
             for inode in range(3):
-                # psi_master = self.psi[ielem, inode, :] + np.zeros((3,),)
-                # self.psi[ielem, inode, :] = np.dot(Csm, self.psi[ielem, inode, :])
-                # self.psi_dot[ielem, inode, :] = (np.dot(Csm, self.psi_dot[ielem, inode, :] + algebra.cross3(for0_vel[3:6], psi_master)) -
-                #                                  algebra.multiply_matrices(CAslaveG, algebra.skew(self.for_vel[3:6]), CGAmaster, psi_master))
-
-                # psi_master = self.psi[ielem,inode,:] + np.zeros((3,),)
-                # self.psi[ielem, inode, :] = algebra.rotation2crv(np.dot(Csm,algebra.crv2rotation(self.psi[ielem,inode,:])))
-                # psi_slave = self.psi[ielem, inode, :] + np.zeros((3,),)
-                # cbam = algebra.crv2rotation(psi_master).T
-                # cbas = algebra.crv2rotation(psi_slave).T
-                # tm = algebra.crv2tan(psi_master)
-                # inv_ts = np.linalg.inv(algebra.crv2tan(psi_slave))
-
-                # self.psi_dot[ielem, inode, :] = np.dot(inv_ts, (np.dot(tm, self.psi_dot[ielem, inode, :]) +
-                #                                                 np.dot(cbam, for0_vel[3:6]) -
-                #                                                 np.dot(cbas, self.for_vel[3:6])))
                 self.psi[ielem, inode, :] = self.psi_local[ielem,inode,:].copy()
                 self.psi_dot[ielem, inode, :] = self.psi_dot_local[ielem, inode, :].copy()
 
@@ -997,12 +985,6 @@ class StructTimeStepInfo(object):
 
         for ielem in range(self.psi.shape[0]):
             for inode in range(3):
-                # psi_slave = self.psi[ielem,inode,:] + np.zeros((3,),)
-                # self.psi[ielem, inode, :] = np.dot(Cms, self.psi[ielem, inode, :])
-                # self.psi_dot[ielem, inode, :] = (np.dot(Cms, self.psi_dot[ielem, inode, :] + algebra.cross3(self.for_vel[3:6], psi_slave)) -
-                #                                  algebra.multiply_matrices(CAmasterG, algebra.skew(self.for0_vel[3:6]), CGAslave, psi_slave))
-
-
                 self.psi_local[ielem, inode, :] = self.psi[ielem, inode, :].copy() # Copy here the result from the structural computation
                 self.psi_dot_local[ielem, inode, :] = self.psi_dot[ielem, inode, :].copy() # Copy here the result from the structural computation
 
@@ -1019,93 +1001,6 @@ class StructTimeStepInfo(object):
                 self.psi_dot[ielem, inode, :] = np.dot(inv_tm, (np.dot(ts, self.psi_dot_local[ielem, inode, :]) +
                                                                 np.dot(cbas, self.for_vel[3:6]) -
                                                                 np.dot(cbam, for0_vel[3:6])))
-
-    # def whole_structure_to_local_AFoR(self, beam, compute_psi_local=False):
-    #     """
-    #     Same as change_to_local_AFoR but for a multibody structure
-    #
-    #     Args:
-    #         beam(sharpy.structure.models.beam.Beam): Beam structure of ``PreSharpy``
-    #     """
-    #     if not self.in_global_AFoR:
-    #         raise NotImplementedError("Wrong managing of FoR")
-    #
-    #     self.in_global_AFoR = False
-    #     quat0 = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
-    #     for0_pos = self.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
-    #     for0_vel = self.for_vel.astype(dtype=ct.c_double, order='F', copy=True)
-    #
-    #     MB_beam = [None]*beam.num_bodies
-    #     MB_tstep = [None]*beam.num_bodies
-    #
-    #     for ibody in range(beam.num_bodies):
-    #         MB_beam[ibody] = beam.get_body(ibody = ibody)
-    #         MB_tstep[ibody] = self.get_body(beam, MB_beam[ibody].num_dof, ibody = ibody)
-    #         if compute_psi_local:
-    #             MB_tstep[ibody].compute_psi_local_AFoR(for0_pos, for0_vel, quat0)
-    #         MB_tstep[ibody].change_to_local_AFoR(for0_pos, for0_vel, quat0)
-    #
-    #     first_dof = 0
-    #     for ibody in range(beam.num_bodies):
-    #         # Renaming for clarity
-    #         ibody_elems = MB_beam[ibody].global_elems_num
-    #         ibody_nodes = MB_beam[ibody].global_nodes_num
-    #
-    #         # Merge tstep
-    #         self.pos[ibody_nodes,:] = MB_tstep[ibody].pos.astype(dtype=ct.c_double, order='F', copy=True)
-    #         self.psi[ibody_elems,:,:] = MB_tstep[ibody].psi.astype(dtype=ct.c_double, order='F', copy=True)
-    #         self.psi_local[ibody_elems,:,:] = MB_tstep[ibody].psi_local.astype(dtype=ct.c_double, order='F', copy=True)
-    #         self.gravity_forces[ibody_nodes,:] = MB_tstep[ibody].gravity_forces.astype(dtype=ct.c_double, order='F', copy=True)
-    #
-    #         self.pos_dot[ibody_nodes,:] = MB_tstep[ibody].pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
-    #         self.psi_dot[ibody_elems,:,:] = MB_tstep[ibody].psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
-    #         self.psi_dot_local[ibody_elems,:,:] = MB_tstep[ibody].psi_dot_local.astype(dtype=ct.c_double, order='F', copy=True)
-    #
-    #         # TODO: Do I need a change in FoR for the following variables? Maybe for the FoR ones.
-    #         # tstep.forces_constraints_nodes[ibody_nodes,:] = MB_tstep[ibody].forces_constraints_nodes.astype(dtype=ct.c_double, order='F', copy=True)
-    #         # tstep.forces_constraints_FoR[ibody, :] = MB_tstep[ibody].forces_constraints_FoR[ibody, :].astype(dtype=ct.c_double, order='F', copy=True)
-
-    # def whole_structure_to_global_AFoR(self, beam):
-    #     """
-    #     Same as change_to_global_AFoR but for a multibody structure
-    #
-    #     Args:
-    #         beam(sharpy.structure.models.beam.Beam): Beam structure of ``PreSharpy``
-    #     """
-    #     if self.in_global_AFoR:
-    #         raise NotImplementedError("Wrong managing of FoR")
-    #
-    #     self.in_global_AFoR = True
-    #
-    #     MB_beam = [None]*beam.num_bodies
-    #     MB_tstep = [None]*beam.num_bodies
-    #     quat0 = self.quat.astype(dtype=ct.c_double, order='F', copy=True)
-    #     for0_pos = self.for_pos.astype(dtype=ct.c_double, order='F', copy=True)
-    #     for0_vel = self.for_vel.astype(dtype=ct.c_double, order='F', copy=True)
-    #
-    #     for ibody in range(beam.num_bodies):
-    #         MB_beam[ibody] = beam.get_body(ibody = ibody)
-    #         MB_tstep[ibody] = self.get_body(beam, MB_beam[ibody].num_dof, ibody = ibody)
-    #         MB_tstep[ibody].change_to_global_AFoR(for0_pos, for0_vel, quat0)
-    #
-    #
-    #     first_dof = 0
-    #     for ibody in range(beam.num_bodies):
-    #         # Renaming for clarity
-    #         ibody_elems = MB_beam[ibody].global_elems_num
-    #         ibody_nodes = MB_beam[ibody].global_nodes_num
-    #
-    #         # Merge tstep
-    #         self.pos[ibody_nodes,:] = MB_tstep[ibody].pos.astype(dtype=ct.c_double, order='F', copy=True)
-    #         self.psi[ibody_elems,:,:] = MB_tstep[ibody].psi.astype(dtype=ct.c_double, order='F', copy=True)
-    #         self.psi_local[ibody_elems,:,:] = MB_tstep[ibody].psi_local.astype(dtype=ct.c_double, order='F', copy=True)
-    #         self.gravity_forces[ibody_nodes,:] = MB_tstep[ibody].gravity_forces.astype(dtype=ct.c_double, order='F',
-    #                                                                                    copy=True)
-    #
-    #         self.pos_dot[ibody_nodes,:] = MB_tstep[ibody].pos_dot.astype(dtype=ct.c_double, order='F', copy=True)
-    #         self.psi_dot[ibody_elems,:,:] = MB_tstep[ibody].psi_dot.astype(dtype=ct.c_double, order='F', copy=True)
-    #         self.psi_dot_local[ibody_elems,:,:] = MB_tstep[ibody].psi_dot_local.astype(dtype=ct.c_double, order='F', copy=True)
-
 
     def nodal_b_for_2_a_for(self, nodal, beam, filter=np.array([True]*6), ibody=None):
         """
