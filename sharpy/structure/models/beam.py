@@ -476,7 +476,8 @@ class Beam(BaseStructure):
         int_list_nodes = np.arange(0, ibody_beam.num_node, 1)
         for ielem in range(ibody_beam.num_elem):
             for inode_in_elem in range(ibody_beam.num_node_elem):
-                ibody_beam.connectivities[ielem, inode_in_elem] = int_list_nodes[ibody_nodes == ibody_beam.connectivities[ielem, inode_in_elem]]
+                ibody_beam.connectivities[ielem, inode_in_elem] = int_list_nodes[
+                    np.argwhere(ibody_nodes == ibody_beam.connectivities[ielem, inode_in_elem])[0][0]]
 
         # TODO: I could copy only the needed stiffness and masses to save storage
         ibody_beam.elem_stiffness = self.elem_stiffness[ibody_elements].astype(dtype=ct.c_int, order='F', copy=True)
