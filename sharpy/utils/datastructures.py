@@ -431,6 +431,10 @@ class AeroTimeStepInfo(TimeStepInfo):
           ``[num_surf x chordwise panels x spanwise panels]``
         dimensions_star (np.ndarray): Matrix defining the dimensions of the vortex grid on wakes
           ``[num_surf x streamwise panels x spanwise panels]``
+
+    Note, Ben Preston 27/09/24: forces and dynamic forces are stated to be in ``G`` however were actually
+    determined to be in ``A``. This issue may apply to other parameters, however errors due to this were only apparent
+    in the AeroForcesCalculator postprocessor.
     """
     def __init__(self, dimensions, dimensions_star):
         super().__init__(dimensions)
@@ -983,12 +987,6 @@ class StructTimeStepInfo(object):
 
         for ielem in range(self.psi.shape[0]):
             for inode in range(3):
-                # psi_slave = self.psi[ielem,inode,:] + np.zeros((3,),)
-                # self.psi[ielem, inode, :] = np.dot(Cms, self.psi[ielem, inode, :])
-                # self.psi_dot[ielem, inode, :] = (np.dot(Cms, self.psi_dot[ielem, inode, :] + algebra.cross3(self.for_vel[3:6], psi_slave)) -
-                #                                  algebra.multiply_matrices(CAmasterG, algebra.skew(self.for0_vel[3:6]), CGAslave, psi_slave))
-
-
                 self.psi_local[ielem, inode, :] = self.psi[ielem, inode, :].copy() # Copy here the result from the structural computation
                 self.psi_dot_local[ielem, inode, :] = self.psi_dot[ielem, inode, :].copy() # Copy here the result from the structural computation
 

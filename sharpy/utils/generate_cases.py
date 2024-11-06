@@ -590,7 +590,10 @@ class StructuralInformation():
             y_BFoR (string): Direction of the yB axis
         """
 
-        if y_BFoR == 'x_AFoR':
+        if isinstance(y_BFoR,(list,np.ndarray)):
+            yB = np.asarray(y_BFoR)
+            cout.cout_wrap(("WARNING: custom FoR delta defined, using the given value: y_BFoR = {y_BFoR}" % (y_BFoR)), 3)
+        elif y_BFoR == 'x_AFoR':
             yB = np.array([1.0, 0.0, 0.0])
         elif y_BFoR == 'y_AFoR':
             yB = np.array([0.0, 1.0, 0.0])
@@ -2036,10 +2039,17 @@ def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_n
             except:
                 pass
 
+
             try:
                 constraint_id.create_dataset("aerogrid_warp_factor",
                                              data=getattr(constraint, "aerogrid_warp_factor"))
             except AttributeError:
+                pass
+
+            try:
+                constraint_id.create_dataset("rot_axisA2",
+                                             data=getattr(constraint, "rot_axisA2"))
+            except:
                 pass
 
             iconstraint += 1
