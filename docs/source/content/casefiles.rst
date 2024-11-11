@@ -334,7 +334,7 @@ Item by item:
 
 * ``num_constraints``: Number of constraints between bodies.
 
-    The initial conditions for each body and the constraint definititions are defined in groups. The body groups are named
+    The initial conditions for each body and the constraint definitions are defined in groups. The body groups are named
     as ``body_xx``, where the xx is replaced with a two digit body number starting from 00, e.g. ``body_00``. Each of these
     groups should have the following items:
 
@@ -369,18 +369,18 @@ starting from 00. Each of these groups should have the following items:
 
     This value scales the multibody equations, where generally settings to ``dt^2`` provides acceptable results.
 
-* ``behavior``: Constraint behavior.
+* ``behaviour``: Constraint behaviour.
 
     This string defines the type of constraint applied to a single or multiple bodies. A wide range of standard lower-pair
     kinematic joints are available, such as hinge and spherical joints, as well as prescribed rotation joints. A list of the
     available joints can be found in ``sharpy/structure/utils/lagrangeconstraints.py`` and
     ``sharpy/structure/utils/lagrangeconstraintsjax.py``, depending on the solver being used. Due to every constraint being
-    different, further paramters depend upon the constraint type used. These parameters are added as variables to the constraint
+    different, further parameters depend upon the constraint type used. These parameters are added as variables to the constraint
     group. Some examples which may be included are listed below:
 
 * ``body_FoR``: Body frame of reference number.
 
-    The number of the body which is constrainted by its body attached frame of reference. For example for a double pendulum,
+    The number of the body which is constrained by its body attached frame of reference. For example for a double pendulum,
     this would be the lower link.
 
 * ``body``: Body number.
@@ -390,7 +390,7 @@ starting from 00. Each of these groups should have the following items:
 
 * ``node_in_body``: Node in body.
 
-    This is paired to the ``body`` paramter, and this indicates which node within the body is to be constrained.
+    This is paired to the ``body`` parameter, and this indicates which node within the body is to be constrained.
 
 * ``rot_axisB [3]``: Rotation axis in the B frame.
 
@@ -408,7 +408,7 @@ starting from 00. Each of these groups should have the following items:
 
     For simulating wings with dynamic sweep by a local rotation around the z axis, the aerodynamic grid needs to warp to
     account for this. To create a smooth warp, it can be preferred to gradually change the sweep (and therefore chord to
-    maintain the "same" geometry) at elements around the discontinuity. This paramter sets the sweep per node using this
+    maintain the "same" geometry) at elements around the discontinuity. This parameter sets the sweep per node using this
     parameter to scale the input angle. If not included, it will be ignored when generating the aerodynamic grid and have
     no effect.
 
@@ -446,7 +446,7 @@ Item by item:
 
 * ``z_0_ellipse [num_node]``: Vertical offset of the ellipse center from the beam node.
 
-    Is an array with the vertical offset of the center of the elliptical cross-sectoin from the fuselage node.
+    Is an array with the vertical offset of the center of the elliptical cross-section from the fuselage node.
 
 *  ``surface_m [num_surfaces]``: Radial panelling.
 
