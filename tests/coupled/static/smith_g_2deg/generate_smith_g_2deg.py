@@ -197,6 +197,7 @@ def generate_aero_file():
     working_elem = 0
     working_node = 0
 
+    # right wing (surface 0, beam 0)
     i_surf = 0
     airfoil_distribution[working_elem:working_elem + num_elem_main, :] = 0
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
@@ -207,8 +208,8 @@ def generate_aero_file():
     working_elem += num_elem_main
     working_node += num_node_main
 
+    # right wing (surface 1, beam 1)
     i_surf = 1
-
     airfoil_distribution[working_elem:working_elem + num_elem_main, :] = 0
     surface_distribution[working_elem:working_elem + num_elem_main] = i_surf
     surface_m[i_surf] = m_main

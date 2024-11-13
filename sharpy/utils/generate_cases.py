@@ -2029,27 +2029,20 @@ def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_n
             for param in required_parameters:
                 constraint_id.create_dataset(param, data=getattr(constraint, param))
             try:
-                constraint_id.create_dataset("scalingFactor",
-                                             data=getattr(constraint, "scalingFactor"))
-            except:
-                pass
-            try:
-                constraint_id.create_dataset("penaltyFactor",
-                                             data=getattr(constraint, "penaltyFactor"))
-            except:
-                pass
-
-
-            try:
-                constraint_id.create_dataset("aerogrid_warp_factor",
-                                             data=getattr(constraint, "aerogrid_warp_factor"))
+                constraint_id.create_dataset("scalingFactor", data=constraint.scalingFactor)
             except AttributeError:
                 pass
-
             try:
-                constraint_id.create_dataset("rot_axisA2",
-                                             data=getattr(constraint, "rot_axisA2"))
-            except:
+                constraint_id.create_dataset("penaltyFactor", data=constraint.penaltyFactor)
+            except AttributeError:
+                pass
+            try:
+                constraint_id.create_dataset("aerogrid_warp_factor", data=constraint.aerogrid_warp_factor)
+            except AttributeError:
+                pass
+            try:
+                constraint_id.create_dataset("rot_axisA2", data=constraint.rot_axisA2)
+            except AttributeError:
                 pass
 
             iconstraint += 1

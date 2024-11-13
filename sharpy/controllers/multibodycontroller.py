@@ -45,7 +45,7 @@ class MultibodyController(controller_interface.BaseController):
     )
 
     def __init__(self):
-        self.in_dict = None
+        self.in_dict = None     # this also holds the settings dict, kept to be consistent with other controllers
         self.data = None
         self.settings = None
 
@@ -157,13 +157,11 @@ class MultibodyController(controller_interface.BaseController):
 
         if controlled_state["structural"].mb_prescribed_dict is None:
             controlled_state["structural"].mb_prescribed_dict = dict()
+
         controlled_state["structural"].mb_prescribed_dict[self.controller_id] = {
             "psi": control_command,
             "psi_dot": psi_dot,
-        }
-        controlled_state["structural"].mb_prescribed_dict[self.controller_id].update(
-            {"delta_psi": control_command - self.prescribed_ang_time_history[0, :]}
-        )
+            "delta_psi": control_command - self.prescribed_ang_time_history[0, :]}
 
         return controlled_state, control_command
 

@@ -317,11 +317,11 @@ class StaticTrim(BaseSolver):
 
     def evaluate(self, alpha, deflection_gamma, thrust):
         if not np.isfinite(alpha):
-            raise ValueError
+            raise ValueError("Alpha trim gradient is zero, resulting in division by zero.")
         if not np.isfinite(deflection_gamma):
-            raise ValueError
+            raise ValueError("Delta trim gradient is zero, resulting in division by zero.")
         if not np.isfinite(thrust):
-            raise ValueError
+            raise ValueError("Thrust trim gradient is zero, resulting in division by zero.")
 
         # modify the trim in the static_coupled solver
         self.solver.change_trim(alpha,
