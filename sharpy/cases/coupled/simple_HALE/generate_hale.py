@@ -3,7 +3,6 @@ import h5py as h5
 import numpy as np
 import os
 import sharpy.utils.algebra as algebra
-import sharpy.sharpy_main
 
 case_name = 'simple_HALE'
 route = os.path.dirname(os.path.realpath(__file__)) + '/'
@@ -363,23 +362,15 @@ def generate_fem():
     wn += n_node_main2 - 1
 
     # fuselage
-    # import pdb
-    # pdb.set_trace()
     beam_number[we:we + n_elem_fuselage] = 2
-    x[wn:wn + n_node_fuselage - 1] = np.linspace(-10.0, length_fuselage, n_node_fuselage)[1:]
-    x[wn:wn+4] -= 2.5
+    x[wn:wn + n_node_fuselage - 1] = np.linspace(0.0, length_fuselage, n_node_fuselage)[1:]
     z[wn:wn + n_node_fuselage - 1] = np.linspace(0.0, offset_fuselage, n_node_fuselage)[1:]
     for ielem in range(n_elem_fuselage):
         conn[we + ielem, :] = ((np.ones((3,)) * (we + ielem) * (n_node_elem - 1)) +
                                [0, 2, 1])
         for inode in range(n_node_elem):
             frame_of_reference_delta[we + ielem, inode, :] = [0.0, 1.0, 0.0]
-    conn[we, :] = [33, 35, 34]
-    conn[we+1, :] = [35, 0, 36]
-    conn[we+2, :] = [0, 38, 37]
-    # import pdb
-    # pdb.set_trace()
-
+    conn[we, 0] = 0
     elem_stiffness[we:we + n_elem_fuselage] = 1
     elem_mass[we:we + n_elem_fuselage] = 1
     we += n_elem_fuselage
@@ -857,8 +848,3 @@ generate_fem()
 generate_aero_file()
 generate_solver_file()
 generate_dyn_file()
-
-# import pdb
-# pdb.set_trace()
-case_data = sharpy.sharpy_main.main(['', route + '/' + case_name + '.sharpy'])    
-
