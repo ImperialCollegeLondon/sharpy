@@ -139,7 +139,7 @@ setup(
         "colorama",
         "dill",
         "jupyterlab",
-        "mayavi", # github direct dependency removed since pip version is fixed, and also not compatible with pypi
+        "mayavi @ git+https://github.com/enthought/mayavi.git",# github direct dependency restored temporarily, https://github.com/enthought/mayavi/issues/1289
         "pandas",
         "control",
         "openpyxl>=3.0.10",
