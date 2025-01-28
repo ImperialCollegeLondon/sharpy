@@ -33,7 +33,6 @@ jobs:
           platform: x64
       - name: Pre-Install dependencies
         run: |
-          sudo apt-get install -y libopenblas-dev
           gfortran --version
           export QT_QPA_PLATFORM='offscreen'
           sudo apt install libeigen3-dev
