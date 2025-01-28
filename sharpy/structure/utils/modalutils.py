@@ -7,14 +7,14 @@ from tvtk.api import tvtk, write_data
 def frequency_damping(eigenvalue):
     omega_n = np.abs(eigenvalue)
     omega_d = np.abs(eigenvalue.imag)
-    f_n = omega_n / 2 / np.pi
-    f_d = omega_d / 2 / np.pi
+    f_n = omega_n / 2.0 / np.pi
+    f_d = omega_d / 2.0 / np.pi
     if f_d < 1e-8:
-        damping_ratio = 1.
+        damping_ratio = 1.0
         period = np.inf
     else:
         damping_ratio = -eigenvalue.real / omega_n
-        period = 1 / f_d
+        period = 1.0 / f_d
 
     return omega_n, omega_d, damping_ratio, f_n, f_d, period
 
