@@ -15,8 +15,8 @@ class AeroelasticModal(BaseSolver):
     This class performs modal analysis on a linearised aeroelastic system. The modes are then plotted in phase steps,
     and the stability eigenvalues printed to the console.
 
-    Note: this does not have support for reduction on the state space model, and also requires a modal projection of the
-    structure.
+    Note: this supports model order reduction through the use of a Krylov projection. For this postprocessor to work,
+    the linearised model must use a modal projection of the structure.
     """
 
     solver_id = 'AeroelasticModal'
@@ -43,7 +43,7 @@ class AeroelasticModal(BaseSolver):
     settings_description['remove_conjugate'] = 'Remove conjugate modes'
 
     settings_types['max_rotation_deg'] = 'float'
-    settings_default['max_rotation_deg'] = 25.
+    settings_default['max_rotation_deg'] = 25.0
     settings_description['max_rotation_deg'] = 'Scale mode shape to have specified maximum rotation'
 
     settings_types['max_displacement'] = 'float'
@@ -79,39 +79,42 @@ class AeroelasticModal(BaseSolver):
         if not hasattr(self.data, 'linear'):
             raise AttributeError('Linear data not found')
 
+        # extract the A (system) matrix from the linearised aeroelastic system
         a_mat = self.data.linear.ss.A
 
+        # obtain vectors for the indices for the states
         state_index = {}
-
         for var in self.data.linear.ss._state_variables.vector_variables:
-            if var.name in ('gamma', 'gamma_w', 'q'):
+            if var.name in ('gamma', 'gamma_w', 'q', 'krylov'):
                 state_index[var.name] = var.cols_loc
 
-        if len(state_index) != 3:
-            raise ValueError('Missing states from linear system. Ensure that gamma, gamma_w and q are present')
-
+        # perform the eigenvalue decomposition of the system matrix
         evals_d_ae, evecs_ae = np.linalg.eig(a_mat)
+
+        # convert eigenvalues from discrete to continuous time
         evals_c_ae = np.log(evals_d_ae) / self.data.linear.ss.dt
 
+        # remove conjugate eigenvalues by making the imaginary part of the eigenvalues positive and adding to a set
         if self.settings['remove_conjugate']:
             first_eig_index = []
             eig_set = set()
 
             for i_eig, eig in enumerate(evals_c_ae):
-                eig_pos = eig.real + 1j * np.abs(eig.imag)
+                # we here round the eigenvalues to 5 decimal places to prevent a pair not matching to machine precision
+                eig_pos = np.round(eig.real + 1j * np.abs(eig.imag), 5)
                 if eig_pos not in eig_set:
-                    eig_set.add(eig)
+                    eig_set.add(eig_pos)
                     first_eig_index.append(i_eig)
             first_eig_index = np.array(first_eig_index)
             order = first_eig_index[np.argsort(-evals_c_ae.real[first_eig_index])][:self.settings['num_modes']]
         else:
             order = np.argsort(-evals_c_ae.real)[:self.settings['num_modes']]
 
-        # truncated set of aeroelastic modes and eigenvaluesz
+        # order and truncate set of aeroelastic modes and eigenvalues
         evals_c_ae_trunc = evals_c_ae[order]
         evecs_ae_trunc = evecs_ae[:, order]
 
-        # print eigenvalues
+        # print eigenvalues to console
         cout_wrap('Aeroelastic eigenvalues:', 0)
         for i, eig in enumerate(evals_c_ae_trunc):
             cout_wrap(f'{i}: {eig:.3f}', 1)
@@ -120,7 +123,7 @@ class AeroelasticModal(BaseSolver):
         if not self.settings['save_data']:
             return self.data
 
-        # vector of complex phase values to test
+        # vector of complex phase values, evenly spaced around a unit circle
         phase = np.exp(1j * np.linspace(0, 2 * np.pi, self.settings['step_count'], endpoint=False))
 
         # mode shapes of the structure, as a projection of the free modes
@@ -128,6 +131,7 @@ class AeroelasticModal(BaseSolver):
         num_modes_struct = \
             self.data.structure.timestep_info[self.settings['use_custom_timestep']].modal['eigenvectors'].shape[1]
 
+        # add zeros to account for the clamped nodes which are not included in the structural eigenvectors
         struct_evects = np.zeros((6 * num_node, num_modes_struct))
         struct_evects[6:, :] = self.data.structure.timestep_info[self.settings['use_custom_timestep']].modal[
             'eigenvectors']
@@ -135,8 +139,26 @@ class AeroelasticModal(BaseSolver):
 
         # mode shapes of the structural nodes, bound gamma and wake gamma
         node_disp = np.einsum('ij,k->ijk', node_disp_base, phase).real  # [num_dof, num_lambda, num_phase]
-        gamma = np.vstack((np.einsum('ij,k->ijk', evecs_ae_trunc[state_index['gamma'], :], phase),
-                           np.einsum('ij,k->ijk', evecs_ae_trunc[state_index['gamma_w'], :], phase))).real
+
+        if 'gamma' in state_index and 'gamma_w' in state_index:
+            gamma = np.vstack((np.einsum('ij,k->ijk', evecs_ae_trunc[state_index['gamma'], :], phase),
+                               np.einsum('ij,k->ijk', evecs_ae_trunc[state_index['gamma_w'], :], phase))).real
+        elif 'krylov' in state_index:
+            # project the krylov states onto the full gamma states
+            v = self.data.linear.linear_system.uvlm.ss.v.value
+
+            full_state_index = {}
+            for var in self.data.linear.linear_system.uvlm.ss.ss_full.state_variables.vector_variables:
+                if var.name in ('gamma', 'gamma_w'):
+                    full_state_index[var.name] = var.cols_loc
+
+            aero_evects = v @ evecs_ae_trunc[state_index['krylov'], :]
+
+            gamma = np.vstack((np.einsum('ij,k->ijk', aero_evects[full_state_index['gamma'], :], phase),
+                               np.einsum('ij,k->ijk', aero_evects[full_state_index['gamma_w'], :], phase))).real
+            pass
+        else:
+            raise KeyError("No aerodynamic states found in linear model")
 
         # split structure into displacements and rotations
         num_dof = node_disp.shape[0]
@@ -165,27 +187,28 @@ class AeroelasticModal(BaseSolver):
         # split to give node positions for each surface
         base_pos_surf = [base_pos[index, :] for index in self.data.aero.aero2struct_mapping]
 
+        # create psi vector for nodes in order
         psi0 = np.expand_dims(self.data.structure.timestep_info[self.settings['use_custom_timestep']].psi[0, 0, :], 0)
         psi1 = self.data.structure.timestep_info[self.settings['use_custom_timestep']].psi[:, 1:, :].reshape(-1, 3)
         base_rot = np.vstack((psi0, psi1))
 
+        # node position in modes, combining deformation at linearisation point with mode shapes
         combined_beam_pos = (np.broadcast_to(np.expand_dims(base_pos, axis=(2, 3)), shape=node_pos_scaled.shape)
                              + node_pos_scaled)
 
+        # node rotation matrices in modes, combining deformation at linearisation point with mode shapes
         rmat_node_rot = np.apply_along_axis(crv2rotation, 1, node_rot_scaled)
         rmat_base_rot = np.apply_along_axis(crv2rotation, 1, base_rot)
-
-        # [num_node, 3, 3, num_lambda, num_phase]
         combined_rmat = np.einsum('ijk,iklmn->ijlmn', rmat_base_rot, rmat_node_rot)
 
-        # in G frame [num_surf, 3, m+1, n+1]
+        # initial aerodynamic grid and wake shapein the inertial frame
         zeta_base_g = self.data.aero.timestep_info[self.settings['use_custom_timestep']].zeta
         zeta_w = self.data.aero.timestep_info[self.settings['use_custom_timestep']].zeta_star
 
-        # rotate to A frame (only works for 1 surface for now)
+        # rotation matrix to A frame
         orient_rmat = quat2rotation(self.data.structure.timestep_info[self.settings['use_custom_timestep']].quat)
 
-        # split base rotations to per surface
+        # split base positions and rotations to per surface
         rmat_base_rot_surf = [rmat_base_rot[index, ...] for index in self.data.aero.aero2struct_mapping]
         combined_rmat_surf = [combined_rmat[index, ...] for index in self.data.aero.aero2struct_mapping]
         combined_beam_pos_surf = [combined_beam_pos[index, ...] for index in self.data.aero.aero2struct_mapping]
@@ -195,19 +218,23 @@ class AeroelasticModal(BaseSolver):
         is_bound = []
         surf_number = []
 
+        # loop through each surface
         for i_surf, zeta_base_g in enumerate(zeta_base_g):
-            # [3, m+1, n+1]
+            # rotate aero grid to body frame
             zeta_base_a = np.einsum('ij,jkl->ikl', orient_rmat.T, zeta_base_g)
 
+            # rotate aero grid to material frame
             zeta_base_b = np.einsum('ijk,kli->jli', rmat_base_rot_surf[i_surf], zeta_base_a
                                     - np.broadcast_to(np.expand_dims(base_pos_surf[i_surf].T, 1), zeta_base_a.shape))
 
-            # [n+1, m+1, 3, num_lambda, num_phase]
+            # rotate to deformed state [n+1, m+1, 3, num_lambda, num_phase]
             zeta_a = np.einsum('ijklm,jni->inklm', combined_rmat_surf[i_surf], zeta_base_b) + np.expand_dims(
                 combined_beam_pos_surf[i_surf], 1)
+
+            # rotate back to inertial frame
             zeta.append(np.einsum('ij,kljmn->klimn', orient_rmat, zeta_a))
 
-            # [n+1, m+1, num_lambda, num_phase]
+            # calculate displacement of each node relative to reference
             zeta_delta.append(np.linalg.norm(zeta[-1] - np.expand_dims(np.transpose(zeta_base_g, (2, 1, 0)),
                                                                        axis=(3, 4)), axis=2))
 
@@ -222,7 +249,7 @@ class AeroelasticModal(BaseSolver):
             is_bound.append(False)
             surf_number.append(i_wake)
 
-        # write to file
+        # create folder to save modes to
         folder = self.data.output_folder + '/aeroelastic_modes/'
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -246,6 +273,7 @@ class AeroelasticModal(BaseSolver):
                     panel_id = np.arange(panel_data_dim)
                     panel_surf_id = np.full_like(panel_id, i_surf)
 
+                    # create node connectivity to create panels
                     base_range = np.arange(m - 1)
                     base_conn = np.concatenate([base_range + i * m for i in range(n - 1)])
                     conn = np.stack([base_conn, base_conn + 1, base_conn + m + 1, base_conn + m]).T

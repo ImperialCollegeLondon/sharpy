@@ -136,14 +136,11 @@ def construct_krylov(r, lu_A, B, approx_type='Pade', side='b'):
         B.shape = (nx, 1)
 
     # Output projection matrices
-    V = np.zeros((nx, r),
-                 dtype=complex)
-    H = np.zeros((r, r),
-                 dtype=complex)
+    V = np.zeros((nx, r), dtype=complex)
+    H = np.zeros((r, r), dtype=complex)
 
     # Declare iterative variables
-    f = np.zeros((nx, r),
-                 dtype=complex)
+    f = np.zeros((nx, r), dtype=complex)
 
     if approx_type == 'partial_realisation':
         A = lu_A
@@ -169,8 +166,7 @@ def construct_krylov(r, lu_A, B, approx_type='Pade', side='b'):
         v = 1 / beta * f[:, j]
 
         V[:, j+1] = v
-        H_hat = np.block([[H[:j+1, :j+1]],
-                          [beta * evec(j)]])
+        H_hat = np.block([[H[:j+1, :j+1]], [beta * evec(j)]])
 
         if approx_type == 'partial_realisation':
             w = A.dot(v)
@@ -258,16 +254,12 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade', side='controllab
     m = B.shape[1]  # Full system number of inputs/outputs
     n = B.shape[0]  # Full system number of states
 
-    deflation_tolerance = 1e-4  # Inexact deflation tolerance to approximate norm(V)=0 in machine precision
-
     # Preallocated size may be too large in case columns are deflated
     last_column = 0
 
     # Pre-allocate w, V
     V = np.zeros((n, m * r), dtype=complex)
     w = np.zeros((n, m * r), dtype=complex)  # Initialise w, may be smaller than this due to deflation
-    # V = np.zeros((n, m * r))
-    # w = np.zeros((n, m * r))  # Initialise w, may be smaller than this due to deflation
 
     if approx_type == 'partial_realisation':
         G = B
@@ -281,11 +273,6 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade', side='controllab
         ## Orthogonalise w_k to preceding w_j for j < k
         if k >= 1:
             w[:, :k+1] = mgs_ortho(w[:, :k+1])[:, :k+1]
-        # from sharpy.rom.krylov import check_eye
-        # try:
-        #     check_eye(w[:, :k+1], w[:, :k+1].T)
-        # except AssertionError:
-        #     print('failing here - k = %g' % k)
 
 
     V[:, :m+1] = w[:, :m+1]
@@ -294,12 +281,6 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade', side='controllab
     mu = m  # Initialise controllability index
     mu_c = m  # Guess at controllability index with no deflation
     t = m   # worked column index
-
-    # from sharpy.rom.krylov import check_eye
-    # try:
-    #     check_eye(V[:, :m+1], V[:, :m+1].T)
-    # except AssertionError:
-    #     print('failing here')
 
     for k in range(1, r):
         for j in range(mu_c):
@@ -311,17 +292,6 @@ def construct_mimo_krylov(r, lu_A_input, B, approx_type='Pade', side='controllab
             # Orthogonalise w[:,t] against V_i -
             w[:, :t+1] = mgs_ortho(w[:, :t+1])[:, :t+1]
 
-            # if np.linalg.norm(w[:, t]) < deflation_tolerance:
-            #     # Deflate w_k
-            #     cout.cout_wrap('\tVector deflated', 3)
-            #     w = [w[:, 0:t], w[:, t+1:]]
-            #     last_column -= 1
-            #     mu -= 1
-            # else:
-            #     pass
-            #     # V[:, t] = w[:, t]
-            #     # last_column += 1
-            #     # t += 1
             try:
                 check_eye(w[:, :t+1], w[:, :t+1].T)
                 V[:, t] = w[:, t]
@@ -415,12 +385,6 @@ def schur_ordered(A, ct=False):
     else:
         sort_eigvals = 'iuc'
 
-    # if A.dtype == complex:
-    #     output_form = 'complex'
-    # else:
-    #     output_form = 'real'
-    # issues when not using the complex form of the Schur decomposition
-
     output_form = 'complex'
     As, Tt, n_stable1 = sclalg.schur(A, output=output_form, sort=sort_eigvals)
 
@@ -478,8 +442,6 @@ def remove_a12(As, n_stable):
 
     T = np.block([[np.eye(n_stable), -X], [np.zeros((n-n_stable, n_stable)), np.eye(n-n_stable)]])
 
-    T2 = np.eye(n, n_stable)
-    # App = T2.T.dot(T.dot(As.dot(np.linalg.inv(T).dot(T2))))
     return T, X
 
 
