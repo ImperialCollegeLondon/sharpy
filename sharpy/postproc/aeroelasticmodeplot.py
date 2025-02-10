@@ -96,16 +96,16 @@ class AeroelasticModal(BaseSolver):
 
         # remove conjugate eigenvalues by making the imaginary part of the eigenvalues positive and adding to a set
         if self.settings['remove_conjugate']:
-            first_eig_index = []
-            eig_set = set()
+            # dictionary contains {rounded eigenvalue: eigenvalue index} pairs
+            eig_set = dict()
 
-            for i_eig, eig in enumerate(evals_c_ae):
+            for eig_index, eig in enumerate(evals_c_ae):
                 # we here round the eigenvalues to 5 decimal places to prevent a pair not matching to machine precision
-                eig_pos = np.round(eig.real + 1j * np.abs(eig.imag), 5)
-                if eig_pos not in eig_set:
-                    eig_set.add(eig_pos)
-                    first_eig_index.append(i_eig)
-            first_eig_index = np.array(first_eig_index)
+                eig_rounded = np.round(eig.real + 1j * np.abs(eig.imag), 5)
+                if eig_rounded not in eig_set.keys():
+                    eig_set.update({eig_rounded: eig_index})
+
+            first_eig_index = np.fromiter(eig_set.values(), dtype=int)
             order = first_eig_index[np.argsort(-evals_c_ae.real[first_eig_index])][:self.settings['num_modes']]
         else:
             order = np.argsort(-evals_c_ae.real)[:self.settings['num_modes']]
