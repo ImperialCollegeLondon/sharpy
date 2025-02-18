@@ -1,4 +1,3 @@
----
 name: SHARPy Tests
 
 on:
@@ -47,6 +46,8 @@ jobs:
           git fetch --tags -f
           pip install .
           pip install coverage
+      - name: Run coverage
+        run: |
           coverage run -m unittest discover
           coverage json
       - name: Upload Coverage to Codecov
