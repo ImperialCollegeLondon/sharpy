@@ -38,7 +38,7 @@ jobs:
         run: |
           gfortran --version
           export QT_QPA_PLATFORM='offscreen'
-          sudo apt install libeigen3-dev
+          sudo apt install libblas-dev liblapack-dev libeigen3-dev
           git submodule init
           git submodule update
           git fetch --tags -f
