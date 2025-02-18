@@ -139,7 +139,9 @@ setup(
         "colorama",
         "dill",
         "jupyterlab",
-        "mayavi",
+        #"mayavi",
+        # Fix for tvtk issue, see Issue #313
+        "mayavi @ git+https://github.com/enthought/mayavi/zipball/master",
         "pandas",
         "control",
         "openpyxl>=3.0.10",
