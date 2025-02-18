@@ -34,11 +34,13 @@ jobs:
         with:
           version: 10
           platform: x64
+      - name: Check that gfortran works
+        run: gfortran --version
+      - name: Install build package dependencies
+        run: sudo apt install libblas-dev liblapack-dev libeigen3-dev
       - name: Pre-Install dependencies
         run: |
-          gfortran --version
           export QT_QPA_PLATFORM='offscreen'
-          sudo apt install libblas-dev liblapack-dev libeigen3-dev
           git submodule init
           git submodule update
           git fetch --tags -f
