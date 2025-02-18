@@ -141,7 +141,7 @@ setup(
         "jupyterlab",
         #"mayavi",
         # Fix for tvtk issue, see Issue #313
-        "mayavi @ git+https://github.com/enthought/mayavi/zipball/master",
+        "mayavi @ git+https://github.com/enthought/mayavi/zipball/main",
         "pandas",
         "control",
         "openpyxl>=3.0.10",
