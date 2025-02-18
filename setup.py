@@ -140,7 +140,6 @@ setup(
         "dill",
         "jupyterlab",
         "mayavi",
-        #"mayavi @ git+https://github.com/enthought/mayavi/zipball/master", # github direct dependency restored temporarily
         "pandas",
         "control",
         "openpyxl>=3.0.10",
