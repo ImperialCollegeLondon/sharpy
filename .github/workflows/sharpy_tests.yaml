@@ -38,7 +38,7 @@ jobs:
         run: gfortran --version
       - name: Install build package dependencies
         run: sudo apt install libblas-dev liblapack-dev libeigen3-dev
-      - name: Pre-Install dependencies
+      - name: Install sharpy and coverage using pip
         run: |
           export QT_QPA_PLATFORM='offscreen'
           pip install .
