@@ -139,7 +139,8 @@ setup(
         "colorama",
         "dill",
         "jupyterlab",
-        "mayavi @ git+https://github.com/enthought/mayavi/zipball/master", # github direct dependency restored temporarily
+        "mayavi"
+        #"mayavi @ git+https://github.com/enthought/mayavi/zipball/master", # github direct dependency restored temporarily
         "pandas",
         "control",
         "openpyxl>=3.0.10",
