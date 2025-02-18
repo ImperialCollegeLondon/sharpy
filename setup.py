@@ -139,7 +139,7 @@ setup(
         "colorama",
         "dill",
         "jupyterlab",
-        "mayavi"
+        "mayavi",
         #"mayavi @ git+https://github.com/enthought/mayavi/zipball/master", # github direct dependency restored temporarily
         "pandas",
         "control",
