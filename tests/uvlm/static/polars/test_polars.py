@@ -10,8 +10,8 @@ import sharpy.utils.algebra as algebra
 
 
 class InfiniteWing:
-    area = 90000000.0
-    chord = 3.
+    area = 9e7
+    chord = 3
 
     def force_coef(self, rho, uinf):
         return 0.5 * rho * uinf ** 2 * self.area

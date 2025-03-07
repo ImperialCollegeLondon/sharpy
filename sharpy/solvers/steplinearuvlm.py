@@ -107,12 +107,13 @@ class StepLinearUVLM(BaseSolver):
 
     settings_types['vortex_radius_wake_ind'] = 'float'
     settings_default['vortex_radius_wake_ind'] = vortex_radius_def
-    settings_description['vortex_radius_wake_ind'] = 'Distance between points below which induction is not computed in the wake convection'
+    settings_description[
+        'vortex_radius_wake_ind'] = 'Distance between points below which induction is not computed in the wake convection'
 
     settings_types['cfl1'] = 'bool'
     settings_default['cfl1'] = True
     settings_description['cfl1'] = 'If it is ``True``, it assumes that the discretisation complies with CFL=1'
-    
+
     settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
@@ -173,7 +174,7 @@ class StepLinearUVLM(BaseSolver):
             self.settings = custom_settings
         settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
         settings_utils.to_custom_types(self.settings['ScalingDict'], self.scaling_settings_types,
-                                 self.scaling_settings_default, no_ctype=True)
+                                       self.scaling_settings_default, no_ctype=True)
 
         # Initialise velocity generator
         velocity_generator_type = gen_interface.generator_from_string(self.settings['velocity_field_generator'])
@@ -198,11 +199,11 @@ class StepLinearUVLM(BaseSolver):
                 if self.num_body_track == -1:
                     self.quat0 = self.data.structure.timestep_info[-1].quat.copy()
                     self.for_vel0 = self.data.structure.timestep_info[-1].for_vel.copy()
-                else: # track a specific body
+                else:  # track a specific body
                     self.quat0 = \
-                        self.data.structure.timestep_info[-1].mb_quat[self.num_body_track,:].copy()
+                        self.data.structure.timestep_info[-1].mb_quat[self.num_body_track, :].copy()
                     self.for_vel0 = \
-                        self.data.structure.timestep_info[-1].mb_FoR_vel[self.num_body_track ,:].copy()
+                        self.data.structure.timestep_info[-1].mb_FoR_vel[self.num_body_track, :].copy()
 
                 # convert to G frame
                 self.Cga0 = algebra.quat2rotation(self.quat0)
@@ -210,7 +211,7 @@ class StepLinearUVLM(BaseSolver):
                 self.for_vel0[:3] = self.Cga0.dot(self.for_vel0[:3])
                 self.for_vel0[3:] = self.Cga0.dot(self.for_vel0[3:])
 
-            else: # check/record initial rotation speed
+            else:  # check/record initial rotation speed
                 self.num_body_track = None
                 self.quat0 = None
                 self.Cag0 = None
@@ -223,12 +224,7 @@ class StepLinearUVLM(BaseSolver):
             # Generate instance of linuvlm.Dynamic()
             lin_uvlm_system = linuvlm.DynamicBlock(aero_tstep,
                                                    dynamic_settings=self.settings,
-                                              # dt=self.settings['dt'],
-                                              # integr_order=self.settings['integr_order'],
-                                              # ScalingDict=self.settings['ScalingDict'],
-                                              # RemovePredictor=self.settings['remove_predictor'],
-                                              # UseSparse=self.settings['use_sparse'],
-                                              for_vel=self.for_vel0)
+                                                   for_vel=self.for_vel0)
 
             # add rotational speed
             for ii in range(lin_uvlm_system.MS.n_surf):
@@ -249,8 +245,8 @@ class StepLinearUVLM(BaseSolver):
             # Assemble the state space system
             wake_prop_settings = {'dt': self.settings['dt'],
                                   'ts': self.data.ts,
-                                  't': self.data.ts*self.settings['dt'],
-                                  'for_pos':self.data.structure.timestep_info[-1].for_pos,
+                                  't': self.data.ts * self.settings['dt'],
+                                  'for_pos': self.data.structure.timestep_info[-1].for_pos,
                                   'cfl1': self.settings['cfl1'],
                                   'vel_gen': self.velocity_generator}
             lin_uvlm_system.assemble_ss(wake_prop_settings=wake_prop_settings)
@@ -259,14 +255,7 @@ class StepLinearUVLM(BaseSolver):
             self.data.aero.linear['x_0'] = x_0
             self.data.aero.linear['u_0'] = u_0
             self.data.aero.linear['y_0'] = f_0
-            # self.data.aero.linear['gamma_0'] = gamma
-            # self.data.aero.linear['gamma_star_0'] = gamma_star
-            # self.data.aero.linear['gamma_dot_0'] = gamma_dot
-
             # TODO: Implement in AeroTimeStepInfo a way to store the state vectors
-            # aero_tstep.linear.x = x_0
-            # aero_tstep.linear.u = u_0
-            # aero_tstep.linear.y = f_0
 
     def run(self, **kwargs):
         r"""
@@ -323,11 +312,10 @@ class StepLinearUVLM(BaseSolver):
         """
 
         aero_tstep = settings_utils.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[-1])
-        structure_tstep = settings_utils.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
-        convect_wake = settings_utils.set_value_or_default(kwargs, 'convect_wake', False)
-        dt= settings_utils.set_value_or_default(kwargs, 'dt', self.settings['dt'])                                                                                                    
-        t = settings_utils.set_value_or_default(kwargs, 't', self.data.ts*dt)
-        unsteady_contribution = settings_utils.set_value_or_default(kwargs, 'unsteady_contribution', False)
+        structure_tstep = settings_utils.set_value_or_default(kwargs, 'structural_step',
+                                                              self.data.structure.timestep_info[-1])
+        dt = settings_utils.set_value_or_default(kwargs, 'dt', self.settings['dt'])
+        t = settings_utils.set_value_or_default(kwargs, 't', self.data.ts * dt)
 
         integr_order = self.settings['integr_order']
 
@@ -346,11 +334,11 @@ class StepLinearUVLM(BaseSolver):
         # - proj happens in self.pack_input_vector and unpack_ss_vectors
         if self.settings['track_body']:
             # track A frame
-            if self.num_body_track  == -1:
-                self.Cga = algebra.quat2rotation( structure_tstep.quat )
-            else: # track a specific body
+            if self.num_body_track == -1:
+                self.Cga = algebra.quat2rotation(structure_tstep.quat)
+            else:  # track a specific body
                 self.Cga = algebra.quat2rotation(
-                                structure_tstep.mb_quat[self.num_body_track,:] )
+                    structure_tstep.mb_quat[self.num_body_track, :])
 
         # Column vector that will be the input to the linearised UVLM system
         # Input is at time step n, since it is updated in the aeroelastic solver prior to aerodynamic solver
@@ -395,7 +383,8 @@ class StepLinearUVLM(BaseSolver):
         self.data.aero.generate_zeta(beam, self.data.aero.aero_settings, -1, beam_ts=-1)
 
     def update_custom_grid(self, structure_tstep, aero_tstep):
-        self.data.aero.generate_zeta_timestep_info(structure_tstep, aero_tstep, self.data.structure, self.data.aero.aero_settings)
+        self.data.aero.generate_zeta_timestep_info(structure_tstep, aero_tstep, self.data.structure,
+                                                   self.data.aero.aero_settings)
 
     def unpack_ss_vectors(self, y_n, x_n, u_n, aero_tstep):
         r"""
@@ -449,7 +438,7 @@ class StepLinearUVLM(BaseSolver):
 
         ### project forces from uvlm FoR to FoR G
         if self.settings['track_body']:
-            Cg_uvlm = np.dot( self.Cga, self.Cga0.T )
+            Cg_uvlm = np.dot(self.Cga, self.Cga0.T)
 
         f_aero = y_n
 
@@ -478,7 +467,7 @@ class StepLinearUVLM(BaseSolver):
             panels_in_wake = aero_tstep.gamma_star[i_surf].size
 
             # Append reshaped forces to each entry in list (one for each surface)
-            forces.append(f_aero[worked_points:worked_points+points_in_surface].reshape(dimensions, order='C'))
+            forces.append(f_aero[worked_points:worked_points + points_in_surface].reshape(dimensions, order='C'))
 
             ### project forces.
             # - forces are in UVLM linearisation frame. Hence, these  are projected
@@ -486,19 +475,19 @@ class StepLinearUVLM(BaseSolver):
             if self.settings['track_body']:
                 for mm in range(dimensions[1]):
                     for nn in range(dimensions[2]):
-                        forces[i_surf][:,mm,nn] = np.dot(Cg_uvlm, forces[i_surf][:,mm,nn])
+                        forces[i_surf][:, mm, nn] = np.dot(Cg_uvlm, forces[i_surf][:, mm, nn])
 
             # Add the null bottom 3 rows to to the forces entry
             forces[i_surf] = np.concatenate((forces[i_surf], np.zeros(dimensions)))
 
             # Reshape bound circulation terms
-            gamma.append(gamma_vec[worked_panels:worked_panels+panels_in_surface].reshape(
+            gamma.append(gamma_vec[worked_panels:worked_panels + panels_in_surface].reshape(
                 dimensions_gamma, order='C'))
-            gamma_dot.append(gamma_dot_vec[worked_panels:worked_panels+panels_in_surface].reshape(
+            gamma_dot.append(gamma_dot_vec[worked_panels:worked_panels + panels_in_surface].reshape(
                 dimensions_gamma, order='C'))
 
             # Reshape wake circulation terms
-            gamma_star.append(gamma_star_vec[worked_wake_panels:worked_wake_panels+panels_in_wake].reshape(
+            gamma_star.append(gamma_star_vec[worked_wake_panels:worked_wake_panels + panels_in_wake].reshape(
                 dimensions_wake, order='C'))
 
             worked_points += points_in_surface
@@ -506,7 +495,6 @@ class StepLinearUVLM(BaseSolver):
             worked_wake_panels += panels_in_wake
 
         return forces, gamma, gamma_dot, gamma_star
-
 
     def pack_input_vector(self):
         r"""
@@ -531,25 +519,25 @@ class StepLinearUVLM(BaseSolver):
         # using rotation matrix aat time 0 (as if FoR A was not rotating).
         if self.settings['track_body']:
 
-            Cuvlm_g = np.dot( self.Cga0, self.Cga.T )
+            Cuvlm_g = np.dot(self.Cga0, self.Cga.T)
             zeta_uvlm, zeta_dot_uvlm, u_ext_uvlm = [], [], []
 
             for i_surf in range(aero_tstep.n_surf):
 
                 Mp1, Np1 = aero_tstep.dimensions[i_surf] + 1
 
-                zeta_uvlm.append( np.empty((3,Mp1,Np1)) )
-                zeta_dot_uvlm.append( np.empty((3,Mp1,Np1)) )
-                u_ext_uvlm.append( np.empty((3,Mp1,Np1)) )
+                zeta_uvlm.append(np.empty((3, Mp1, Np1)))
+                zeta_dot_uvlm.append(np.empty((3, Mp1, Np1)))
+                u_ext_uvlm.append(np.empty((3, Mp1, Np1)))
 
                 for mm in range(Mp1):
                     for nn in range(Np1):
-                        zeta_uvlm[i_surf][:,mm,nn] = \
-                            np.dot(Cuvlm_g, aero_tstep.zeta[i_surf][:,mm,nn])
-                        zeta_dot_uvlm[i_surf][:,mm,nn] = \
-                            np.dot(Cuvlm_g, aero_tstep.zeta_dot[i_surf][:,mm,nn])
-                        u_ext_uvlm[i_surf][:,mm,nn] = \
-                            np.dot(Cuvlm_g, aero_tstep.u_ext[i_surf][:,mm,nn])
+                        zeta_uvlm[i_surf][:, mm, nn] = \
+                            np.dot(Cuvlm_g, aero_tstep.zeta[i_surf][:, mm, nn])
+                        zeta_dot_uvlm[i_surf][:, mm, nn] = \
+                            np.dot(Cuvlm_g, aero_tstep.zeta_dot[i_surf][:, mm, nn])
+                        u_ext_uvlm[i_surf][:, mm, nn] = \
+                            np.dot(Cuvlm_g, aero_tstep.u_ext[i_surf][:, mm, nn])
 
             zeta = np.concatenate([zeta_uvlm[i_surf].reshape(-1, order='C')
                                    for i_surf in range(aero_tstep.n_surf)])
@@ -565,7 +553,7 @@ class StepLinearUVLM(BaseSolver):
             zeta_dot = np.concatenate([aero_tstep.zeta_dot[i_surf].reshape(-1, order='C')
                                        for i_surf in range(aero_tstep.n_surf)])
             u_ext = np.concatenate([aero_tstep.u_ext[i_surf].reshape(-1, order='C')
-                                   for i_surf in range(aero_tstep.n_surf)])
+                                    for i_surf in range(aero_tstep.n_surf)])
 
         u = np.concatenate((zeta, zeta_dot, u_ext))
 
@@ -613,7 +601,7 @@ class StepLinearUVLM(BaseSolver):
         gamma = np.concatenate([aero_tstep.gamma[ss].reshape(-1, order='C')
                                 for ss in range(aero_tstep.n_surf)])
         gamma_star = np.concatenate([aero_tstep.gamma_star[ss].reshape(-1, order='C')
-                                    for ss in range(aero_tstep.n_surf)])
+                                     for ss in range(aero_tstep.n_surf)])
         gamma_dot = np.concatenate([aero_tstep.gamma_dot[ss].reshape(-1, order='C')
                                     for ss in range(aero_tstep.n_surf)])
 
@@ -623,7 +611,7 @@ class StepLinearUVLM(BaseSolver):
         else:
             if aero_tstep_m1:
                 gamma_m1 = np.concatenate([aero_tstep_m1.gamma[ss].reshape(-1, order='C')
-                                    for ss in range(aero_tstep.n_surf)])
+                                           for ss in range(aero_tstep.n_surf)])
             else:
                 gamma_m1 = gamma - dt * gamma_dot
 

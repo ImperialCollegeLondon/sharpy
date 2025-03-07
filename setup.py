@@ -145,7 +145,8 @@ setup(
         "openpyxl>=3.0.10",
         "lxml>=4.4.1",
         "PySocks",
-        "PyYAML"
+        "PyYAML",
+        "jax",
     ],
     extras_require={
         "docs": [

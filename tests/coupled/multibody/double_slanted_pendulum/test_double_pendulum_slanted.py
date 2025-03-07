@@ -255,27 +255,6 @@ class TestDoublePendulumSlanted(unittest.TestCase):
         beam1.generate_h5_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
         gc.generate_multibody_file(LC, MB, SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
 
-        #     # Same case with spherical joints
-        #     global name_spherical
-        #     name_spherical = 'dpg_spherical'
-        #     SimInfo.solvers['SHARPy']['case'] = name_spherical
-
-        #     SimInfo.solvers['NonLinearDynamicMultibody']['time_integrator'] = 'NewmarkBeta'
-        #     SimInfo.solvers['NonLinearDynamicMultibody']['time_integrator_settings'] = {'newmark_damp': 0.15,
-        #                                                                                     'dt': dt}
-
-        #     LC1 = gc.LagrangeConstraint()
-        #     LC1.behaviour = 'spherical_FoR'
-        #     LC1.body_FoR = 0
-        #     LC1.scalingFactor = 1e6
-
-        #     LC2 = gc.LagrangeConstraint()
-        #     LC2.behaviour = 'spherical_node_FoR'
-        #     LC2.node_in_body = nnodes1-1
-        #     LC2.body = 0
-        #     LC2.body_FoR = 1
-        #     LC2.scalingFactor = 1e6
-
         gc.clean_test_files(SimInfo.solvers['SHARPy']['route'], SimInfo.solvers['SHARPy']['case'])
         SimInfo.generate_solver_file()
         SimInfo.generate_dyn_file(numtimesteps)
@@ -322,7 +301,7 @@ class TestDoublePendulumSlanted(unittest.TestCase):
     def tearDown(self):
         solver_path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
         solver_path += '/'
-        for name in [name_hinge_slanted, name_hinge_slanted_pen, name_hinge_slanted_lateralrot]:
+        for name in ['name_hinge_slanted', 'name_hinge_slanted_pen', 'name_hinge_slanted_lateralrot']:
             files_to_delete = [name + '.aero.h5',
                                name + '.dyn.h5',
                                name + '.fem.h5',

@@ -63,11 +63,6 @@ class RigidDynamicPrescribedStep(BaseSolver):
 
         xbeamlib.cbeam3_solv_disp2state(self.data.structure, structural_step)
 
-        # xbeamlib.cbeam3_step_nlndyn(self.data.structure,
-        #                             self.settings,
-        #                             self.data.ts,
-        #                             structural_step,
-        #                             dt=dt)
         self.extract_resultants(structural_step)
         if self.data.ts > 0:
             self.data.structure.integrate_position(structural_step, self.settings['dt'])
@@ -78,12 +73,6 @@ class RigidDynamicPrescribedStep(BaseSolver):
 
     def next_step(self):
         pass
-        # self.data.structure.next_step()
-        # ts = len(self.data.structure.timestep_info) - 1
-        # if ts > 0:
-        #     self.data.structure.timestep_info[ts].for_vel[:] = self.data.structure.dynamic_input[ts - 1]['for_vel']
-        #     self.data.structure.timestep_info[ts].for_acc[:] = self.data.structure.dynamic_input[ts - 1]['for_acc']
-        #     self.data.structure.timestep_info[ts].unsteady_applied_forces[:] = self.data.structure.dynamic_input[ts - 1]['dynamic_forces']
 
     def extract_resultants(self, tstep=None):
         if tstep is None:
