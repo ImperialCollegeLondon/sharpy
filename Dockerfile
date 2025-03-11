@@ -14,7 +14,7 @@ RUN cd /etc/yum.repos.d/ && \
 
 # Development tools including compilers
 RUN yum groupinstall "Development Tools" -y --nogpgcheck && \
-    yum install -y --nogpgcheck mesa-libGL libXt libXt-devel wget gcc-gfortran lapack vim tmux eigen3-devel && \
+    yum install -y --nogpgcheck --enablerepo=PowerTools mesa-libGL libXt libXt-devel wget gcc-gfortran lapack vim tmux eigen3-devel && \
     yum clean all
 
 # Install Mamba - swapped from Conda to Mamba due to Github runner memory constraint
