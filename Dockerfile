@@ -15,7 +15,7 @@ RUN cd /etc/yum.repos.d/ && \
 # Development tools including compilers
 RUN yum groupinstall "Development Tools" -y --nogpgcheck && \
     yum install dnf-plugins-core && \
-    yum config-manager --set-enabled PowerTools && \
+    yum config-manager --set-enabled powertools && \
     yum install -y --nogpgcheck mesa-libGL libXt libXt-devel wget gcc-gfortran lapack vim tmux eigen3-devel && \
     yum clean all
 
