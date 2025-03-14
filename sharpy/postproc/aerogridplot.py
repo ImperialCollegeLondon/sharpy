@@ -208,7 +208,7 @@ class AerogridPlot(BaseSolver):
                             #     cga = algebra.euler2rot([0, self.data.trimmed_values[0], 0])
                             #     coords[counter, :] += np.dot(cga, struct_tstep.for_pos[0:3])
                             # except AttributeError:
-                            coords[counter, :] += np.dot(struct_tstep.cga(), struct_tstep.for_pos[0:3])
+                            coords[counter, :] += np.dot(self.data.structure.timestep_info[0].cga(), struct_tstep.for_pos[0:3])
                     if self.settings['include_forward_motion']:
                         coords[counter, 0] -= self.settings['dt']*self.ts*self.settings['u_inf']
 
@@ -331,7 +331,7 @@ class AerogridPlot(BaseSolver):
                             #     cga = algebra.euler2rot([0, self.data.trimmed_values[0], 0])
                             #     coords[counter, :] += np.dot(cga, self.data.structure.timestep_info[self.ts].for_pos[0:3])
                             # except AttributeError:
-                            coords[counter, :] += np.dot(self.data.structure.timestep_info[self.ts].cga(), self.data.structure.timestep_info[self.ts].for_pos[0:3])                                                        
+                            coords[counter, :] += np.dot(self.data.structure.timestep_info[0].cga(), self.data.structure.timestep_info[self.ts].for_pos[0:3])                                                        
                     if self.settings['include_forward_motion']:
                         coords[counter, 0] -= self.settings['dt']*self.ts*self.settings['u_inf']
 
