@@ -139,13 +139,16 @@ setup(
         "colorama",
         "dill",
         "jupyterlab",
-        "mayavi", # github direct dependency removed since pip version is fixed, and also not compatible with pypi
+        #"mayavi",
+        # Fix for tvtk issue, see Issue #313 - darn thing can't be found
+        "mayavi @ git+https://github.com/enthought/mayavi.git",
         "pandas",
         "control",
         "openpyxl>=3.0.10",
         "lxml>=4.4.1",
         "PySocks",
-        "PyYAML"
+        "PyYAML",
+        "jax",
     ],
     extras_require={
         "docs": [

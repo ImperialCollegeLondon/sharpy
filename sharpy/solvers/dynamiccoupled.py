@@ -543,7 +543,7 @@ class DynamicCoupled(BaseSolver):
                 state = {'structural': structural_kstep,
                          'aero': aero_kstep}
                 for k, v in self.controllers.items():
-                    state = v.control(self.data, state)
+                    state, control = v.control(self.data, state)
                     # this takes care of the changes in options for the solver
                     structural_kstep, aero_kstep = self.process_controller_output(
                         state)
@@ -751,8 +751,6 @@ class DynamicCoupled(BaseSolver):
         """
         # check for non-convergence
         if not all(np.isfinite(tstep.q)):
-            import pdb
-            pdb.set_trace()
             raise Exception(
                 '***Not converged! There is a NaN value in the forces!')
 
