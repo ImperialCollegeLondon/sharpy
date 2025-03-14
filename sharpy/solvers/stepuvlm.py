@@ -101,7 +101,8 @@ class StepUvlm(BaseSolver):
 
     settings_types['vortex_radius_wake_ind'] = 'float'
     settings_default['vortex_radius_wake_ind'] = vortex_radius_def
-    settings_description['vortex_radius_wake_ind'] = 'Distance between points below which induction is not computed in the wake convection'
+    settings_description[
+        'vortex_radius_wake_ind'] = 'Distance between points below which induction is not computed in the wake convection'
 
     settings_types['interp_coords'] = 'int'
     settings_default['interp_coords'] = 0
@@ -116,7 +117,8 @@ class StepUvlm(BaseSolver):
 
     settings_types['interp_method'] = 'int'
     settings_default['interp_method'] = 0
-    settings_description['interp_method'] = 'Method of interpolation: linear(0), parabolic(1), splines(2), slerp around z(3), slerp around yaw_slerp(4)'
+    settings_description[
+        'interp_method'] = 'Method of interpolation: linear(0), parabolic(1), splines(2), slerp around z(3), slerp around yaw_slerp(4)'
     settings_options['interp_method'] = [0, 1, 2, 3, 4]
 
     settings_types['yaw_slerp'] = 'float'
@@ -125,12 +127,13 @@ class StepUvlm(BaseSolver):
 
     settings_types['centre_rot'] = 'list(float)'
     settings_default['centre_rot'] = [0., 0., 0.]
-    settings_description['centre_rot'] = 'Coordinates of the centre of rotation to perform slerp interpolation or cylindrical coordinates'
+    settings_description[
+        'centre_rot'] = 'Coordinates of the centre of rotation to perform slerp interpolation or cylindrical coordinates'
 
     settings_types['quasi_steady'] = 'bool'
     settings_default['quasi_steady'] = False
     settings_description['quasi_steady'] = 'Use quasi-steady approximation in UVLM'
-    
+
     settings_types['only_nonlifting'] = 'bool'
     settings_default['only_nonlifting'] = False
     settings_description['only_nonlifting'] = 'Consider nonlifting body interactions'
@@ -149,7 +152,8 @@ class StepUvlm(BaseSolver):
 
     settings_types['ignore_first_x_nodes_in_force_calculation'] = 'int'
     settings_default['ignore_first_x_nodes_in_force_calculation'] = 0
-    settings_description['ignore_first_x_nodes_in_force_calculation'] = 'Ignores the forces on the first user-specified number of nodes of all surfaces.'
+    settings_description[
+        'ignore_first_x_nodes_in_force_calculation'] = 'Ignores the forces on the first user-specified number of nodes of all surfaces.'
 
     settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
@@ -169,9 +173,9 @@ class StepUvlm(BaseSolver):
         else:
             self.settings = custom_settings
         settings_utils.to_custom_types(self.settings,
-                           self.settings_types,
-                           self.settings_default,
-                           self.settings_options)
+                                       self.settings_types,
+                                       self.settings_default,
+                                       self.settings_options)
 
         self.data.structure.add_unsteady_information(
             self.data.structure.dyn_dict,
@@ -209,10 +213,11 @@ class StepUvlm(BaseSolver):
 
         # Default values
         aero_tstep = settings_utils.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[-1])
-        structure_tstep = settings_utils.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
+        structure_tstep = settings_utils.set_value_or_default(kwargs, 'structural_step',
+                                                              self.data.structure.timestep_info[-1])
         convect_wake = settings_utils.set_value_or_default(kwargs, 'convect_wake', True)
-        dt= settings_utils.set_value_or_default(kwargs, 'dt', self.settings['dt'])
-        t = settings_utils.set_value_or_default(kwargs, 't', self.data.ts*dt)
+        dt = settings_utils.set_value_or_default(kwargs, 'dt', self.settings['dt'])
+        t = settings_utils.set_value_or_default(kwargs, 't', self.data.ts * dt)
         unsteady_contribution = settings_utils.set_value_or_default(kwargs, 'unsteady_contribution', False)
 
         if not aero_tstep.zeta:
@@ -228,7 +233,7 @@ class StepUvlm(BaseSolver):
                                           'is_wake': False},
                                          aero_tstep.u_ext)
         if ((self.settings['convection_scheme'] > 1 and convect_wake) or
-           (not self.settings['cfl1'])):
+                (not self.settings['cfl1'])):
             # generate uext_star
             self.velocity_generator.generate({'zeta': aero_tstep.zeta_star,
                                               'override': True,
@@ -240,7 +245,8 @@ class StepUvlm(BaseSolver):
                                              aero_tstep.u_ext_star)
         if self.settings['nonlifting_body_interactions']:
 
-            nl_body_tstep = settings_utils.set_value_or_default(kwargs, 'nl_body_tstep', self.data.nonlifting_body.timestep_info[-1])
+            nl_body_tstep = settings_utils.set_value_or_default(kwargs, 'nl_body_tstep',
+                                                                self.data.nonlifting_body.timestep_info[-1])
             self.velocity_generator.generate({'zeta': nl_body_tstep.zeta,
                                               'override': True,
                                               'ts': self.data.ts,
@@ -249,15 +255,15 @@ class StepUvlm(BaseSolver):
                                               'for_pos': structure_tstep.for_pos,
                                               'is_wake': False},
                                              nl_body_tstep.u_ext)
-            
+
             uvlmlib.uvlm_solver_lifting_and_nonlifting(self.data.ts,
-                                                       aero_tstep, 
+                                                       aero_tstep,
                                                        nl_body_tstep,
-                                                       structure_tstep, 
+                                                       structure_tstep,
                                                        self.settings,
-                                                       convect_wake=convect_wake, 
+                                                       convect_wake=convect_wake,
                                                        dt=dt)
-        else:            
+        else:
             uvlmlib.uvlm_solver(self.data.ts,
                                 aero_tstep,
                                 structure_tstep,
@@ -291,7 +297,7 @@ class StepUvlm(BaseSolver):
 
     def add_step(self):
         self.data.aero.add_timestep()
-        if self.settings['nonlifting_body_interactions']:              
+        if self.settings['nonlifting_body_interactions']:
             self.data.nonlifting_body.add_timestep()
 
     def update_grid(self, beam):
@@ -299,13 +305,13 @@ class StepUvlm(BaseSolver):
                                      self.data.aero.aero_settings,
                                      -1,
                                      beam_ts=-1)
-        if self.settings['nonlifting_body_interactions']:                            
+        if self.settings['nonlifting_body_interactions']:
             self.data.nonlifting_body.generate_zeta(beam,
                                                     self.data.aero.aero_settings,
                                                     -1,
                                                     beam_ts=-1)
 
-    def update_custom_grid(self, structure_tstep, aero_tstep, nl_body_tstep = None):
+    def update_custom_grid(self, structure_tstep, aero_tstep, nl_body_tstep=None):
         self.data.aero.generate_zeta_timestep_info(structure_tstep,
                                                    aero_tstep,
                                                    self.data.structure,
@@ -313,12 +319,12 @@ class StepUvlm(BaseSolver):
                                                    dt=self.settings['dt'])
         if self.settings['nonlifting_body_interactions']:
             if nl_body_tstep is None:
-                nl_body_tstep  =  self.data.nonlifting_body.timestep_info[-1] 
+                nl_body_tstep = self.data.nonlifting_body.timestep_info[-1]
             self.data.nonlifting_body.generate_zeta_timestep_info(structure_tstep,
                                                                   nl_body_tstep,
                                                                   self.data.structure,
                                                                   self.data.nonlifting_body.aero_settings,
-                                                                  dt = self.settings['dt'])
+                                                                  dt=self.settings['dt'])
 
     @staticmethod
     def filter_gamma_dot(tstep, history, filter_param):

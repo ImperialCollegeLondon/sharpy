@@ -71,6 +71,8 @@ class NewmarkBeta(_BaseTimeIntegrator):
 
     def __init__(self):
 
+        self.sys_size = None
+        self.num_LM_eq = None
         self.dt = None
         self.beta = None
         self.gamma = None
@@ -168,6 +170,10 @@ class GeneralisedAlpha(_BaseTimeIntegrator):
 
     def __init__(self):
 
+        self.num_LM_eq = None
+        self.sys_size = None
+        self.om_af = None
+        self.om_am = None
         self.dt = None
         self.am = None
         self.af = None

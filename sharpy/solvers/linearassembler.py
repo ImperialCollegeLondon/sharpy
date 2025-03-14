@@ -118,7 +118,6 @@ class LinearAssembler(BaseSolver):
         if custom_settings:
             self.data.settings[self.solver_id] = custom_settings
             self.settings = self.data.settings[self.solver_id]
-        # else:custom_settings
 
         else:
             self.settings = data.settings[self.solver_id]
@@ -142,12 +141,6 @@ class LinearAssembler(BaseSolver):
 
         # Create data.linear
         self.data.linear = Linear(tsaero0, tsstruct0)
-
-        # Load available systems
-        import sharpy.linear.assembler
-
-        # Load roms
-        import sharpy.rom
 
         lsys = ss_interface.initialise_system(self.settings['linear_system'])
         lsys.initialise(data)

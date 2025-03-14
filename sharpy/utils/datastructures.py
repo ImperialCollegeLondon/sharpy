@@ -739,6 +739,7 @@ class StructTimeStepInfo(object):
         self.forces_constraints_nodes = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
         self.forces_constraints_FoR = np.zeros((num_bodies, 10), dtype=ct.c_double, order='F')
         self.mb_dict = None
+        self.mb_prescribed_dict = None
 
     def copy(self):
         """
@@ -794,6 +795,7 @@ class StructTimeStepInfo(object):
         copied.forces_constraints_FoR = self.forces_constraints_FoR.astype(dtype=ct.c_double, order='F', copy=True)
 
         copied.mb_dict = copy.deepcopy(self.mb_dict)
+        copied.mb_prescribed_dict = copy.deepcopy(self.mb_prescribed_dict)
 
         return copied
 
