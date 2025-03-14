@@ -14,11 +14,14 @@ RUN cd /etc/yum.repos.d/ && \
 
 # Development tools including compilers
 RUN yum groupinstall "Development Tools" -y --nogpgcheck && \
-    yum install -y --nogpgcheck mesa-libGL libXt libXt-devel wget gcc-gfortran lapack vim tmux && \
+    yum install dnf-plugins-core && \
+    yum config-manager --set-enabled powertools && \
+    yum install -y --nogpgcheck mesa-libGL libXt libXt-devel wget gcc-gfortran lapack vim tmux eigen3-devel && \
     yum clean all
 
 # Install Mamba - swapped from Conda to Mamba due to Github runner memory constraint
-RUN wget --no-check-certificate https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh -O /mamba.sh && \
+# Mambaforge is deprecated in latest miniforge https://github.com/conda-forge/miniforge/pull/704
+RUN wget --no-check-certificate https://github.com/conda-forge/miniforge/releases/download/24.7.1-0/Mambaforge-Linux-x86_64.sh -O /mamba.sh && \
     chmod +x /mamba.sh && \
     /mamba.sh -b -p /mamba/ && \
     rm /mamba.sh && hash -r

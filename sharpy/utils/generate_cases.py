@@ -533,12 +533,12 @@ class StructuralInformation():
         self.beam_number = beam_number
         self.body_number = np.zeros((num_elem,), dtype=int)
         self.app_forces = app_forces
-        if isinstance(self.lumped_mass_nodes, np.ndarray):
+        if isinstance(lumped_mass_nodes, np.ndarray):
             self.lumped_mass_nodes = lumped_mass_nodes
             self.lumped_mass = lumped_mass
             self.lumped_mass_inertia = lumped_mass_inertia
             self.lumped_mass_position = lumped_mass_position
-        if isinstance(self.lumped_mass_mat_nodes, np.ndarray):
+        if isinstance(lumped_mass_mat_nodes, np.ndarray):
             self.lumped_mass_mat_nodes = lumped_mass_mat_nodes
             self.lumped_mass_mat = lumped_mass_mat
 
