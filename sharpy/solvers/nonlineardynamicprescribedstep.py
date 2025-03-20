@@ -8,6 +8,7 @@ import sharpy.utils.settings as settings_utils
 
 _BaseStructural = solver_from_string('_BaseStructural')
 
+
 @solver
 class NonLinearDynamicPrescribedStep(_BaseStructural):
     """
@@ -46,10 +47,10 @@ class NonLinearDynamicPrescribedStep(_BaseStructural):
         # load info from dyn dictionary
         self.data.structure.add_unsteady_information(self.data.structure.dyn_dict, self.settings['num_steps'])
 
-
     def run(self, **kwargs):
-        structural_step = settings_utils.set_value_or_default(kwargs, 'structural_step', self.data.structure.timestep_info[-1])
-        dt = settings_utils.set_value_or_default(kwargs, 'dt', self.settings['dt'])  
+        structural_step = settings_utils.set_value_or_default(kwargs, 'structural_step',
+                                                              self.data.structure.timestep_info[-1])
+        dt = settings_utils.set_value_or_default(kwargs, 'dt', self.settings['dt'])
 
         if self.data.ts > 0:
             try:
@@ -64,7 +65,6 @@ class NonLinearDynamicPrescribedStep(_BaseStructural):
                                     structural_step,
                                     dt=dt)
 
-        # self.extract_resultants(structural_step)
         self.data.structure.integrate_position(structural_step, dt)
         return self.data
 
@@ -73,21 +73,14 @@ class NonLinearDynamicPrescribedStep(_BaseStructural):
 
     def next_step(self):
         pass
-        # self.data.structure.next_step()
-        # ts = len(self.data.structure.timestep_info) - 1
-        # if ts > 0:
-        #     self.data.structure.timestep_info[ts].for_vel[:] = self.data.structure.dynamic_input[ts - 1]['for_vel']
-        #     self.data.structure.timestep_info[ts].for_acc[:] = self.data.structure.dynamic_input[ts - 1]['for_acc']
-        #     self.data.structure.timestep_info[ts].unsteady_applied_forces[:] = self.data.structure.dynamic_input[ts - 1]['dynamic_forces']
-
 
     def extract_resultants(self, tstep=None):
         if tstep is None:
             tstep = self.data.structure.timestep_info[self.data.ts]
-        steady, unsteady, grav = tstep.extract_resultants(self.data.structure, force_type=['steady', 'unsteady', 'grav'])
+        steady, unsteady, grav = tstep.extract_resultants(self.data.structure,
+                                                          force_type=['steady', 'unsteady', 'grav'])
         totals = steady + unsteady + grav
         return totals[0:3], totals[3:6]
-
 
     def update(self, tstep=None):
         self.create_q_vector(tstep)

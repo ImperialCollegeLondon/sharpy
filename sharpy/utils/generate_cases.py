@@ -32,6 +32,8 @@ import sharpy.utils.controller_interface as controller_interface
 import sharpy.structure.utils.lagrangeconstraints as lagrangeconstraints
 import sharpy.utils.cout_utils as cout
 
+from sharpy.structure.utils.lagrangeconstraintsjax import DICT_OF_LC
+
 
 if not cout.check_running_unittest():
     cout.cout_wrap.print_screen = True
@@ -270,7 +272,7 @@ def get_aoacl0_from_camber(x, y):
     f1 = 1./(np.pi*(1-xc)*np.sqrt(xc*(1-xc)))
     int = yc*f1
 
-    return -scipy.integrate.trapz(int, xc)
+    return -scipy.integrate.trapezoid(int, xc)
 
 
 def get_mu0_from_camber(x, y):
@@ -588,7 +590,10 @@ class StructuralInformation():
             y_BFoR (string): Direction of the yB axis
         """
 
-        if y_BFoR == 'x_AFoR':
+        if isinstance(y_BFoR,(list,np.ndarray)):
+            yB = np.asarray(y_BFoR)
+            cout.cout_wrap(("WARNING: custom FoR delta defined, using the given value: y_BFoR = {y_BFoR}" % (y_BFoR)), 3)
+        elif y_BFoR == 'x_AFoR':
             yB = np.array([1.0, 0.0, 0.0])
         elif y_BFoR == 'y_AFoR':
             yB = np.array([0.0, 1.0, 0.0])
@@ -1979,7 +1984,7 @@ class LagrangeConstraint():
                 raise RuntimeError(("'%s' parameter required in '%s' lagrange constraint" % (param, self.behaviour)))
         has_behaviour = False
         for param, value in self.__dict__.items():
-            if not param in ['behaviour', 'scalingFactor', 'penaltyFactor']:
+            if not param in ['behaviour', 'scalingFactor', 'penaltyFactor', 'rot_axisA2']:
                 if param not in required_parameters:
                     raise RuntimeError(("'%s' parameter is not required in '%s' lagrange constraint" % (param, self.behaviour)))
             if param == 'behaviour':
@@ -1989,13 +1994,15 @@ class LagrangeConstraint():
             raise RuntimeError(("'behaviour' parameter is required in '%s' lagrange constraint" % self.behaviour))
 
 
-def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_name):
+def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_name, use_jax=False):
 
     # Check
     for body in list_Bodies:
         body.check()
-    for lc in list_LagrangeConstraints:
-        lc.check()
+
+    if not use_jax:
+        for lc in list_LagrangeConstraints:
+            lc.check()
 
     with h5.File(route + '/' + case_name + '.mb.h5', 'a') as h5file:
 
@@ -2010,21 +2017,32 @@ def generate_multibody_file(list_LagrangeConstraints, list_Bodies, route, case_n
             # Write general parameters
             constraint_id.create_dataset("behaviour", data=constraint.behaviour.encode('ascii', 'ignore'))
 
-            # Write parameters associated to the specific type of boundary condition
-            default = lagrangeconstraints.lc_from_string(constraint.behaviour)
-            default.__init__(default)
-            required_parameters = default.required_parameters
+            # I branch depending on if you use the JAX solver or not
+            # this is beneficial where a constraint is implemented in one solver but not the other
+            if use_jax:
+                required_parameters = DICT_OF_LC[constraint.behaviour].required_params
+            else:
+                # Write parameters associated to the specific type of boundary condition
+                default = lagrangeconstraints.lc_from_string(constraint.behaviour)
+                default.__init__(default)
+                required_parameters = default.required_parameters
             for param in required_parameters:
                 constraint_id.create_dataset(param, data=getattr(constraint, param))
             try:
-                constraint_id.create_dataset("scalingFactor",
-                                             data=getattr(constraint, "scalingFactor"))
-            except:
+                constraint_id.create_dataset("scalingFactor", data=constraint.scalingFactor)
+            except AttributeError:
                 pass
             try:
-                constraint_id.create_dataset("penaltyFactor",
-                                             data=getattr(constraint, "penaltyFactor"))
-            except:
+                constraint_id.create_dataset("penaltyFactor", data=constraint.penaltyFactor)
+            except AttributeError:
+                pass
+            try:
+                constraint_id.create_dataset("aerogrid_warp_factor", data=constraint.aerogrid_warp_factor)
+            except AttributeError:
+                pass
+            try:
+                constraint_id.create_dataset("rot_axisA2", data=constraint.rot_axisA2)
+            except AttributeError:
                 pass
 
             iconstraint += 1

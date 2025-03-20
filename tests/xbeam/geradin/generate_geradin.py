@@ -21,7 +21,6 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     length = 5
 
     num_node = (num_node_elem - 1)*num_elem + 1
-    # import pdb; pdb.set_trace()
     angle = 0*np.pi/180.0
     x = (np.linspace(0, length, num_node))*np.cos(angle)
     y = (np.linspace(0, length, num_node))*np.sin(angle)
@@ -32,7 +31,6 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     frame_of_reference_delta = np.zeros((num_elem, num_node_elem, 3))
     for ielem in range(num_elem):
         for inode in range(num_node_elem):
-            # frame_of_reference_delta[inode, :] = [0, 1, 0]
             frame_of_reference_delta[ielem, inode, :] = [-np.sin(angle), np.cos(angle), 0]
 
     scale = 1
@@ -47,7 +45,6 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
                           + [0, 2, 1])
 
     # stiffness array
-    # import pdb; pdb.set_trace()
     num_stiffness = 1
     ea = 4.8e8
     ga = 3.231e8
@@ -55,7 +52,6 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
     ei = 9.346e6
     base_stiffness = np.diag([ea, ga, ga, gj, ei, ei])
     stiffness = np.zeros((num_stiffness, 6, 6))
-    # import pdb; pdb.set_trace()
     for i in range(num_stiffness):
         stiffness[i, :, :] = base_stiffness
 
@@ -83,7 +79,6 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
     # new app forces scheme (only follower)
     app_forces = np.zeros((num_node, 6))
-    # app_forces[0, :] = [0, 0, 3000000, 0, 0, 0]
 
     # lumped masses input
     n_lumped_mass = 1
@@ -133,7 +128,7 @@ def generate_fem_file(route, case_name, num_elem, num_node_elem=3):
 
 def generate_solver_file():
     file_name = route + '/' + case_name + '.sharpy'
-    # config = configparser.ConfigParser()
+
     import configobj
     config = configobj.ConfigObj()
     config.filename = file_name
@@ -160,8 +155,6 @@ def generate_solver_file():
                           'include_applied_forces': 'on'}
 
     config.write()
-    # with open(file_name, 'w') as configfile:
-    #     config.write(configfile)
 
 
 # run everything

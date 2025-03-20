@@ -143,9 +143,6 @@ class TakeOffTrajectoryController(controller_interface.BaseController):
                     mb_dict[self.settings['controlled_constraint']]
         except KeyError:
             return controlled_state
-        except TypeError:
-            import pdb
-            pdb.set_trace()
 
         if self.controlled_body is None or self.controlled_node is None:
             self.controlled_body = constraint['body_number']
