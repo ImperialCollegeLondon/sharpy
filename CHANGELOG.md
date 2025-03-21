@@ -1,5 +1,40 @@
 # Changelog
 
+## [2.4](https://github.com/imperialcollegelondon/sharpy/tree/2.4) (2025-03-20)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/2.3...2.4)
+
+**Implemented enhancements:**
+
+- Add the automatic differentiation multibody solver based on JAX [\#305](https://github.com/ImperialCollegeLondon/sharpy/pull/305) ([ben-l-p](https://github.com/ben-l-p))
+- Non-perpendicular hinge axis possible for multibody solver [\#299](https://github.com/ImperialCollegeLondon/sharpy/pull/299) ([kccwing](https://github.com/kccwing))
+- Add hosting of built wheel at PyPI - develop [\#298](https://github.com/ImperialCollegeLondon/sharpy/pull/298) ([kccwing](https://github.com/kccwing))
+- Add hosting of built wheel at PyPI - main [\#297](https://github.com/ImperialCollegeLondon/sharpy/pull/297) ([kccwing](https://github.com/kccwing))
+
+**Fixed bugs:**
+
+- Updated docs to address issue with conda install failing [\#290](https://github.com/ImperialCollegeLondon/sharpy/pull/290) ([ben-l-p](https://github.com/ben-l-p))
+
+**Closed issues:**
+
+- TypeError: unhashable type: 'UnstructuredGrid' [\#313](https://github.com/ImperialCollegeLondon/sharpy/issues/313)
+- Creating aileron control surfaces to induce roll [\#304](https://github.com/ImperialCollegeLondon/sharpy/issues/304)
+- Static Trim Routine Fails with Dynamic-Type Control Surfaces [\#300](https://github.com/ImperialCollegeLondon/sharpy/issues/300)
+- Not a Git Repository [\#295](https://github.com/ImperialCollegeLondon/sharpy/issues/295)
+
+**Merged pull requests:**
+
+- Merge develop into main for new version release [\#318](https://github.com/ImperialCollegeLondon/sharpy/pull/318) ([ben-l-p](https://github.com/ben-l-p))
+- Xhale thrust node typo [\#317](https://github.com/ImperialCollegeLondon/sharpy/pull/317) ([kccwing](https://github.com/kccwing))
+- Mayavi github dependency restored for hotfix - develop [\#316](https://github.com/ImperialCollegeLondon/sharpy/pull/316) ([kccwing](https://github.com/kccwing))
+- Mayavi github dependency restored for hotfix [\#311](https://github.com/ImperialCollegeLondon/sharpy/pull/311) ([kccwing](https://github.com/kccwing))
+- Update body and wake FoR multiplication [\#309](https://github.com/ImperialCollegeLondon/sharpy/pull/309) ([kccwing](https://github.com/kccwing))
+- Bug fix for generate\_full\_structure [\#306](https://github.com/ImperialCollegeLondon/sharpy/pull/306) ([kccwing](https://github.com/kccwing))
+- Fix AeroForcesCalculator giving forces in wrong frame of reference [\#301](https://github.com/ImperialCollegeLondon/sharpy/pull/301) ([ben-l-p](https://github.com/ben-l-p))
+- Temporary Fix for NumPy 2.0 Issues \(Develop Branch\) [\#293](https://github.com/ImperialCollegeLondon/sharpy/pull/293) ([ben-l-p](https://github.com/ben-l-p))
+- Temporary Fix for NumPy 2.0 Issues \(Main Branch\) [\#292](https://github.com/ImperialCollegeLondon/sharpy/pull/292) ([ben-l-p](https://github.com/ben-l-p))
+
+
 ## [2.3](https://github.com/imperialcollegelondon/sharpy/tree/2.3) (2024-05-10)
 
 [Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/2.2...2.3)
