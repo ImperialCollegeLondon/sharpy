@@ -71,7 +71,7 @@ jobs:
   publish-to-pypi:
     name: >-
       Publish Python 🐍 distribution 📦 to PyPI
-    if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
+    if: $ {{startsWith(github.ref || format('{0}{1}', 'refs/tags/', github.event.release.tag_name), 'refs/tags/')}}   # only publish to PyPI on tag pushes
     needs:
     - create-pypi-image
     runs-on: ubuntu-latest
