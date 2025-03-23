@@ -12,7 +12,6 @@ backend-path = ['']
 
 [project]
 name = "ic_sharpy"
-dynamic = ["version"]
 description = "SHARPy is a nonlinear aeroelastic analysis package developed at Imperial College London."
 readme = "README.md"
 license = { text = "BSD-3-Clause" }
@@ -77,4 +76,4 @@ sharpy = ["*.so"]
 build_subm = "setup.BuildCommand"
 
 [tool.setuptools.dynamic]
-version = {file = "sharpy/sharpy/version.py"}
+
