@@ -73,6 +73,7 @@ jobs:
             echo "::group::Logs"
             echo "github.event_name"
             echo "github.event.release.action"      
+            echo ${{ github.event_name }}
             echo "::endgroup::"     
 
   publish-to-pypi:
