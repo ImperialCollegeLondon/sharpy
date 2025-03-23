@@ -67,8 +67,8 @@ Homepage = "https://github.com/ImperialCollegeLondon/sharpy"
 [project.scripts]
 sharpy = "sharpy.sharpy_main:sharpy_run"
 
-# [tool.setuptools]
-# packages = ["sharpy"]
+[tool.setuptools]
+packages = ["sharpy"]
 
 [tool.setuptools.package-data]
 sharpy = ["*.so"]
@@ -76,9 +76,9 @@ sharpy = ["*.so"]
 [tool.setuptools.cmdclass]
 build_subm = "setup.BuildCommand"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["sharpy"]
+# [tool.setuptools.packages.find]
+# where = ["."]
+# include = ["sharpy"]
 
 [tool.setuptools.dynamic]
 version = {attr = "sharpy.__version__"}
