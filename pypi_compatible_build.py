@@ -27,3 +27,24 @@ def write_pypi_compatible_requirements(self: Metadata, final_file: TextIO) -> No
 
 
 setuptools._core_metadata._write_requirements = write_pypi_compatible_requirements
+
+
+
+from setuptools.build_meta import build_wheel as setuptools_build_wheel
+from setuptools.build_meta import build_sdist as setuptools_build_sdist
+
+def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):
+    # Custom behavior before building the wheel
+    result = setuptools_build_wheel(
+        wheel_directory,
+        config_settings=config_settings,
+        metadata_directory=metadata_directory,
+    )
+    # Custom behavior after building the wheel
+    return result
+
+def build_sdist(sdist_directory, config_settings=None):
+    # Custom behavior before building the sdist
+    result = setuptools_build_sdist(sdist_directory, config_settings)
+    # Custom behavior after building the sdist
+    return result
