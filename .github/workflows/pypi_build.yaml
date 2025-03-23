@@ -10,6 +10,7 @@ on:
     branches: 
       - develop
       - main
+      - dev_pypipatch
     paths:
       - 'setup.py'
       - '.github/workflows/pypi*'  
