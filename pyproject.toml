@@ -78,7 +78,7 @@ build_subm = "setup.BuildCommand"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["sharpy*"]
+include = ["sharpy"]
 
 [tool.setuptools.dynamic]
 version = {attr = "sharpy.__version__"}
