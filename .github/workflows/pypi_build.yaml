@@ -67,6 +67,12 @@ jobs:
         with:
           name: python-package-distributions
           path: dist/
+      - name: Github event logging
+        run: |
+            echo "::group::Logs"
+            echo github.event_name
+            echo github.event.release.action
+            echo "::endgroup::"     
 
   publish-to-pypi:
     name: >-
