@@ -77,8 +77,8 @@ sharpy = ["*.so"]
 # build_subm = "setup.BuildCommand"
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["sharpy*"]
+where = [".", "lib"]
+include = ["sharpy", "uvlm", "xbeam"]
 
 [tool.setuptools.dynamic]
 version = {attr = "sharpy.__version__"}
