@@ -73,8 +73,8 @@ sharpy = "sharpy.sharpy_main:sharpy_run"
 [tool.setuptools.package-data]
 sharpy = ["*.so"]
 
-# [tool.setuptools.cmdclass]
-# build_subm = "setup.BuildCommand"
+[tool.setuptools.cmdclass]
+build_subm = "setup.BuildCommand"
 
 [tool.setuptools.packages.find]
 where = [".", "lib"]
