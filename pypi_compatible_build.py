@@ -26,8 +26,6 @@ def write_pypi_compatible_requirements(self: Metadata, final_file: TextIO) -> No
             final_line = initial_line.replace('Requires-Dist:', 'Requires-External:')
         final_file.write(final_line)
 
-import pdb
-pdb.set_trace()
 setuptools._core_metadata._write_requirements = write_pypi_compatible_requirements
 
 
