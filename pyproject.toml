@@ -67,8 +67,8 @@ Homepage = "https://github.com/ImperialCollegeLondon/sharpy"
 [project.scripts]
 sharpy = "sharpy.sharpy_main:sharpy_run"
 
-[tool.setuptools]
-packages = ["sharpy"]
+# [tool.setuptools]
+# packages = ["sharpy"]
 
 [tool.setuptools.package-data]
 sharpy = ["*.so"]
