@@ -85,7 +85,7 @@ jobs:
   publish-to-pypi:
     name: >-
       Publish Python 🐍 distribution 📦 to PyPI
-    if: ${{github.event_name}} == 'release' && ${{github.event.release}} == 'published'   # only publish to PyPI on tag pushes
+    if: github.event_name == 'release' && github.event.release == 'published'   # only publish to PyPI on tag pushes
     needs:
     - create-pypi-image
     runs-on: ubuntu-latest
