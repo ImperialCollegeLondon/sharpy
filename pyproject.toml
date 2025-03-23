@@ -6,8 +6,8 @@ requires = [
     'setuptools_scm[toml]>=6.2',
     'wheel'
     ]
-build-backend = 'setuptools.build_meta'
-# backend-path = ['']
+build-backend = 'pypi_compatible_build.py'
+backend-path = ['']
 
 [project]
 name = "ic_sharpy"
