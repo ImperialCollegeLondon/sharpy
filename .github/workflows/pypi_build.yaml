@@ -60,7 +60,7 @@ jobs:
       - name: Install depen
         run: python3 -m pip install setuptools_scm
       - name: Build a source tarball
-        run: python -m build --no-build-isolation
+        run: python -m build --no-isolation
       - name: Find the wheel created during pip install
         run: 
           python3 -m pip cache dir
