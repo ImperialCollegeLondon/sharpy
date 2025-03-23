@@ -2,6 +2,8 @@ from setuptools import setup, find_packages, Extension, Command
 #from skbuild import setup
 from setuptools.command.build_ext import build_ext
 import subprocess
+import setuptools_scm
+
 
 import re
 import os
@@ -104,7 +106,8 @@ with open(os.path.join(this_directory, "README.md"), encoding="utf-8") as f:
 run()
 setup(
     name="ic_sharpy", # due to the name sharpy being taken on pypi
-    version=__version__,
+    use_scm_version=True,
+    setup_requires=["setuptools>=42", "setuptools_scm"],
     description="""SHARPy is a nonlinear aeroelastic analysis package developed
     at the Department of Aeronautics, Imperial College London. It can be used
     for the structural, aerodynamic and aeroelastic analysis of flexible
