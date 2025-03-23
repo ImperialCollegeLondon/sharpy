@@ -12,7 +12,9 @@ backend-path = ['']
 
 [project]
 name = "ic_sharpy"
-dynamic = ["version", "description"]
+dynamic = ["version", "description", "readme", "requires-python", "license", "keywords", "classifiers", "scripts", "dependencies", "optional-dependencies"]
+
+## Uncomment below and remove 'dynamic' if we decommission setup.py in the future for pyproject.toml 
 # description = "SHARPy is a nonlinear aeroelastic analysis package developed at Imperial College London."
 # readme = "README.md"
 # license = { text = "BSD-3-Clause" }
@@ -45,8 +47,6 @@ dynamic = ["version", "description"]
 #     "Programming Language :: C++"
 # ]
 
-
-
 # [project.optional-dependencies]
 # docs = [
 #     "sphinx",
@@ -67,18 +67,6 @@ dynamic = ["version", "description"]
 # [project.scripts]
 # sharpy = "sharpy.sharpy_main:sharpy_run"
 
-# [tool.setuptools]
-# packages = ["sharpy"]
-
-# [tool.setuptools.package-data]
-# sharpy = ["*.so"]
-
-# [tool.setuptools.cmdclass]
-# build_subm = "setup.BuildCommand"
-
-# [tool.setuptools.packages.find]
-# where = [".", "lib"]
-# include = ["sharpy", "uvlm", "xbeam"]
-
-# [tool.setuptools.dynamic]
-# version = {attr = "sharpy.__version__"}
+## [tool.setuptools.packages.find]
+## where = [".", "lib"]
+## include = ["sharpy", "uvlm", "xbeam"]
