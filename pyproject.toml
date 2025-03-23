@@ -75,5 +75,6 @@ sharpy = ["*.so"]
 [tool.setuptools.cmdclass]
 build_subm = "setup.BuildCommand"
 
-[tool.setuptools.dynamic]
+[tool.setuptools_scm]
+version_scheme = "post-release"
 
