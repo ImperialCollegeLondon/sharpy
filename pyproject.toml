@@ -7,7 +7,7 @@ requires = [
     'wheel'
     ]
 build-backend = 'setuptools.buildmeta'
-backend-path = ['']
+# backend-path = ['']
 
 [project]
 name = "ic_sharpy"
