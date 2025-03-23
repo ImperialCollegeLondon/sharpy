@@ -1,8 +1,10 @@
 [build-system]
 requires = [
-    "setuptools",
+    'setuptools>=61.0',
     #"scikit-build>=0.13",
-    "cmake>=3.14.3"
+    'cmake>=3.14.3',
+    'setuptools_scm[toml]>=6.2',
+    'wheel'
     ]
 build-backend = 'pypi_compatible_build'
 backend-path = ['']
