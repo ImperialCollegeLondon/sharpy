@@ -8,3 +8,7 @@ requires = [
     ]
 build-backend = 'pypi_compatible_build'
 backend-path = ['']
+[project]
+precommit = [
+    'mayavi @ git+https://github.com/enthought/mayavi.git',
+]
