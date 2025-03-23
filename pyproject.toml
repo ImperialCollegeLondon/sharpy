@@ -6,8 +6,8 @@ requires = [
     'setuptools_scm[toml]>=6.2',
     'wheel'
     ]
-build-backend = "setuptools.build_meta"
-# build-backend = 'pypi_compatible_build'
+# build-backend = "setuptools.build_meta"
+build-backend = 'pypi_compatible_build'
 backend-path = ['']
 
 [project]
