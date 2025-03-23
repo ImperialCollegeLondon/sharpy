@@ -6,12 +6,73 @@ requires = [
     'setuptools_scm[toml]>=6.2',
     'wheel'
     ]
+# build-backend = "setuptools.build_meta"
 build-backend = 'pypi_compatible_build'
 backend-path = ['']
+
 [project]
+name = "ic_sharpy"
+version = "0.0.0"  # Placeholder; dynamically set in setup.cfg
+description = "SHARPy is a nonlinear aeroelastic analysis package developed at Imperial College London."
+readme = "README.md"
+license = { text = "BSD-3-Clause" }
+authors = [
+    { name = "", email = "" }
+]
+keywords = ["nonlinear", "aeroelastic", "structural", "aerodynamic", "analysis"]
+requires-python = ">=3.8"
 dependencies = [
-    'mayavi @ git+https://github.com/enthought/mayavi.git',
+    "numpy<2.0",
+    "configobj",
+    "h5py",
+    "scipy<1.14.0",
+    "sympy",
+    "matplotlib",
+    "colorama",
+    "dill",
+    "jupyterlab",
+    "mayavi @ git+https://github.com/enthought/mayavi.git",
+    "pandas",
+    "control",
+    "openpyxl>=3.0.10",
+    "lxml>=4.4.1",
+    "PySocks",
+    "PyYAML",
+    "jax"
 ]
-precommit = [
-    'mayavi @ git+https://github.com/enthought/mayavi.git',
+
+[project.optional-dependencies]
+docs = [
+    "sphinx",
+    "recommonmark>=0.6.0",
+    "sphinx_rtd_theme>=0.4.3",
+    "nbsphinx>=0.4.3"
 ]
+all = [
+    "sphinx",
+    "recommonmark>=0.6.0",
+    "sphinx_rtd_theme>=0.4.3",
+    "nbsphinx>=0.4.3"
+]
+
+[project.urls]
+Homepage = "https://github.com/ImperialCollegeLondon/sharpy"
+
+[project.scripts]
+sharpy = "sharpy.sharpy_main:sharpy_run"
+
+[tool.setuptools]
+packages = ["sharpy"]
+
+[tool.setuptools.package-data]
+sharpy = ["*.so"]
+
+[tool.setuptools.cmdclass]
+build_subm = "BuildCommand"
+
+[tool.setuptools.ext_modules]
+lib = { sources = [] }
+
+[tool.setuptools.classifiers]
+Programming_Language = ["Python :: 3.10", "Fortran", "C++"]
+Operating_System = ["MacOS", "POSIX :: Linux"]
