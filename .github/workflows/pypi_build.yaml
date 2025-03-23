@@ -56,6 +56,8 @@ jobs:
           --user    
       - name: Install wheel
         run: python3 -m pip install wheel --user
+      - name: Install depen
+        run: python3 -m pip install setuptools_scm
       - name: Build a source tarball
         run: python setup.py sdist
       - name: Build a binary wheel
