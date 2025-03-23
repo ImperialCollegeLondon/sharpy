@@ -25,7 +25,7 @@ jobs:
   create-pypi-image:
     name: >-
       Create .whl 🛞 from SHARPy distribution
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       python-version-chosen: "3.10.8"
     permissions:
