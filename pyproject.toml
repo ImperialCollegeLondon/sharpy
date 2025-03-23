@@ -74,7 +74,7 @@ packages = ["sharpy"]
 sharpy = ["*.so"]
 
 [tool.setuptools.cmdclass]
-build_subm = "BuildCommand"
+build_subm = "setup.BuildCommand"
 
 [tool.setuptools.dynamic]
 version = {file = "sharpy/version.py"}
