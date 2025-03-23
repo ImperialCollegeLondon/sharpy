@@ -74,6 +74,7 @@ jobs:
             echo "github.event_name"
             echo "github.event.release.action"      
             echo ${{ github.event_name }}
+            echo ${{ github.event.release.action }}
             echo "::endgroup::"     
 
   publish-to-pypi:
