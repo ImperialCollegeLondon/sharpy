@@ -10,8 +10,10 @@ on:
     branches: 
       - develop
       - main
+      - dev_pypipatch
     paths:
       - 'setup.py'
+      - 'pyproject.toml'
       - '.github/workflows/pypi*'  
   pull_request:
     branches:
@@ -23,7 +25,7 @@ jobs:
   create-pypi-image:
     name: >-
       Create .whl 🛞 from SHARPy distribution
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       python-version-chosen: "3.10.8"
     permissions:
@@ -39,7 +41,7 @@ jobs:
       - name: Set up GCC
         uses: egor-tensin/setup-gcc@v1
         with:
-          version: 7
+          version: 9
           platform: x64
       - name: Pre-Install dependencies
         run: |
@@ -55,10 +57,12 @@ jobs:
           --user    
       - name: Install wheel
         run: python3 -m pip install wheel --user
+      - name: Install depen
+        run: python3 -m pip install setuptools_scm
       - name: Build a source tarball
-        run: python setup.py sdist
-      - name: Build a binary wheel
-        run: python3 setup.py bdist_wheel        
+        run: python -m build --sdist
+      - name: Build a source tarball
+        run: python -m build --wheel        
       - name: Find the wheel created during pip install
         run: 
           python3 -m pip cache dir
@@ -67,11 +71,18 @@ jobs:
         with:
           name: python-package-distributions
           path: dist/
+      - name: Github logs for rebug
+        run: |
+            echo "::group::Logs" 
+            echo ${{ github.event_name }}
+            echo ${{ github.event.action }}
+            echo '${{ toJson(github) }}'
+            echo "::endgroup::"     
 
   publish-to-pypi:
     name: >-
       Publish Python 🐍 distribution 📦 to PyPI
-    if: github.event_name == 'release' && github.event.release.action == 'published'   # only publish to PyPI on tag pushes
+    if: github.event_name == 'release' && github.event.action == 'published'   # only publish to PyPI on published release
     needs:
     - create-pypi-image
     runs-on: ubuntu-latest
