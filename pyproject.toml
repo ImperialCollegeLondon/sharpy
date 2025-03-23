@@ -4,3 +4,5 @@ requires = [
     #"scikit-build>=0.13",
     "cmake>=3.14.3"
     ]
+build-backend = 'pypi_compatible_build'
+backend-path = ['']
