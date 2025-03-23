@@ -37,6 +37,15 @@ dependencies = [
     "PyYAML",
     "jax"
 ]
+classifiers = [
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Fortran",
+    "Programming Language :: C++"
+]
+
+
 
 [project.optional-dependencies]
 docs = [
@@ -66,13 +75,6 @@ sharpy = ["*.so"]
 
 [tool.setuptools.cmdclass]
 build_subm = "BuildCommand"
-
-[tool.setuptools.ext_modules]
-lib = { sources = [] }
-
-[tool.setuptools.classifiers]
-Programming_Language = ["Python :: 3.10", "Fortran", "C++"]
-Operating_System = ["MacOS", "POSIX :: Linux"]
 
 [tool.setuptools.dynamic]
 version = {file = "sharpy/version.py"}
