@@ -12,13 +12,9 @@ backend-path = ['']
 
 [project]
 name = "ic_sharpy"
-version = "0.0.0"  # Placeholder; dynamically set in setup.cfg
 description = "SHARPy is a nonlinear aeroelastic analysis package developed at Imperial College London."
 readme = "README.md"
 license = { text = "BSD-3-Clause" }
-authors = [
-    { name = "", email = "" }
-]
 keywords = ["nonlinear", "aeroelastic", "structural", "aerodynamic", "analysis"]
 requires-python = ">=3.8"
 dependencies = [
@@ -76,3 +72,7 @@ lib = { sources = [] }
 [tool.setuptools.classifiers]
 Programming_Language = ["Python :: 3.10", "Fortran", "C++"]
 Operating_System = ["MacOS", "POSIX :: Linux"]
+
+[tool.setuptools.dynamic]
+version = {file = "sharpy/version.py"}
+
