@@ -15,6 +15,7 @@ from setuptools.build_meta import *  # noqa: F403
 
 def write_pypi_compatible_requirements(self: Metadata, final_file: TextIO) -> None:
     """Mark requirements with URLs as external."""
+    print("abcd")
     initial_file = StringIO()
     _write_requirements(self, initial_file)
     initial_file.seek(0)
