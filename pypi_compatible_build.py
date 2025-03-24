@@ -13,7 +13,7 @@ from setuptools.build_meta import *  # noqa: F403
 import os
 pypi_routine = os.environ.get('PYPI_ROUTINE', "") 
 print(pypi_routine)
-print(pypi_routine=="TRUE")
+print(pypi_routine=="True")
 
 def write_pypi_compatible_requirements(self: Metadata, final_file: TextIO) -> None:
     """Mark requirements with URLs as external."""
@@ -28,7 +28,7 @@ def write_pypi_compatible_requirements(self: Metadata, final_file: TextIO) -> No
             final_line = initial_line.replace('Requires-Dist:', 'Requires-External:')
         final_file.write(final_line)
 
-if pypi_routine == "TRUE":
+if pypi_routine:
     setuptools._core_metadata._write_requirements = write_pypi_compatible_requirements
 
 """For emulating default build-backend = "setuptools.build_meta" """
