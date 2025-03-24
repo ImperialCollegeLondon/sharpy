@@ -28,7 +28,7 @@ def write_pypi_compatible_requirements(self: Metadata, final_file: TextIO) -> No
             final_line = initial_line.replace('Requires-Dist:', 'Requires-External:')
         final_file.write(final_line)
 
-if pypi_routine == "TRUE"
+if pypi_routine == "TRUE":
     setuptools._core_metadata._write_requirements = write_pypi_compatible_requirements
 
 """For emulating default build-backend = "setuptools.build_meta" """
