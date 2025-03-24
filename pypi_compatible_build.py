@@ -11,7 +11,7 @@ from setuptools._core_metadata import _write_requirements  # type: ignore[import
 from setuptools.build_meta import *  # noqa: F403
 
 import os
-pypi_routine = os.environ.get('PYPI_ROUTINE', "")) 
+pypi_routine = os.environ.get('PYPI_ROUTINE', "") 
 print(pypi_routine)
 print(pypi_routine=="TRUE")
 
