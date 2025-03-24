@@ -11,6 +11,7 @@ from packaging.metadata import Metadata
 from setuptools._core_metadata import _write_requirements  # type: ignore[import-not-found]
 from setuptools.build_meta import *  # noqa: F403
 
+print(os.environ.get('PYPI_ROUTINE', "")) 
 
 def write_pypi_compatible_requirements(self: Metadata, final_file: TextIO) -> None:
     """Mark requirements with URLs as external."""
