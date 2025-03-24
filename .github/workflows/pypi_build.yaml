@@ -60,9 +60,9 @@ jobs:
       - name: Install depen
         run: python3 -m pip install setuptools_scm
       - name: Build a source tarball
-        run: python -m build --sdist
+        run: PYPI_ROUTINE = TRUE python -m build --sdist
       - name: Build a source tarball
-        run: python -m build --wheel        
+        run: PYPI_ROUTINE = TRUE python -m build --wheel        
       - name: Find the wheel created during pip install
         run: 
           python3 -m pip cache dir
