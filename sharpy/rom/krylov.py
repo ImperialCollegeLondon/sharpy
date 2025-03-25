@@ -72,7 +72,7 @@ class Krylov(rom_interface.BaseRom):
     settings_description['algorithm'] = 'Krylov reduction method algorithm'
 
     settings_types['r'] = 'int'
-    settings_default['r'] = 1
+    settings_default['r'] = 4
     settings_description['r'] = 'Moments to match at the interpolation points'
 
     settings_types['single_side'] = 'str'
@@ -227,7 +227,8 @@ class Krylov(rom_interface.BaseRom):
 
         Ar, Br, Cr = self.__getattribute__(self.algorithm)(self.frequency, self.r)
 
-        self.ssrom = libss.StateSpace(Ar, Br, Cr, self.ss.D, self.ss.dt)
+        self.ssrom = libss.StateSpace(Ar, Br, Cr, self.ss.D, self.ss.dt, v=self.V, w=self.W, full_system=ss)
+
         try:
             self.ssrom.input_variables = self.ss.input_variables.copy()
             self.ssrom.output_variables = self.ss.output_variables.copy()
@@ -238,15 +239,7 @@ class Krylov(rom_interface.BaseRom):
         self.stable = self.check_stability(restart_arnoldi=self.restart_arnoldi)
 
         if not self.stable:
-            pass
             warn.warn('Reduced Order Model Unstable')
-            # Under development
-            # TL, TR = self.restart()
-            # Wtr, Vr = self.restart()
-            # TL, TR = self.stable_realisation()
-            # self.ssrom = libss.ss(TL.T.dot(Ar.dot(TR)), TL.T.dot(Br), Cr.dot(TR), self.ss.D, self.ss.dt)
-            # self.ssrom = libss.ss(Wtr.dot(self.ssrom.A.dot(Vr)), Wtr.dot(self.ssrom.B), self.ssrom.C.dot(Vr), self.ss.D, self.ss.dt)
-            # self.stable = self.check_stability(restart_arnoldi=self.restart_arnoldi)
 
         t_rom = time.time() - t0
         self.cpu_summary['run'] = t_rom
@@ -263,7 +256,7 @@ class Krylov(rom_interface.BaseRom):
         cout.cout_wrap('\t\t%s' % self.algorithm, 1)
         cout.cout_wrap('\tInterpolation points:')
         if self.frequency.dtype == complex:
-            cout.cout_wrap(self.nfreq * '\t\tsigma = %4f + %4fj [rad/s]\n' %tuple(self.frequency.view(float)), 1)
+            cout.cout_wrap(self.nfreq * '\t\tsigma = %4f + %4fj [rad/s]\n' % tuple(self.frequency.view(float)), 1)
         else:
             cout.cout_wrap(self.nfreq * '\t\tsigma = %4f [rad/s]\n' % self.frequency, 1)
         cout.cout_wrap('\tKrylov order:')
@@ -307,8 +300,6 @@ class Krylov(rom_interface.BaseRom):
         A = self.ss.A
         B = self.ss.B
         C = self.ss.C
-
-        nx = A.shape[0]
 
         if frequency != np.inf and frequency is not None:
             lu_A = krylovutils.lu_factor(frequency, A)
@@ -359,8 +350,6 @@ class Krylov(rom_interface.BaseRom):
         A = self.ss.A
         B = self.ss.B
         C = self.ss.C
-
-        nx = A.shape[0]
 
         if frequency != np.inf and frequency is not None:
             lu_A = krylovutils.lu_factor(frequency, A)
@@ -428,34 +417,6 @@ class Krylov(rom_interface.BaseRom):
             for j in range(r[i]):
                 # k = 2*(i*r[i] + j)
                 print("i = %g\t j = %g\t k = %g" % (i, j, k))
-
-                # res[:, k] = np.imag(v_res)
-                # if k > 0:
-                #     res[:, k-1] = np.real(v_res)
-                #
-                # # Working on the last finished column i.e. k-1 only when k>0
-                # if k > 0:
-                #     for t in range(k):
-                #         H[t, k-1] = V[:, t].T.dot(res[:, k-1])
-                #         res[:, k-1] -= res[:, k-1] - H[t, k-1] * V[:, t]
-                #
-                #     H[k, k-1] = np.linalg.norm(res[:, k-1])
-                #     V[:, k] = res[:, k-1] / H[k, k-1]
-                #
-                # # Normalise working column k
-                # for t in range(k+1):
-                #     H[t, k] = V[:, t].T.dot(res[:, k])
-                #     res[:, k] -= H[t, k] * V[:, t]
-                #
-                # # Subdiagonal term
-                # H[k+1, k] = np.linalg.norm(res[:, k])
-                # V[:, k + 1] = res[:, k] / np.linalg.norm(res[:, k])
-                #
-                # if j == r[i] - 1 and i < nfreq - 1:
-                #     lu_A = krylovutils.lu_factor(frequency[i+1] * np.eye(nx) - A)
-                #     v_res = sclalg.lu_solve(lu_A, B)
-                # else:
-                #     v_res = - sclalg.lu_solve(lu_A, V[:, k+1])
 
                 if k == 0:
                     V[:, 0] = v_res.real / np.linalg.norm(v_res.real)
@@ -550,7 +511,6 @@ class Krylov(rom_interface.BaseRom):
 
         nx = self.ss.states
         nu = self.ss.inputs
-        ny = self.ss.outputs
 
         B.shape = (nx, nu)
 
@@ -567,23 +527,7 @@ class Krylov(rom_interface.BaseRom):
             right_tangent[0, :] = 1
             left_tangent[0, :] = 1
 
-        try:
-            nfreq = frequency.shape[0]
-        except AttributeError:
-            nfreq = 1
-
-
         t0 = time.time()
-        # # Tangential interpolation for MIMO systems
-        # if right_tangent is None:
-        #     right_tangent = np.eye((nu, nfreq))
-        # # else:
-        # #     assert right_tangent.shape == (nu, nfreq), 'Right Tangential Direction vector not the correct shape'
-        #
-        # if left_tangent is None:
-        #     left_tangent = np.eye((ny, nfreq))
-        # # else:
-        # #     assert left_tangent.shape == (ny, nfreq), 'Left Tangential Direction vector not the correct shape'
 
         rom_dim = max(np.sum(rc), np.sum(ro))
         V = np.zeros((nx, rom_dim), dtype=complex)
@@ -668,7 +612,6 @@ class Krylov(rom_interface.BaseRom):
         """
 
         m = self.ss.inputs  # Full system number of inputs
-        n = self.ss.states  # Full system number of states
         p = self.ss.outputs  # Full system number of outputs
 
         # If the number of inputs is not the same as the number of outputs, a larger than necessary projection matrix
@@ -729,8 +672,6 @@ class Krylov(rom_interface.BaseRom):
             W = W[:, :min_cols]
 
             V, W = check_rank(V, W) # checks the product for rank deficiencies
-            # V = krylovutils.mgs_ortho(V) # need to verify whether this is necessary
-            # W = krylovutils.mgs_ortho(W)
 
             T = W.T.dot(V)
             Tinv = sclalg.inv(T)
@@ -859,7 +800,6 @@ class Krylov(rom_interface.BaseRom):
                 remove_unstable = np.matmul(remove_unstable, mu * np.eye(self.ss.states) - self.ss.A)
 
             self.ss.B = remove_unstable.dot(self.ss.B)
-            # self.ss.C = self.ss.C.dot(remove_unstable.T)
 
             if self.r > 1:
                 self.r -= 1
@@ -937,17 +877,11 @@ class Krylov(rom_interface.BaseRom):
         TL = T3.T.dot(T2.dot(np.conj(T1)))
         TR = T1.T.dot(np.linalg.inv(T2).dot(T3))
 
-        cout.cout_wrap('System reduced to %g states' %n_stable, 1)
+        cout.cout_wrap('System reduced to %g states' % n_stable, 1)
 
-        # for debugging
-        # import matplotlib.pyplot as plt
         Ar = TL.dot(A.dot(TR))
-        eigsA = np.linalg.eigvals(A)
         eigsAr = np.linalg.eigvals(Ar)
-        #
-        # plt.scatter(eigsA.real, eigsA.imag)
-        # plt.scatter(eigsAr.real, eigsAr.imag)
-        # plt.show()
+
         if ct:
             assert np.sum(np.real(eigsAr) <= 0.) == n_stable, 'Number of stable eigvals computed not equal to those in Ar'
         else:
@@ -973,13 +907,6 @@ class Krylov(rom_interface.BaseRom):
 
         check_eye(Tm, Tminv, 'Tm = W^T.dot(V)')
 
-        # d = Tminv.dot(W.T)
-        #
-        # Tmcond = np.linalg.cond(Tm)
-        #
-        # if Tmcond > 1e10:
-        #     cout.cout_wrap('Matrix Tm = W^T.dot(V) is poorly conditioned. Condition = %e' % Tmcond, 3)
-
         TL, TR = self.stable_realisation()
 
         m, r = TR.shape
@@ -995,9 +922,7 @@ class Krylov(rom_interface.BaseRom):
         QLfull, RLfull = sclalg.qr(sclalg.inv(Tm.T).dot(TL))
 
         QR = QRfull[:, :r]
-        QRcomp = QRfull[:, r:]
         RR = RRfull[:r, :]
-        RRcomp = RRfull[r:, :]
 
         QL = QLfull[:, :r]
         RL = RLfull[:r, :]
@@ -1010,13 +935,8 @@ class Krylov(rom_interface.BaseRom):
 
         Trinv = sclalg.inv(QL.T.dot(Tm.dot(QR)))
         Trinv2 = RR.dot(RL.T)
-        #
+
         print('Trinv diff = %f' % (np.max(np.abs(Trinv - Trinv2))))
-        Wtr = Trinv.dot(Wr.T)
-        # Wtr = Wr.T
-        # return QL.dot(Trinv), QR
-        Wtr2 = TL.T.dot(Tminv.dot(W.T))
-        # return Wtr2, V.dot(TR)
 
         Ar = RR.dot(TL.T).dot(self.ssrom.A.dot(QR))
         eigsAr = np.linalg.eigvals(Ar)
@@ -1024,10 +944,8 @@ class Krylov(rom_interface.BaseRom):
 
         assert n_stable_r == r, 'lost evals'
 
-
-
         return RR.dot(TL.T), QR
-        # pass
+
 
 
 def reduction_checks(T, Tinv):
@@ -1066,12 +984,6 @@ def check_rank(V, W):
         check_eye(T, Tinv)
     except AssertionError:
         V, W = check_rank(V, W)
-
-    # need to check if necessary
-    # V = krylovutils.mgs_ortho(V)
-    # W = krylovutils.mgs_ortho(W)
-    # V, W = check_rank(V, W)
-    # breakpoint()
 
     return V, W
 

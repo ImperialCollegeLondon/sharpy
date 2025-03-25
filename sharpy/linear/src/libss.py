@@ -76,6 +76,9 @@ class StateSpace:
         scipy.signal.ltisys.StateSpaceDiscrete
     but supports sparse matrices and other functionalities.
 
+    Gain matrices V and W, and the original state space system have been added as optional parameters, as these
+    are otherwise lost.
+
     Methods:
     - get_mats: return matrices as tuple
     - check_types: check matrices types are supported
@@ -84,7 +87,7 @@ class StateSpace:
     - scale: allows scaling a system
     """
 
-    def __init__(self, A, B, C, D, dt=None):
+    def __init__(self, A, B, C, D, dt=None, *, v=None, w=None, full_system=None):
         """
         Allocate state-space model (A,B,C,D). If dt is not passed, a
         continuous-time system is assumed.
@@ -95,10 +98,13 @@ class StateSpace:
         self.C = C
         self.D = D
         self.dt = dt
+        self.v = v
+        self.w = w
+        self.ss_full = full_system
         self.check_types()
 
         # vector variable tracking
-        self._input_variables = None  # type: LinearVector
+        self._input_variables = None
         self._state_variables = None
         self._output_variables = None
 
