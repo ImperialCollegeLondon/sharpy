@@ -1,5 +1,5 @@
-# SHARPy v2.3 Installation Guide
-__Last revision 10 June 2024__
+# SHARPy v2.4 Installation Guide
+__Last revision 29 March 2025__
 
 The following step by step tutorial will guide you through the installation process of SHARPy. This is the updated process valid from v2.3.
 
@@ -14,7 +14,7 @@ SHARPy is being developed and tested on the following operating systems:
 * MacOS Mojave and Catalina (Intel)
 * MacOS Sonoma (Apple Silicon M2)
 
-Windows users can also run it by first installing the Windows Subsystem for Linux (https://learn.microsoft.com/en-us/windows/wsl/install) and a XServer such as GWSL, which can be installed through the Microsoft Store. SHARPy is also available to the vast majority of operating systems that are supported by Docker
+Windows users can also run it by first installing the Windows Subsystem for Linux (https://learn.microsoft.com/en-us/windows/wsl/install). It may be also convenient to install a XServer such as GWSL, which are available through the Microsoft Store. SHARPy is also available to the vast majority of operating systems that support Docker.
 
 __Required Distributions__
 
@@ -44,13 +44,14 @@ compile the libraries with custom flags, build it from source (recommended).
 
 ## Building SHARPy from source (release or development builds)
 
-SHARPy can be built from source so that you can get the latest release or (stable) development build.
-
+Building SHARPy from source, ensures that you get the latest release or (stable) development build. 
 SHARPy depends on two external libraries, [xbeam](http://github.com/imperialcollegelondon/xbeam) and
 [UVLM](http://github.com/imperialcollegelondon/UVLM). These are included as submodules to SHARPy and therefore
 once you initialise SHARPy you will also automatically clone the relevant versions of each library.
 
-### Set up the folder structure
+The installation has three steps, cloning, installation, and testing. Different alternatives are included below.
+
+### Step 1: Set up the folder structure
 
 Clone `sharpy` in your desired location, if you agree with the license in `license.txt`.
 ```bash
@@ -60,9 +61,9 @@ The `--recursive` flag will also initialise and update the submodules SHARPy dep
 [xbeam](http://github.com/imperialcollegelondon/xbeam) and [UVLM](http://github.com/imperialcollegelondon/UVLM).
 
 
-### Quick install (Standalone)
+### Step 2 (quick install version): Standalone installation
 
-SHARPy can be installed as a standalone package, without the use of a package manager. If you wish to install using the Anaconda package manager, please use the following tutorial [HERE](#setting-up-the-python-environment-anaconda), or make a custom installation with a develop build or modified compilation settings [HERE](#custom-installation). The quick install is geared towards getting the release build of SHARPy running as quickly and simply as possible. 
+The simplest and fastest way to install SHARPy is as a standalone package, without the use of a package manager. If you just want to run the code, that's the recommended approach. The quick install is geared towards getting the release build of SHARPy running as quickly and simply as possible. This mode of installation however will download several packages into your default python environment. To install SHARPy using the Anaconda package manager, please use the following tutorial [HERE](#setting-up-the-python-environment-anaconda), or make a custom installation with a develop build or modified compilation settings [HERE](#custom-installation).  
 
 1. Check that your Python version is 3.10 or higher. Other versions may be incompatible with the required modules.
     ```bash
@@ -89,10 +90,14 @@ SHARPy can be installed as a standalone package, without the use of a package ma
 
 __You are ready to run SHARPy__. Continue reading the [Running SHARPy](#running-sharpy) section.
 
-### Setting up the Python Environment (Anaconda)
+### Step 2 (Anaconda version)
 
-SHARPy can use the Anaconda package manager to provide the necessary Python packages.
+This is the suggested approach for developers. SHARPy can use the Anaconda package manager to provide the necessary Python packages. 
 These are specified in an Anaconda environment that shall be activated prior to compiling the xbeam and UVLM libraries or running any SHARPy cases.
+
+It has two substeps, first, setting the environment and then the installation.
+
+#### Setting up the python environment in Anaconda
 
 1. If you still do not have it in your system, install the [Anaconda](https://conda.io/docs/) Python 3 distribution.
 
@@ -130,7 +135,7 @@ These are specified in an Anaconda environment that shall be activated prior to 
     You should now see ```(sharpy)``` on your command line. 
 
 
-### Quick install (Anaconda)
+#### Quick install (Anaconda)
 The quick install is geared towards getting the release build of SHARPy running as quickly and simply as possible.
 1. Move into the cloned repository:
     ```bash
@@ -162,7 +167,7 @@ conda activate sharpy
 
 __You are ready to run SHARPy__. Continue reading the [Running SHARPy](#running-sharpy) section.
 
-### Custom installation
+### Step 2 (Custom installation)
 
 These steps will show you how to compile the xbeam and UVLM libraries such that you can modify the compilation settings
 to your taste. This is compatible with both standalone and Anaconda installations.
@@ -224,6 +229,43 @@ to your taste. This is compatible with both standalone and Anaconda installation
 
 8. This concludes the installation! Continue reading the [Running SHARPy](#running-sharpy) section.
 
+### Step 2 (PyPI route): Obtain SHARPy from PyPI (experimental!)
+
+You can obtain a built version of SHARPy, ic-sharpy, from PyPI [here](https://pypi.org/project/ic-sharpy/).
+
+To install at default directory use
+```
+python3 -m pip install ic-sharpy
+```
+To install at current directory use
+```
+python3 -m pip install --prefix . ic-sharpy
+```
+The source code can be found at `/lib/python3.10/site-packages/sharpy` and the executable at `/bin/sharpy`.
+
+### Step 3: Running SHARPy
+
+SHARPy uses unittests to verify the integrity of the code.
+
+These tests can be run from the `./sharpy` directory.
+```bash
+python -m unittest
+```
+The tests will run and you should see a success message. If you don't... check the following options:
+* Check you are running the latest version. Running the following from the root directory should update to the
+latest release version:
+    - `git pull`
+    - `git submodule update --init --recursive`
+* If the tests don't run, make sure you have followed correctly the instructions and that you managed to compile xbeam
+and UVLM.
+* If some tests fail, i.e. you get a message after the tests run saying that certain tests did not pass, please open
+an [issue](http://www.github.com/imperialcollegelondon/sharpy/issues) with the following information:
+    - Operating system
+    - Whether you did a Custom/quick install
+    - UVLM and xbeam compiler of choice
+    - A log of the tests that failed
+ 
+    - 
 ## Using SHARPy from a Docker container
 
 > **Tip** To install the Python environment, miniconda needs approximatelly 16GB of
@@ -303,45 +345,9 @@ python -m unittest
 
 **Enjoy!**
 
-## Obtain SHARPy from PyPI (experimental!)
 
-You can obtain a built version of SHARPy, ic-sharpy, from PyPI [here](https://pypi.org/project/ic-sharpy/).
 
-To install at default directory use
-```
-python3 -m pip install ic-sharpy
-```
-To install at current directory use
-```
-python3 -m pip install --prefix . ic-sharpy
-```
-The source code can be found at `/lib/python3.10/site-packages/sharpy` and the executable at `/bin/sharpy`.
-
-## Running SHARPy
-
-### Automated tests
-
-SHARPy uses unittests to verify the integrity of the code.
-
-These tests can be run from the `./sharpy` directory.
-```bash
-python -m unittest
-```
-The tests will run and you should see a success message. If you don't... check the following options:
-* Check you are running the latest version. Running the following from the root directory should update to the
-latest release version:
-    - `git pull`
-    - `git submodule update --init --recursive`
-* If the tests don't run, make sure you have followed correctly the instructions and that you managed to compile xbeam
-and UVLM.
-* If some tests fail, i.e. you get a message after the tests run saying that certain tests did not pass, please open
-an [issue](http://www.github.com/imperialcollegelondon/sharpy/issues) with the following information:
-    - Operating system
-    - Whether you did a Custom/quick install
-    - UVLM and xbeam compiler of choice
-    - A log of the tests that failed
-
-### The SHARPy Case Structure and input files
+## The SHARPy Case Structure and input files
 
 __Setting up a SHARPy case__
 
