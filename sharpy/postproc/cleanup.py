@@ -1,7 +1,6 @@
 import os
 
 import numpy as np
-from tvtk.api import tvtk, write_data
 
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings_utils
