@@ -451,20 +451,3 @@ class AerogridPlot(BaseSolver):
             ug.point_data.get_array(3).name = 'u_inf'
             write_data(ug, filename)
 
-        def write_paraview_data(self, coords, conn, panel_id, list_cell_parameters, list_cell_names, list_point_parameters, list_point_names, filename):
-            ug = tvtk.UnstructuredGrid(points=coords)
-            
-            ug.set_cells(tvtk.Quad().cell_type, conn)
-            ug.cell_data.scalars = panel_id
-            ug.cell_data.scalars.name = 'panel_n_id'
-            for counter in range(len(list_cell_parameters)):
-                ug.cell_data.add_array(list_cell_parameters[counter])
-                ug.cell_data.get_array(counter+1).name = list_cell_names[counter]
-                
-            ug.point_data.scalars = np.arange(0, coords.shape[0])
-            ug.point_data.scalars.name = 'n_id'
-            for counter in range(len(list_point_parameters)):
-                ug.point_data.add_array(list_point_parameters[counter])
-                ug.point_data.get_array(counter+1).name = list_point_names[counter]
-            
-            write_data(ug, filename)
