@@ -260,6 +260,19 @@ class BeamPlot(BaseSolver):
             conn[i_elem, :] = self.data.structure.elements[i_elem].reordered_global_connectivities
             elem_id[i_elem] = i_elem
 
+
+        self.to_tvtk_file(app_forces, app_moment, conn, coords, coords_a, coords_a_cell, elem_id,
+                          forces_constraints_nodes, gravity_forces_g, it_filename, local_x, local_y, local_z,
+                          moments_constraints_nodes, node_id, postproc_cell_6vector, postproc_cell_vector,
+                          postproc_node_6vector, postproc_node_scalar, postproc_node_vector, tstep, with_gravity,
+                          with_postproc_cell, with_postproc_node)
+
+
+    def to_tvtk_file(self, app_forces, app_moment, conn, coords, coords_a, coords_a_cell, elem_id,
+                     forces_constraints_nodes, gravity_forces_g, it_filename, local_x, local_y, local_z,
+                     moments_constraints_nodes, node_id, postproc_cell_6vector, postproc_cell_vector,
+                     postproc_node_6vector, postproc_node_scalar, postproc_node_vector, tstep, with_gravity,
+                     with_postproc_cell, with_postproc_node):
         ug = tvtk.UnstructuredGrid(points=coords)
         ug.set_cells(tvtk.Line().cell_type, conn)
         ug.cell_data.scalars = elem_id
