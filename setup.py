@@ -149,6 +149,7 @@ setup(
         "PySocks",
         "PyYAML",
         "jax",
+        "vtk",
     ],
     extras_require={
         "docs": [
