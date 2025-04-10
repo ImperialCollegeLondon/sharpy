@@ -4,7 +4,7 @@ import vtk
 import numpy as np
 
 if TYPE_CHECKING:
-    from vtk import vtkDataSet
+    from vtk import vtkDataSet, vtkDataSetAttributes, vtkDataArray
     from numpy.typing import NDArray
 
 
@@ -48,15 +48,8 @@ def create_quad_cells(connections: list[list[int]]) -> vtk.vtkCellArray:
 
 
 def add_array(vtk_data: "vtkDataSet", data_type: Literal["point", "cell"], name: str, data_to_add: "NDArray",
-              num_components: int , num_points: int | None = None) -> None:
-    array: vtk.vtkDataArray
-    if np.issubdtype(data_to_add.dtype, np.integer):
-        array = vtk.vtkIntArray()
-    elif np.issubdtype(data_to_add.dtype, np.double):
-        array: vtk.vtkDoubleArray = vtk.vtkDoubleArray()
-    else:
-        raise NotImplementedError(f"Unsupported dtype ({data_to_add.dtype}) of data_to_add")
-
+              num_components: int, num_points: int | None = None) -> None:
+    array: vtk.vtkDataArray = _create_vtk_data_array(data_to_add)
     array.SetName(name)
     array.SetNumberOfComponents(num_components)
     num_tuples: int = num_points if num_points is not None else len(data_to_add)
@@ -70,9 +63,27 @@ def add_array(vtk_data: "vtkDataSet", data_type: Literal["point", "cell"], name:
         # else:
         #     array.SetTuple(i, val)
 
+    dataset_attribute_data: "vtkDataSetAttributes" = _get_dataset_attribute(data_type, vtk_data)
+    dataset_attribute_data.AddArray(array)
+
+
+def _get_dataset_attribute(data_type, vtk_data) -> "vtkDataSetAttributes":
+    dataset_attribute_data: "vtkDataSetAttributes"
     if data_type == "point":
-        vtk_data.GetPointData().AddArray(array)
+        dataset_attribute_data = vtk_data.GetPointData()
     elif data_type == "cell":
-        vtk_data.GetCellData().AddArray(array)
+        dataset_attribute_data = vtk_data.GetCellData()
     else:
         raise NotImplementedError("Unsupported data type")
+    return dataset_attribute_data
+
+
+def _create_vtk_data_array(data_to_add) -> "vtkDataArray":
+    array: vtk.vtkDataArray
+    if np.issubdtype(data_to_add.dtype, np.integer):
+        array = vtk.vtkIntArray()
+    elif np.issubdtype(data_to_add.dtype, np.double):
+        array: vtk.vtkDoubleArray = vtk.vtkDoubleArray()
+    else:
+        raise NotImplementedError(f"Unsupported dtype ({data_to_add.dtype}) of data_to_add")
+    return array
