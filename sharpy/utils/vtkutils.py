@@ -48,7 +48,8 @@ def create_quad_cells(connections: list[list[int]]) -> vtk.vtkCellArray:
 
 
 def add_array(vtk_data: "vtkDataSet", target_attr: Literal["point", "cell"], name: str, data_to_add: "NDArray",
-              num_components: int, num_points: int | None = None) -> None:
+              num_components: int, attribute_array: Literal["scalars", "vectors"] | None = None,
+              num_points: int | None = None) -> None:
     array: vtk.vtkDataArray = _create_vtk_data_array(data_to_add)
     array.SetName(name)
     array.SetNumberOfComponents(num_components)
@@ -60,7 +61,14 @@ def add_array(vtk_data: "vtkDataSet", target_attr: Literal["point", "cell"], nam
         array_setter(i, val)
 
     dataset_attribute_data: "vtkDataSetAttributes" = _get_dataset_attribute(target_attr, vtk_data)
-    dataset_attribute_data.AddArray(array)
+    if attribute_array is None:
+        dataset_attribute_data.AddArray(array)
+    elif attribute_array == "scalars":
+        dataset_attribute_data.SetScalars(array)
+    elif attribute_array == "vectors":
+        dataset_attribute_data.SetVectors(array)
+    else:
+        raise NotImplementedError("Unsupported attribute_array")
 
 
 def _get_dataset_attribute(target_attr: Literal["point", "cell"], vtk_data: "vtkDataSet") -> "vtkDataSetAttributes":
