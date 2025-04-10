@@ -1,7 +1,7 @@
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, Callable
 
-import vtk
 import numpy as np
+import vtk
 
 if TYPE_CHECKING:
     from vtk import vtkDataSet, vtkDataSetAttributes, vtkDataArray
@@ -47,7 +47,7 @@ def create_quad_cells(connections: list[list[int]]) -> vtk.vtkCellArray:
     return cells
 
 
-def add_array(vtk_data: "vtkDataSet", data_type: Literal["point", "cell"], name: str, data_to_add: "NDArray",
+def add_array(vtk_data: "vtkDataSet", target_attr: Literal["point", "cell"], name: str, data_to_add: "NDArray",
               num_components: int, num_points: int | None = None) -> None:
     array: vtk.vtkDataArray = _create_vtk_data_array(data_to_add)
     array.SetName(name)
@@ -55,30 +55,26 @@ def add_array(vtk_data: "vtkDataSet", data_type: Literal["point", "cell"], name:
     num_tuples: int = num_points if num_points is not None else len(data_to_add)
     array.SetNumberOfTuples(num_tuples)
 
-    array_setter = array.SetValue if num_components == 1 else array.SetTuple
+    array_setter: Callable = array.SetValue if num_components == 1 else array.SetTuple
     for i, val in enumerate(data_to_add):
         array_setter(i, val)
-        # if num_components == 1:
-        #     array.SetValue(i, val)
-        # else:
-        #     array.SetTuple(i, val)
 
-    dataset_attribute_data: "vtkDataSetAttributes" = _get_dataset_attribute(data_type, vtk_data)
+    dataset_attribute_data: "vtkDataSetAttributes" = _get_dataset_attribute(target_attr, vtk_data)
     dataset_attribute_data.AddArray(array)
 
 
-def _get_dataset_attribute(data_type, vtk_data) -> "vtkDataSetAttributes":
+def _get_dataset_attribute(target_attr: Literal["point", "cell"], vtk_data: "vtkDataSet") -> "vtkDataSetAttributes":
     dataset_attribute_data: "vtkDataSetAttributes"
-    if data_type == "point":
+    if target_attr == "point":
         dataset_attribute_data = vtk_data.GetPointData()
-    elif data_type == "cell":
+    elif target_attr == "cell":
         dataset_attribute_data = vtk_data.GetCellData()
     else:
         raise NotImplementedError("Unsupported data type")
     return dataset_attribute_data
 
 
-def _create_vtk_data_array(data_to_add) -> "vtkDataArray":
+def _create_vtk_data_array(data_to_add: "NDArray") -> "vtkDataArray":
     array: vtk.vtkDataArray
     if np.issubdtype(data_to_add.dtype, np.integer):
         array = vtk.vtkIntArray()
