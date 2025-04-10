@@ -1,6 +1,7 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import vtk
+import numpy as np
 
 if TYPE_CHECKING:
     from vtk import vtkDataSet
@@ -45,3 +46,33 @@ def create_quad_cells(connections: list[list[int]]) -> vtk.vtkCellArray:
 
     return cells
 
+
+def add_array(vtk_data: "vtkDataSet", data_type: Literal["point", "cell"], name: str, data_to_add: "NDArray",
+              num_components: int , num_points: int | None = None) -> None:
+    array: vtk.vtkDataArray
+    if np.issubdtype(data_to_add.dtype, np.integer):
+        array = vtk.vtkIntArray()
+    elif np.issubdtype(data_to_add.dtype, np.double):
+        array: vtk.vtkDoubleArray = vtk.vtkDoubleArray()
+    else:
+        raise NotImplementedError(f"Unsupported dtype ({data_to_add.dtype}) of data_to_add")
+
+    array.SetName(name)
+    array.SetNumberOfComponents(num_components)
+    num_tuples: int = num_points if num_points is not None else len(data_to_add)
+    array.SetNumberOfTuples(num_tuples)
+
+    array_setter = array.SetValue if num_components == 1 else array.SetTuple
+    for i, val in enumerate(data_to_add):
+        array_setter(i, val)
+        # if num_components == 1:
+        #     array.SetValue(i, val)
+        # else:
+        #     array.SetTuple(i, val)
+
+    if data_type == "point":
+        vtk_data.GetPointData().AddArray(array)
+    elif data_type == "cell":
+        vtk_data.GetCellData().AddArray(array)
+    else:
+        raise NotImplementedError("Unsupported data type")
