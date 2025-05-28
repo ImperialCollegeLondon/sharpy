@@ -7,6 +7,8 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.linear.utils.ss_interface as ss_interface
 import sharpy.utils.settings as settings_utils
 import sharpy.utils.cout_utils as cout
+import sharpy.linear.assembler
+import sharpy.rom
 
 
 @solver
