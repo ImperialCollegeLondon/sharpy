@@ -166,8 +166,8 @@ def get_mode_zeta(data, eigvect):
             # print('%.2d,%.2d'%(nn,ss))
 
             # surface panelling
-            M = aero.aero_dimensions[ss][0]
-            N = aero.aero_dimensions[ss][1]
+            M = aero.dimensions[ss][0]
+            N = aero.dimensions[ss][1]
 
             for mm in range(M + 1):
                 # get position of vertex in B FoR
@@ -283,7 +283,7 @@ def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
     else:
         num_rigid_body = 0
 
-    for mode in range(num_rigid_body, NumLambda - num_rigid_body):
+    for mode in range(num_rigid_body, NumLambda):
         # scale eigenvector
         eigvec = eigenvectors[:num_dof, mode]
         fact = scale_mode(data, eigvec, rot_max_deg, perc_max)
@@ -376,7 +376,7 @@ def principal_axes_inertia(j_a, r_cg, m):
 
     """
 
-    j_p, t_pa = np.linalg.eig(j_a + algebra.multiply_matrices(algebra.skew(r_cg), algebra.skew(r_cg)) * m)
+    j_p, t_pa = np.linalg.eig(j_a + algebra.skew(r_cg) @ (algebra.skew(r_cg)) * m)
 
     t_pa, j_p = order_eigenvectors(t_pa, j_p)
 

@@ -112,8 +112,8 @@ class Beam(BaseStructure):
         # connectivity information
         self.connectivities = in_data['connectivities'].astype(dtype=ct.c_int, order='F')
 
-        self.global_nodes_num = list(set(self.connectivities.reshape(-1)))
-        self.global_elems_num = np.arange(0, self.num_elem, 1)
+        self.global_elems_num = np.arange(self.num_elem)
+        self.global_nodes_num = np.arange(self.num_node)
 
         # stiffness data
         self.elem_stiffness = in_data['elem_stiffness'].copy()
@@ -132,8 +132,6 @@ class Beam(BaseStructure):
         self.frame_of_reference_delta = in_data['frame_of_reference_delta'].copy()
         # structural twist
         self.structural_twist = in_data['structural_twist'].copy()
-        # boundary conditions
-        # self.boundary_conditions = in_data['boundary_conditions'].copy()
         # beam number for every elem
         try:
             self.beam_number = in_data['beam_number'].copy()
@@ -250,21 +248,6 @@ class Beam(BaseStructure):
             for it in range(num_steps):
                 self.dynamic_input[it]['for_acc'] = np.zeros((6, ), dtype=ct.c_double, order='F')
 
-        # try:
-        #     for it in range(num_steps):
-        #         self.dynamic_input[it]['trayectories'] = dyn_dict['trayectories'][it, :, :]
-        # except KeyError:
-        #     for it in range(num_steps):
-        #         self.dynamic_input[it]['trayectories'] = None
-
-# TODO ADC: necessary? I don't think so
-        # try:
-            # for it in range(num_steps):
-                # self.dynamic_input[it]['enforce_trajectory'] = dyn_dict['enforce_trayectory'][it, :, :]
-        # except KeyError:
-            # for it in range(num_steps):
-                # self.dynamic_input[it]['enforce_trajectory'] = np.zeros((self.num_node, 3), dtype=bool)
-
     def generate_dof_arrays(self):
         self.vdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
         self.fdof = np.zeros((self.num_node,), dtype=ct.c_int, order='F') - 1
@@ -333,23 +316,6 @@ class Beam(BaseStructure):
                 self.elements[i_lumped_master_elem].rbmass[i_lumped_master_node_local, :, :] += (
                     inertia_tensor) # += necessary in case multiple masses defined per node
 
-    # def generate_master_structure(self):
-    #     self.master = np.zeros((self.num_elem, self.num_node_elem, 2), dtype=int) - 1
-    #     for i_elem in range(self.num_elem):
-    #         for i_node_local in range(self.elements[i_elem].n_nodes):
-    #             if not i_elem and not i_node_local:
-    #                 continue
-    #             j_elem = 0
-    #             while self.master[i_elem, i_node_local, 0] == -1 and j_elem <= i_elem:
-    #                 # for j_node_local in self.elements[j_elem].ordering:
-    #                 for j_node_local in range(self.elements[j_elem].n_nodes):
-    #                     if (self.connectivities[i_elem, i_node_local] ==
-    #                             self.connectivities[j_elem, j_node_local]):
-    #                         self.master[i_elem, i_node_local, :] = [j_elem, j_node_local]
-    #                 j_elem += 1
-
-    #     self.generate_node_master_elem()
-    #     a = 1
     def generate_master_structure(self):
         self.master = np.zeros((self.num_elem, self.num_node_elem, 2), dtype=int) - 1
         for i_elem in range(self.num_elem):
@@ -380,17 +346,6 @@ class Beam(BaseStructure):
     def next_step(self):
         self.add_timestep(self.timestep_info)
 
-    # def generate_node_master_elem(self):
-    #     """
-    #     Returns a matrix indicating the master element for a given node
-    #     :return:
-    #     """
-    #     self.node_master_elem = np.zeros((self.num_node, 2), dtype=ct.c_int, order='F') - 1
-    #     for i_elem in range(self.num_elem):
-    #         for i_node_local in range(self.elements[i_elem].n_nodes):
-    #             if self.master[i_elem, i_node_local, 0] == -1:
-    #                 self.node_master_elem[self.connectivities[i_elem, i_node_local], 0] = i_elem
-    #                 self.node_master_elem[self.connectivities[i_elem, i_node_local], 1] = i_node_local
     def generate_node_master_elem(self):
         """
         Returns a matrix indicating the master element for a given node
@@ -451,33 +406,11 @@ class Beam(BaseStructure):
         for elem in self.elements:
             for inode in range(elem.n_nodes):
                 if elem.rbmass is not None:
-                    rbmass_temp[elem.ielem, inode, :, :] = elem.rbmass[inode, :, :]
+                    rbmass_temp[elem.ielem, inode, :, :] += elem.rbmass[inode, :, :]
         self.fortran['rbmass'] = rbmass_temp.astype(dtype=ct.c_double, order='F')
 
         if self.settings['unsteady']:
             pass
-            # TODO
-            # if self.dynamic_forces_amplitude is not None:
-            #     self.dynamic_forces_amplitude_fortran = self.dynamic_forces_amplitude.astype(dtype=ct.c_double, order='F')
-            #     self.dynamic_forces_time_fortran = self.dynamic_forces_time.astype(dtype=ct.c_double, order='F')
-            # else:
-            #     self.dynamic_forces_amplitude_fortran = np.zeros((self.num_node, 6), dtype=ct.c_double, order='F')
-            #     self.dynamic_forces_time_fortran = np.zeros((self.n_tsteps, 1), dtype=ct.c_double, order='F')
-            #
-            # if self.forced_vel is not None:
-            #     self.forced_vel_fortran = self.forced_vel.astype(dtype=ct.c_double, order='F')
-            # else:
-            #     self.forced_vel_fortran = np.zeros((self.n_tsteps, 6), dtype=ct.c_double, order='F')
-            #
-            # if self.forced_acc is not None:
-            #     self.forced_acc_fortran = self.forced_acc.astype(dtype=ct.c_double, order='F')
-            # else:
-            #     self.forced_acc_fortran = np.zeros((self.n_tsteps, 6), dtype=ct.c_double, order='F')
-
-    # def update_orientation(self, quat=None, ts=-1):
-    #     if quat is None:
-    #         quat = algebra.euler2quat(self.timestep_info[ts].for_pos[3:6])
-    #     self.timestep_info[ts].update_orientation(quat)  # Cga going in here
 
     def integrate_position(self, ts, dt):
         try:
@@ -489,36 +422,7 @@ class Beam(BaseStructure):
                 dt*np.dot(self.timestep_info[ts].cga(),
                           self.timestep_info[ts].for_vel[0:3]))
 
-    def nodal_b_for_2_a_for(self, nodal, tstep, filter=np.array([True]*6)):
-        """
-        Projects a nodal variable from the local, body-attached frame (B) to the reference A frame.
-
-        Args:
-            nodal (np.array): Nodal variable of size ``(num_node, 6)``
-            tstep (sharpy.datastructures.StructTimeStepInfo): structural time step info.
-            filter (np.array): optional argument that filters and does not convert a specific degree of
-              freedom. Defaults to ``np.array([True, True, True, True, True, True])``.
-
-        Returns:
-            np.array: the ``nodal`` argument projected onto the reference ``A`` frame.
-        """
-        nodal_a = nodal.copy(order='F')
-        for i_node in range(self.num_node):
-            # get master elem and i_local_node
-            i_master_elem, i_local_node = self.node_master_elem[i_node, :]
-            crv = tstep.psi[i_master_elem, i_local_node, :]
-            cab = algebra.crv2rotation(crv)
-            temp = np.zeros((6,))
-            temp[0:3] = np.dot(cab, nodal[i_node, 0:3])
-            temp[3:6] = np.dot(cab, nodal[i_node, 3:6])
-            for i in range(6):
-                if filter[i]:
-                    nodal_a[i_node, i] = temp[i]
-
-        return nodal_a
-
     def nodal_premultiply_inv_T_transpose(self, nodal, tstep, filter=np.array([True]*6)):
-        # nodal_t = np.zeros_like(nodal, dtype=ct.c_double, order='F')
         nodal_t = nodal.copy(order='F')
         for i_node in range(self.num_node):
             # get master elem and i_local_node
@@ -572,7 +476,8 @@ class Beam(BaseStructure):
         int_list_nodes = np.arange(0, ibody_beam.num_node, 1)
         for ielem in range(ibody_beam.num_elem):
             for inode_in_elem in range(ibody_beam.num_node_elem):
-                ibody_beam.connectivities[ielem, inode_in_elem] = int_list_nodes[ibody_nodes == ibody_beam.connectivities[ielem, inode_in_elem]]
+                ibody_beam.connectivities[ielem, inode_in_elem] = int_list_nodes[
+                    np.argwhere(ibody_nodes == ibody_beam.connectivities[ielem, inode_in_elem])[0][0]]
 
         # TODO: I could copy only the needed stiffness and masses to save storage
         ibody_beam.elem_stiffness = self.elem_stiffness[ibody_elements].astype(dtype=ct.c_int, order='F', copy=True)
@@ -608,6 +513,18 @@ class Beam(BaseStructure):
                         ibody_beam.lumped_mass_position = np.concatenate((ibody_beam.lumped_mass_position ,np.array([self.lumped_mass_position[inode]])), axis=0)
                         ibody_beam.n_lumped_mass += 1
 
+        if not self.lumped_mass_mat is None:
+            is_first = True
+            for inode in range(len(self.lumped_mass_mat_nodes)):
+                if self.lumped_mass_mat_nodes[inode] in ibody_nodes:
+                    if is_first:
+                        is_first = False
+                        ibody_beam.lumped_mass_mat_nodes = int_list_nodes[ibody_nodes == self.lumped_mass_mat_nodes[inode]]
+                        ibody_beam.lumped_mass_mat = np.array([self.lumped_mass_mat[inode, :, :]])
+                    else:
+                        ibody_beam.lumped_mass_mat_nodes = np.concatenate((ibody_beam.lumped_mass_mat_nodes , int_list_nodes[ibody_nodes == self.lumped_mass_mat_nodes[inode]]), axis=0)
+                        ibody_beam.lumped_mass_mat = np.concatenate((ibody_beam.lumped_mass_mat ,np.array([self.lumped_mass_mat[inode, :, :]])), axis=0)
+
         ibody_beam.steady_app_forces = self.steady_app_forces[ibody_nodes,:].astype(dtype=ct.c_double, order='F', copy=True)
 
         ibody_beam.num_bodies = 1
@@ -641,7 +558,7 @@ class Beam(BaseStructure):
 
         ibody_beam.generate_master_structure()
 
-        if ibody_beam.lumped_mass is not None:
+        if ibody_beam.lumped_mass is not None or ibody_beam.lumped_mass_mat is not None:
             ibody_beam.lump_masses()
 
         ibody_beam.generate_fortran()

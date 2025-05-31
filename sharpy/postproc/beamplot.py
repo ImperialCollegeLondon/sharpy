@@ -5,7 +5,7 @@ from tvtk.api import tvtk, write_data
 
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.algebra as algebra
 
 
@@ -45,7 +45,11 @@ class BeamPlot(BaseSolver):
     settings_default['output_rbm'] = True
     settings_description['output_rbm'] = 'Write ``csv`` file with rigid body motion data'
 
-    settings_table = settings.SettingsTable()
+    settings_types['stride'] = 'int'
+    settings_default['stride'] = 1
+    settings_description['stride'] = 'Number of steps between the execution calls when run online'
+
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -58,13 +62,13 @@ class BeamPlot(BaseSolver):
         self.filename_for = ''
         self.caller = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
         # create folder for containing files if necessary
         self.folder = data.output_folder + '/beam/'
         if not os.path.exists(self.folder):
@@ -79,7 +83,10 @@ class BeamPlot(BaseSolver):
                              self.data.settings['SHARPy']['case'])
         self.caller = caller
 
-    def run(self, online=False):
+    def run(self, **kwargs):
+
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
+
         self.plot(online)
         if not online:
             self.write()
@@ -104,7 +111,7 @@ class BeamPlot(BaseSolver):
                     self.write_beam(it)
                     if self.settings['include_FoR']:
                         self.write_for(it)
-        else:
+        elif ((len(self.data.structure.timestep_info) - 1) % self.settings['stride'] == 0):
             it = len(self.data.structure.timestep_info) - 1
             self.write_beam(it)
             if self.settings['include_FoR']:
@@ -112,11 +119,11 @@ class BeamPlot(BaseSolver):
 
     def write_beam(self, it):
         it_filename = (self.filename +
-                       '%06u' % it)
+                       ('%06u' % it) +
+                       '.vtu')
         num_nodes = self.data.structure.num_node
         num_elem = self.data.structure.num_elem
 
-        coords = np.zeros((num_nodes, 3))
         conn = np.zeros((num_elem, 3), dtype=int)
         node_id = np.zeros((num_nodes,), dtype=int)
         elem_id = np.zeros((num_elem,), dtype=int)
@@ -139,6 +146,18 @@ class BeamPlot(BaseSolver):
 
         # coordinates of corners
         coords = tstep.glob_pos(include_rbm=self.settings['include_rbm'])
+
+        if tstep.mb_dict is None:
+            pass
+        else:
+            #TODO: fix for lack of g frame description in nonlineardynamicmultibody.py
+            for i_node in range(tstep.num_node):
+                #TODO: uncomment for dynamic trim
+                # try:
+                #     c = algebra.euler2rot([0, self.data.trimmed_values[0], 0])
+                # except AttributeError:
+                c = self.data.structure.timestep_info[0].cga()
+                coords[i_node, :] += np.dot(c, tstep.for_pos[0:3])
 
         # check if I can output gravity forces
         with_gravity = False
@@ -164,9 +183,6 @@ class BeamPlot(BaseSolver):
             pass
 
         # count number of arguments
-        postproc_cell_keys = tstep.postproc_cell.keys()
-        postproc_cell_vals = tstep.postproc_cell.values()
-        postproc_cell_scalar = []
         postproc_cell_vector = []
         postproc_cell_6vector = []
         for k, v in tstep.postproc_cell.items():
@@ -181,8 +197,6 @@ class BeamPlot(BaseSolver):
             else:
                 raise AttributeError('Only scalar and 3-vector types supported in beamplot')
         # count number of arguments
-        postproc_node_keys = tstep.postproc_node.keys()
-        postproc_node_vals = tstep.postproc_node.values()
         postproc_node_scalar = []
         postproc_node_vector = []
         postproc_node_6vector = []

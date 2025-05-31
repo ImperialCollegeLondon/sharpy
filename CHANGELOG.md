@@ -1,5 +1,79 @@
 # Changelog
 
+## [2.3](https://github.com/imperialcollegelondon/sharpy/tree/2.3) (2024-05-10)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/2.2...2.3)
+
+**Implemented enhancements:**
+
+- Version 2.3 update [\#289](https://github.com/ImperialCollegeLondon/sharpy/pull/289) ([ben-l-p](https://github.com/ben-l-p))
+- Update develop branch with main [\#284](https://github.com/ImperialCollegeLondon/sharpy/pull/284) ([ben-l-p](https://github.com/ben-l-p))
+- Added pip install \(with docs\) [\#280](https://github.com/ImperialCollegeLondon/sharpy/pull/280) ([ben-l-p](https://github.com/ben-l-p))
+- Update beamplot.py to have stride option, consistent with aerogridplot.py [\#279](https://github.com/ImperialCollegeLondon/sharpy/pull/279) ([kccwing](https://github.com/kccwing))
+
+**Fixed bugs:**
+
+- Fix Github Runner Docker build failing [\#285](https://github.com/ImperialCollegeLondon/sharpy/pull/285) ([ben-l-p](https://github.com/ben-l-p))
+- Add scipy version info to env yml [\#277](https://github.com/ImperialCollegeLondon/sharpy/pull/277) ([SJ-Innovation](https://github.com/SJ-Innovation))
+
+**Closed issues:**
+
+- Scipy 1.12.0 Incompatible [\#276](https://github.com/ImperialCollegeLondon/sharpy/issues/276)
+- BeamLoader postprocessor squishing answers [\#270](https://github.com/ImperialCollegeLondon/sharpy/issues/270)
+- Solving Environment gets killed. [\#268](https://github.com/ImperialCollegeLondon/sharpy/issues/268)
+- Error when running sharpy unittest: module scipy.sparse.\_sputils not found [\#227](https://github.com/ImperialCollegeLondon/sharpy/issues/227)
+- Potential bug in /sharpy/structure/utils/modalutils.py [\#208](https://github.com/ImperialCollegeLondon/sharpy/issues/208)
+
+**Merged pull requests:**
+
+- Added ability to turn aligned grid off [\#288](https://github.com/ImperialCollegeLondon/sharpy/pull/288) ([ben-l-p](https://github.com/ben-l-p))
+- Update with main for mamba fixes [\#286](https://github.com/ImperialCollegeLondon/sharpy/pull/286) ([ben-l-p](https://github.com/ben-l-p))
+- Correct typos caught by Divya Sanghi [\#283](https://github.com/ImperialCollegeLondon/sharpy/pull/283) ([bbahiam](https://github.com/bbahiam))
+- Develop: Update environment.yml to fix scipy version issue [\#282](https://github.com/ImperialCollegeLondon/sharpy/pull/282) ([kccwing](https://github.com/kccwing))
+- Update noaero.py for consistency in function input [\#275](https://github.com/ImperialCollegeLondon/sharpy/pull/275) ([kccwing](https://github.com/kccwing))
+- A few minor bug fixes [\#273](https://github.com/ImperialCollegeLondon/sharpy/pull/273) ([sduess](https://github.com/sduess))
+- Update XBeam version to include compiler optimisation [\#272](https://github.com/ImperialCollegeLondon/sharpy/pull/272) ([ben-l-p](https://github.com/ben-l-p))
+- Update XBeam version to include compiler optimisation [\#271](https://github.com/ImperialCollegeLondon/sharpy/pull/271) ([ben-l-p](https://github.com/ben-l-p))
+- Improve docs and code of newmark\_ss [\#267](https://github.com/ImperialCollegeLondon/sharpy/pull/267) ([bbahiam](https://github.com/bbahiam))
+- Changed Github runner from Conda to Mamba [\#266](https://github.com/ImperialCollegeLondon/sharpy/pull/266) ([ben-l-p](https://github.com/ben-l-p))
+- Changed Github runner from Conda to Mamba [\#265](https://github.com/ImperialCollegeLondon/sharpy/pull/265) ([ben-l-p](https://github.com/ben-l-p))
+- Hotfix for documentation search [\#264](https://github.com/ImperialCollegeLondon/sharpy/pull/264) ([kccwing](https://github.com/kccwing))
+- Hotfix for documentation - develop [\#263](https://github.com/ImperialCollegeLondon/sharpy/pull/263) ([kccwing](https://github.com/kccwing))
+- Hotfix for documentation - main [\#262](https://github.com/ImperialCollegeLondon/sharpy/pull/262) ([kccwing](https://github.com/kccwing))
+- Merging v2.2 into develop [\#261](https://github.com/ImperialCollegeLondon/sharpy/pull/261) ([kccwing](https://github.com/kccwing))
+
+
+## [2.2](https://github.com/imperialcollegelondon/sharpy/tree/2.2) (2023-10-18)
+
+[Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/2.1...2.2)
+
+**Implemented enhancements:**
+
+- Added environment for Apple Silicon \(ARM64\) [\#254](https://github.com/ImperialCollegeLondon/sharpy/pull/254) ([ben-l-p](https://github.com/ben-l-p))
+- New Fuselage Model plus Minor Improvements [\#249](https://github.com/ImperialCollegeLondon/sharpy/pull/249) ([sduess](https://github.com/sduess))
+
+**Fixed bugs:**
+
+- fix polars concatenation in assembly of aeroinformation - develop [\#253](https://github.com/ImperialCollegeLondon/sharpy/pull/253) ([kccwing](https://github.com/kccwing))
+- fix polars concatenation in assembly of aeroinformation - main [\#252](https://github.com/ImperialCollegeLondon/sharpy/pull/252) ([kccwing](https://github.com/kccwing))
+- Minor bug fixes in aero util functions and save data postprocessor [\#247](https://github.com/ImperialCollegeLondon/sharpy/pull/247) ([sduess](https://github.com/sduess))
+
+**Closed issues:**
+
+- Automated tests failed : UnicodeEncodeError: 'ascii' codec can't encode character '\xe9' in position 47: ordinal not in range\(128\) [\#245](https://github.com/ImperialCollegeLondon/sharpy/issues/245)
+- Wrong key in settings for /cases/templates/flying\_wings.py [\#205](https://github.com/ImperialCollegeLondon/sharpy/issues/205)
+
+**Merged pull requests:**
+
+- merging develop into main for v2.2 [\#259](https://github.com/ImperialCollegeLondon/sharpy/pull/259) ([kccwing](https://github.com/kccwing))
+- fix \[docker\] use correct environment name in docker bashrc [\#257](https://github.com/ImperialCollegeLondon/sharpy/pull/257) ([sduess](https://github.com/sduess))
+- Update docker environment  [\#255](https://github.com/ImperialCollegeLondon/sharpy/pull/255) ([sduess](https://github.com/sduess))
+- Update README.md [\#246](https://github.com/ImperialCollegeLondon/sharpy/pull/246) ([rafapalacios](https://github.com/rafapalacios))
+- bringing commits to main into develop [\#244](https://github.com/ImperialCollegeLondon/sharpy/pull/244) ([rafapalacios](https://github.com/rafapalacios))
+- Updates to plotutils.py and the cantilever\_wing demo [\#242](https://github.com/ImperialCollegeLondon/sharpy/pull/242) ([boltyboi](https://github.com/boltyboi))
+- Small additions to the installation guide. [\#241](https://github.com/ImperialCollegeLondon/sharpy/pull/241) ([boltyboi](https://github.com/boltyboi))
+- Tutorial for closed-Loop Simulation with SHARPy as a hardware-in-the-loop system [\#240](https://github.com/ImperialCollegeLondon/sharpy/pull/240) ([sduess](https://github.com/sduess))
+
 ## [2.1](https://github.com/imperialcollegelondon/sharpy/tree/2.1) (2023-05-31)
 
 [Full Changelog](https://github.com/imperialcollegelondon/sharpy/compare/2.0...2.1)

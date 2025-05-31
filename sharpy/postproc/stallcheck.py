@@ -1,7 +1,7 @@
 import numpy as np
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 from sharpy.utils.datastructures import init_matrix_structure, standalone_ctypes_pointer
 import sharpy.aero.utils.uvlmlib as uvlmlib
 
@@ -43,7 +43,7 @@ class StallCheck(BaseSolver):
     settings_default['output_degrees'] = False
     settings_description['output_degrees'] = 'Output incidence angles in degrees vs radians'
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -55,17 +55,20 @@ class StallCheck(BaseSolver):
         self.ts = None
         self.caller = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.ts_max = len(self.data.structure.timestep_info)
         self.caller = caller
 
-    def run(self, online=False):
+    def run(self, **kwargs):
+    
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
+
         if not online:
             for self.ts in range(self.ts_max):
                 self.check_stall()
@@ -100,7 +103,7 @@ class StallCheck(BaseSolver):
 
         for i_elem in range(self.data.structure.num_elem):
             for i_local_node in range(self.data.structure.num_node_elem):
-                airfoil_id = self.data.aero.aero_dict['airfoil_distribution'][i_elem, i_local_node]
+                airfoil_id = self.data.aero.data_dict['airfoil_distribution'][i_elem, i_local_node]
                 if self.settings['airfoil_stall_angles']:
                     i_global_node = self.data.structure.connectivities[i_elem, i_local_node]
                     for i_dict in self.data.aero.struct2aero_mapping[i_global_node]:

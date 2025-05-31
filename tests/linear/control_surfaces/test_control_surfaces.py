@@ -213,7 +213,7 @@ class TestGolandControlSurface(unittest.TestCase):
                                                             'minus_m_star': 0}, }
                                       }
 
-        ws.config['PickleData'] = {'folder': self.route_test_dir + '/output/'}
+        ws.config['PickleData'] = {}
 
         ws.config.write()
 

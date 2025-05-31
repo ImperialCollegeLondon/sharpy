@@ -64,8 +64,8 @@ class GustVanes(generator_interface.BaseGenerator):
     def __init__(self):
         self.settings = None
         self.vane_info = None
-        self.aero_dimensions = None
-        self.aero_dimensions_star = None
+        self.dimensions = None
+        self.dimensions_star = None
         self.cs_generators = [] 
         self.y_coord = []
 
@@ -146,11 +146,11 @@ class GustVanes(generator_interface.BaseGenerator):
 
 
     def get_dimensions(self):
-        self.aero_dimensions = np.zeros((self.n_vanes, 2), dtype=int)
-        self.aero_dimensions_star = self.aero_dimensions.copy()
+        self.dimensions = np.zeros((self.n_vanes, 2), dtype=int)
+        self.dimensions_star = self.dimensions.copy()
         for ivane in range(self.n_vanes):
-            self.aero_dimensions[ivane, :] = [self.vane_info[ivane]['M'], len(self.y_coord[ivane])-1]
-            self.aero_dimensions_star[ivane, :] = [self.vane_info[ivane]['M_star'],  self.aero_dimensions[ivane, 1]]
+            self.dimensions[ivane, :] = [self.vane_info[ivane]['M'], len(self.y_coord[ivane])-1]
+            self.dimensions_star[ivane, :] = [self.vane_info[ivane]['M_star'],  self.dimensions[ivane, 1]]
 
     def init_control_surfaces(self):
         for ivane in range(self.n_vanes):    
@@ -172,19 +172,20 @@ class GustVanes(generator_interface.BaseGenerator):
         if iteration > 0:
             self.update_cs_deflection_and_rate(iteration)
         for ivane in range(self.n_vanes):
-            for inode in range(self.aero_dimensions[ivane, 1] + 1):
+            for inode in range(self.dimensions[ivane, 1] + 1):
                 if not self.settings['vertical']:
                     self.vane_info[ivane]['beam_coord'][1] = self.y_coord[ivane][inode]
                 else:
                     self.vane_info[ivane]['beam_coord'][2] = self.y_coord[ivane][inode]
                     self.vane_info[ivane]['beam_coord'][1] = self.settings['vertical_position'][ivane]
-                # print(self.vane_info[ivane]['beam_coord'])
 
                 (aero_tstep.zeta[aero_tstep.n_surf - self.n_vanes + ivane][:, :, inode],
                         aero_tstep.zeta_dot[aero_tstep.n_surf - self.n_vanes + ivane][:, :, inode]) = (
                             generate_strip(self.vane_info[ivane],
                                             airfoil_db,
-                                            orientation_in=freestream_dir, #TODO: Check if this changes
+                                            True,
+                                            None,
+                                            orientation_in=freestream_dir,
                                             calculate_zeta_dot=self.settings['consider_zeta_dot']))
 
     def update_cs_deflection_and_rate(self, iteration):

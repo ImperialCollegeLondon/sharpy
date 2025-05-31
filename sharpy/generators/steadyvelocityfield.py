@@ -53,7 +53,7 @@ class SteadyVelocityField(generator_interface.BaseGenerator):
         self.u_inf = 0.
         self.u_inf_direction = None
 
-    def initialise(self, in_dict):
+    def initialise(self, in_dict, restart=False):
         self.in_dict = in_dict
         settings.to_custom_types(self.in_dict,
                                  self.settings_types,

@@ -61,8 +61,13 @@ class PID(object):
 
         self._n_calls = 0
 
+        self._anti_windup_lim = None
+
     def set_point(self, point):
         self._point = point
+
+    def set_anti_windup_lim(self, lim):
+        self._anti_windup_lim = lim
 
     def reset_integrator(self):
         self._accumulated_integral = 0.0
@@ -88,11 +93,23 @@ class PID(object):
         detailed[2] = derivative*self._kd
 
         # Integral gain
-        self._accumulated_integral += error*self._dt
-        if self._accumulated_integral < self._integral_limits[0]:
-            self._accumulated_integral = self._integral_limits[0]
-        elif self._accumulated_integral > self._integral_limits[1]:
-            self._accumulated_integral = self._integral_limits[1]
+        aux_acc_int = self._accumulated_integral + error*self._dt
+        if aux_acc_int < self._integral_limits[0]:
+            aux_acc_int = self._integral_limits[0]
+        elif aux_acc_int > self._integral_limits[1]:
+            aux_acc_int = self._integral_limits[1]
+
+        if self._anti_windup_lim is not None:
+            # Apply anti wind up
+            aux_actuation = actuation + aux_acc_int*self._ki
+            if ((aux_actuation > self._anti_windup_lim[0]) and
+                (aux_actuation < self._anti_windup_lim[1])):
+                # Within limits
+                self._accumulated_integral = aux_acc_int
+                # If the system exceeds the limits, this 
+                # will not be added to the self._accumulated_integral
+        else:
+            self._accumulated_integral = aux_acc_int
 
         actuation += self._accumulated_integral*self._ki
         detailed[1] = self._accumulated_integral*self._ki

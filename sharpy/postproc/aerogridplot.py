@@ -7,7 +7,7 @@ import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as su
 import sharpy.aero.utils.uvlmlib as uvlmlib
 from sharpy.utils.constants import vortex_radius_def
 
@@ -65,6 +65,14 @@ class AerogridPlot(BaseSolver):
     settings_default['include_incidence_angle'] = False
     settings_description['include_incidence_angle'] = 'Include panel incidence angle'
 
+    settings_types['plot_nonlifting_surfaces'] = 'bool'
+    settings_default['plot_nonlifting_surfaces'] = False
+    settings_description['plot_nonlifting_surfaces'] = 'Plot nonlifting surfaces'
+    
+    settings_types['plot_lifting_surfaces'] = 'bool'
+    settings_default['plot_lifting_surfaces'] = False
+    settings_description['plot_lifting_surfaces'] = 'Plot nonlifting surfaces'
+
     settings_types['num_cores'] = 'int'
     settings_default['num_cores'] = 1
     settings_description['num_cores'] = 'Number of cores used to compute velocities/angles'
@@ -73,7 +81,15 @@ class AerogridPlot(BaseSolver):
     settings_default['vortex_radius'] = vortex_radius_def
     settings_description['vortex_radius'] = 'Distance below which inductions are not computed'
 
-    table = settings.SettingsTable()
+    settings_types['stride'] = 'int'
+    settings_default['stride'] = 1
+    settings_description['stride'] = 'Number of steps between the execution calls when run online'
+    
+    settings_types['save_wake'] = 'bool'
+    settings_default['save_wake'] = True
+    settings_description['save_wake'] = 'Plot the wake'
+    
+    table = su.SettingsTable()
     __doc__ += table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -83,16 +99,17 @@ class AerogridPlot(BaseSolver):
         self.folder = None
         self.body_filename = ''
         self.wake_filename = ''
+        self.nonlifting_filename = ''
         self.ts_max = 0
         self.caller = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        su.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.ts_max = self.data.ts + 1
         # create folder for containing files if necessary
         self.folder = data.output_folder + '/aero/'
@@ -106,22 +123,33 @@ class AerogridPlot(BaseSolver):
                               self.settings['name_prefix'] +
                               'wake_' +
                               self.data.settings['SHARPy']['case'])
+        self.nonlifting_filename = (self.folder +
+                                    self.settings['name_prefix'] +
+                                    'nonlifting_' +
+                                    self.data.settings['SHARPy']['case'])
         self.caller = caller
 
-    def run(self, online=False):
+    def run(self, **kwargs):
+    
+        online = su.set_value_or_default(kwargs, 'online', False)
+
         # TODO: Create a dictionary to plot any variable as in beamplot
         if not online:
             for self.ts in range(self.ts_max):
                 if self.data.structure.timestep_info[self.ts] is not None:
                     self.plot_body()
                     self.plot_wake()
+                    if self.settings['plot_nonlifting_surfaces']:
+                        self.plot_nonlifting_surfaces()
             cout.cout_wrap('...Finished', 1)
-        else:
+        elif (self.data.ts % self.settings['stride'] == 0):
             aero_tsteps = len(self.data.aero.timestep_info) - 1
             struct_tsteps = len(self.data.structure.timestep_info) - 1
             self.ts = np.max((aero_tsteps, struct_tsteps))
             self.plot_body()
             self.plot_wake()
+            if self.settings['plot_nonlifting_surfaces']:
+                self.plot_nonlifting_surfaces()
         return self.data
 
     def plot_body(self):
@@ -141,8 +169,9 @@ class AerogridPlot(BaseSolver):
         for i_surf in range(aero_tstep.n_surf):
             filename = (self.body_filename +
                         '_' +
-                        '%02u_' % i_surf +
-                        '%06u' % self.ts)
+                        ('%02u_' % i_surf) +
+                        ('%06u' % self.ts) +
+                        '.vtu')
 
             dims = aero_tstep.dimensions[i_surf, :]
             point_data_dim = (dims[0]+1)*(dims[1]+1)  # + (dims_star[0]+1)*(dims_star[1]+1)
@@ -170,7 +199,16 @@ class AerogridPlot(BaseSolver):
                     counter += 1
                     coords[counter, :] = aero_tstep.zeta[i_surf][:, i_m, i_n]
                     if self.settings['include_rbm']:
-                        coords[counter, :] += struct_tstep.for_pos[0:3]
+                        #TODO: fix for lack of g frame description in nonlineardynamicmultibody.py
+                        if struct_tstep.mb_dict is None:
+                            coords[counter, :] += struct_tstep.for_pos[0:3]
+                        else:
+                            #TODO: uncomment for dynamic trim
+                            # try:
+                            #     cga = algebra.euler2rot([0, self.data.trimmed_values[0], 0])
+                            #     coords[counter, :] += np.dot(cga, struct_tstep.for_pos[0:3])
+                            # except AttributeError:
+                            coords[counter, :] += np.dot(self.data.structure.timestep_info[0].cga(), struct_tstep.for_pos[0:3])
                     if self.settings['include_forward_motion']:
                         coords[counter, 0] -= self.settings['dt']*self.ts*self.settings['u_inf']
 
@@ -261,8 +299,9 @@ class AerogridPlot(BaseSolver):
         for i_surf in range(self.data.aero.timestep_info[self.ts].n_surf):
             filename = (self.wake_filename +
                         '_' +
-                        '%02u_' % i_surf +
-                        '%06u' % self.ts)
+                        ('%02u_' % i_surf) +
+                        ('%06u' % self.ts) +
+                        '.vtu')
 
             dims_star = self.data.aero.timestep_info[self.ts].dimensions_star[i_surf, :].copy()
             dims_star[0] -= self.settings['minus_m_star']
@@ -283,7 +322,16 @@ class AerogridPlot(BaseSolver):
                     counter += 1
                     coords[counter, :] = self.data.aero.timestep_info[self.ts].zeta_star[i_surf][:, i_m, i_n]
                     if self.settings['include_rbm']:
-                        coords[counter, :] += self.data.structure.timestep_info[self.ts].for_pos[0:3]
+                        #TODO: fix for lack of g frame description in nonlineardynamicmultibody.py
+                        if self.data.structure.timestep_info[self.ts].mb_dict is None:
+                            coords[counter, :] += self.data.structure.timestep_info[self.ts].for_pos[0:3]
+                        else:
+                            #TODO: uncomment for dynamic trim
+                            # try:
+                            #     cga = algebra.euler2rot([0, self.data.trimmed_values[0], 0])
+                            #     coords[counter, :] += np.dot(cga, self.data.structure.timestep_info[self.ts].for_pos[0:3])
+                            # except AttributeError:
+                            coords[counter, :] += np.dot(self.data.structure.timestep_info[0].cga(), self.data.structure.timestep_info[self.ts].for_pos[0:3])                                                        
                     if self.settings['include_forward_motion']:
                         coords[counter, 0] -= self.settings['dt']*self.ts*self.settings['u_inf']
 
@@ -317,4 +365,106 @@ class AerogridPlot(BaseSolver):
             ug.cell_data.get_array(2).name = 'panel_gamma'
             ug.point_data.scalars = np.arange(0, coords.shape[0])
             ug.point_data.scalars.name = 'n_id'
+            write_data(ug, filename)
+
+    def plot_nonlifting_surfaces(self):
+        nonlifting_tstep = self.data.nonlifting_body.timestep_info[self.ts]
+        struct_tstep = self.data.structure.timestep_info[self.ts]
+
+        for i_surf in range(nonlifting_tstep.n_surf):
+            filename = (self.nonlifting_filename +
+                        '_' +
+                        '%02u_' % i_surf +
+                        '%06u' % self.ts+
+                        '.vtu')
+
+            dims = nonlifting_tstep.dimensions[i_surf, :]
+            point_data_dim = (dims[0]+1)*(dims[1]+1)  # + (dims_star[0]+1)*(dims_star[1]+1)
+            panel_data_dim = (dims[0])*(dims[1])  # + (dims_star[0])*(dims_star[1])
+
+            coords = np.zeros((point_data_dim, 3))
+            conn = []
+            panel_id = np.zeros((panel_data_dim,), dtype=int)
+            panel_surf_id = np.zeros((panel_data_dim,), dtype=int)
+            panel_sigma = np.zeros((panel_data_dim,))
+            normal = np.zeros((panel_data_dim, 3))
+            point_struct_id = np.zeros((point_data_dim,), dtype=int)
+            point_cf = np.zeros((point_data_dim, 3))
+            u_inf = np.zeros((point_data_dim, 3))
+            counter = -1
+
+            # coordinates of corners
+            for i_n in range(dims[1]+1):
+                for i_m in range(dims[0]+1):
+                    counter += 1
+                    coords[counter, :] = nonlifting_tstep.zeta[i_surf][:, i_m, i_n]
+                    # TODO: include those for nonlifting body (are they different for nonlifting coordinates?)
+                    if self.settings['include_rbm']:
+                        coords[counter, :] += struct_tstep.for_pos[0:3]
+                    if self.settings['include_forward_motion']:
+                        coords[counter, 0] -= self.settings['dt']*self.ts*self.settings['u_inf']
+            counter = -1
+            node_counter = -1
+            for i_n in range(dims[1] + 1):
+                global_counter = self.data.nonlifting_body.aero2struct_mapping[i_surf][i_n]
+                for i_m in range(dims[0] + 1):
+                    node_counter += 1
+                    # point data
+                    point_struct_id[node_counter] = global_counter
+                    point_cf[node_counter, :] = nonlifting_tstep.forces[i_surf][0:3, i_m, i_n]
+                    try:
+                        u_inf[node_counter, :] = nonlifting_tstep.u_ext[i_surf][0:3, i_m, i_n]
+                    except AttributeError:
+                        pass
+                    if i_n < dims[1] and i_m < dims[0]:
+                        counter += 1
+                    else:
+                        continue
+
+                    conn.append([node_counter + 0,
+                                 node_counter + 1,
+                                 node_counter + dims[0]+2,
+                                 node_counter + dims[0]+1])
+                    # cell data
+                    normal[counter, :] = nonlifting_tstep.normals[i_surf][:, i_m, i_n]
+                    panel_id[counter] = counter
+                    panel_surf_id[counter] = i_surf
+                    panel_sigma[counter] = nonlifting_tstep.sigma[i_surf][i_m, i_n]
+
+            ug = tvtk.UnstructuredGrid(points=coords)
+            ug.set_cells(tvtk.Quad().cell_type, conn)
+            ug.cell_data.scalars = panel_id
+            ug.cell_data.scalars.name = 'panel_n_id'
+            ug.cell_data.add_array(panel_surf_id)
+            ug.cell_data.get_array(1).name = 'panel_surface_id'
+            ug.cell_data.add_array(panel_sigma)
+            ug.cell_data.get_array(2).name = 'panel_sigma'
+            ug.cell_data.vectors = normal
+            ug.cell_data.vectors.name = 'panel_normal'
+            ug.point_data.scalars = np.arange(0, coords.shape[0])
+            ug.point_data.scalars.name = 'n_id'
+            ug.point_data.add_array(point_struct_id)
+            ug.point_data.get_array(1).name = 'point_struct_id'
+            ug.point_data.add_array(point_cf)
+            ug.point_data.get_array(2).name = 'point_steady_force'
+            ug.point_data.add_array(u_inf)
+            ug.point_data.get_array(3).name = 'u_inf'
+            write_data(ug, filename)
+
+        def write_paraview_data(self, coords, conn, panel_id, list_cell_parameters, list_cell_names, list_point_parameters, list_point_names, filename):
+            ug = tvtk.UnstructuredGrid(points=coords)
+            
+            ug.set_cells(tvtk.Quad().cell_type, conn)
+            ug.cell_data.scalars = panel_id
+            ug.cell_data.scalars.name = 'panel_n_id'
+            for counter in range(len(list_cell_parameters)):
+                ug.cell_data.add_array(list_cell_parameters[counter])
+                ug.cell_data.get_array(counter+1).name = list_cell_names[counter]
+                
+            ug.point_data.scalars = np.arange(0, coords.shape[0])
+            ug.point_data.scalars.name = 'n_id'
+            for counter in range(len(list_point_parameters)):
+                ug.point_data.add_array(list_point_parameters[counter])
+                ug.point_data.get_array(counter+1).name = list_point_names[counter]
+            
             write_data(ug, filename)

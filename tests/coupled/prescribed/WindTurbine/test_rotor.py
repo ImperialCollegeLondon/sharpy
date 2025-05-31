@@ -64,7 +64,7 @@ class TestRotor(unittest.TestCase):
                     'n_points_camber': 100,
                     'm_distribution': 'uniform'}
 
-        excel_description = {'excel_file_name': route + '../../../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v02.xlsx',
+        excel_description = {'excel_file_name': route + '../../../../docs/source/content/example_notebooks/source/type04_db_nrel5mw_oc3_v06.xlsx',
                             'excel_sheet_parameters': 'parameters',
                             'excel_sheet_structural_blade': 'structural_blade',
                             'excel_sheet_discretization_blade': 'discretization_blade',
@@ -74,9 +74,10 @@ class TestRotor(unittest.TestCase):
 
         options = {'camber_effect_on_twist': False,
                    'user_defined_m_distribution_type': None,
-                   'include_polars': False}
+                   'include_polars': False,
+                   'separate_blades': False}
 
-        rotor = template_wt.rotor_from_excel_type03(op_params,
+        rotor, hub_nodes = template_wt.rotor_from_excel_type03(op_params,
                                                     geom_params,
                                                     excel_description,
                                                     options)

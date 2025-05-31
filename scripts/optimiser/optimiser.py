@@ -265,8 +265,6 @@ def optimiser(in_dict, previous_x, previous_y):
 
     print('FINISHED')
 
-    import pdb; pdb.set_trace()
-
 def local_optimisation(opt, yaml_dict=None, min_method='Powell'):
     x_in = opt.X
     y_in = opt.Y
@@ -280,7 +278,6 @@ def local_optimisation(opt, yaml_dict=None, min_method='Powell'):
                'gtol': 1e-3}
     # scipy.optimize
     local_opt = optimize.minimize(
-                                  # lambda x: rbf_constrained(x, rbf, yaml_dict, opt),
                                   lambda x: gp_constrained(x, opt, yaml_dict),
                                   x0=opt.x_opt,
                                   method=min_method,

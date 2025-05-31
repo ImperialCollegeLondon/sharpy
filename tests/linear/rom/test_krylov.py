@@ -64,6 +64,8 @@ class TestKrylov(unittest.TestCase):
         assert np.log10(max_error) < -2, 'Significant mismatch in ROM frequency Response'
 
         # check saving function
+        if os.path.isfile(self.test_dir + '/rom_data.h5'):
+            os.remove(self.test_dir + '/rom_data.h5')
         self.rom.save(self.test_dir + '/rom_data.h5')
 
     def test_krylov(self):

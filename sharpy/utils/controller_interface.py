@@ -25,7 +25,10 @@ def print_available_controllers():
 
 
 class BaseController(metaclass=ABCMeta):
-    pass
+    
+    def teardown(self):
+        pass
+
 
 def controller_from_string(string):
     return dict_of_controllers[string]
@@ -35,7 +38,7 @@ def controller_list_from_path(cwd):
     onlyfiles = [f for f in os.listdir(cwd) if os.path.isfile(os.path.join(cwd, f))]
 
     for i_file in range(len(onlyfiles)):
-        if ".py" in onlyfiles[i_file]:
+        if onlyfiles[i_file].split('.')[-1] == 'py': # support autosaved files in the folder
             if onlyfiles[i_file] == "__init__.py":
                 onlyfiles[i_file] = ""
                 continue
@@ -47,17 +50,18 @@ def controller_list_from_path(cwd):
     return files
 
 
-def initialise_controller(controller_name):
-    cout.cout_wrap('Generating an instance of %s' % controller_name, 2)
+def initialise_controller(controller_name, print_info=True):
+    if print_info:
+        cout.cout_wrap('Generating an instance of %s' % controller_name, 2)
     cls_type = controller_from_string(controller_name)
     controller = cls_type()
     return controller
 
-def dictionary_of_controllers():
+def dictionary_of_controllers(print_info=True):
     import sharpy.controllers
     dictionary = dict()
     for controller in dict_of_controllers:
-        init_controller = initialise_controller(controller)
+        init_controller = initialise_controller(controller, print_info=print_info)
         dictionary[controller] = init_controller.settings_default
 
     return dictionary

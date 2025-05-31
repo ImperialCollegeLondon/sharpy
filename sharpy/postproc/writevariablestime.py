@@ -1,8 +1,7 @@
 import os
 import numpy as np
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.aero.utils.uvlmlib as uvlmlib
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 
 
 @solver
@@ -50,6 +49,22 @@ class WriteVariablesTime(BaseSolver):
     settings_default['structure_nodes'] = np.array([-1])
     settings_description['structure_nodes'] = 'Number of the nodes to be writen'
 
+    settings_types['nonlifting_nodes_variables'] = 'list(str)'
+    settings_default['nonlifting_nodes_variables'] = ['']
+    settings_description['nonlifting_nodes_variables'] = 'Variables of :class:`~sharpy.utils.datastructures.NonliftingBodyTimeStepInfo` associated to panels to be writen'
+
+    settings_types['nonlifting_nodes_im'] = 'list(int)'
+    settings_default['nonlifting_nodes_im'] = np.array([0])
+    settings_description['nonlifting_nodes_im'] = 'Chordwise index of the nonlifting panels to be output'
+
+    settings_types['nonlifting_nodes_in'] = 'list(int)'
+    settings_default['nonlifting_nodes_in'] = np.array([0])
+    settings_description['nonlifting_nodes_in'] = 'Spanwise index of the nonlifting panels to be output'
+
+    settings_types['nonlifting_nodes_isurf'] = 'list(int)'
+    settings_default['nonlifting_nodes_isurf'] = np.array([0])
+    settings_description['nonlifting_nodes_isurf'] = "Number of the panels' surface to be output"
+
     settings_types['aero_panels_variables'] = 'list(str)'
     settings_default['aero_panels_variables'] = ['']
     settings_description['aero_panels_variables'] = 'Variables of :class:`~sharpy.utils.datastructures.AeroTimeStepInfo` associated to panels to be writen'
@@ -95,7 +110,7 @@ class WriteVariablesTime(BaseSolver):
     settings_default['vel_field_points'] = np.array([0., 0., 0.])
     settings_description['vel_field_points'] = 'List of coordinates of the control points as x1, y1, z1, x2, y2, z2 ...'
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -108,13 +123,13 @@ class WriteVariablesTime(BaseSolver):
         self.caller = None
         self.velocity_generator = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.folder = data.output_folder + '/WriteVariablesTime/'
         if not os.path.isdir(self.folder):
@@ -148,6 +163,17 @@ class WriteVariablesTime(BaseSolver):
             for inode in range(len(self.settings['structure_nodes'])):
                 node = self.settings['structure_nodes'][inode]
                 filename = self.folder + "struct_" + self.settings['structure_variables'][ivariable] + "_node" + str(node) + ".dat"
+                if self.settings['cleanup_old_solution']:
+                    if os.path.isfile(filename):
+                        os.remove(filename)
+
+        # Nonlifting variables at panels
+        for ivariable in range(len(self.settings['nonlifting_nodes_variables'])):
+            for ipanel in range(len(self.settings['nonlifting_nodes_isurf'])):
+                i_surf = self.settings['nonlifting_nodes_isurf'][ipanel]
+                i_m = self.settings['nonlifting_nodes_im'][ipanel]
+                i_n = self.settings['nonlifting_nodes_in'][ipanel]
+                filename = self.folder + "nonlifting_" + self.settings['nonlifting_nodes_variables'][ivariable] + "_panel" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
                 if self.settings['cleanup_old_solution']:
                     if os.path.isfile(filename):
                         os.remove(filename)
@@ -196,7 +222,9 @@ class WriteVariablesTime(BaseSolver):
                 # For coupled solvers
                 self.velocity_generator = self.caller.aero_solver.velocity_generator
 
-    def run(self, online=False):
+    def run(self, **kwargs):
+    
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
 
         if online:
             self.data = self.write(-1)
@@ -239,6 +267,28 @@ class WriteVariablesTime(BaseSolver):
         for ivariable in range(len(self.settings['structure_variables'])):
             if self.settings['structure_variables'][ivariable] == '':
                 continue
+            #TODO: fix for lack of g frame description in nonlineardynamicmultibody.py
+            if tstep.mb_dict is None:
+                var = getattr(tstep, self.settings['structure_variables'][ivariable])
+            else:
+                if self.settings['structure_variables'][ivariable] == 'for_pos':
+                    import sharpy.utils.algebra as ag
+                    #TODO: uncomment for dynamic trim
+                    # try:
+                    #     # import pdb
+                    #     # pdb.set_trace()
+                    #     cga = ag.euler2rot([0, self.data.trimmed_values[0], 0])
+                    #     cag = cga.T
+                    #     tstep.for_pos[0:3] = np.dot(cga,tstep.for_pos[0:3])
+                    #     var = getattr(tstep, self.settings['structure_variables'][ivariable]).copy()
+                    #     tstep.for_pos[0:3] = np.dot(cag,tstep.for_pos[0:3])
+                    # except AttributeError:
+                    t0step = self.data.structure.timestep_info[0]
+                    tstep.for_pos[0:3] = np.dot(t0step.cga(), tstep.for_pos[0:3])
+                    var = getattr(tstep, self.settings['structure_variables'][ivariable]).copy()
+                    tstep.for_pos[0:3] = np.dot(t0step.cag(), tstep.for_pos[0:3])
+                else:
+                    var = getattr(tstep, self.settings['structure_variables'][ivariable])            
             var = getattr(tstep, self.settings['structure_variables'][ivariable])
             num_indices = len(var.shape)
             if num_indices == 1:
@@ -259,6 +309,21 @@ class WriteVariablesTime(BaseSolver):
                             self.write_nparray_to_file(fid, self.data.ts, var[ielem,inode_in_elem,:], self.settings['delimiter'])
 
 
+        # Aerodynamic variables at nonlifting panels
+        for ivariable in range(len(self.settings['nonlifting_nodes_variables'])):
+            if self.settings['nonlifting_nodes_variables'][ivariable] == '':
+                continue
+            
+            for ipanel in range(len(self.settings['nonlifting_nodes_isurf'])):
+                i_surf = self.settings['nonlifting_nodes_isurf'][ipanel]
+                i_m = self.settings['nonlifting_nodes_im'][ipanel]
+                i_n = self.settings['nonlifting_nodes_in'][ipanel]
+                filename = self.folder + "nonlifting_" + self.settings['nonlifting_nodes_variables'][ivariable] + "_panel" + "_isurf" + str(i_surf) + "_im"+ str(i_m) + "_in"+ str(i_n) + ".dat"
+
+                with open(filename, 'a') as fid:
+                    var = getattr(self.data.nonlifting_body.timestep_info[it], self.settings['nonlifting_nodes_variables'][ivariable])
+                    self.write_value_to_file(fid, self.data.ts, var[i_surf][i_m,i_n], self.settings['delimiter'])
+
         # Aerodynamic variables at panels
         for ivariable in range(len(self.settings['aero_panels_variables'])):
             if self.settings['aero_panels_variables'][ivariable] == '':
@@ -272,7 +337,7 @@ class WriteVariablesTime(BaseSolver):
 
                 with open(filename, 'a') as fid:
                     var = getattr(self.data.aero.timestep_info[it], self.settings['aero_panels_variables'][ivariable])
-                    self.write_value_to_file(fid, self.data.ts, var.gamma[i_surf][i_m,i_n], self.settings['delimiter'])
+                    self.write_value_to_file(fid, self.data.ts, var[i_surf][i_m,i_n], self.settings['delimiter'])
 
 
         # Aerodynamic variables at nodes

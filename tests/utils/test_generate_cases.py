@@ -63,7 +63,7 @@ class TestGenerateCases(unittest.TestCase):
                     'n_points_camber': 100,
                     'm_distribution': 'uniform'}
 
-        excel_description = {'excel_file_name': route + '../../docs/source/content/example_notebooks/source/type02_db_NREL5MW_v02.xlsx',
+        excel_description = {'excel_file_name': route + '../../docs/source/content/example_notebooks/source/type04_db_nrel5mw_oc3_v06.xlsx',
                             'excel_sheet_parameters': 'parameters',
                             'excel_sheet_structural_blade': 'structural_blade',
                             'excel_sheet_discretization_blade': 'discretization_blade',
@@ -73,9 +73,10 @@ class TestGenerateCases(unittest.TestCase):
 
         options = {'camber_effect_on_twist': False,
                    'user_defined_m_distribution_type': None,
-                   'include_polars': False}
+                   'include_polars': False,
+                   'separate_blades': False}
 
-        rotor = template_wt.rotor_from_excel_type03(op_params,
+        rotor, hub_nodes = template_wt.rotor_from_excel_type03(op_params,
                                                     geom_params,
                                                     excel_description,
                                                     options)
@@ -93,7 +94,7 @@ class TestGenerateCases(unittest.TestCase):
 
         SimInfo.solvers['SHARPy']['flow'] = ['BeamLoader',
                                 'AerogridLoader',
-                                'StaticCoupledRBM',
+                                'StaticCoupled',
                                 'DynamicCoupled',
                                 'SaveData']
 
@@ -121,16 +122,16 @@ class TestGenerateCases(unittest.TestCase):
                                                                            'dt': dt,
                                                                            'rotation_velocity': rotation_velocity*np.array([0., 0., 1.])}
 
-        SimInfo.solvers['StaticCoupledRBM']['structural_solver'] = 'RigidDynamicPrescribedStep'
-        SimInfo.solvers['StaticCoupledRBM']['structural_solver_settings'] = SimInfo.solvers['RigidDynamicPrescribedStep']
-        # SimInfo.solvers['StaticCoupledRBM']['structural_solver'] = 'NonLinearDynamicPrescribedStep'
-        # SimInfo.solvers['StaticCoupledRBM']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicPrescribedStep']
-        SimInfo.solvers['StaticCoupledRBM']['aero_solver'] = 'StaticUvlm'
-        SimInfo.solvers['StaticCoupledRBM']['aero_solver_settings'] = SimInfo.solvers['StaticUvlm']
+        SimInfo.solvers['StaticCoupled']['structural_solver'] = 'RigidDynamicPrescribedStep'
+        SimInfo.solvers['StaticCoupled']['structural_solver_settings'] = SimInfo.solvers['RigidDynamicPrescribedStep']
+        # SimInfo.solvers['StaticCoupled']['structural_solver'] = 'NonLinearDynamicPrescribedStep'
+        # SimInfo.solvers['StaticCoupled']['structural_solver_settings'] = SimInfo.solvers['NonLinearDynamicPrescribedStep']
+        SimInfo.solvers['StaticCoupled']['aero_solver'] = 'StaticUvlm'
+        SimInfo.solvers['StaticCoupled']['aero_solver_settings'] = SimInfo.solvers['StaticUvlm']
 
-        SimInfo.solvers['StaticCoupledRBM']['tolerance'] = 1e-6
-        SimInfo.solvers['StaticCoupledRBM']['n_load_steps'] = 0
-        SimInfo.solvers['StaticCoupledRBM']['relaxation_factor'] = 0.
+        SimInfo.solvers['StaticCoupled']['tolerance'] = 1e-6
+        SimInfo.solvers['StaticCoupled']['n_load_steps'] = 0
+        SimInfo.solvers['StaticCoupled']['relaxation_factor'] = 0.
 
         SimInfo.solvers['StaticUvlm']['horseshoe'] = False
         SimInfo.solvers['StaticUvlm']['num_cores'] = 8

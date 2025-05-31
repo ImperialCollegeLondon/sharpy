@@ -3,7 +3,7 @@ import numpy as np
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 import os
 
 
@@ -54,7 +54,7 @@ class StaticTrim(BaseSolver):
     settings_default['m_tolerance'] = 0.01
     settings_description['m_tolerance'] = 'Tolerance in pitching moment'
 
-    settings_types['tail_cs_index'] = 'int'
+    settings_types['tail_cs_index'] = ['int', 'list(int)']
     settings_default['tail_cs_index'] = 0
     settings_description['tail_cs_index'] = 'Index of control surfaces that move to achieve trim'
 
@@ -90,7 +90,7 @@ class StaticTrim(BaseSolver):
     settings_default['save_info'] = False
     settings_description['save_info'] = 'Save trim results to text file'
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -114,13 +114,13 @@ class StaticTrim(BaseSolver):
         self.table = None
         self.folder = None
 
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.solver = solver_interface.initialise_solver(self.settings['solver'])
-        self.solver.initialise(self.data, self.settings['solver_settings'])
+        self.solver.initialise(self.data, self.settings['solver_settings'], restart=restart)
 
         self.folder = data.output_folder + '/statictrim/'
         if not os.path.exists(self.folder):
@@ -135,7 +135,7 @@ class StaticTrim(BaseSolver):
         self.structural_solver.next_step()
         self.aero_solver.next_step()
 
-    def run(self):
+    def run(self, **kwargs):
 
         # In the event the modal solver has been run prior to StaticCoupled (i.e. to get undeformed modes), copy
         # results and then attach to the resulting timestep
@@ -317,17 +317,12 @@ class StaticTrim(BaseSolver):
 
     def evaluate(self, alpha, deflection_gamma, thrust):
         if not np.isfinite(alpha):
-            import pdb; pdb.set_trace()
+            raise ValueError("Alpha trim gradient is zero, resulting in division by zero.")
         if not np.isfinite(deflection_gamma):
-            import pdb; pdb.set_trace()
+            raise ValueError("Delta trim gradient is zero, resulting in division by zero.")
         if not np.isfinite(thrust):
-            import pdb; pdb.set_trace()
+            raise ValueError("Thrust trim gradient is zero, resulting in division by zero.")
 
-        # cout.cout_wrap('--', 2)
-        # cout.cout_wrap('Trying trim: ', 2)
-        # cout.cout_wrap('Alpha: ' + str(alpha*180/np.pi), 2)
-        # cout.cout_wrap('CS deflection: ' + str((deflection_gamma - alpha)*180/np.pi), 2)
-        # cout.cout_wrap('Thrust: ' + str(thrust), 2)
         # modify the trim in the static_coupled solver
         self.solver.change_trim(alpha,
                                 thrust,
@@ -342,10 +337,6 @@ class StaticTrim(BaseSolver):
         forcez = forces[2]
         forcex = forces[0]
         moment = moments[1]
-        # cout.cout_wrap('Forces and moments:', 2)
-        # cout.cout_wrap('fx = ' + str(forces[0]) + ' mx = ' + str(moments[0]), 2)
-        # cout.cout_wrap('fy = ' + str(forces[1]) + ' my = ' + str(moments[1]), 2)
-        # cout.cout_wrap('fz = ' + str(forces[2]) + ' mz = ' + str(moments[2]), 2)
 
         self.table.print_line([self.i_iter,
                                alpha*180/np.pi,

@@ -591,7 +591,7 @@ for case in cases:
                                                                             )
 
         app_forces[wn-1, 0:3] = thrustC*(1 + differential)*np.array([0.0, np.cos(in_structural_twist), -np.sin(in_structural_twist)])
-        thrust_nodes[1] = wn - 1
+        thrust_nodes[2] = wn - 1
 
         beam_number[we:we + n_elem_section_dihedral] = 2
         structural_twist[we:we + n_elem_section_dihedral, :] = in_structural_twist

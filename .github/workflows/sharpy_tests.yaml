@@ -21,9 +21,12 @@ jobs:
         python-version: [3.7]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+          fetch-tags: true
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Set up GCC
@@ -31,6 +34,7 @@ jobs:
         with:
           version: 10
           platform: x64
+<<<<<<< HEAD
       - name: Setup conda
         uses: s-weigand/setup-conda@v1
         with:
@@ -57,8 +61,19 @@ jobs:
           git fetch -t
           mkdir build && cd build
           cmake .. && make install -j 4 && cd ..
+=======
+      - name: Check that gfortran works
+        run: gfortran --version
+      - name: Install build package dependencies
+        run: sudo apt install libblas-dev liblapack-dev libeigen3-dev
+      - name: Install sharpy and coverage using pip
+        run: |
+          export QT_QPA_PLATFORM='offscreen'
+>>>>>>> develop
           pip install .
           pip install coverage
+      - name: Run coverage
+        run: |
           coverage run -m unittest discover
       - name: Upload Coverage to Codecov
         uses: codecov/codecov-action@v2

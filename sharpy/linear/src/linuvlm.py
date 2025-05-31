@@ -91,7 +91,8 @@ class Static():
 
         settings.to_custom_types(settings_here,
                                  settings_types_static,
-                                 settings_default_static)
+                                 settings_default_static,
+                                 no_ctype=True)
 
         self.vortex_radius = settings_here['vortex_radius']
         self.cfl1 = settings_here['cfl1']

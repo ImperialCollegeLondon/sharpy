@@ -336,7 +336,7 @@ def generate_solver_file(horseshoe=False):
                                 }
 
     minus_m_star = 0
-    if config['StaticUvlm']['horseshoe'] is 'on':
+    if config['StaticUvlm']['horseshoe'] == 'on':
         minus_m_star = max(m_main - 1, 1)
     config['AerogridPlot'] = {'include_rbm': 'off',
                               'include_applied_forces': 'on',

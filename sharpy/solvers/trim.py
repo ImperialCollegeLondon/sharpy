@@ -1,13 +1,10 @@
-import ctypes as ct
 import numpy as np
 import scipy.optimize
-import warnings
 
-import sharpy.aero.utils.mapping as mapping
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.solver_interface as solver_interface
 from sharpy.utils.solver_interface import solver, BaseSolver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.algebra as algebra
 
 
@@ -86,7 +83,7 @@ class Trim(BaseSolver):
     settings_default['refine_solution'] = False
     settings_description['refine_solution'] = 'If ``True`` and the optimiser routine allows for it, the optimiser will try to improve the solution with hybrid methods'
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -99,13 +96,13 @@ class Trim(BaseSolver):
 
         self.with_special_case = False
 
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
 
         self.solver = solver_interface.initialise_solver(self.settings['solver'])
-        self.solver.initialise(self.data, self.settings['solver_settings'])
+        self.solver.initialise(self.data, self.settings['solver_settings'], restart=restart)
 
         # generate x_info (which elements of the x array are what)
         counter = 0
@@ -264,20 +261,7 @@ class Trim(BaseSolver):
 
         cout.cout_wrap('Solution = ')
         cout.cout_wrap(solution.x)
-        # pretty_print_x(x, x_info)
         return solution
-
-
-# def pretty_print_x(x, x_info):
-#     cout.cout_wrap('X vector:', 1)
-#     for k, v in x_info:
-#         if k.startswith('i_'):
-#             if isinstance(v, list):
-#                 for i, vv in v:
-#                     cout.cout_wrap(k + ' ' + str(i) + ': ', vv)
-#             else:
-#                 cout.cout_wrap(k + ': ', v)
-
 
 def solver_wrapper(x, x_info, solver_data, i_dim=-1):
     if solver_data.settings['print_info']:
@@ -289,12 +273,11 @@ def solver_wrapper(x, x_info, solver_data, i_dim=-1):
     # change input data
     solver_data.data.structure.timestep_info[solver_data.data.ts] = solver_data.data.structure.ini_info.copy()
     tstep = solver_data.data.structure.timestep_info[solver_data.data.ts]
-    aero_tstep = solver_data.data.aero.timestep_info[solver_data.data.ts]
     orientation_quat = algebra.euler2quat(np.array([roll, alpha, beta]))
     tstep.quat[:] = orientation_quat
     # control surface deflection
     for i_cs in range(len(x_info['i_control_surfaces'])):
-        solver_data.data.aero.aero_dict['control_surface_deflection'][x_info['control_surfaces_id'][i_cs]] = x[x_info['i_control_surfaces'][i_cs]]
+        solver_data.data.aero.data_dict['control_surface_deflection'][x_info['control_surfaces_id'][i_cs]] = x[x_info['i_control_surfaces'][i_cs]]
     # thrust input
     tstep.steady_applied_forces[:] = 0.0
     try:
@@ -326,21 +309,13 @@ def solver_wrapper(x, x_info, solver_data, i_dim=-1):
     totals[3:6] = moments
     if solver_data.settings['print_info']:
         cout.cout_wrap(' forces = ' + str(totals), 1)
-    # print('total forces = ', totals)
-    # try:
-    #     totals += x[x_info['i_none']]
-    # except KeyError:
-    #     pass
-    # return resultant forces and moments
-    # return np.linalg.norm(totals)
+
     if i_dim >= 0:
         return totals[i_dim]
     elif i_dim == -1:
-        # return [np.sum(totals[0:3]**2), np.sum(totals[4:6]**2)]
         return totals
     elif i_dim == -2:
         coeffs = np.array([1.0, 1.0, 1.0, 2, 2, 2])
-        # print('return = ', np.dot(coeffs*totals, coeffs*totals))
         if solver_data.settings['print_info']:
             cout.cout_wrap(' val = ' + str(np.dot(coeffs*totals, coeffs*totals)), 1)
         return np.dot(coeffs*totals, coeffs*totals)

@@ -1,8 +1,4 @@
-import ctypes as ct
-import numpy as np
-
-import sharpy.utils.algebra as algebra
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.solver_interface as solver_interface
 import sharpy.utils.cout_utils as cout
@@ -70,7 +66,7 @@ class PrescribedUvlm(BaseSolver):
     settings_default['vortex_radius_wake_ind'] = vortex_radius_def
     settings_description['vortex_radius_wake_ind'] = 'Distance between points below which induction is not computed in the wake convection'
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -85,10 +81,10 @@ class PrescribedUvlm(BaseSolver):
         self.postprocessors = dict()
         self.with_postprocessors = False
 
-    def initialise(self, data):
+    def initialise(self, data, restart=False):
         self.data = data
         self.settings = data.settings[self.solver_id]
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default)
         self.dt = self.settings['dt']
 
         self.aero_solver = solver_interface.initialise_solver(self.settings['aero_solver'])
@@ -106,7 +102,8 @@ class PrescribedUvlm(BaseSolver):
         for postproc in self.settings['postprocessors']:
             self.postprocessors[postproc] = solver_interface.initialise_solver(postproc)
             self.postprocessors[postproc].initialise(
-                self.data, self.settings['postprocessors_settings'][postproc], caller=self)
+                self.data, self.settings['postprocessors_settings'][postproc], caller=self,
+                restart=restart)
 
         self.residual_table = cout.TablePrinter(2, 14, ['g', 'f'])
         self.residual_table.field_length[0] = 6
@@ -127,7 +124,7 @@ class PrescribedUvlm(BaseSolver):
         self.data.structure.next_step()
         self.aero_solver.add_step()
 
-    def run(self):
+    def run(self, **kwargs):
         structural_kstep = self.data.structure.ini_info.copy()
 
         # dynamic simulations start at tstep == 1, 0 is reserved for the initial state
@@ -138,19 +135,6 @@ class PrescribedUvlm(BaseSolver):
             if ts > 0:
                 self.data.structure.timestep_info[ts].for_vel[:] = self.data.structure.dynamic_input[ts - 1]['for_vel']
                 self.data.structure.timestep_info[ts].for_acc[:] = self.data.structure.dynamic_input[ts - 1]['for_acc']
-
-
-            # # # generate new grid (already rotated)
-            # self.aero_solver.update_custom_grid(structural_kstep, aero_kstep)
-            #
-            # # run the solver
-            # self.data = self.aero_solver.run(aero_kstep,
-            #                                  structural_kstep,
-            #                                  self.data.aero.timestep_info[-1],
-            #                                  convect_wake=True)
-            #
-            # self.residual_table.print_line([self.data.ts,
-            #                                 self.data.ts*self.dt])
 
             self.data.structure.next_step()
             self.data.structure.integrate_position(self.data.ts, self.settings['dt'])
@@ -173,68 +157,3 @@ class PrescribedUvlm(BaseSolver):
                     self.data = self.postprocessors[postproc].run(online=True)
 
         return self.data
-
-#
-#     def map_forces(self, aero_kstep, structural_kstep, unsteady_forces_coeff=1.0):
-#         # set all forces to 0
-#         structural_kstep.steady_applied_forces.fill(0.0)
-#         structural_kstep.unsteady_applied_forces.fill(0.0)
-#
-#         # aero forces to structural forces
-#         struct_forces = mapping.aero2struct_force_mapping(
-#             aero_kstep.forces,
-#             self.data.aero.struct2aero_mapping,
-#             aero_kstep.zeta,
-#             structural_kstep.pos,
-#             structural_kstep.psi,
-#             self.data.structure.node_master_elem,
-#             self.data.structure.master,
-#             structural_kstep.cag())
-#         dynamic_struct_forces = unsteady_forces_coeff*mapping.aero2struct_force_mapping(
-#             aero_kstep.dynamic_forces,
-#             self.data.aero.struct2aero_mapping,
-#             aero_kstep.zeta,
-#             structural_kstep.pos,
-#             structural_kstep.psi,
-#             self.data.structure.node_master_elem,
-#             self.data.structure.master,
-#             structural_kstep.cag())
-#
-#         # prescribed forces + aero forces
-#         structural_kstep.steady_applied_forces = (
-#             (struct_forces + self.data.structure.ini_info.steady_applied_forces).
-#                 astype(dtype=ct.c_double, order='F', copy=True))
-#         structural_kstep.unsteady_applied_forces = (
-#             (dynamic_struct_forces + self.data.structure.dynamic_input[max(self.data.ts - 1, 0)]['dynamic_forces']).
-#                 astype(dtype=ct.c_double, order='F', copy=True))
-#
-#     def relaxation_factor(self, k):
-#         initial = self.settings['relaxation_factor']
-#         if not self.settings['dynamic_relaxation']:
-#             return initial
-#
-#         final = self.settings['final_relaxation_factor']
-#         if k >= self.settings['relaxation_steps']:
-#             return final
-#
-#         value = initial + (final - initial)/self.settings['relaxation_steps']*k
-#         return value
-#
-#
-# def relax(beam, timestep, previous_timestep, coeff):
-#     if coeff > 0.0:
-#         timestep.steady_applied_forces[:] = ((1.0 - coeff)*timestep.steady_applied_forces
-#                                              + coeff*previous_timestep.steady_applied_forces)
-#         timestep.unsteady_applied_forces[:] = ((1.0 - coeff)*timestep.unsteady_applied_forces
-#                                                + coeff*previous_timestep.unsteady_applied_forces)
-#         # timestep.pos_dot[:] = (1.0 - coeff)*timestep.pos_dot + coeff*previous_timestep.pos_dot
-#         # timestep.psi[:] = (1.0 - coeff)*timestep.psi + coeff*previous_timestep.psi
-#         # timestep.psi_dot[:] = (1.0 - coeff)*timestep.psi_dot + coeff*previous_timestep.psi_dot
-#
-#         # normalise_quaternion(timestep)
-#         # xbeam_solv_state2disp(beam, timestep)
-#
-#
-#
-#
-#

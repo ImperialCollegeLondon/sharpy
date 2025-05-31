@@ -375,7 +375,7 @@ class TestLinearDerivatives(unittest.TestCase):
         import scipy.io as scio
         linss_data = scio.loadmat(self.route_test_dir + '/output/{:s}/savedata/{:s}.linss.mat'.format(ref_case_name,
                                                                                                   ref_case_name))
-        
+
         # Steady State transfer function
         if target_system == 'aerodynamic':
             ss = libss.StateSpace.load_from_h5(self.route_test_dir +

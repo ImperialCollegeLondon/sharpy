@@ -5,8 +5,7 @@ from sharpy.utils.datastructures import Linear
 from sharpy.utils.solver_interface import solver, BaseSolver
 
 import sharpy.linear.utils.ss_interface as ss_interface
-import sharpy.utils.settings as settings
-import sharpy.utils.h5utils as h5
+import sharpy.utils.settings as settings_utils
 import sharpy.utils.cout_utils as cout
 
 
@@ -105,7 +104,7 @@ class LinearAssembler(BaseSolver):
     settings_default['recover_accelerations'] = False
     settings_description['recover_accelerations'] = 'Recover structural system accelerations as additional outputs.'
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
@@ -113,18 +112,20 @@ class LinearAssembler(BaseSolver):
         self.settings = dict()
         self.data = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
 
         self.data = data
         if custom_settings:
             self.data.settings[self.solver_id] = custom_settings
             self.settings = self.data.settings[self.solver_id]
-        # else:custom_settings
 
         else:
             self.settings = data.settings[self.solver_id]
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
-                                 options=self.settings_options, no_ctype=True)
+        settings_utils.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default,
+                           options=self.settings_options,
+                           no_ctype=True)
 
         # Get consistent linearisation timestep
         ii_step = self.settings['linearisation_tstep']
@@ -141,17 +142,11 @@ class LinearAssembler(BaseSolver):
         # Create data.linear
         self.data.linear = Linear(tsaero0, tsstruct0)
 
-        # Load available systems
-        import sharpy.linear.assembler
-
-        # Load roms
-        import sharpy.rom
-
         lsys = ss_interface.initialise_system(self.settings['linear_system'])
         lsys.initialise(data)
         self.data.linear.linear_system = lsys
 
-    def run(self):
+    def run(self, **kwargs):
 
         self.data.linear.ss = self.data.linear.linear_system.assemble()
 

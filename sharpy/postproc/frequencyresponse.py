@@ -111,7 +111,7 @@ class FrequencyResponse(solver_interface.BaseSolver):
         self.wv = None
         self.caller = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
 
         self.data = data
 
@@ -119,9 +119,11 @@ class FrequencyResponse(solver_interface.BaseSolver):
             self.settings = self.data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default,
-                                       self.settings_options,
-                                       no_ctype=True)
+        settings_utils.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default,
+                           self.settings_options,
+                           no_ctype=True)
 
         self.print_info = self.settings['print_info']
 
@@ -154,7 +156,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
             os.makedirs(self.folder)
         self.caller = caller
 
-    def run(self, ss=None, online=False):
+
+    def run(self, **kwargs):
         """
         Computes the frequency response of the linear state-space.
 
@@ -163,7 +166,8 @@ class FrequencyResponse(solver_interface.BaseSolver):
               If not given, the response for the previously assembled systems and specified in ``target_system`` will
               be performed.
         """
-        # TODO: This postproc does not have an standard call. Maybe a @staticmethod might help
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
+        ss = settings_utils.set_value_or_default(kwargs, 'ss', None)
 
         if ss is None:
             ss_list = [find_target_system(self.data, system_name) for system_name in self.settings['target_system']]

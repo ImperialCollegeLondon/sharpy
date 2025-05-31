@@ -3,7 +3,7 @@ import numpy as np
 from tvtk.api import tvtk, write_data
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.generator_interface as gen_interface
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 import sharpy.aero.utils.uvlmlib as uvlmlib
 import ctypes as ct
 from sharpy.utils.constants import vortex_radius_def
@@ -63,7 +63,7 @@ class PlotFlowField(BaseSolver):
     settings_default['vortex_radius'] = vortex_radius_def
     settings_description['vortex_radius'] = 'Distance below which inductions are not computed.'
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description, settings_options)
 
     def __init__(self):
@@ -72,14 +72,16 @@ class PlotFlowField(BaseSolver):
         self.folder = None
         self.caller = None
 
-    def initialise(self, data, custom_settings=None, caller=None):
+    def initialise(self, data, custom_settings=None, caller=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default,
-                                 self.settings_options)
+        settings_utils.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default,
+                           self.settings_options)
 
         self.folder = data.output_folder + '/' + 'GenerateFlowField/'
         if not os.path.isdir(self.folder):
@@ -89,13 +91,13 @@ class PlotFlowField(BaseSolver):
         velocity_generator_type = gen_interface.generator_from_string(
             self.settings['velocity_field_generator'])
         self.velocity_generator = velocity_generator_type()
-        self.velocity_generator.initialise(self.settings['velocity_field_input'])
+        self.velocity_generator.initialise(self.settings['velocity_field_input'], restart=restart)
 
         # init postproc grid generator
         postproc_grid_generator_type = gen_interface.generator_from_string(
             self.settings['postproc_grid_generator'])
         self.postproc_grid_generator = postproc_grid_generator_type()
-        self.postproc_grid_generator.initialise(self.settings['postproc_grid_input'])
+        self.postproc_grid_generator.initialise(self.settings['postproc_grid_input'], restart=restart)
         self.caller = caller
 
     def output_velocity_field(self, ts):
@@ -180,7 +182,10 @@ class PlotFlowField(BaseSolver):
         filename = self.folder + "VelocityField_" + '%06u' % ts + ".vtk"
         write_data(vtk_info, filename)
 
-    def run(self, online=False):
+    def run(self, **kwargs):
+
+        online = settings_utils.set_value_or_default(kwargs, 'online', False)
+
         if online:
             if divmod(self.data.ts, self.settings['stride'])[1] == 0:
                 self.output_velocity_field(len(self.data.structure.timestep_info) - 1)

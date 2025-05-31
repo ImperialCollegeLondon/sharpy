@@ -386,6 +386,9 @@ def xbeam_solv_couplednlndyn(beam, settings):
     xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
     xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
     xbopts.relaxation_factor = ct.c_double(settings['relaxation_factor'])
+    xbopts.gravity_dir_x = ct.c_double(settings['gravity_dir'][0])
+    xbopts.gravity_dir_y = ct.c_double(settings['gravity_dir'][1])
+    xbopts.gravity_dir_z = ct.c_double(settings['gravity_dir'][2])
 
     pos_def_history = np.zeros((n_tsteps.value, beam.num_node, 3), order='F', dtype=ct.c_double)
     pos_dot_def_history = np.zeros((n_tsteps.value, beam.num_node, 3), order='F', dtype=ct.c_double)

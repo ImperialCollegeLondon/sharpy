@@ -59,7 +59,6 @@ def load_attributes(handle, path):
 
 def check_fem_dict(fem_dict):
     print('\tRunning tests for the FEM input file...', end='')
-    # import pdb; pdb.set_trace()
     (num_elem_dict, num_node_elem_dict) = np.shape(fem_dict['connectivities'])
     num_elem = fem_dict['num_elem']
     num_node_elem = fem_dict['num_node_elem']
@@ -69,7 +68,7 @@ def check_fem_dict(fem_dict):
         print(' PASSED')
 
 
-def check_aero_dict(aero_dict):
+def check_data_dict(data_dict):
     pass
 
 
@@ -161,7 +160,13 @@ def read_group(Grp):
             Hinst = list(Grp['_as_array'][()])
         else:
             N = len(MainLev) - 1
-            for nn in range(N):
+            list_ts = MainLev.copy()
+            list_ts.remove('_read_as')
+            list_ts = np.sort(np.unique(np.array(list_ts, dtype=np.int)))
+            if len(list_ts > 0):
+                for nn in range(list_ts[0] - 1):
+                    Hinst.append('NoneType')
+            for nn in list_ts:
                 name = '%.5d' % nn
                 ### extract value
                 if type(Grp[name]) is h5._hl.group.Group:

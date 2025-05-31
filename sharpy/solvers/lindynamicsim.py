@@ -2,7 +2,7 @@ import numpy as np
 import os
 import h5py as h5
 from sharpy.utils.solver_interface import solver, BaseSolver, initialise_solver
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 import sharpy.linear.src.libss as libss
 import scipy.linalg as sclalg
 import sharpy.utils.h5utils as h5utils
@@ -73,7 +73,7 @@ class LinDynamicSim(BaseSolver):
     settings_types['postprocessors_settings'] = 'dict'
     settings_default['postprocessors_settings'] = dict()
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
@@ -88,14 +88,14 @@ class LinDynamicSim(BaseSolver):
 
         self.folder = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
 
         self.data = data
         if custom_settings:
             self.settings = custom_settings
         else:
             self.settings = data.settings[self.solver_id]
-        settings.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
+        settings_utils.to_custom_types(self.settings, self.settings_types, self.settings_default, no_ctype=True)
 
         # Read initial state and input data and store in dictionary
         self.read_files()
@@ -112,7 +112,7 @@ class LinDynamicSim(BaseSolver):
         for postproc in self.settings['postprocessors']:
             self.postprocessors[postproc] = initialise_solver(postproc)
             self.postprocessors[postproc].initialise(
-                self.data, self.settings['postprocessors_settings'][postproc], caller=self)
+                self.data, self.settings['postprocessors_settings'][postproc], caller=self, restart=False)
 
     def input_vector(self, ss):
         """
@@ -149,7 +149,7 @@ class LinDynamicSim(BaseSolver):
 
         return u_vect
 
-    def run(self):
+    def run(self, **kwargs):
 
         ss = self.data.linear.ss
 
@@ -283,8 +283,6 @@ def state_to_timestep(data, x, u=None, y=None):
         modal = False
 
     aero_state = x[:-data.linear.linear_system.beam.ss.states]
-    beam_state = x[-data.linear.linear_system.beam.ss.states:] # after aero all the rest is beam, but should not use
-    # in case it is in DT the state variables do not mean the same!
 
     # Beam output
     y_beam = y[-data.linear.linear_system.beam.ss.outputs:]
@@ -340,14 +338,8 @@ def state_to_timestep(data, x, u=None, y=None):
     current_aero_tstep.zeta_dot = zeta_dot
     current_aero_tstep.u_ext = u_ext
 
-    # self.data.aero.timestep_info.append(current_aero_tstep)
-
     aero_forces_vec = np.concatenate([forces[i_surf][:3, :, :].reshape(-1, order='C') for i_surf in range(len(forces))])
     beam_forces = data.linear.linear_system.couplings['Ksa'].dot(aero_forces_vec)
-
-    if u is not None:
-        u_struct = u[-data.linear.linear_system.beam.ss.inputs:]
-    # y_struct = y[:self.data.linear.lsys[sys_id].lsys['LinearBeam'].ss.outputs]
 
     # Reconstruct the state if modal
     if modal:
@@ -356,9 +348,7 @@ def state_to_timestep(data, x, u=None, y=None):
     else:
         x_s = y_beam
     y_s = beam_forces #+ phi.dot(u_struct)
-    # y_s = self.data.linear.lsys['LinearBeam'].sys.U.T.dot(y_struct)
 
     current_struct_step = data.linear.linear_system.beam.unpack_ss_vector(x_s, y_s, data.linear.tsstruct0)
-    # data.structure.timestep_info.append(current_struct_step)
 
     return current_aero_tstep, current_struct_step

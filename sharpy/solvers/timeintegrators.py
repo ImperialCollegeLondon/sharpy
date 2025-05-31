@@ -1,7 +1,7 @@
 import numpy as np
 import ctypes as ct
 
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 from sharpy.utils.solver_interface import solver
 
 
@@ -23,7 +23,7 @@ class _BaseTimeIntegrator():
         pass
 
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
         pass
 
 
@@ -71,20 +71,22 @@ class NewmarkBeta(_BaseTimeIntegrator):
 
     def __init__(self):
 
+        self.sys_size = None
+        self.num_LM_eq = None
         self.dt = None
         self.beta = None
         self.gamma = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
 
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings,
-                                 self.settings_types,
-                                 self.settings_default,
-                                 no_ctype=True)
+        settings_utils.to_custom_types(self.settings,
+                           self.settings_types,
+                           self.settings_default,
+                           no_ctype=True)
 
         self.dt = self.settings['dt']
         self.gamma = 0.5 + self.settings['newmark_damp']
@@ -168,19 +170,23 @@ class GeneralisedAlpha(_BaseTimeIntegrator):
 
     def __init__(self):
 
+        self.num_LM_eq = None
+        self.sys_size = None
+        self.om_af = None
+        self.om_am = None
         self.dt = None
         self.am = None
         self.af = None
         self.gamma = None
         self.beta = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
 
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings,
+        settings_utils.to_custom_types(self.settings,
                                  self.settings_types,
                                  self.settings_default,
                                  no_ctype=True)

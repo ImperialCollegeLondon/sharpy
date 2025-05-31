@@ -1,4 +1,4 @@
-import sharpy.utils.settings as settings
+import sharpy.utils.settings as settings_utils
 from sharpy.utils.solver_interface import solver, BaseSolver
 
 
@@ -28,43 +28,38 @@ class NoAero(BaseSolver):
     settings_default['update_grid'] = True
     settings_description['update_grid'] = 'Update aerodynamic grid as the structure deforms.'
 
-    settings_table = settings.SettingsTable()
+    settings_table = settings_utils.SettingsTable()
     __doc__ += settings_table.generate(settings_types, settings_default, settings_description)
 
     def __init__(self):
         self.data = None
         self.settings = None
 
-    def initialise(self, data, custom_settings=None):
+    def initialise(self, data, custom_settings=None, restart=False):
         self.data = data
         if custom_settings is None:
             self.settings = data.settings[self.solver_id]
         else:
             self.settings = custom_settings
-        settings.to_custom_types(self.settings,
-                                 self.settings_types,
-                                 self.settings_default,
-                                 no_ctype=True)
+        settings_utils.to_custom_types(self.settings,
+                                       self.settings_types,
+                                       self.settings_default,
+                                       no_ctype=True)
 
         if len(self.data.aero.timestep_info) == 0:  # initialise with zero timestep for static sims
             self.update_step()
 
-    def run(self,
-            aero_tstep=None,
-            structure_tstep=None,
-            convect_wake=True,
-            dt=None,
-            t=None,
-            unsteady_contribution=False):
+    def run(self, **kwargs):
+
+        aero_tstep = settings_utils.set_value_or_default(kwargs, 'aero_step', self.data.aero.timestep_info[-1])
+        dt = settings_utils.set_value_or_default(kwargs, 'dt', self.settings['dt'])
 
         # generate the wake because the solid shape might change
-        if aero_tstep is None:
-            aero_tstep = self.data.aero.timestep_info[self.data.ts]
         self.data.aero.wake_shape_generator.generate({'zeta': aero_tstep.zeta,
-                                            'zeta_star': aero_tstep.zeta_star,
-                                            'gamma': aero_tstep.gamma,
-                                            'gamma_star': aero_tstep.gamma_star,
-                                            'dist_to_orig': aero_tstep.dist_to_orig})
+                                                      'zeta_star': aero_tstep.zeta_star,
+                                                      'gamma': aero_tstep.gamma,
+                                                      'gamma_star': aero_tstep.gamma_star,
+                                                      'dist_to_orig': aero_tstep.dist_to_orig})
 
         return self.data
 
@@ -79,7 +74,7 @@ class NoAero(BaseSolver):
                                          -1,
                                          beam_ts=-1)
 
-    def update_custom_grid(self, structure_tstep, aero_tstep):
+    def update_custom_grid(self, structure_tstep, aero_tstep, nl_body_tstep=None):
         # called by DynamicCoupled
         if self.settings['update_grid']:
             self.data.aero.generate_zeta_timestep_info(structure_tstep,

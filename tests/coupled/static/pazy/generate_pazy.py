@@ -1,4 +1,3 @@
-from tkinter import S
 import sharpy.cases.templates.flying_wings as wings
 import sharpy.sharpy_main
 
@@ -12,12 +11,12 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
     symmetry_condition = kwargs.get('symmetry_condition', False)
     dynamic = kwargs.get('dynamic', False)
     n_tsteps = kwargs.get('n_tsteps', 1)
-    print("n_tsteps= ", n_tsteps)
 
     # Lattice Discretisation
     M = kwargs.get('M', 4)
     N = kwargs.get('N', 32)
     M_star_fact = kwargs.get('Ms', 10)
+    flag_multiple_mstar_input = kwargs.get('test_multiple_inputs', False)
 
     # SHARPy nonlinear reference solution
     ws = wings.PazyControlSurface(M=M,
@@ -51,7 +50,7 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
 
     sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.sharpy'])
 
-def set_final_settings(ws, dynamic = False, output_folder='/output/', symmetry_condition = False, gravity_on = True, n_tsteps=1):
+def set_final_settings(ws, dynamic = False, output_folder='/output/', symmetry_condition = False, gravity_on = True, n_tsteps=1,flag_multiple_mstar_input=False):
     ws.config['SHARPy'] = {
         'flow':
             ['BeamLoader',
@@ -78,15 +77,18 @@ def set_final_settings(ws, dynamic = False, output_folder='/output/', symmetry_c
         'freestream_dir': ws.u_inf_direction,
         'wake_shape_generator': 'StraightWake',
         'wake_shape_generator_input': {'u_inf': ws.u_inf,
-                                    'u_inf_direction': ws.u_inf_direction,
-                                    'dt': ws.dt}}
-
-    ws.config['StaticUvlm'] = {
-        'rho': ws.rho,
-        'velocity_field_generator': 'SteadyVelocityField',
-        'velocity_field_input': {
-            'u_inf': ws.u_inf,
-            'u_inf_direction': ws.u_inf_direction},
+                                       'u_inf_direction': ws.u_inf_direction,
+                                       'dt': ws.dt}}
+    if flag_multiple_mstar_input:
+        ws.config['AerogridLoader']['mstar'] = [ws.config['AerogridLoader']['mstar'], ws.config['AerogridLoader']['mstar']]
+        ws.config['SHARPy']['flow'] = ['BeamLoader','AerogridLoader']
+    else:
+        ws.config['StaticUvlm'] = {
+            'rho': ws.rho,
+            'velocity_field_generator': 'SteadyVelocityField',
+            'velocity_field_input': {
+                'u_inf': ws.u_inf,
+                'u_inf_direction': ws.u_inf_direction},
         'rollup_dt': ws.dt,
         'print_info': 'on',
         'horseshoe': 'on',
@@ -95,34 +97,34 @@ def set_final_settings(ws, dynamic = False, output_folder='/output/', symmetry_c
         'num_cores': 4,
         'n_rollup': 0,
         'rollup_aic_refresh': 0,
-        'rollup_tolerance': 1e-4}
+            'rollup_tolerance': 1e-4}
 
-    settings = dict()
-    settings['NonLinearStatic'] = {'print_info': 'off',
-                                'max_iterations': 200,
-                                'num_load_steps': 5,
-                                'delta_curved': 1e-6,
-                                'min_delta': 1e-8,
-                                'gravity_on': gravity_on,
-                                'gravity': 9.81}
+        settings = dict()
+        settings['NonLinearStatic'] = {'print_info': 'off',
+                                    'max_iterations': 200,
+                                    'num_load_steps': 5,
+                                    'delta_curved': 1e-6,
+                                    'min_delta': 1e-8,
+                                    'gravity_on': gravity_on,
+                                    'gravity': 9.81}
 
-    ws.config['StaticCoupled'] = {
-        'print_info': 'on',
-        'max_iter': 200,
-        'n_load_steps': 4,
-        'tolerance': 1e-5,
-        'relaxation_factor': 0.1,
-        'aero_solver': 'StaticUvlm',
-        'aero_solver_settings': {
-            'rho': ws.rho,
-            'print_info': 'off',
-            'horseshoe': 'on',
-            'num_cores': 4,
-            'n_rollup': 0,
-            'rollup_dt': ws.dt,
-            'rollup_aic_refresh': 1,
-            'rollup_tolerance': 1e-4,
-            'velocity_field_generator': 'SteadyVelocityField',
+        ws.config['StaticCoupled'] = {
+            'print_info': 'on',
+            'max_iter': 200,
+            'n_load_steps': 4,
+            'tolerance': 1e-5,
+            'relaxation_factor': 0.1,
+            'aero_solver': 'StaticUvlm',
+            'aero_solver_settings': {
+                'rho': ws.rho,
+                'print_info': 'off',
+                'horseshoe': 'on',
+                'num_cores': 4,
+                'n_rollup': 0,
+                'rollup_dt': ws.dt,
+                'rollup_aic_refresh': 1,
+                'rollup_tolerance': 1e-4,
+                'velocity_field_generator': 'SteadyVelocityField',
             'velocity_field_input': {
                 'u_inf': ws.u_inf,
                 'u_inf_direction': ws.u_inf_direction},
@@ -132,14 +134,14 @@ def set_final_settings(ws, dynamic = False, output_folder='/output/', symmetry_c
         'structural_solver': 'NonLinearStatic',
         'structural_solver_settings': settings['NonLinearStatic']}
 
-    ws.config['AerogridPlot'] = {'include_rbm': 'off',
-                                'include_applied_forces': 'on',
-                                'minus_m_star': 0}
+        ws.config['AerogridPlot'] = {'include_rbm': 'off',
+                                    'include_applied_forces': 'on',
+                                    'minus_m_star': 0}
 
-    ws.config['BeamPlot'] = {'include_rbm': 'off',
-                            'include_applied_forces': 'on'}
+        ws.config['BeamPlot'] = {'include_rbm': 'off',
+                                'include_applied_forces': 'on'}
 
-    ws.config['WriteVariablesTime'] = {'structure_variables': ['pos'],
+        ws.config['WriteVariablesTime'] = {'structure_variables': ['pos'],
                                     'structure_nodes': list(range(0, ws.num_node_surf)),
                                     'cleanup_old_solution': 'on'}
 
@@ -205,3 +207,4 @@ def set_final_settings(ws, dynamic = False, output_folder='/output/', symmetry_c
 
     ws.config.write()
 
+    sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.sharpy'])

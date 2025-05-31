@@ -11,7 +11,7 @@ If you are submitting a bug report:
 same branch.
 
 2. Double check that your python distribution is updated by comparing with 
-the `utils/environment_*.yml` file.
+the `utils/environment.yml` file.
 
 3. Try to assemble a minimal working example that can be run quickly and easily.
 
@@ -212,26 +212,28 @@ In the release candidate branch:
 
 2. Update `version.json` file
 
-3. Update version in `sharpy/__init__.py` file
+3. Update version in `sharpy/version.py` file
 
 4. Commit, push and wait for tests to pass
 
 5. Merge release candidate branch into `main` branch
 
 In the `main` branch:
-
-1. Run the [github_changelog_generator](https://github.com/github-changelog-generator/github-changelog-generator) tool locally with the following parameters:
-  ```
-  github_changelog_generator -u imperialcollegelondon -p sharpy -t <your_github_token> --future-release <new_release_version>
-  ```
-
-2. Push the changes to the `CHANGELOG.md` file
   
-3. Create a release tag. IMPORTANT: ensure it is an *annotated* tag, otherwise the version and commit number in SHARPy will not display properly
+1. Create a release tag. IMPORTANT: ensure it is an *annotated* tag, otherwise the version and commit number in SHARPy will not display properly
   ```
   git tag -a <tagname>
   git push origin --tags -f
   ```
   where `<tagname>` is something like `2.0`.
+
+2. Run the [github_changelog_generator](https://github.com/github-changelog-generator/github-changelog-generator) tool locally with the following parameters:
+  ```
+  github_changelog_generator -u imperialcollegelondon -p sharpy -t <your_github_token> --future-release <new_release_version>
+  ```
+
+3. Push the changes to the `CHANGELOG.md` file
   
 4. Create the GitHub release, choosing the newly created tag from the dropdown menu. Do not create a tag from the dropdown menu directly because it will not be an annotated tag
+
+5. (Optional) Merge `main` branch back into `develop` branch

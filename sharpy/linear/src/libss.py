@@ -945,6 +945,65 @@ class ss_block():
         return xn1, yn
 
 
+    def get_mats(self):
+        
+        A = np.zeros((self.states, self.states))
+        B = np.zeros((self.states, self.inputs))
+        C = np.zeros((self.outputs, self.states))
+        D = np.zeros((self.outputs, self.inputs))
+        
+        iloc = 0
+        for i in range(self.blocks_x):
+            jloc = 0
+            for j in range(self.blocks_x):
+                if not self.A[i][j] is None:
+                    if type(self.A[i][j]) == libsp.csc_matrix:
+                        A[iloc:iloc+self.S_x[i], jloc:jloc+self.S_x[j]] = self.A[i][j].todense()
+                    else:
+                        A[iloc:iloc+self.S_x[i], jloc:jloc+self.S_x[j]] = self.A[i][j].copy()
+                jloc += self.S_x[j]
+            iloc += self.S_x[i]
+        
+        iloc = 0
+        for i in range(self.blocks_x):
+            jloc = 0
+            for j in range(self.blocks_u):
+                if not self.B[i][j] is None:
+                    # print(i, j, iloc, jloc, self.S_x[i], self.S_u[j], self.B[i][j].shape)
+                    # print(iloc, iloc+self.S_x[i], jloc, jloc+self.S_u[j])
+                    if type(self.B[i][j]) == libsp.csc_matrix:
+                        B[iloc:iloc+self.S_x[i], jloc:jloc+self.S_u[j]] = self.B[i][j].todense()
+                    else:
+                        B[iloc:iloc+self.S_x[i], jloc:jloc+self.S_u[j]] = self.B[i][j].copy()
+                jloc += self.S_u[j]
+            iloc += self.S_x[i]
+
+        iloc = 0
+        for i in range(self.blocks_y):
+            jloc = 0
+            for j in range(self.blocks_x):
+                if not self.C[i][j] is None:
+                    if type(self.C[i][j]) == libsp.csc_matrix:
+                        C[iloc:iloc+self.S_y[i], jloc:jloc+self.S_x[j]] = self.C[i][j].todense()
+                    else:
+                        C[iloc:iloc+self.S_y[i], jloc:jloc+self.S_x[j]] = self.C[i][j].copy()
+                jloc += self.S_x[j]
+            iloc += self.S_y[i]
+        
+        iloc = 0
+        for i in range(self.blocks_y):
+            jloc = 0
+            for j in range(self.blocks_u):
+                if not self.D[i][j] is None:
+                    if type(self.D[i][j]) == libsp.csc_matrix:
+                        D[iloc:iloc+self.S_y[i], jloc:jloc+self.S_u[j]] = self.D[i][j].todense()
+                    else:
+                        D[iloc:iloc+self.S_y[i], jloc:jloc+self.S_u[j]] = self.D[i][j].copy()
+                jloc += self.S_u[j]
+            iloc += self.S_y[i]
+
+        return A, B, C, D
+
 # ---------------------------------------- Methods for state-space manipulation
 def project(ss_here, WT, V):
     """
@@ -1782,12 +1841,12 @@ def Hnorm_from_freq_resp(gv, method):
     Warning: only use for SISO systems! For MIMO definitions are different
     """
 
-    if method is 'H2':
+    if method == 'H2':
         Nk = len(gv)
         gvsq = gv * gv.conj()
         Gnorm = np.sqrt(np.trapz(gvsq / (Nk - 1.)))
 
-    elif method is 'Hinf':
+    elif method == 'Hinf':
         Gnorm = np.linalg.norm(gv, np.inf)
 
     if np.abs(Gnorm.imag / Gnorm.real) > 1e-16:
