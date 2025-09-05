@@ -192,7 +192,7 @@ def construct_krylov(r, lu_A, B, approx_type='Pade', side='b'):
 
 
 def lu_factor(sigma, A):
-    """
+    r"""
     LU Factorisation wrapper of:
 
     .. math:: LU = (\sigma \mathbf{I} - \mathbf{A})
@@ -214,7 +214,7 @@ def lu_factor(sigma, A):
 
 
 def lu_solve(lu_A, b, trans=0):
-    """
+    r"""
     LU solve wrapper.
 
     Computes the solution to

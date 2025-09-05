@@ -1,6 +1,104 @@
 """Plotting utilities
 """
 import numpy as np
+from numpy import ndarray
+
+from typing import Optional
+from os import PathLike
+
+
+import vtk
+from vtk.numpy_interface import algorithms as algs
+from vtk.numpy_interface import dataset_adapter as dsa
+
+def plot_frame_to_vtk(
+    grid_arr: ndarray,
+    filename: str | PathLike,
+    node_scalar_data: Optional[dict[str, ndarray]] = None,
+    node_vector_data: Optional[dict[str, ndarray]] = None,
+    cell_scalar_data: Optional[dict[str, ndarray]] = None,
+    cell_vector_data: Optional[dict[str, ndarray]] = None,
+) -> None:
+    r"""
+    Plot a single timestep of grid data
+    :param grid_arr: Structured grid array with shape (n_x, n_y, n_z, 3)
+    :param filename: Base filename, including directory. Information on the frame number will be
+    appended to this.
+    :param node_scalar_data: Dictionary of node scalar data
+    :param node_vector_data: Dictionary of node vector data
+    :param cell_scalar_data: Dictionary of cell scalar data
+    :param cell_vector_data: Dictionary of cell vector data
+    """
+
+    if grid_arr.shape[-1] != 3:
+        raise ValueError("grid_arr must have trailing dimension of size 3")
+
+    # planar grid should have 3 dimensions, while volume grid should have 4 dimensions
+    match grid_arr.ndim:
+        case 3:
+            is_planar = True
+        case 4:
+            is_planar = False
+        case _:
+            raise ValueError(
+                f"grid_arr must have 3 or 4 dimensions, got {grid_arr.ndim}-D array"
+            )
+
+    sg = vtk.vtkStructuredGrid()
+    if is_planar:
+        sg.SetDimensions(*grid_arr.shape[:-1], 1)
+    else:
+        sg.SetDimensions(*grid_arr.shape[:-1])
+
+    i_swap = 2 - int(is_planar)  # we swap axes as VTK likes z, y, x order
+
+    # add point coordinate data
+    points = vtk.vtkPoints()
+    points_vec = algs.make_vector(
+        *[np.swapaxes(grid_arr[..., i], 0, i_swap).ravel() for i in range(3)]
+    )
+    points.SetData(dsa.numpyTovtkDataArray(points_vec, "Points"))
+    sg.SetPoints(points)
+
+    # cell scalar data
+    if cell_scalar_data is not None:
+        for name, arr in cell_scalar_data.items():
+            sg.GetCellData().AddArray(
+                dsa.numpyTovtkDataArray(np.swapaxes(arr, 0, i_swap).ravel(), name)
+            )
+
+    # cell vector data
+    if cell_vector_data is not None:
+        for name, arr in cell_vector_data.items():
+            vectors = algs.make_vector(
+                np.swapaxes(arr[..., 0], 0, i_swap).ravel(),
+                np.swapaxes(arr[..., 1], 0, i_swap).ravel(),
+                np.swapaxes(arr[..., 2], 0, i_swap).ravel(),
+            )
+            sg.GetCellData().AddArray(dsa.numpyTovtkDataArray(vectors, name))
+
+    # point scalar data
+    if node_scalar_data is not None:
+        for name, arr in node_scalar_data.items():
+            sg.GetPointData().AddArray(
+                dsa.numpyTovtkDataArray(np.swapaxes(arr, 0, i_swap).ravel(), name)
+            )
+
+    # point vector data
+    if node_vector_data is not None:
+        for name, arr in node_vector_data.items():
+            vectors = algs.make_vector(
+                np.swapaxes(arr[..., 0], 0, i_swap).ravel(),
+                np.swapaxes(arr[..., 1], 0, i_swap).ravel(),
+                np.swapaxes(arr[..., 2], 0, i_swap).ravel(),
+            )
+            sg.GetPointData().AddArray(dsa.numpyTovtkDataArray(vectors, name))
+
+    # write to file
+    writer = vtk.vtkXMLStructuredGridWriter()
+    writer.SetFileName(filename)
+    writer.SetInputData(sg)
+    writer.Write()
 
 
 def set_axes_equal(ax):

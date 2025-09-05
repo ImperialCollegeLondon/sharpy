@@ -205,7 +205,7 @@ class LinearGust(metaclass=ABCMeta):
         return gustss
 
     def discretise_domain(self):
-        """
+        r"""
         Generates a "gust-station" domain, aligned with the free-stream velocity equispaced in
         :math:`\Delta t U_\infty` increments.
 

@@ -1,7 +1,6 @@
 import os
 
 import numpy as np
-from tvtk.api import tvtk, write_data
 
 import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
@@ -10,6 +9,8 @@ from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as su
 import sharpy.aero.utils.uvlmlib as uvlmlib
 from sharpy.utils.constants import vortex_radius_def
+
+from ..utils.plotutils import plot_frame_to_vtk
 
 
 @solver
@@ -131,7 +132,7 @@ class AerogridPlot(BaseSolver):
 
     def run(self, **kwargs):
     
-        online = su.set_value_or_default(kwargs, 'online', False)
+        online = kwargs.get('online', False)
 
         # TODO: Create a dictionary to plot any variable as in beamplot
         if not online:
@@ -167,205 +168,88 @@ class AerogridPlot(BaseSolver):
                                                    struct_tstep)
 
         for i_surf in range(aero_tstep.n_surf):
-            filename = (self.body_filename +
-                        '_' +
-                        ('%02u_' % i_surf) +
-                        ('%06u' % self.ts) +
-                        '.vtu')
+            filename = f"{self.body_filename}_{i_surf:02d}_{self.ts:06d}.vtu"
 
-            dims = aero_tstep.dimensions[i_surf, :]
-            point_data_dim = (dims[0]+1)*(dims[1]+1)  # + (dims_star[0]+1)*(dims_star[1]+1)
-            panel_data_dim = (dims[0])*(dims[1])  # + (dims_star[0])*(dims_star[1])
+            zeta = np.moveaxis(aero_tstep.zeta[i_surf], 0, -1)   # [m+1, n+1, 3]
+            zeta_dot = np.moveaxis(aero_tstep.zeta_dot[i_surf][:3, ...], 0, -1)  # [3, m+1, n+1]
+            gamma = aero_tstep.gamma[i_surf]  # [m, n]
+            gamma_dot = aero_tstep.gamma_dot[i_surf]  # [m, n]
+            normals = np.moveaxis(aero_tstep.normals[i_surf], 0, -1)  # [m, n, 3]
+            surf_id = np.ones(gamma.shape, dtype=int) * i_surf
 
-            coords = np.zeros((point_data_dim, 3))
-            conn = []
-            panel_id = np.zeros((panel_data_dim,), dtype=int)
-            panel_surf_id = np.zeros((panel_data_dim,), dtype=int)
-            panel_gamma = np.zeros((panel_data_dim,))
-            panel_gamma_dot = np.zeros((panel_data_dim,))
-            normal = np.zeros((panel_data_dim, 3))
-            point_struct_id = np.zeros((point_data_dim,), dtype=int)
-            point_cf = np.zeros((point_data_dim, 3))
-            point_unsteady_cf = np.zeros((point_data_dim, 3))
-            zeta_dot = np.zeros((point_data_dim, 3))
-            u_inf = np.zeros((point_data_dim, 3))
-            if self.settings['include_velocities']:
-                vel = np.zeros((point_data_dim, 3))
-            counter = -1
-
-            # coordinates of corners
-            for i_n in range(dims[1]+1):
-                for i_m in range(dims[0]+1):
-                    counter += 1
-                    coords[counter, :] = aero_tstep.zeta[i_surf][:, i_m, i_n]
-                    if self.settings['include_rbm']:
-                        #TODO: fix for lack of g frame description in nonlineardynamicmultibody.py
-                        if struct_tstep.mb_dict is None:
-                            coords[counter, :] += struct_tstep.for_pos[0:3]
-                        else:
-                            #TODO: uncomment for dynamic trim
-                            # try:
-                            #     cga = algebra.euler2rot([0, self.data.trimmed_values[0], 0])
-                            #     coords[counter, :] += np.dot(cga, struct_tstep.for_pos[0:3])
-                            # except AttributeError:
-                            coords[counter, :] += np.dot(self.data.structure.timestep_info[0].cga(), struct_tstep.for_pos[0:3])
-                    if self.settings['include_forward_motion']:
-                        coords[counter, 0] -= self.settings['dt']*self.ts*self.settings['u_inf']
+            if self.settings['include_rbm']:
+                if struct_tstep.mb_dict is None:
+                    zeta += np.expand_dims(struct_tstep.for_pos[:3], (0, 1))
+                else:
+                    zeta += np.expand_dims(self.data.structure.timestep_info[0].cga() @ struct_tstep.for_pos[:3], (0, 1))
+            if self.settings['include_forward_motion']:
+                zeta[..., 0] -= self.settings['dt'] * self.ts * self.settings['u_inf']
 
             if self.settings['include_incidence_angle']:
-                incidence_angle = np.zeros_like(panel_gamma)
+                incidence_angle = aero_tstep.postproc_cell['incidence_angle'][i_surf]
+            else:
+                incidence_angle = np.zeros(gamma.shape)
 
-            counter = -1
-            node_counter = -1
-            for i_n in range(dims[1] + 1):
-                global_counter = self.data.aero.aero2struct_mapping[i_surf][i_n]
-                for i_m in range(dims[0] + 1):
-                    node_counter += 1
-                    # point data
-                    point_struct_id[node_counter] = global_counter
-                    point_cf[node_counter, :] = aero_tstep.forces[i_surf][0:3, i_m, i_n]
-                    try:
-                        point_unsteady_cf[node_counter, :] = aero_tstep.dynamic_forces[i_surf][0:3, i_m, i_n]
-                    except AttributeError:
-                        pass
-                    try:
-                        zeta_dot[node_counter, :] = aero_tstep.zeta_dot[i_surf][0:3, i_m, i_n]
-                    except AttributeError:
-                        pass
-                    try:
-                        u_inf[node_counter, :] = aero_tstep.u_ext[i_surf][0:3, i_m, i_n]
-                    except AttributeError:
-                        pass
-                    if i_n < dims[1] and i_m < dims[0]:
-                        counter += 1
-                    else:
-                        continue
 
-                    conn.append([node_counter + 0,
-                                 node_counter + 1,
-                                 node_counter + dims[0]+2,
-                                 node_counter + dims[0]+1])
-                    # cell data
-                    normal[counter, :] = aero_tstep.normals[i_surf][:, i_m, i_n]
-                    panel_id[counter] = counter
-                    panel_surf_id[counter] = i_surf
-                    panel_gamma[counter] = aero_tstep.gamma[i_surf][i_m, i_n]
-                    panel_gamma_dot[counter] = aero_tstep.gamma_dot[i_surf][i_m, i_n]
+            point_struct_id = np.broadcast_to(np.expand_dims(self.data.aero.aero2struct_mapping[i_surf], 0), zeta.shape[:2])
+            point_cf = np.moveaxis(aero_tstep.forces[i_surf][:3, ...], 0, -1)
 
-                    if self.settings['include_incidence_angle']:
-                        incidence_angle[counter] = \
-                            aero_tstep.postproc_cell['incidence_angle'][i_surf][i_m, i_n]
+            try:
+                point_unsteady_cf = np.moveaxis(aero_tstep.dynamic_forces[i_surf][:3, ...], 0, -1)
+            except AttributeError:
+                point_unsteady_cf = np.zeros(zeta.shape)
+
+            try:
+                u_inf = np.moveaxis(aero_tstep.u_ext[i_surf][:3, ...], 0, -1)
+            except AttributeError:
+                u_inf = np.zeros(zeta.shape)
+
 
             if self.settings['include_velocities']:
                 vel = uvlmlib.uvlm_calculate_total_induced_velocity_at_points(aero_tstep,
-                                                                              coords,
+                                                                              zeta.reshape(-1, 3),
                                                                               self.settings['vortex_radius'],
                                                                               struct_tstep.for_pos,
-                                                                              self.settings['num_cores'])
+                                                                              self.settings['num_cores']).reshape(zeta.shape)
+            else:
+                vel = np.zeros(zeta.shape)
 
-            ug = tvtk.UnstructuredGrid(points=coords)
-            ug.set_cells(tvtk.Quad().cell_type, conn)
-            ug.cell_data.scalars = panel_id
-            ug.cell_data.scalars.name = 'panel_n_id'
-            ug.cell_data.add_array(panel_surf_id)
-            ug.cell_data.get_array(1).name = 'panel_surface_id'
-            ug.cell_data.add_array(panel_gamma)
-            ug.cell_data.get_array(2).name = 'panel_gamma'
-            ug.cell_data.add_array(panel_gamma_dot)
-            ug.cell_data.get_array(3).name = 'panel_gamma_dot'
-            if self.settings['include_incidence_angle']:
-                ug.cell_data.add_array(incidence_angle)
-                ug.cell_data.get_array(4).name = 'incidence_angle'
-            ug.cell_data.vectors = normal
-            ug.cell_data.vectors.name = 'panel_normal'
-            ug.point_data.scalars = np.arange(0, coords.shape[0])
-            ug.point_data.scalars.name = 'n_id'
-            ug.point_data.add_array(point_struct_id)
-            ug.point_data.get_array(1).name = 'point_struct_id'
-            ug.point_data.add_array(point_cf)
-            ug.point_data.get_array(2).name = 'point_steady_force'
-            ug.point_data.add_array(point_unsteady_cf)
-            ug.point_data.get_array(3).name = 'point_unsteady_force'
-            ug.point_data.add_array(zeta_dot)
-            ug.point_data.get_array(4).name = 'zeta_dot'
-            ug.point_data.add_array(u_inf)
-            ug.point_data.get_array(5).name = 'u_inf'
-            if self.settings['include_velocities']:
-                ug.point_data.add_array(vel)
-                ug.point_data.get_array(6).name = 'velocity'
-            write_data(ug, filename)
+            plot_frame_to_vtk(zeta,
+                              filename,
+                              node_scalar_data={'point_struct_id': point_struct_id},
+                              node_vector_data={'zeta_dot': zeta_dot, 'point_steady_force': point_cf, 'point_unsteady_force': point_unsteady_cf, 'u_inf': u_inf, 'velocity': vel},
+                              cell_scalar_data={'gamma': gamma, "gamma_dot": gamma_dot, "incidence_angle": incidence_angle, 'surf_id': surf_id},
+                              cell_vector_data={'panel_normal': normals},)
+
 
     def plot_wake(self):
         for i_surf in range(self.data.aero.timestep_info[self.ts].n_surf):
-            filename = (self.wake_filename +
-                        '_' +
-                        ('%02u_' % i_surf) +
-                        ('%06u' % self.ts) +
-                        '.vtu')
+            filename = f"{self.wake_filename}_{i_surf:02d}_{self.ts:06d}.vtu"
 
-            dims_star = self.data.aero.timestep_info[self.ts].dimensions_star[i_surf, :].copy()
-            dims_star[0] -= self.settings['minus_m_star']
+            zeta_star = np.moveaxis(self.data.aero.timestep_info[self.ts].zeta_star[i_surf], 0, -1) # [m*+1, n+1, 3]
+            gamma = self.data.aero.timestep_info[self.ts].gamma_star[i_surf]  # [m*, n]
 
-            point_data_dim = (dims_star[0]+1)*(dims_star[1]+1)
-            panel_data_dim = (dims_star[0])*(dims_star[1])
+            surf_id = np.ones(gamma.shape, dtype=int) * i_surf
 
-            coords = np.zeros((point_data_dim, 3))
-            conn = []
-            panel_id = np.zeros((panel_data_dim,), dtype=int)
-            panel_surf_id = np.zeros((panel_data_dim,), dtype=int)
-            panel_gamma = np.zeros((panel_data_dim,))
-            counter = -1
-            # rotation_mat = self.data.structure.timestep_info[self.ts].cga().T
-            # coordinates of corners
-            for i_n in range(dims_star[1]+1):
-                for i_m in range(dims_star[0]+1):
-                    counter += 1
-                    coords[counter, :] = self.data.aero.timestep_info[self.ts].zeta_star[i_surf][:, i_m, i_n]
-                    if self.settings['include_rbm']:
-                        #TODO: fix for lack of g frame description in nonlineardynamicmultibody.py
-                        if self.data.structure.timestep_info[self.ts].mb_dict is None:
-                            coords[counter, :] += self.data.structure.timestep_info[self.ts].for_pos[0:3]
-                        else:
-                            #TODO: uncomment for dynamic trim
-                            # try:
-                            #     cga = algebra.euler2rot([0, self.data.trimmed_values[0], 0])
-                            #     coords[counter, :] += np.dot(cga, self.data.structure.timestep_info[self.ts].for_pos[0:3])
-                            # except AttributeError:
-                            coords[counter, :] += np.dot(self.data.structure.timestep_info[0].cga(), self.data.structure.timestep_info[self.ts].for_pos[0:3])                                                        
-                    if self.settings['include_forward_motion']:
-                        coords[counter, 0] -= self.settings['dt']*self.ts*self.settings['u_inf']
+            if self.settings['include_rbm']:
+                if self.data.structure.timestep_info[self.ts].mb_dict is None:
+                    zeta_star += np.expand_dims(self.data.structure.timestep_info[self.ts].for_pos[:3], (0, 1))
+                else:
+                    zeta_star += np.expand_dims(self.data.structure.timestep_info[0].cga()
+                                                @ self.data.structure.timestep_info[self.ts].for_pos[:3], (0, 1))
+            if self.settings['include_forward_motion']:
+                zeta_star[..., 0] -= self.settings['dt'] * self.ts * self.settings['u_inf']
 
-            counter = -1
-            node_counter = -1
-            # wake
-            for i_n in range(dims_star[1]+1):
-                for i_m in range(dims_star[0]+1):
-                    node_counter += 1
-                    # cell data
-                    if i_n < dims_star[1] and i_m < dims_star[0]:
-                        counter += 1
-                    else:
-                        continue
+            plot_frame_to_vtk(
+                zeta_star,
+                filename,
+                node_vector_data={},
+                cell_scalar_data={
+                    "gamma": gamma,
+                    "surf_id": surf_id,
+                },
+            )
 
-                    conn.append([node_counter + 0,
-                                 node_counter + 1,
-                                 node_counter + dims_star[0]+2,
-                                 node_counter + dims_star[0]+1])
-                    panel_id[counter] = counter
-                    panel_surf_id[counter] = i_surf
-                    panel_gamma[counter] = self.data.aero.timestep_info[self.ts].gamma_star[i_surf][i_m, i_n]
-
-            ug = tvtk.UnstructuredGrid(points=coords)
-            ug.set_cells(tvtk.Quad().cell_type, conn)
-            ug.cell_data.scalars = panel_id
-            ug.cell_data.scalars.name = 'panel_n_id'
-            ug.cell_data.add_array(panel_surf_id)
-            ug.cell_data.get_array(1).name = 'panel_surface_id'
-            ug.cell_data.add_array(panel_gamma)
-            ug.cell_data.get_array(2).name = 'panel_gamma'
-            ug.point_data.scalars = np.arange(0, coords.shape[0])
-            ug.point_data.scalars.name = 'n_id'
-            write_data(ug, filename)
 
     def plot_nonlifting_surfaces(self):
         nonlifting_tstep = self.data.nonlifting_body.timestep_info[self.ts]
@@ -449,22 +333,4 @@ class AerogridPlot(BaseSolver):
             ug.point_data.get_array(2).name = 'point_steady_force'
             ug.point_data.add_array(u_inf)
             ug.point_data.get_array(3).name = 'u_inf'
-            write_data(ug, filename)
-
-        def write_paraview_data(self, coords, conn, panel_id, list_cell_parameters, list_cell_names, list_point_parameters, list_point_names, filename):
-            ug = tvtk.UnstructuredGrid(points=coords)
-            
-            ug.set_cells(tvtk.Quad().cell_type, conn)
-            ug.cell_data.scalars = panel_id
-            ug.cell_data.scalars.name = 'panel_n_id'
-            for counter in range(len(list_cell_parameters)):
-                ug.cell_data.add_array(list_cell_parameters[counter])
-                ug.cell_data.get_array(counter+1).name = list_cell_names[counter]
-                
-            ug.point_data.scalars = np.arange(0, coords.shape[0])
-            ug.point_data.scalars.name = 'n_id'
-            for counter in range(len(list_point_parameters)):
-                ug.point_data.add_array(list_point_parameters[counter])
-                ug.point_data.get_array(counter+1).name = list_point_names[counter]
-            
             write_data(ug, filename)

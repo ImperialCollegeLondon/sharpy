@@ -370,7 +370,7 @@ class LinearBeam(BaseElement):
         self.sys.num_modes = len(self.sys.freq_natural)
 
     def unpack_ss_vector(self, x_n, u_n, struct_tstep):
-        """
+        r"""
         Warnings:
             Under development. Missing:
                 * Accelerations

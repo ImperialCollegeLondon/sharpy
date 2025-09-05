@@ -4,7 +4,7 @@
 import warnings
 import sys
 import dill as pickle
-import sharpy.utils.cout_utils as cout
+from .utils import cout_utils as cout
 from .version import __version__
 
 

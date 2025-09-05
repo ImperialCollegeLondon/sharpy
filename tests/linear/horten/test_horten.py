@@ -23,10 +23,6 @@ def run_rom_convergence(case_name, case_route='./cases/', output_folder='./outpu
     u_inf = kwargs.get('u_inf', 30)
 
     use_euler = True
-    if use_euler:
-        orient = 'euler'
-    else:
-        orient = 'quat'
 
     case_name += 'M%gN%gMsf%g_u%g' % (M, N, Msf, u_inf)
 

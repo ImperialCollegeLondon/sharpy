@@ -1,8 +1,8 @@
 import numpy as np
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
-from tvtk.api import tvtk, write_data
 
+from ...utils.plotutils import plot_frame_to_vtk
 
 def frequency_damping(eigenvalue):
     omega_n = np.abs(eigenvalue)
@@ -41,7 +41,7 @@ def cg(M, use_euler=False):
     return -np.array([Mrr[2, 4], Mrr[0, 5], Mrr[1, 3]]) / Mrr[0, 0]
 
 
-def scale_mode(data, eigenvector, rot_max_deg=15, perc_max=0.15):
+def scale_mode(data, eigenvector, rot_max_deg=15.0, perc_max=0.15):
     """
     Scales the eigenvector such that:
         1) the maximum change in component of the beam cartesian rotation vector
@@ -190,106 +190,48 @@ def write_zeta_vtk(zeta, zeta_ref, filename_root):
     Args:
         zeta (np.array): lattice coordinates to plot
         zeta_ref (np.array): reference lattice used to compute the magnitude of displacements
-        filename_root (str): initial part of filename (full path) without file extension (.vtk)
+        filename_root (str): initial part of filename (full path) without file extension
     """
 
     for i_surf in range(len(zeta)):
 
-        filename = filename_root + "_%02u.vtu" % (i_surf,)
-        _, M, N = zeta[i_surf].shape
+        filename = f"{filename_root}_{i_surf:02d}.vtu"
 
-        M -= 1
-        N -= 1
-        point_data_dim = (M + 1) * (N + 1)
-        panel_data_dim = M * N
+        this_zeta = np.swapaxes(zeta[i_surf], 0, -1)
+        this_zeta_ref = np.swapaxes(zeta_ref[i_surf], 0, -1)
+        disp = np.linalg.norm(this_zeta - this_zeta_ref, axis=-1)
+        panel_surf_id = np.ones((this_zeta.shape[0]-1, this_zeta.shape[1]-1), dtype=int) * i_surf
 
-        coords = np.zeros((point_data_dim, 3))
-        conn = []
-        panel_id = np.zeros((panel_data_dim,), dtype=int)
-        panel_surf_id = np.zeros((panel_data_dim,), dtype=int)
-        point_struct_id = np.zeros((point_data_dim,), dtype=int)
-        point_struct_mag = np.zeros((point_data_dim,), dtype=float)
-
-        counter = -1
-        # coordinates of corners
-        for i_n in range(N + 1):
-            for i_m in range(M + 1):
-                counter += 1
-                coords[counter, :] = zeta[i_surf][:, i_m, i_n]
-
-        counter = -1
-        node_counter = -1
-        for i_n in range(N + 1):
-            # global_counter = aero.aero2struct_mapping[i_surf][i_n]
-            for i_m in range(M + 1):
-                node_counter += 1
-                # point data
-                # point_struct_id[node_counter]=global_counter
-                point_struct_mag[node_counter] = \
-                    np.linalg.norm(zeta[i_surf][:, i_m, i_n] \
-                                   - zeta_ref[i_surf][:, i_m, i_n])
-
-                if i_n < N and i_m < M:
-                    counter += 1
-                else:
-                    continue
-
-                conn.append([node_counter + 0,
-                             node_counter + 1,
-                             node_counter + M + 2,
-                             node_counter + M + 1])
-                # cell data
-                panel_id[counter] = counter
-                panel_surf_id[counter] = i_surf
-
-        ug = tvtk.UnstructuredGrid(points=coords)
-        ug.set_cells(tvtk.Quad().cell_type, conn)
-        ug.cell_data.scalars = panel_id
-        ug.cell_data.scalars.name = 'panel_n_id'
-        ug.cell_data.add_array(panel_surf_id)
-        ug.cell_data.get_array(1).name = 'panel_surface_id'
-
-        ug.point_data.scalars = np.arange(0, coords.shape[0])
-        ug.point_data.scalars.name = 'n_id'
-        # ug.point_data.add_array(point_struct_id)
-        # ug.point_data.get_array(1).name = 'point_struct_id'
-        ug.point_data.add_array(point_struct_mag)
-        ug.point_data.get_array(1).name = 'point_displacement_magnitude'
-
-        write_data(ug, filename)
+        plot_frame_to_vtk(this_zeta,
+                          filename,
+                          node_scalar_data={'point_displacement_magnitude': disp},
+                            cell_scalar_data={'panel_surface_id': panel_surf_id})
 
 
-def write_modes_vtk(data, eigenvectors, NumLambda, filename_root,
+def write_modes_vtk(data, eigenvectors, num_lambda, filename_root,
                     rot_max_deg=15., perc_max=0.15, ts=-1):
     """
-    Writes a vtk file for each of the first ``NumLambda`` eigenvectors. When these
+    Writes a vtk file for each of the first ``num_lambda`` eigenvectors. When these
     are associated to the state-space form of the structural equations, only
     the displacement field is saved.
     """
 
-    ### initialise
-    aero = data.aero
+    # initialise
     struct = data.structure
     tsaero = data.aero.timestep_info[ts]
-    tsstr = data.structure.timestep_info[ts]
-
     num_dof = struct.num_dof.value
     eigenvectors = eigenvectors[:num_dof, :]
 
-    # Check whether rigid body motion is selected
-    # Skip rigid body modes
-    if data.settings['Modal']['rigid_body_modes']:
-        num_rigid_body = 10
-    else:
-        num_rigid_body = 0
+    # skip rigid body modes
+    num_rigid_body = 10 if data.settings['Modal']['rigid_body_modes'] else 0
 
-    for mode in range(num_rigid_body, NumLambda):
+    for mode in range(num_rigid_body, num_lambda):
         # scale eigenvector
         eigvec = eigenvectors[:num_dof, mode]
         fact = scale_mode(data, eigvec, rot_max_deg, perc_max)
         eigvec = eigvec * fact
         zeta_mode = get_mode_zeta(data, eigvec)
-        write_zeta_vtk(zeta_mode, tsaero.zeta, filename_root + "_%06u" % (mode,))
+        write_zeta_vtk(zeta_mode, tsaero.zeta, f"{filename_root}_{mode:06d}")
 
 
 def free_modes_principal_axes(phi, mass_matrix, use_euler=False, **kwargs):
