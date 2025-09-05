@@ -1,12 +1,16 @@
 import os
 
 import numpy as np
-from tvtk.api import tvtk, write_data
 
 import sharpy.utils.cout_utils as cout
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings_utils
 import sharpy.utils.algebra as algebra
+
+
+import vtk
+from vtk.numpy_interface import algorithms as algs
+from vtk.numpy_interface import dataset_adapter as dsa
 
 
 @solver
@@ -118,9 +122,7 @@ class BeamPlot(BaseSolver):
                 self.write_for(it)
 
     def write_beam(self, it):
-        it_filename = (self.filename +
-                       ('%06u' % it) +
-                       '.vtu')
+        it_filename = f"{self.filename}{it:06d}.vtp"
         num_nodes = self.data.structure.num_node
         num_elem = self.data.structure.num_elem
 
@@ -132,7 +134,6 @@ class BeamPlot(BaseSolver):
         local_y = np.zeros((num_nodes, 3))
         local_z = np.zeros((num_nodes, 3))
         coords_a = np.zeros((num_nodes, 3))
-
         app_forces = np.zeros((num_nodes, 3))
         app_moment = np.zeros((num_nodes, 3))
 
@@ -150,14 +151,9 @@ class BeamPlot(BaseSolver):
         if tstep.mb_dict is None:
             pass
         else:
-            #TODO: fix for lack of g frame description in nonlineardynamicmultibody.py
             for i_node in range(tstep.num_node):
-                #TODO: uncomment for dynamic trim
-                # try:
-                #     c = algebra.euler2rot([0, self.data.trimmed_values[0], 0])
-                # except AttributeError:
                 c = self.data.structure.timestep_info[0].cga()
-                coords[i_node, :] += np.dot(c, tstep.for_pos[0:3])
+                coords[i_node, :] += c @ tstep.for_pos[:3]
 
         # check if I can output gravity forces
         with_gravity = False
@@ -260,115 +256,128 @@ class BeamPlot(BaseSolver):
             conn[i_elem, :] = self.data.structure.elements[i_elem].reordered_global_connectivities
             elem_id[i_elem] = i_elem
 
-        ug = tvtk.UnstructuredGrid(points=coords)
-        ug.set_cells(tvtk.Line().cell_type, conn)
-        ug.cell_data.scalars = elem_id
-        ug.cell_data.scalars.name = 'elem_id'
-        counter = 1
+        ug = vtk.vtkPolyData(points=coords)
+        cells = vtk.vtkCellArray()
+        for _conn in conn:
+            line = vtk.vtkPolyLine()
+            line.GetPointIds().SetNumberOfIds(3)
+            line.GetPointIds().SetId(0, _conn[0])
+            line.GetPointIds().SetId(1, _conn[2])
+            line.GetPointIds().SetId(2, _conn[1])
+            cells.InsertNextCell(line)
+        ug.SetLines(cells)
+
+        ug.GetCellData().AddArray(dsa.numpyTovtkDataArray(np.array(elem_id), name='elem_id'))
+        ug.GetCellData().AddArray(dsa.numpyTovtkDataArray(coords_a_cell, name="coords_a_elem"))
+        ug.GetPointData().AddArray(
+            dsa.numpyTovtkDataArray(node_id, name="node_id")
+        )
+        ug.GetPointData().AddArray(dsa.numpyTovtkDataArray(local_x, name="local_x"))
+        ug.GetPointData().AddArray(dsa.numpyTovtkDataArray(local_y, name="local_y"))
+        ug.GetPointData().AddArray(dsa.numpyTovtkDataArray(local_z, name="local_z"))
+        ug.GetPointData().AddArray(dsa.numpyTovtkDataArray(coords_a, name="coords_a"))
+
         if with_postproc_cell:
             for k in postproc_cell_vector:
-                ug.cell_data.add_array(tstep.postproc_cell[k])
-                ug.cell_data.get_array(counter).name = k + '_cell'
-                counter += 1
+                ug.GetCellData().AddArray(
+                    dsa.numpyTovtkDataArray(tstep.postproc_cell[k], name=f"{k}_cell")
+                )
             for k in postproc_cell_6vector:
-                for i in range(0, 2):
-                    ug.cell_data.add_array(tstep.postproc_cell[k][:, 3*i:3*(i+1)])
-                    ug.cell_data.get_array(counter).name = k + '_' + str(i) + '_cell'
-                    counter += 1
-        ug.cell_data.add_array(coords_a_cell)
-        ug.cell_data.get_array(counter).name = 'coords_a_elem'
-        counter += 1
+                for i in range(2):
+                    ug.GetCellData().AddArray(
+                        dsa.numpyTovtkDataArray(
+                            tstep.postproc_cell[k][:, 3*i:3*(i+1)], name=f"{k}_{i}_cell"
+                        )
+                    )
 
-        ug.point_data.scalars = node_id
-        ug.point_data.scalars.name = 'node_id'
-        point_vector_counter = 1
-        ug.point_data.add_array(local_x, 'vector')
-        ug.point_data.get_array(point_vector_counter).name = 'local_x'
-        point_vector_counter += 1
-        ug.point_data.add_array(local_y, 'vector')
-        ug.point_data.get_array(point_vector_counter).name = 'local_y'
-        point_vector_counter += 1
-        ug.point_data.add_array(local_z, 'vector')
-        ug.point_data.get_array(point_vector_counter).name = 'local_z'
-        point_vector_counter += 1
-        ug.point_data.add_array(coords_a, 'vector')
-        ug.point_data.get_array(point_vector_counter).name = 'coords_a'
         if self.settings['include_applied_forces']:
-            point_vector_counter += 1
-            ug.point_data.add_array(app_forces, 'vector')
-            ug.point_data.get_array(point_vector_counter).name = 'app_forces'
-            point_vector_counter += 1
-            ug.point_data.add_array(forces_constraints_nodes, 'vector')
-            ug.point_data.get_array(point_vector_counter).name = 'forces_constraints_nodes'
+            ug.GetPointData().AddArray(dsa.numpyTovtkDataArray(app_forces, name="app_forces"))
+            ug.GetPointData().AddArray(
+                dsa.numpyTovtkDataArray(forces_constraints_nodes, name="forces_constraints_node")
+            )
             if with_gravity:
-                point_vector_counter += 1
-                ug.point_data.add_array(gravity_forces_g[:, 0:3], 'vector')
-                ug.point_data.get_array(point_vector_counter).name = 'gravity_forces'
+                ug.GetPointData().AddArray(
+                    dsa.numpyTovtkDataArray(
+                        gravity_forces_g[:, :3], name="gravity_forces"
+                    )
+                )
 
         if self.settings['include_applied_moments']:
-            point_vector_counter += 1
-            ug.point_data.add_array(app_moment, 'vector')
-            ug.point_data.get_array(point_vector_counter).name = 'app_moments'
-            point_vector_counter += 1
-            ug.point_data.add_array(moments_constraints_nodes, 'vector')
-            ug.point_data.get_array(point_vector_counter).name = 'moments_constraints_nodes'
+            ug.GetPointData().AddArray(
+                dsa.numpyTovtkDataArray(app_moment, name="app_moments")
+            )
+            ug.GetPointData().AddArray(
+                dsa.numpyTovtkDataArray(moments_constraints_nodes, name="moments_constraints_nodes")
+            )
             if with_gravity:
-                point_vector_counter += 1
-                ug.point_data.add_array(gravity_forces_g[:, 3:6], 'vector')
-                ug.point_data.get_array(point_vector_counter).name = 'gravity_moments'
+                ug.GetPointData().AddArray(dsa.numpyTovtkDataArray(gravity_forces_g[:, 3:6], name="gravity_moments"))
+
         if with_postproc_node:
             for k in postproc_node_vector:
-                point_vector_counter += 1
-                ug.point_data.add_array(tstep.postproc_node[k])
-                ug.point_data.get_array(point_vector_counter).name = k + '_point'
+                ug.GetPointData().AddArray(
+                    dsa.numpyTovtkDataArray(
+                        tstep.postproc_node[k], name=f"{k}_point"
+                    )
+                )
             for k in postproc_node_6vector:
-                for i in range(0, 2):
-                    point_vector_counter += 1
-                    ug.point_data.add_array(tstep.postproc_node[k][:, 3*i:3*(i+1)])
-                    ug.point_data.get_array(point_vector_counter).name = k + '_' + str(i) + '_point'
+                for i in range(2):
+                    ug.GetPointData().AddArray(
+                        dsa.numpyTovtkDataArray(
+                            tstep.postproc_node[k][:, 3*i:3*(i+1)], name=f"{k}_{i}_point"
+                        )
+                    )
 
             for k in postproc_node_scalar:
-                point_vector_counter += 1
-                ug.point_data.add_array(tstep.postproc_node[k])
-                ug.point_data.get_array(point_vector_counter).name = k
+                ug.GetPointData().AddArray(
+                    dsa.numpyTovtkDataArray(
+                        tstep.postproc_node[k],
+                        name=str(k),
+                    )
+                )
 
-        write_data(ug, it_filename)
+        writer = vtk.vtkXMLPolyDataWriter()
+        writer.SetFileName(it_filename)
+        writer.SetInputData(ug)
+        writer.Write()
 
     def write_for(self, it):
-        it_filename = (self.filename_for +
-                       '%06u' % it)
+        it_filename = f"{self.filename_for}{it:06d}.vtp"
 
-        forces_constraints_FoR = np.zeros((self.data.structure.num_bodies, 3))
-        moments_constraints_FoR = np.zeros((self.data.structure.num_bodies, 3))
-        # TODO: what should I do with the forces of the quaternion?
+        forces_constraints_for = np.zeros((self.data.structure.num_bodies, 3))
+        moments_constraints_for = np.zeros((self.data.structure.num_bodies, 3))
 
         # aero2inertial rotation
         aero2inertial = self.data.structure.timestep_info[it].cga()
 
         # coordinates of corners
-        FoR_coords = np.zeros((self.data.structure.num_bodies, 3))
+        for_coords = np.zeros((self.data.structure.num_bodies, 3))
         if self.settings['include_rbm']:
             offset = np.zeros((3,))
         else:
             offset = self.data.structure.timestep_info[it].mb_FoR_pos[0, 0:3]
-        for ibody in range(self.data.structure.num_bodies):
-            FoR_coords[ibody, :] = self.data.structure.timestep_info[it].mb_FoR_pos[ibody, 0:3] - offset
 
         for ibody in range(self.data.structure.num_bodies):
-            forces_constraints_FoR[ibody, :] = np.dot(aero2inertial,
-                                                  self.data.structure.timestep_info[it].forces_constraints_FoR[ibody, 0:3])
-            moments_constraints_FoR[ibody, :] = np.dot(aero2inertial,
-                                                  self.data.structure.timestep_info[it].forces_constraints_FoR[ibody, 3:6])
+            for_coords[ibody, :] = self.data.structure.timestep_info[it].mb_FoR_pos[ibody, 0:3] - offset
+            forces_constraints_for[ibody, :] = aero2inertial @ self.data.structure.timestep_info[it].forces_constraints_FoR[ibody, :3]
+            moments_constraints_for[ibody, :] = aero2inertial @ self.data.structure.timestep_info[it].forces_constraints_FoR[ibody, 3:6]
 
-        FoRmesh = tvtk.PolyData()
-        FoRmesh.points = FoR_coords
-        for_vector_counter = -1
-        for_vector_counter += 1
-        FoRmesh.point_data.add_array(forces_constraints_FoR , 'vector')
-        FoRmesh.point_data.get_array(for_vector_counter).name = 'forces_constraints_FoR'
+        for_mesh = vtk.vtkPolyData(points=for_coords)
 
-        for_vector_counter += 1
-        FoRmesh.point_data.add_array(moments_constraints_FoR , 'vector')
-        FoRmesh.point_data.get_array(for_vector_counter).name = 'moments_constraints_FoR'
+        for_mesh.GetPointData().AddArray(
+            dsa.numpyTovtkDataArray(
+                forces_constraints_for,
+                'forces_constraints_FoR',
+            )
+        )
 
-        write_data(FoRmesh, it_filename)
+        for_mesh.GetPointData().AddArray(
+            dsa.numpyTovtkDataArray(
+                moments_constraints_for,
+                "moments_constraints_FoR",
+            )
+        )
+
+        writer = vtk.vtkXMLPolyDataWriter()
+        writer.SetFileName(it_filename)
+        writer.SetInputData(for_mesh)
+        writer.Write()
