@@ -170,11 +170,11 @@ class AerogridPlot(BaseSolver):
         for i_surf in range(aero_tstep.n_surf):
             filename = f"{self.body_filename}_{i_surf:02d}_{self.ts:06d}.vtu"
 
-            zeta = np.moveaxis(aero_tstep.zeta[i_surf], 0, -1)   # [m+1, n+1, 3]
-            zeta_dot = np.moveaxis(aero_tstep.zeta_dot[i_surf][:3, ...], 0, -1)  # [3, m+1, n+1]
-            gamma = aero_tstep.gamma[i_surf]  # [m, n]
-            gamma_dot = aero_tstep.gamma_dot[i_surf]  # [m, n]
-            normals = np.moveaxis(aero_tstep.normals[i_surf], 0, -1)  # [m, n, 3]
+            zeta = np.moveaxis(aero_tstep.zeta[i_surf], 0, -1).copy()  # [m+1, n+1, 3]
+            zeta_dot = np.moveaxis(aero_tstep.zeta_dot[i_surf][:3, ...], 0, -1).copy()  # [3, m+1, n+1]
+            gamma = aero_tstep.gamma[i_surf].copy()  # [m, n]
+            gamma_dot = aero_tstep.gamma_dot[i_surf].copy()  # [m, n]
+            normals = np.moveaxis(aero_tstep.normals[i_surf], 0, -1).copy()  # [m, n, 3]
             surf_id = np.ones(gamma.shape, dtype=int) * i_surf
 
             if self.settings['include_rbm']:
@@ -226,8 +226,8 @@ class AerogridPlot(BaseSolver):
         for i_surf in range(self.data.aero.timestep_info[self.ts].n_surf):
             filename = f"{self.wake_filename}_{i_surf:02d}_{self.ts:06d}.vtu"
 
-            zeta_star = np.moveaxis(self.data.aero.timestep_info[self.ts].zeta_star[i_surf], 0, -1) # [m*+1, n+1, 3]
-            gamma = self.data.aero.timestep_info[self.ts].gamma_star[i_surf]  # [m*, n]
+            zeta_star = np.moveaxis(self.data.aero.timestep_info[self.ts].zeta_star[i_surf], 0, -1).copy() # [m*+1, n+1, 3]
+            gamma = self.data.aero.timestep_info[self.ts].gamma_star[i_surf].copy()  # [m*, n]
 
             surf_id = np.ones(gamma.shape, dtype=int) * i_surf
 

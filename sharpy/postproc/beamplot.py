@@ -262,8 +262,8 @@ class BeamPlot(BaseSolver):
             line = vtk.vtkPolyLine()
             line.GetPointIds().SetNumberOfIds(3)
             line.GetPointIds().SetId(0, _conn[0])
-            line.GetPointIds().SetId(1, _conn[2])
-            line.GetPointIds().SetId(2, _conn[1])
+            line.GetPointIds().SetId(1, _conn[1])
+            line.GetPointIds().SetId(2, _conn[2])
             cells.InsertNextCell(line)
         ug.SetLines(cells)
 
