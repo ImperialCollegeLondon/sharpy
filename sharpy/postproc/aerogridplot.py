@@ -10,7 +10,7 @@ import sharpy.utils.settings as su
 import sharpy.aero.utils.uvlmlib as uvlmlib
 from sharpy.utils.constants import vortex_radius_def
 
-from ..utils.plotutils import plot_frame_to_vtk
+from sharpy.utils.plotutils import plot_frame_to_vtk
 
 
 @solver
@@ -226,8 +226,8 @@ class AerogridPlot(BaseSolver):
         for i_surf in range(self.data.aero.timestep_info[self.ts].n_surf):
             filename = f"{self.wake_filename}_{i_surf:02d}_{self.ts:06d}.vtu"
 
-            zeta_star = np.moveaxis(self.data.aero.timestep_info[self.ts].zeta_star[i_surf], 0, -1).copy() # [m*+1, n+1, 3]
-            gamma = self.data.aero.timestep_info[self.ts].gamma_star[i_surf].copy()  # [m*, n]
+            zeta_star = np.moveaxis(self.data.aero.timestep_info[self.ts].zeta_star[i_surf], 0, -1).copy() # [m_star+1, n+1, 3]
+            gamma = self.data.aero.timestep_info[self.ts].gamma_star[i_surf].copy()  # [m_star, n]
 
             surf_id = np.ones(gamma.shape, dtype=int) * i_surf
 

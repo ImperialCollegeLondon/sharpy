@@ -2,7 +2,7 @@ import numpy as np
 import sharpy.utils.cout_utils as cout
 import sharpy.utils.algebra as algebra
 
-from ...utils.plotutils import plot_frame_to_vtk
+from sharpy.utils.plotutils import plot_frame_to_vtk
 
 def frequency_damping(eigenvalue):
     omega_n = np.abs(eigenvalue)
