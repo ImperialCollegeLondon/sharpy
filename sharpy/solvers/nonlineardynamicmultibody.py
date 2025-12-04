@@ -175,7 +175,7 @@ class NonLinearDynamicMultibody(_BaseStructural):
             first_dof = last_dof + 0
 
     def assembly_MB_eq_system(self, MB_beam, MB_tstep, ts, dt, Lambda, Lambda_dot, MBdict):
-        """
+        r"""
         This function generates the matrix and vector associated to the linear system to solve a structural iteration
         It usses a Newmark-beta scheme for time integration. Being M, C and K the mass, damping
         and stiffness matrices of the system:
