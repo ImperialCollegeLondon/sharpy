@@ -1,6 +1,72 @@
 [build-system]
 requires = [
-    "setuptools",
+    'setuptools>=61.0',
     #"scikit-build>=0.13",
-    "cmake>=3.14.3"
+    'cmake>=3.14.3',
+    'setuptools_scm[toml]>=6.2',
+    'wheel'
     ]
+build-backend = 'pypi_compatible_build'
+backend-path = ['']
+
+[project]
+name = "ic_sharpy"
+dynamic = ["version", "description", "readme", "requires-python", "license", "keywords", "classifiers", "scripts", "dependencies", "optional-dependencies"]
+
+## Uncomment below and remove 'dynamic' if we decommission setup.py in the future for pyproject.toml 
+
+# description = "SHARPy is a nonlinear aeroelastic analysis package developed at Imperial College London."
+# readme = "README.md"
+# license = { text = "BSD-3-Clause" }
+# keywords = ["nonlinear", "aeroelastic", "structural", "aerodynamic", "analysis"]
+# requires-python = ">=3.8"
+# dependencies = [
+#     "numpy<2.0",
+#     "configobj",
+#     "h5py",
+#     "scipy<1.14.0",
+#     "sympy",
+#     "matplotlib",
+#     "colorama",
+#     "dill",
+#     "jupyterlab",
+#     "mayavi @ git+https://github.com/enthought/mayavi.git",
+#     "pandas",
+#     "control",
+#     "openpyxl>=3.0.10",
+#     "lxml>=4.4.1",
+#     "PySocks",
+#     "PyYAML",
+#     "jax"
+# ]
+# classifiers = [
+#     "Operating System :: MacOS",
+#     "Operating System :: POSIX :: Linux",
+#     "Programming Language :: Python :: 3.10",
+#     "Programming Language :: Fortran",
+#     "Programming Language :: C++"
+# ]
+
+# [project.optional-dependencies]
+# docs = [
+#     "sphinx",
+#     "recommonmark>=0.6.0",
+#     "sphinx_rtd_theme>=0.4.3",
+#     "nbsphinx>=0.4.3"
+# ]
+# all = [
+#     "sphinx",
+#     "recommonmark>=0.6.0",
+#     "sphinx_rtd_theme>=0.4.3",
+#     "nbsphinx>=0.4.3"
+# ]
+
+# [project.urls]
+# Homepage = "https://github.com/ImperialCollegeLondon/sharpy"
+
+# [project.scripts]
+# sharpy = "sharpy.sharpy_main:sharpy_run"
+
+## [tool.setuptools.packages.find]
+## where = [".", "lib"]
+## include = ["sharpy", "uvlm", "xbeam"]
