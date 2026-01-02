@@ -9,7 +9,7 @@ from sharpy.utils.generate_cases import get_aoacl0_from_camber
 
 @generator_interface.generator
 class PolarCorrection(generator_interface.BaseGenerator):
-    """
+    r"""
     This generator corrects the aerodynamic forces from UVLM based on the airfoil polars provided by the user in the
     ``aero.h5`` file. Polars are entered for each airfoil, in a table comprising ``AoA (rad), CL, CD, CM``.
 

@@ -209,14 +209,9 @@ class Modal(BaseSolver):
 
         # Number of degrees of freedom
         num_str_dof = self.data.structure.num_dof.value
-        if self.rigid_body_motion:
-            num_rigid_dof = 10
-        else:
-            num_rigid_dof = 0
+        num_rigid_dof = 10 if self.rigid_body_motion else 0
 
         num_dof = num_str_dof + num_rigid_dof
-
-        # if NumLambda
 
         # Initialize matrices
         FullMglobal = np.zeros((num_dof, num_dof),
