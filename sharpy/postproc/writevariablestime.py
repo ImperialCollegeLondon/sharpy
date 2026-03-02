@@ -2,7 +2,7 @@ import os
 import numpy as np
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as settings_utils
-
+import sharpy.aero.utils.uvlmlib as uvlmlib
 
 @solver
 class WriteVariablesTime(BaseSolver):

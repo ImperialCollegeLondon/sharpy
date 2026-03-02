@@ -61,7 +61,7 @@ class Polar:
         cd = self.cd_interp(aoa_deg)
         cm = self.cm_interp(aoa_deg)
 
-        return cl[0], cd[0], cm[0]
+        return cl, cd, cm
 
     def get_aoa_deg_from_cl_2pi(self, cl):
 
@@ -115,7 +115,7 @@ class Polar:
                 cd = np.interp(cl, self.table[i:i+2, 1], self.table[i:i+2, 2])
                 cm = np.interp(cl, self.table[i:i+2, 1], self.table[i:i+2, 3])
         
-        return float(cd), float(cm)
+        return cd, cm
 
     
 def interpolate(polar1, polar2, coef=0.5):

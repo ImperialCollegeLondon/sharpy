@@ -9,9 +9,10 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
     num_modes = 16
     gravity_on = kwargs.get('gravity_on', True)
     symmetry_condition = kwargs.get('symmetry_condition', False)
+    gust_vanes = kwargs.get('gust_vanes', False)
     dynamic = kwargs.get('dynamic', False)
     n_tsteps = kwargs.get('n_tsteps', 1)
-
+    cs_deflection_file=kwargs.get('cs_deflection_file', None)
     # Lattice Discretisation
     M = kwargs.get('M', 4)
     N = kwargs.get('N', 32)
@@ -42,15 +43,19 @@ def generate_pazy(u_inf, case_name, output_folder='/output/', cases_folder='', *
         ws.reduce_model_to_symmetric_wing()
     ws.generate_aero_file()
     ws.generate_fem_file()
-    set_final_settings(ws, dynamic,
+    set_final_settings(ws, 
+                        dynamic=dynamic,
+                        surface_m=M,
                         output_folder=output_folder,
                         symmetry_condition = symmetry_condition,
+                        gust_vanes = gust_vanes,
                         gravity_on = gravity_on,
-                        n_tsteps=n_tsteps)
+                        n_tsteps=n_tsteps,
+                        cs_deflection_file=cs_deflection_file)
 
     sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.sharpy'])
 
-def set_final_settings(ws, dynamic = False, output_folder='/output/', symmetry_condition = False, gravity_on = True, n_tsteps=1,flag_multiple_mstar_input=False):
+def set_final_settings(ws, dynamic = False, surface_m=8, output_folder='/output/', symmetry_condition = False, gravity_on = True, n_tsteps=1,flag_multiple_mstar_input=False, gust_vanes = False, cs_deflection_file=None):
     ws.config['SHARPy'] = {
         'flow':
             ['BeamLoader',
@@ -204,7 +209,80 @@ def set_final_settings(ws, dynamic = False, output_folder='/output/', symmetry_c
                                         },
             }
         ws.config['BeamLoads'] = {'csv_output': True}
-
+    if gust_vanes:
+        import numpy as np
+        ws.config = apply_gust_vane_settings(ws.config,
+                                             cs_deflection_file,
+                                             ws.dt,
+                                             ws.u_inf,
+                                             surface_m,
+                                             False,
+                                             symmetry_condition)
+        ws.config['DynamicCoupled']['postprocessors'].append('WriteVariablesTime')
+        ws.config['DynamicCoupled']['postprocessors_settings']['WriteVariablesTime'] = {
+            'vel_field_variables': ['uind'],
+            'vel_field_points': np.array([-1.25, 0.0, 0.25 ]),
+                                        }
     ws.config.write()
 
     sharpy.sharpy_main.main(['', ws.route + ws.case_name + '.sharpy'])
+
+def apply_gust_vane_settings(settings,
+                             cs_deflection_file,
+                             dt,
+                             u_inf,
+                             surface_m,
+                             vertical,
+                             symmetry_condition):
+    """
+    Updates the SHARPy configuration with gust vane definitions.
+
+    Args:
+        settings: SHARPy configuration object.
+        cs_deflection_file: Path to the gust vane deflection file.
+        dt: Time step size.
+        u_inf: Freestream velocity.
+        surface_m: Chordwise discretisation.
+        vertical: Orientation of the gust vanes (vertical or horizontal).
+        symmetry_condition: Whether the problem is symmetric.
+        only_gust_vanes: Whether gust vanes are the only gust source.
+
+    Returns:
+        cs_deflection_file. Modified the input settings dictionary.
+    """
+    # breakpoint()
+    wake_length_vanes = 5
+    gust_vane_parameters = {
+        'M': surface_m * 3,
+        'N': 40,
+        'M_star': int(wake_length_vanes / (dt * u_inf)),
+        'span': 5,
+        'chord': 0.3,
+        'control_surface_deflection_generator_settings': {
+            'dt': dt,
+            'deflection_file': cs_deflection_file
+        }
+    }
+
+    settings['AerogridLoader']['gust_vanes'] = True
+    settings['AerogridLoader']['gust_vanes_generator_settings'] = {
+        'n_vanes': 2,
+        'streamwise_position': [-1.5, -1.5],
+        'vertical_position': [-0.25, 0.25],
+        'symmetry_condition': symmetry_condition,
+        'vane_parameters': [gust_vane_parameters, gust_vane_parameters],
+        'vertical': vertical
+    }
+
+    # Override velocity field for gust vanes
+    stepuvlm_updates = {
+            'convection_scheme': 3,
+            'velocity_field_generator': 'SteadyVelocityField',
+            'velocity_field_input': {
+                'u_inf': u_inf,
+                'u_inf_direction': [1., 0., 0.],
+            }
+        }
+    settings['DynamicCoupled']['aero_solver_settings'].update(stepuvlm_updates)
+
+    return settings
