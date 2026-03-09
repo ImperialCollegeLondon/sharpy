@@ -983,7 +983,7 @@ def def_rot_axis_FoR_wrt_node_general(MB_tstep, MB_beam, FoR_body, node_body, no
 
         # term 3 K(psi)
         LM_K[FoR_dof + 3:FoR_dof + 6, node_dof + 3:node_dof + 6] \
-            += scalingFactor * ag.skew(rot_axisA2) @ FoR_cga.T @ node_cga, ag.der_CcrvT_by_v(psi, new_Lambda_dot)
+            += scalingFactor * ag.skew(rot_axisA2) @ FoR_cga.T @ node_cga @ ag.der_CcrvT_by_v(psi, new_Lambda_dot)
         # term 2
         LM_K[node_dof + 3:node_dof + 6, node_dof + 3:node_dof + 6] \
             -= scalingFactor * ag.der_TanT_by_xv(psi, ag.skew(rot_axisB) @ new_Lambda_dot)
