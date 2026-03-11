@@ -188,7 +188,7 @@ def disp_and_accel2state(MB_beam, MB_tstep, Lambda, Lambda_dot, sys_size, num_LM
             MB_tstep[ibody].for_acc = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
             # import pdb
             # pdb.set_trace()
-            # MB_tstep[ibody].quat = MB_beam[ibody].ini_info.quat
+            MB_tstep[ibody].quat = MB_beam[ibody].ini_info.quat
             xbeamlib.cbeam3_solv_disp2state(MB_beam[ibody], MB_tstep[ibody])
             xbeamlib.cbeam3_solv_accel2state(MB_beam[ibody], MB_tstep[ibody])
             q[first_dof:first_dof+ibody_num_dof]=MB_tstep[ibody].q[:-10].astype(dtype=ct.c_double, order='F', copy=True)
