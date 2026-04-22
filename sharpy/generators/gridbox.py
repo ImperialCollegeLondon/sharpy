@@ -3,7 +3,6 @@ import numpy as np
 import sharpy.utils.generator_interface as generator_interface
 import sharpy.utils.settings as settings
 import numpy as np
-from tvtk.api import tvtk, write_data
 import ctypes as ct
 import copy
 
@@ -82,7 +81,7 @@ class GridBox(generator_interface.BaseGenerator):
                     grid[iz][1, ix, iy] = yarray[iy]
                     grid[iz][2, ix, iy] = zarray[iz]
 
-
+        from tvtk.api import tvtk
         vtk_info = tvtk.RectilinearGrid()
         vtk_info.dimensions = np.array([nx, ny, nz], dtype=int)
         vtk_info.x_coordinates = xarray

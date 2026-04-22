@@ -139,9 +139,6 @@ setup(
         "colorama",
         "dill",
         "jupyterlab",
-        #"mayavi",
-        # Fix for tvtk issue, see Issue #313 - darn thing can't be found
-        "mayavi @ git+https://github.com/enthought/mayavi.git",
         "pandas",
         "control",
         "openpyxl>=3.0.10",
@@ -149,6 +146,7 @@ setup(
         "PySocks",
         "PyYAML",
         "jax",
+        "vtk",
     ],
     extras_require={
         "docs": [
