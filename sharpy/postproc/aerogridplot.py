@@ -2,9 +2,7 @@ import os
 
 import numpy as np
 
-import sharpy.utils.algebra as algebra
 import sharpy.utils.cout_utils as cout
-from sharpy.utils.settings import str2bool
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.settings as su
 import sharpy.aero.utils.uvlmlib as uvlmlib
@@ -315,6 +313,7 @@ class AerogridPlot(BaseSolver):
                     panel_surf_id[counter] = i_surf
                     panel_sigma[counter] = nonlifting_tstep.sigma[i_surf][i_m, i_n]
 
+            from tvtk.api import tvtk, write_data
             ug = tvtk.UnstructuredGrid(points=coords)
             ug.set_cells(tvtk.Quad().cell_type, conn)
             ug.cell_data.scalars = panel_id

@@ -1,6 +1,5 @@
 import os
 import numpy as np
-from tvtk.api import tvtk, write_data
 from sharpy.utils.solver_interface import solver, BaseSolver
 import sharpy.utils.generator_interface as gen_interface
 import sharpy.utils.settings as settings_utils
@@ -180,6 +179,7 @@ class PlotFlowField(BaseSolver):
         array_counter += 1
 
         filename = self.folder + "VelocityField_" + '%06u' % ts + ".vtk"
+        from tvtk.api import write_data
         write_data(vtk_info, filename)
 
     def run(self, **kwargs):
