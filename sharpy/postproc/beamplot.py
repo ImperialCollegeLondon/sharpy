@@ -13,6 +13,26 @@ from vtk.numpy_interface import algorithms as algs
 from vtk.numpy_interface import dataset_adapter as dsa
 
 
+def poly_data_from_points(coords):
+    r"""
+    Creates a ``vtkPolyData`` with the given point coordinates.
+
+    The points are set explicitly because ``vtk.vtkPolyData(points=coords)`` does not accept a NumPy array
+    from VTK 9.7 onwards.
+
+    Args:
+        coords (np.ndarray): point coordinates, of shape ``(n_points, 3)``
+
+    Returns:
+        vtk.vtkPolyData: poly data containing the points
+    """
+    points = vtk.vtkPoints()
+    points.SetData(dsa.numpyTovtkDataArray(coords, 'points'))
+    poly_data = vtk.vtkPolyData()
+    poly_data.SetPoints(points)
+    return poly_data
+
+
 @solver
 class BeamPlot(BaseSolver):
     """
@@ -256,7 +276,7 @@ class BeamPlot(BaseSolver):
             conn[i_elem, :] = self.data.structure.elements[i_elem].reordered_global_connectivities
             elem_id[i_elem] = i_elem
 
-        ug = vtk.vtkPolyData(points=coords)
+        ug = poly_data_from_points(coords)
         cells = vtk.vtkCellArray()
         for _conn in conn:
             line = vtk.vtkPolyLine()
@@ -361,7 +381,7 @@ class BeamPlot(BaseSolver):
             forces_constraints_for[ibody, :] = aero2inertial @ self.data.structure.timestep_info[it].forces_constraints_FoR[ibody, :3]
             moments_constraints_for[ibody, :] = aero2inertial @ self.data.structure.timestep_info[it].forces_constraints_FoR[ibody, 3:6]
 
-        for_mesh = vtk.vtkPolyData(points=for_coords)
+        for_mesh = poly_data_from_points(for_coords)
 
         for_mesh.GetPointData().AddArray(
             dsa.numpyTovtkDataArray(
