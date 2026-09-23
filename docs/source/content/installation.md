@@ -385,8 +385,8 @@ SHARPy cases are therefore usually ran in the following way:
 By default, the output is located in the `output` folder.
 
 The contents of the folder will typically be a `beam` and `aero` folders, which contain the output data that can then be
-loaded in Paraview. These are VTK files (`.vtp` for the beam and `.vts` for the aerodynamic grid) that can be used
-with [Paraview](https://www.paraview.org/).
+loaded in Paraview. These are VTK files (`.vtp` for the beam, `.vts` for the aerodynamic grid and `.vtu` for
+nonlifting surfaces) that can be used with [Paraview](https://www.paraview.org/).
 
 
 ### Running (and modifiying) a test case
