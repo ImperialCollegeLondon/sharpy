@@ -166,7 +166,7 @@ class AerogridPlot(BaseSolver):
                                                    struct_tstep)
 
         for i_surf in range(aero_tstep.n_surf):
-            filename = f"{self.body_filename}_{i_surf:02d}_{self.ts:06d}.vtu"
+            filename = f"{self.body_filename}_{i_surf:02d}_{self.ts:06d}.vts"
 
             zeta = np.moveaxis(aero_tstep.zeta[i_surf], 0, -1).copy()  # [m+1, n+1, 3]
             zeta_dot = np.moveaxis(aero_tstep.zeta_dot[i_surf][:3, ...], 0, -1).copy()  # [3, m+1, n+1]
@@ -222,7 +222,7 @@ class AerogridPlot(BaseSolver):
 
     def plot_wake(self):
         for i_surf in range(self.data.aero.timestep_info[self.ts].n_surf):
-            filename = f"{self.wake_filename}_{i_surf:02d}_{self.ts:06d}.vtu"
+            filename = f"{self.wake_filename}_{i_surf:02d}_{self.ts:06d}.vts"
 
             zeta_star = np.moveaxis(self.data.aero.timestep_info[self.ts].zeta_star[i_surf], 0, -1).copy() # [m_star+1, n+1, 3]
             gamma = self.data.aero.timestep_info[self.ts].gamma_star[i_surf].copy()  # [m_star, n]

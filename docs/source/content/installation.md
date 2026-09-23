@@ -385,7 +385,8 @@ SHARPy cases are therefore usually ran in the following way:
 By default, the output is located in the `output` folder.
 
 The contents of the folder will typically be a `beam` and `aero` folders, which contain the output data that can then be
-loaded in Paraview. These are the `.vtu` format files that can be used with [Paraview](https://www.paraview.org/).
+loaded in Paraview. These are VTK files (`.vtp` for the beam and `.vts` for the aerodynamic grid) that can be used
+with [Paraview](https://www.paraview.org/).
 
 
 ### Running (and modifiying) a test case
@@ -447,7 +448,7 @@ is stored in [HDF5](https://support.hdfgroup.org/HDF5/) format, which is compres
     After a successful execution, you should a long display of information in the terminal as the case is being
     executed.
 
-    The deformed beam will have been written in a `.vtu` file and will be located in the `output/` folder (or where
+    The deformed beam will have been written in a `.vtp` file and will be located in the `output/` folder (or where
     you specified in the settings) which you can open using Paraview.
 
     In the `output` directory you will also note a folder named `WriteVariablesTime` which outputs certain variables
