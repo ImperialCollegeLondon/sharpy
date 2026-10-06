@@ -256,7 +256,10 @@ class BeamPlot(BaseSolver):
             conn[i_elem, :] = self.data.structure.elements[i_elem].reordered_global_connectivities
             elem_id[i_elem] = i_elem
 
-        ug = vtk.vtkPolyData(points=coords)
+        points = vtk.vtkPoints()
+        points.SetData(dsa.numpyTovtkDataArray(coords, name='Points'))
+        ug = vtk.vtkPolyData()
+        ug.SetPoints(points)
         cells = vtk.vtkCellArray()
         for _conn in conn:
             line = vtk.vtkPolyLine()
@@ -361,7 +364,10 @@ class BeamPlot(BaseSolver):
             forces_constraints_for[ibody, :] = aero2inertial @ self.data.structure.timestep_info[it].forces_constraints_FoR[ibody, :3]
             moments_constraints_for[ibody, :] = aero2inertial @ self.data.structure.timestep_info[it].forces_constraints_FoR[ibody, 3:6]
 
-        for_mesh = vtk.vtkPolyData(points=for_coords)
+        points = vtk.vtkPoints()
+        points.SetData(dsa.numpyTovtkDataArray(for_coords, name='Points'))
+        for_mesh = vtk.vtkPolyData()
+        for_mesh.SetPoints(points)
 
         for_mesh.GetPointData().AddArray(
             dsa.numpyTovtkDataArray(
