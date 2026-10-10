@@ -101,6 +101,7 @@ output/*
 
 *.eps
 *.vtu
+*.vts
 
 
 output*/
