@@ -7,4 +7,4 @@ The following test cases are provided as a tutorial and introduction to ``SHARPy
 
 .. _Installation: https://ic-sharpy.readthedocs.io/en/dev_doc/content/installation.html#running-and-modifiying-a-test-case
 
-* Several published test cases are available at [https://github.com/ImperialCollegeLondon/sharpy_cases](https://github.com/ImperialCollegeLondon/sharpy_cases)
+* Several published test cases are available at https://github.com/ImperialCollegeLondon/sharpy_cases
