@@ -5,23 +5,23 @@ Here we present a list of past papers which have used SHARPy for research purpos
 
 ## 2026
 
-* Preston B., Fasel U., Palacios R., Castrichini A., Multibody Simulation of Flexible Aircraft with Variable Sweep Wingtips. AIAA Journal, Vol. 64, No. 2, pp. 955-968, February 2026 [doi:0.2514/1.J065846, hdl:10044/1/123548]
+* Preston B., Fasel U., Palacios R., Castrichini A., Multibody Simulation of Flexible Aircraft with Variable Sweep Wingtips. AIAA Journal, Vol. 64, No. 2, pp. 955-968, February 2026 [https://doi.org/0.2514/1.J065846]([https://doi.org/0.2514/1.J065846)
 
-* Duessler S., Mertens C, Palacios R., Gust Response Predictions of a Very Flexible Wing Model. Journal of Aircraft, Vol. 63, No. 1, pp. 303-314, January 2026 [doi:10.2514/1.C038332, hdl:10044/1/120264]
+* Duessler S., Mertens C, Palacios R., Gust Response Predictions of a Very Flexible Wing Model. Journal of Aircraft, Vol. 63, No. 1, pp. 303-314, January 2026 [https://doi.org/10.2514/1.C038332](https://doi.org/10.2514/1.C038332)
 
-* Sinani M.A., Palacios R., Fasel U., Wynn A. Data-Driven Parametric Aeroelastic Modelling of the Pazy Wing. AIAA SciTech Forum, 12-16 Jan 2026, Orlando, Florida, USA [doi:10.2514/6.2026-0187]
+* Sinani M.A., Palacios R., Fasel U., Wynn A. Data-Driven Parametric Aeroelastic Modelling of the Pazy Wing. AIAA SciTech Forum, 12-16 Jan 2026, Orlando, Florida, USA [https://doi.org/10.2514/6.2026-0187](https://doi.org/10.2514/6.2026-0187)
 
 ## 2025
 
-* Cheng C.W., Cea A., Palacios R., Castrichini A., Wilson, T., Nonlinear Multibody Modelling of Flexible Aircraft with Flared Hinged Wings. Journal of Aircraft, Vol. 62, No. 4, pp. 929-948, July 2025 [doi:10.2514/1.C038094, hdl:10044/1/117556]
+* Cheng C.W., Cea A., Palacios R., Castrichini A., Wilson, T., Nonlinear Multibody Modelling of Flexible Aircraft with Flared Hinged Wings. Journal of Aircraft, Vol. 62, No. 4, pp. 929-948, July 2025 [https://doi.org/10.2514/1.C038094](https://doi.org/10.2514/1.C038094)
 
-* Cheng C. W., Cea A., Palacios R., Static Nonlinear Trim Solutions for Flexible Multibody Aircraft featuring Flared Hinged Wing Tips. AIAA SciTech Forum, 6-10 Jan 2025, Orlando, Florida, USA [doi:10.2514/6.2025-0714]
+* Cheng C. W., Cea A., Palacios R., Static Nonlinear Trim Solutions for Flexible Multibody Aircraft featuring Flared Hinged Wing Tips. AIAA SciTech Forum, 6-10 Jan 2025, Orlando, Florida, USA [https://doi.org/10.2514/6.2025-0714](https://doi.org/10.2514/6.2025-0714)
 
-* Preston B., Palacios R., Fasel U., Cea A., Castrichini A., Multibody Simulation of Flexible Aircraft with Variable Sweep Wingtips. AIAA SciTech Forum, 6-10 Jan 2025, Orlando, Florida, USA [doi:10.2514/6.2025-1662]
+* Preston B., Palacios R., Fasel U., Cea A., Castrichini A., Multibody Simulation of Flexible Aircraft with Variable Sweep Wingtips. AIAA SciTech Forum, 6-10 Jan 2025, Orlando, Florida, USA [https://doi.org/10.2514/6.2025-1662](https://doi.org/10.2514/6.2025-1662)
 
 ## 2024
 
-* Duessler S., Palacios R., Enhanced Unsteady Vortex Lattice Aerodynamics for Nonlinear Flexible Aircraft Dynamic Simulation. AIAA Journal, Vol. 62, No. 3, pp. 1179-94, March 2024 [doi:10.2514/1.J063174, hdl:10044/1/107441]
+* Duessler S., Palacios R., Enhanced Unsteady Vortex Lattice Aerodynamics for Nonlinear Flexible Aircraft Dynamic Simulation. AIAA Journal, Vol. 62, No. 3, pp. 1179-94, March 2024 [https://doi.org/10.2514/1.J063174](https://doi.org/10.2514/1.J063174)
 
 * Otsuka K., Cheng K. W., Palacios R., Absolute Nodal Coordinate Formulation for Nonlinear Multibody Modeling of Flared Hinged Wings. 34th Congress of the International Council of the Aeronautical Sciences, 9-13 September 2024, Florence, Italy
 
@@ -31,20 +31,20 @@ Here we present a list of past papers which have used SHARPy for research purpos
 
 * Duessler S., Mertens  C., Palacios R., “Effect of Gust Models on the Response Prediction of a Very Flexible Wind Tunnel Wing Model.” 20th International Forum of Aeroelasticity and Structural Dynamics, 17-20 June 2024, The Hague, The Netherlands
 
-* Cheng C.W., Cea A., Palacios R. Castrichini A., Wilson, T. Nonlinear Multibody Modelling of Flexible Aircraft with Flared Hinged Wings. AIAA SciTech Forum, 8-12 Jan 2024, Orlando, Florida, USA [doi:10.2514/6.2024-1441]
+* Cheng C.W., Cea A., Palacios R. Castrichini A., Wilson, T. Nonlinear Multibody Modelling of Flexible Aircraft with Flared Hinged Wings. AIAA SciTech Forum, 8-12 Jan 2024, Orlando, Florida, USA [https://doi.org/10.2514/6.2024-1441](https://doi.org/10.2514/6.2024-1441)
 
-* Duessler S., Mylganamam T., Palacios R., An Investigation on Gust Load Alleviation Systems for Very Flexible Aircraft. AIAA SciTech Forum, 8-12 Jan 2024, Orlando, Florida, USA [doi:10.2514/6.2024-0614]
-
+* Duessler S., Mylganamam T., Palacios R., An Investigation on Gust Load Alleviation Systems for Very Flexible Aircraft. AIAA SciTech Forum, 8-12 Jan 2024, Orlando, Florida, USA [https://doi.org/10.2514/6.2024-0614](https://doi.org/10.2514/6.2024-0614)
+  
 ## 2023
 
-* Cheng C.W., Cea A., Palacios R. Castrichini A., Wilson, T. An Integrated Nonlinear Coupled Multibody Aeroelastic Dynamic Simulation Framework for Next-Generation Flexible Aircraft Wing Design. AIAA SciTech Forum, 23-27 January 2023, National Harbor, Maryland, USA [doi:10.2514/6.2023-2073]
+* Cheng C.W., Cea A., Palacios R. Castrichini A., Wilson, T. An Integrated Nonlinear Coupled Multibody Aeroelastic Dynamic Simulation Framework for Next-Generation Flexible Aircraft Wing Design. AIAA SciTech Forum, 23-27 January 2023, National Harbor, Maryland, USA [https://doi.org/10.2514/6.2023-2073](https://doi.org/10.2514/6.2023-2073)
 
 
 ## 2022
 
-* Goizueta, N. (2022). Parametric reduced-order aeroelastic modelling for analysis, dynamic system interpolation and control of flexible aircraft. PhD Thesis. [http://doi.org/10.25560/100137](http://doi.org/10.25560/100137)
+* Goizueta, N. (2022). Parametric reduced-order aeroelastic modelling for analysis, dynamic system interpolation and control of flexible aircraft. PhD Thesis. [https://doi.org/10.25560/100137](http://doi.org/10.25560/100137)
 
-* Goizueta N., Wynn A., Palacios R., Adaptive Sampling for Interpolation of Reduced-Order Aeroelastic Systems. AIAA Journal, Vol. 60, No. 11, pp. 6183-6202, Nov 2022 [doi:10.2514/1.J062050, hdl:10044/1/97960]
+* Goizueta N., Wynn A., Palacios R., Adaptive Sampling for Interpolation of Reduced-Order Aeroelastic Systems. AIAA Journal, Vol. 60, No. 11, pp. 6183-6202, Nov 2022 [https://doi.org/10.2514/1.J062050]([https://doi.org/10.2514/1.J062050)
 
 * Muñoz Simón, A. (2022). Vortex-lattice-based nonlinear aeroservoelastic modelling and analysis of large floating wind turbines. PhD Thesis. [https://doi.org/10.25560/96986](https://doi.org/10.25560/96986)
 
