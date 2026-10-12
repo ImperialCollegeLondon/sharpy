@@ -1,4 +1,4 @@
-# SHARPy v2.3 Installation Guide
+# SHARPy v2.4 Installation Guide
 __Last revision 10 June 2024__
 
 The following step by step tutorial will guide you through the installation process of SHARPy. This is the updated process valid from v2.3.
@@ -8,13 +8,12 @@ The following step by step tutorial will guide you through the installation proc
 __Operating System Requirements__
 
 SHARPy is being developed and tested on the following operating systems:
-* CentOS 7 and CentOS 8
 * Ubuntu 22.04 LTS
 * Debian 12
 * MacOS Mojave and Catalina (Intel)
 * MacOS Sonoma (Apple Silicon M2)
 
-Windows users can also run it by first installing the Windows Subsystem for Linux (https://learn.microsoft.com/en-us/windows/wsl/install) and a XServer such as GWSL, which can be installed through the Microsoft Store. SHARPy is also available to the vast majority of operating systems that are supported by Docker
+Windows users can also run it by first installing the Windows Subsystem for Linux (https://learn.microsoft.com/en-us/windows/wsl/install) and a XServer such as GWSL, which can be installed through the Microsoft Store. SHARPy is also available to all operating systems supported by Docker.
 
 __Required Distributions__
 
