@@ -8,23 +8,23 @@ cases running on SHARPy.
     :maxdepth: 1
     :caption: SHARPy Examples
 
+    example_notebooks/cantilever_wing
+    example_notebooks/cantilever/static_cantilever
     example_notebooks/linear_goland_flutter
     example_notebooks/nonlinear_t-tail_HALE
     example_notebooks/linear_horten
     example_notebooks/wind_turbine
-    example_notebooks/cantilever/static_cantilever
-    example_notebooks/cantilever_wing
     example_notebooks/UDP_control/tutorial_udp_control
 
 Downloadable files
 ------------------
 
+* :download:`./example_notebooks/cantilever_wing.ipynb`
+* :download:`./example_notebooks/cantilever/static_cantilever.ipynb`
 * :download:`./example_notebooks/linear_goland_flutter.ipynb`
 * :download:`./example_notebooks/nonlinear_t-tail_HALE.ipynb`
 * :download:`./example_notebooks/linear_horten.ipynb`
 * :download:`./example_notebooks/wind_turbine.ipynb`
-* :download:`./example_notebooks/cantilever_wing.ipynb`
-* :download:`./example_notebooks/cantilever/static_cantilever.ipynb`
 * :download:`./example_notebooks/UDP_control/tutorial_udp_control.ipynb`
 
 Input data for wind turbine: 
