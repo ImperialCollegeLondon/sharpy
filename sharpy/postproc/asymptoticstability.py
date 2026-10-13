@@ -30,7 +30,7 @@ class AsymptoticStability(BaseSolver):
     Results can be saved to file using ``export_eigenvalues``. The setting ``display_root_locus`` shows a simple
     Argand diagram where the continuous time eigenvalues are displayed.
 
-    The eigenvectors can be displayed (in .vtu format for use in Paraview) with the ``modes_to_plot`` setting, whereby
+    The eigenvectors can be displayed (in .vts format for use in Paraview) with the ``modes_to_plot`` setting, whereby
     the user specifies the mode indices that are to be plotted (sorted with in the same way as the eigenvalue table,
     i.e. by decreasing real part). A snapshot of the eigenvector is produced for the 0, 45, 90 and 135 degree phases.
     This feature currently supports the flexible structural modes and does not show the rigid body contribution.

@@ -22,8 +22,8 @@ def plot_frame_to_vtk(
     r"""
     Plot a single timestep of grid data
     :param grid_arr: Structured grid array with shape (n_x, n_y, n_z, 3)
-    :param filename: Base filename, including directory. Information on the frame number will be
-    appended to this.
+    :param filename: Full filename, including directory. The grid is written in the VTK XML structured
+    grid format, so the extension should be ``.vts`` for Paraview to recognise the file.
     :param node_scalar_data: Dictionary of node scalar data
     :param node_vector_data: Dictionary of node vector data
     :param cell_scalar_data: Dictionary of cell scalar data

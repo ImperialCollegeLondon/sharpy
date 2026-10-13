@@ -185,7 +185,7 @@ def write_zeta_vtk(zeta, zeta_ref, filename_root):
     Given a list of arrays representing the coordinates of a set of n_surf UVLM
     lattices and organised as:
         zeta[n_surf][3,M+1,N=1]
-    this function writes a vtk for each of the n_surf surfaces.
+    this function writes a vtk structured grid (.vts) file for each of the n_surf surfaces.
 
     Args:
         zeta (np.array): lattice coordinates to plot
@@ -195,7 +195,7 @@ def write_zeta_vtk(zeta, zeta_ref, filename_root):
 
     for i_surf in range(len(zeta)):
 
-        filename = f"{filename_root}_{i_surf:02d}.vtu"
+        filename = f"{filename_root}_{i_surf:02d}.vts"
 
         this_zeta = np.swapaxes(zeta[i_surf], 0, -1)
         this_zeta_ref = np.swapaxes(zeta_ref[i_surf], 0, -1)
